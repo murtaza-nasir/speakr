@@ -82,6 +82,6 @@ def apply_tag_shares(recording, tag, require_completed=True, sharing_enabled=Non
         ensure_recipient_state(recording.id, membership.user_id)
         created += 1
         current_app.logger.info(f"Auto-shared recording {recording.id} with user {membership.user_id} "
-                                f"(role={membership.role}) via group tag '{tag.name}'")
+                                f"(role={membership.role}) via group tag {tag.id}")
     db.session.flush()
     return created

@@ -8,8 +8,11 @@ user or a provider supplies is a marker, and no marker may appear in any log
 record: not in the message, the arguments, the traceback or any attribute.
 The same calls outside an incognito request still log their content at DEBUG.
 
-No row of any table is added or changed (usage rows included: an incognito
-request is not counted), and no file is left in the temporary folder.
+An incognito request is counted against the monthly budgets, so it writes the
+same usage rows as an ordinary request (token_usage, transcription_usage).
+Those rows hold numbers, the operation, the connector and the model name. No
+other row of any table is added or changed, and no file is left in the
+temporary folder. A user over a budget is refused before anything is sent.
 
 SHARED-DB: the user is removed afterwards.
 """
@@ -33,7 +36,7 @@ from openai import OpenAI
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
-from src.models import User
+from src.models import TokenUsage, TranscriptionUsage, User
 import src.api.recordings as rec_api
 import src.services.llm as llm
 import src.tasks.processing as proc
@@ -139,7 +142,13 @@ class FakeLLM:
             chunk = {"id": "c1", "object": "chat.completion.chunk", "created": 1, "model": "fake",
                      "choices": [{"index": 0, "delta": {"role": "assistant", "content": text},
                                   "finish_reason": None}]}
-            payload = f"data: {json.dumps(chunk)}\n\ndata: [DONE]\n\n"
+            payload = f"data: {json.dumps(chunk)}\n\n"
+            if (body.get("stream_options") or {}).get("include_usage"):
+                usage = {"id": "c1", "object": "chat.completion.chunk", "created": 1, "model": "fake",
+                         "choices": [],
+                         "usage": {"prompt_tokens": 20, "completion_tokens": 7, "total_tokens": 27}}
+                payload += f"data: {json.dumps(usage)}\n\n"
+            payload += "data: [DONE]\n\n"
             return httpx.Response(200, content=payload.encode(), headers={"content-type": "text/event-stream"})
         return httpx.Response(200, json={
             "id": "c1", "object": "chat.completion", "created": 1, "model": "fake",
@@ -188,12 +197,20 @@ def log(caplog):
 
 
 @pytest.fixture
-def temp_folder(tmp_path):
-    """The temporary folder of the request, so that leftovers can be counted."""
+def temp_folder(tmp_path, monkeypatch):
+    """The temporary folder of the request, so that leftovers can be counted.
+
+    Incognito files go to a folder of their own (INCOGNITO_TEMP_DIR); nothing
+    of the request may be written to the temporary folder of the system, and
+    the incognito folder must be empty again after the request.
+    """
     folder = tmp_path / "tmp"
     folder.mkdir()
+    incognito = tmp_path / "incognito"
+    monkeypatch.setenv("INCOGNITO_TEMP_DIR", str(incognito))
     with patch.object(tempfile, "tempdir", str(folder)):
         yield folder
+    assert not incognito.exists() or list(incognito.iterdir()) == []
 
 
 def _wav():
@@ -243,6 +260,54 @@ def _database():
             snapshot[table.name] = sorted(
                 repr(tuple(row)) for row in db.session.execute(select(*columns)))
         return snapshot
+
+
+USAGE_TABLES = ("token_usage", "transcription_usage")
+
+
+def _without_usage(database):
+    return {name: rows for name, rows in database.items() if name not in USAGE_TABLES}
+
+
+def _usage(user_id):
+    """The usage rows of the user, as plain values."""
+    with app.app_context():
+        db.session.rollback()
+        tokens = {u.operation_type: (u.prompt_tokens, u.completion_tokens, u.total_tokens, u.request_count,
+                                     u.model_name)
+                  for u in TokenUsage.query.filter_by(user_id=user_id)}
+        audio = {u.connector_type: (u.audio_duration_seconds, u.request_count, u.model_name)
+                 for u in TranscriptionUsage.query.filter_by(user_id=user_id)}
+    return tokens, audio
+
+
+def _assert_only_usage_rows_changed(before, user_id, more=()):
+    """Nothing but usage rows of this user changed, and those hold no content."""
+    after = _database()
+    assert _without_usage(after) == _without_usage(before)
+    with app.app_context():
+        columns = {name: [c.name for c in db.metadata.tables[name].columns] for name in USAGE_TABLES}
+        for name in USAGE_TABLES:
+            table = db.metadata.tables[name]
+            new = set(after[name]) - set(before[name])
+            for row in db.session.execute(table.select().where(table.c.user_id != user_id)):
+                assert repr(tuple(row)) in before[name], f"a {name} row of another user changed"
+            text = "\n".join(sorted(new))
+            for marker in list(MARKERS) + list(more):
+                assert marker not in text, f"{marker!r} reached {name}"
+    # The usage tables have no column for a title, a filename, content or a recording.
+    for name, names in columns.items():
+        for column in names:
+            assert not any(word in column for word in ("title", "filename", "text", "content", "recording")), \
+                f"{name}.{column}"
+
+
+def _set_budget(user_id, tokens=None, seconds=None):
+    with app.app_context():
+        user = db.session.get(User, user_id)
+        user.monthly_token_budget = tokens
+        user.monthly_transcription_budget = seconds
+        db.session.commit()
 
 
 def _llm(fake):
@@ -328,11 +393,18 @@ def test_upload_logs_metadata_only_and_stores_nothing(client, user_id, log, temp
     assert "src.services.llm" in withheld
     assert any(name.startswith(("openai", "httpx", "httpcore")) for name in withheld)
 
-    assert _database() == before
+    _assert_only_usage_rows_changed(before, user_id, more=(FILENAME,))
+    tokens, audio = _usage(user_id)
+    # One title call and one summary call of the fake (10 + 5 tokens each).
+    assert tokens == {"title_generation": (10, 5, 15, 1, "fake-model"),
+                      "summarization": (10, 5, 15, 1, "fake-model")}
+    # Two seconds of audio, counted for the connector an ordinary upload names.
+    assert list(audio) == ["asr_endpoint"]
+    assert audio["asr_endpoint"][0] == 2 and audio["asr_endpoint"][1] == 1
     assert list(temp_folder.iterdir()) == []
 
 
-def test_chunked_upload_logs_metadata_only(client, log, temp_folder):
+def test_chunked_upload_logs_metadata_only(client, user_id, log, temp_folder):
     asr, fake_llm = FakeASR(), FakeLLM([TITLE])
     before = _database()
     with _world(asr, fake_llm, chunked=True):
@@ -341,7 +413,9 @@ def test_chunked_upload_logs_metadata_only(client, log, temp_folder):
     assert asr.requests.count(("POST", "/asr")) == 2
     assert "quokka-transcript-marker" in r.get_json()["transcription"]
     _assert_no_content(log)
-    assert _database() == before
+    _assert_only_usage_rows_changed(before, user_id)
+    tokens, audio = _usage(user_id)
+    assert set(tokens) == {"title_generation"} and audio["asr_endpoint"][1] == 1
     assert list(temp_folder.iterdir()) == []
 
 
@@ -416,7 +490,9 @@ def test_chat_logs_metadata_only_while_the_answer_streams(client, user_id, log):
     # The library records of the streamed answer are created after the view returned.
     assert any("log record withheld" in r.getMessage() and r.name.startswith(("openai", "httpx", "httpcore"))
                for r in log.records)
-    assert _database() == before
+    _assert_only_usage_rows_changed(before, user_id)
+    tokens, audio = _usage(user_id)
+    assert tokens == {"chat": (20, 7, 27, 1, "fake-model")} and audio == {}
 
 
 def test_chat_with_a_failing_llm_answers_a_fixed_message(client, log):
@@ -443,7 +519,9 @@ def test_summary_logs_metadata_only(client, user_id, log):
     _assert_no_content(log)
     assert any(r.getMessage().startswith(f"[Incognito Summary] User {user_id} requesting summary generation")
                for r in log.records)
-    assert _database() == before
+    _assert_only_usage_rows_changed(before, user_id)
+    tokens, audio = _usage(user_id)
+    assert tokens == {"summarization": (10, 5, 15, 1, "fake-model")} and audio == {}
 
 
 def test_summary_with_a_failing_llm_answers_without_the_error_body(client, log):
@@ -463,6 +541,90 @@ def test_summary_error_answer_has_no_exception_text(client, log):
     assert r.status_code == 500
     assert "numbat" not in r.get_data(as_text=True)
     assert "numbat" not in _everything(log)
+
+
+# --- budgets -----------------------------------------------------------------
+
+def _use_tokens(user_id, total):
+    with app.app_context():
+        from src.services.token_tracking import token_tracker
+        token_tracker.record_usage(user_id, "summarization", total, 0, total, model_name="earlier")
+
+
+def test_upload_is_refused_over_the_transcription_budget_before_anything_is_sent(client, user_id, log, temp_folder):
+    _set_budget(user_id, seconds=60)
+    with app.app_context():
+        from src.services.transcription_tracking import transcription_tracker
+        transcription_tracker.record_usage(user_id, "asr_endpoint", 61, model_name="earlier")
+    asr, fake_llm = FakeASR(), FakeLLM([TITLE, SUMMARY])
+    before = _database()
+    with _world(asr, fake_llm):
+        r = _upload(client)
+    assert r.status_code == 403
+    body = r.get_json()
+    assert body["budget_exceeded"] is True and body["incognito"] is True and body["error"]
+    assert ("POST", "/asr") not in asr.requests and fake_llm.bodies == []
+    assert _database() == before
+    assert list(temp_folder.iterdir()) == []
+    text = _everything(log)
+    for marker in MARKERS:
+        assert marker not in text
+
+
+def test_upload_over_the_token_budget_answers_the_transcript_without_title_or_summary(client, user_id, log, temp_folder):
+    _set_budget(user_id, tokens=100)
+    _use_tokens(user_id, 100)
+    asr, fake_llm = FakeASR(), FakeLLM([TITLE, SUMMARY])
+    with _world(asr, fake_llm):
+        r = _upload(client)
+    assert r.status_code == 200
+    body = r.get_json()
+    assert "quokka-transcript-marker" in body["transcription"]
+    assert body["title"] == "Incognito Recording" and body["summary"] is None
+    assert body["summary_budget_exceeded"] is True and body["summary_error"]
+    assert fake_llm.bodies == [], "no text was sent to the LLM"
+    _assert_no_content(log)
+    assert list(temp_folder.iterdir()) == []
+
+
+def test_chat_is_refused_over_the_token_budget(client, user_id, log):
+    _set_budget(user_id, tokens=100)
+    _use_tokens(user_id, 100)
+    fake_llm = FakeLLM([CHAT_REPLY])
+    before = _database()
+    with _world(FakeASR(), fake_llm):
+        r = client.post("/api/recordings/incognito/chat", json=CHAT_BODY)
+        answer = r.get_data(as_text=True)
+    assert '"budget_exceeded": true' in answer and CHAT_REPLY not in answer
+    assert fake_llm.bodies == []
+    assert _database() == before
+    text = _everything(log)
+    for marker in MARKERS:
+        assert marker not in text
+
+
+def test_summary_is_refused_over_the_token_budget(client, user_id, log):
+    _set_budget(user_id, tokens=100)
+    _use_tokens(user_id, 100)
+    fake_llm = FakeLLM([SUMMARY])
+    before = _database()
+    with _world(FakeASR(), fake_llm):
+        r = client.post("/api/recordings/incognito/summary", json={"transcription": TRANSCRIPT})
+    assert r.status_code == 403 and r.get_json()["budget_exceeded"] is True
+    assert fake_llm.bodies == []
+    assert _database() == before
+
+
+def test_incognito_usage_counts_toward_the_budget_of_later_requests(client, user_id, log):
+    """Two summaries of 15 tokens against a budget of 20: the second is refused."""
+    _set_budget(user_id, tokens=20)
+    fake_llm = FakeLLM([SUMMARY, SUMMARY, SUMMARY])
+    with _world(FakeASR(), fake_llm):
+        first = client.post("/api/recordings/incognito/summary", json={"transcription": TRANSCRIPT})
+        second = client.post("/api/recordings/incognito/summary", json={"transcription": TRANSCRIPT})
+        third = client.post("/api/recordings/incognito/summary", json={"transcription": TRANSCRIPT})
+    assert (first.status_code, second.status_code, third.status_code) == (200, 200, 403)
+    assert len(fake_llm.bodies) == 2
 
 
 # --- ordinary requests keep their DEBUG log ---------------------------------

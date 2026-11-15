@@ -29,6 +29,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
+from src.utils.log_filters import loggable_path
 from src.models import (
     Folder, Group, GroupMembership, ProcessingJob, Recording, RecordingTag, Tag, User,
 )
@@ -412,7 +413,8 @@ def test_probe_upload_reads_the_codecs(staged):
     assert result == UploadProbe(codec, None, True)
     get_info.assert_called_once_with(staged, timeout=10)
     repair.assert_not_called()
-    info.assert_called_once_with("Detected codec for talk.mp4: audio_codec=aac, has_video=True")
+    # The file is named by its extension at INFO (privacy review B2).
+    info.assert_called_once_with(f"Detected codec for {loggable_path(staged)}: audio_codec=aac, has_video=True")
 
 
 @pytest.mark.parametrize("size_mb,timeout", [(50, 10), (250, 25), (900, 60)])
@@ -429,7 +431,7 @@ def test_probe_upload_keeps_a_failed_probe(staged):
     assert result == UploadProbe(None, error, False)
     repair.assert_not_called()
     warning.assert_called_once_with(
-        "Failed to probe talk.mp3 (timeout=10s): unreadable. Will attempt conversion.")
+        f"Failed to probe {loggable_path(staged)} (timeout=10s): unreadable. Will attempt conversion.")
 
 
 @pytest.mark.parametrize("filename", ["rec.webm", "rec.MKV", "rec.mka"])
@@ -441,7 +443,7 @@ def test_probe_upload_repairs_webm(staged, filename):
     assert result == UploadProbe(repaired, None, False)
     repair.assert_called_once_with(staged, timeout=10)
     info.assert_called_once_with(
-        f"Recovered malformed WebM header for {filename}; probe succeeded after trim")
+        f"Recovered malformed WebM header for {loggable_path(staged)}; probe succeeded after trim")
 
 
 def test_probe_upload_keeps_the_error_when_the_repair_fails(staged):
@@ -513,7 +515,7 @@ def test_decide_conversion_defers_when_probe_succeeds():
         chunking_will_handle_large_audio=False, extracted_audio_limit_mb=None,
         can_defer_conversion=True, conversion_deferred=True, convert_in_request=False,
     )
-    info.assert_called_once_with("Upload talk.m4a: converting after the upload is answered")
+    info.assert_called_once_with("Upload <file .m4a>: converting after the upload is answered")
 
 
 @pytest.mark.parametrize("overrides", [
@@ -560,7 +562,7 @@ def test_decide_conversion_skips_an_audio_join_part():
     assert decision.skip_conversion_for_join is True
     assert (decision.can_defer_conversion, decision.conversion_deferred, decision.convert_in_request) == \
         (False, False, False)
-    info.assert_called_once_with("Join part talk.m4a: skipping conversion, the merge re-encodes it")
+    info.assert_called_once_with("Join part <file .m4a>: skipping conversion, the merge re-encodes it")
     with app.app_context():
         video_part = _decide(join=("group", 0, 2), codec_info=VIDEO, has_video=True)
     assert (video_part.skip_conversion_for_join, video_part.convert_in_request) == (False, True)
@@ -1137,7 +1139,7 @@ def test_discard_staging_logs_a_failed_removal(staged):
     with app.app_context(), patch.object(app.logger, "warning") as warning, \
             patch("os.remove", side_effect=OSError("busy")):
         recording_ingestion._discard_staging(staged)
-    warning.assert_called_once_with(f"Could not remove staging file {staged}: busy")
+    warning.assert_called_once_with(f"Could not remove staging file {loggable_path(staged)}: busy")
 
 
 @pytest.mark.parametrize("ext", sorted(recording_ingestion.VIDEO_EXTENSIONS))

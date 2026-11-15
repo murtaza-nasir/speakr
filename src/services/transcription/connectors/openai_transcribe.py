@@ -22,6 +22,7 @@ from ..base import (
 )
 from ..exceptions import TranscriptionError, ConfigurationError
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 
@@ -220,7 +221,8 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                                 "known_speaker_names": speaker_names,
                                 "known_speaker_references": speaker_refs
                             }
-                            logger.info(f"Using known speaker references for {len(speaker_names)} speakers: {speaker_names}")
+                            logger.info(f"Using known speaker references for {len(speaker_names)} speakers")
+                            logger.debug(f"Known speaker names: {speaker_names}")
             else:
                 # Non-diarization models - combine initial prompt and hotwords
                 prompt_parts = []
@@ -242,7 +244,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"GPT-4o transcription failed: {error_msg}")
+            log_failure(logger, logging.ERROR, "GPT-4o transcription failed", e)
             raise TranscriptionError(f"GPT-4o transcription failed: {error_msg}") from e
 
     def _parse_text_response(self, response, model_used: Optional[str] = None) -> TranscriptionResponse:

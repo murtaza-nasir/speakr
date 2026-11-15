@@ -346,9 +346,9 @@ def record_sample(speaker, recording, label, vector, speech_seconds=None, source
         best = max((float(np.dot(vec, s.vector)) for s in others if s.vector.shape == vec.shape), default=None)
         if best is not None and best < OUTLIER_SIMILARITY:
             logger.warning(
-                "Voice of %s in recording %s is unlike every sample of '%s' (best similarity %.2f); "
+                "Voice of %s in recording %s is unlike every sample of speaker %s (best similarity %.2f); "
                 "not adding it to the profile. The name may be wrong.",
-                label, recording.id, speaker.name, best)
+                label, recording.id, speaker.id, best)
             if existing is not None:
                 db.session.delete(existing)
             return 'rejected'

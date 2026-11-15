@@ -12,12 +12,43 @@ from datetime import datetime, timedelta
 from src.database import db
 
 
+def public_sharing_enabled():
+    """The enable_public_sharing system setting (ENABLE_PUBLIC_SHARING in .env)."""
+    from src.models import SystemSetting
+    from src.utils.system_settings import ENV_BACKED_SETTINGS, env_fallback
+    env_var, default = ENV_BACKED_SETTINGS['enable_public_sharing'][:2]
+    return bool(SystemSetting.get_setting('enable_public_sharing', env_fallback(env_var, default)))
+
+
+def link_is_active(share, sharing_enabled=None):
+    """Whether a public link is answered now.
+
+    A link is answered only while a new one could be created by its owner:
+    public sharing is on and the owner still has the permission to share
+    publicly. The link itself is kept, so it is answered again when the
+    switch or the permission returns. An expired link is not active.
+    """
+    if sharing_enabled is None:
+        sharing_enabled = public_sharing_enabled()
+    if not sharing_enabled:
+        return False
+    if share.user is None or not share.user.can_share_publicly:
+        return False
+    if share.expires_at is not None and share.expires_at <= datetime.utcnow():
+        return False
+    return True
+
+
 def active_share_or_404(public_id):
-    """The share behind a public link; an expired one is gone (404)."""
+    """The share behind a public link; an inactive or expired one answers 404.
+
+    The same answer as for an unknown link, so a visitor cannot tell a
+    switched-off link from one that never existed.
+    """
     from flask import abort
     from src.models import Share
     share = Share.query.filter_by(public_id=public_id).first_or_404()
-    if share.expires_at is not None and share.expires_at <= datetime.utcnow():
+    if not link_is_active(share):
         abort(404)
     return share
 
@@ -107,4 +138,5 @@ def link_is_https():
 def share_dict(share):
     z = lambda v: v.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if v else None
     return {'id': share.id, 'share_summary': bool(share.share_summary), 'share_notes': bool(share.share_notes),
-            'created_at': z(share.created_at), 'expires_at': z(share.expires_at)}
+            'created_at': z(share.created_at), 'expires_at': z(share.expires_at),
+            'active': link_is_active(share)}

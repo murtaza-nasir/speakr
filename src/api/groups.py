@@ -181,7 +181,7 @@ def sync_team_tag_shares(group_id):
                     ensure_recipient_state(recording.id, membership_to_share.user_id)
 
                     shares_created += 1
-                    current_app.logger.info(f"Synced share: Recording {recording.id} with user {membership_to_share.user_id} (role={membership_to_share.role}) via group tag '{tag.name}'")
+                    current_app.logger.info(f"Synced share: Recording {recording.id} with user {membership_to_share.user_id} (role={membership_to_share.role}) via group tag {tag.id}")
 
     db.session.commit()
 
@@ -262,7 +262,8 @@ def create_team():
         db.session.rollback()
         return jsonify(api_error('group_name_exists')), 400
 
-    current_app.logger.info(f"User {current_user.username} created group: {name}")
+    current_app.logger.info(f"User {current_user.id} created group {group.id}")
+    current_app.logger.debug(f"User {current_user.username} created group: {name}")
     return jsonify(_group_payload(group)), 201
 
 
@@ -337,7 +338,8 @@ def update_team(group_id):
         db.session.rollback()
         return jsonify(api_error('group_name_exists')), 400
 
-    current_app.logger.info(f"Admin {current_user.username} updated group: {group.name}")
+    current_app.logger.info(f"User {current_user.id} updated group {group.id}")
+    current_app.logger.debug(f"Admin {current_user.username} updated group: {group.name}")
     return jsonify(_group_payload(group))
 
 
@@ -370,7 +372,8 @@ def delete_team(group_id):
     drop_stale_auto_shares(user_ids=member_ids)
     db.session.commit()
 
-    current_app.logger.info(f"User {current_user.username} deleted group: {group_name}")
+    current_app.logger.info(f"User {current_user.id} deleted group {group_id}")
+    current_app.logger.debug(f"User {current_user.username} deleted group: {group_name}")
     return jsonify({'success': True})
 
 
@@ -429,7 +432,8 @@ def add_team_member(group_id):
     db.session.add(membership)
     db.session.commit()
 
-    current_app.logger.info(f"Admin {current_user.username} added {user.username} to group {group.name} as {role}")
+    current_app.logger.info(f"User {current_user.id} added user {user_id} to group {group_id} as {role}")
+    current_app.logger.debug(f"Admin {current_user.username} added {user.username} to group {group.name} as {role}")
     return jsonify(membership.to_dict()), 201
 
 
@@ -463,7 +467,8 @@ def update_team_member(group_id, user_id):
     drop_stale_auto_shares(user_ids=[user_id])
     db.session.commit()
 
-    current_app.logger.info(f"Admin {current_user.username} updated {membership.user.username} role to {role} in group {membership.group.name}")
+    current_app.logger.info(f"User {current_user.id} updated the role of user {user_id} to {role} in group {group_id}")
+    current_app.logger.debug(f"Admin {current_user.username} updated {membership.user.username} role to {role} in group {membership.group.name}")
     return jsonify(membership.to_dict())
 
 
@@ -494,7 +499,8 @@ def remove_team_member(group_id, user_id):
     drop_stale_auto_shares(user_ids=[user_id])
     db.session.commit()
 
-    current_app.logger.info(f"Admin {current_user.username} removed {username} from group {group_name}")
+    current_app.logger.info(f"User {current_user.id} removed user {user_id} from group {group_id}")
+    current_app.logger.debug(f"Admin {current_user.username} removed {username} from group {group_name}")
     return jsonify({'success': True})
 
 

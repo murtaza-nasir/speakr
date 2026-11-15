@@ -22,6 +22,7 @@ class TokenBudgetExceeded(Exception):
         super().__init__(message)
 
 from src.utils import safe_json_loads, extract_json_object
+from src.utils.error_text import log_failure
 
 
 def extract_cache_tokens(usage):
@@ -508,7 +509,9 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         )
         raise
     except Exception as e:
-        logger.error(f"LLM API call failed: {e}")
+        # The provider's error text can quote the prompt: metadata at ERROR,
+        # the text at DEBUG (src/utils/error_text.py).
+        log_failure(logger, logging.ERROR, f"LLM API call failed (operation={operation_type or 'unspecified'})", e)
         _log_rejected_parameters(e, 'TEXT_MODEL_EXTRA_BODY', TEXT_MODEL_EXTRA_BODY)
         raise
 
@@ -649,7 +652,7 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
         )
         raise
     except Exception as e:
-        logger.error(f"Chat LLM API call failed: {e}")
+        log_failure(logger, logging.ERROR, f"Chat LLM API call failed (operation={operation_type or 'unspecified'})", e)
         _log_rejected_parameters(e, chat_config['extra_body_variable'], chat_config['extra_body'])
         raise
 
@@ -780,7 +783,7 @@ def call_translation_completion(messages, temperature=0.7, response_format=None,
         )
         raise
     except Exception as e:
-        logger.error(f"Translation LLM API call failed: {e}")
+        log_failure(logger, logging.ERROR, f"Translation LLM API call failed (operation={operation_type or 'unspecified'})", e)
         _log_rejected_parameters(e, translation_config['extra_body_variable'], translation_config['extra_body'])
         raise
 

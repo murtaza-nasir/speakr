@@ -2001,6 +2001,7 @@
   "incognito": {
     "audioNotStored": "El audio no se almacena en modo incógnito",
     "discardConfirm": "¿Descartar la grabación de incógnito? No se podrá recuperar.",
+    "lostIfTabCloses": "Se pierde si se cierra la pestaña o el navegador",
     "mode": "Modo incógnito",
     "notSavedToAccount": "No guardado en la cuenta",
     "oneFileAtATime": "Un archivo a la vez en modo incógnito",
@@ -3563,6 +3564,7 @@
       "public_sharing_disabled": "El uso compartido público está desactivado en este servidor",
       "public_sharing_off": "El uso compartido público está desactivado en este servidor",
       "push_unavailable": "Notificaciones push no disponibles",
+      "query_token_disabled": "Un token en el parámetro de consulta ?token= no se acepta en este servidor; envíelo en el encabezado Authorization: Bearer",
       "query_token_read_only": "Un token en el parámetro de consulta ?token= solo se acepta en solicitudes GET y HEAD; envíelo en el encabezado Authorization: Bearer",
       "question_required": "question es obligatorio",
       "recording_already_processing": "La grabación ya se está procesando",

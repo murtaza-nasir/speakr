@@ -8,6 +8,7 @@ import tempfile
 from contextlib import contextmanager
 from typing import Optional, Tuple
 from flask import current_app
+from src.utils.log_filters import loggable_error, loggable_path
 
 
 # Configuration constants
@@ -287,9 +288,9 @@ def extract_audio_from_video(
         if cleanup_original:
             try:
                 os.remove(video_path)
-                current_app.logger.info(f"Cleaned up original video: {os.path.basename(video_path)}")
+                current_app.logger.info(f"Cleaned up original video: {loggable_path(video_path)}")
             except Exception as e:
-                current_app.logger.warning(f"Failed to cleanup video {video_path}: {e}")
+                current_app.logger.warning(f"Failed to cleanup video {loggable_path(video_path)}: {loggable_error(e, video_path)}")
         
         return final_audio_path, mime_type
         
@@ -371,7 +372,7 @@ def compress_audio(
         compressed_size = os.path.getsize(temp_output_path)
 
         current_app.logger.info(
-            f"Compressed {os.path.basename(input_path)}: "
+            f"Compressed {loggable_path(input_path)}: "
             f"{original_size / 1024 / 1024:.1f}MB -> "
             f"{compressed_size / 1024 / 1024:.1f}MB ({describe_size_change(original_size, compressed_size)})"
         )
@@ -548,7 +549,7 @@ def remux_fragmented_mp4_in_place(filepath: str) -> bool:
         os.replace(temp_path, filepath)
         return True
     except Exception as e:
-        current_app.logger.warning(f"Kept fragmented video {name} as it was; remux failed: {e}")
+        current_app.logger.warning(f"Kept fragmented video {loggable_path(filepath)} as it was; remux failed: {loggable_error(e, filepath)}")
         return False
     finally:
         if os.path.exists(temp_path):
@@ -625,6 +626,11 @@ def decode_ffmpeg_output(data) -> str:
     return data.decode('utf-8', errors='replace')
 
 
+def _command_files(cmd):
+    """The arguments of an FFmpeg command that name a file."""
+    return [arg for arg in cmd if isinstance(arg, str) and os.sep in arg]
+
+
 def _run_ffmpeg_command(cmd: list, operation_description: str) -> None:
     """
     Execute FFmpeg command with consistent error handling.
@@ -660,10 +666,16 @@ def _run_ffmpeg_command(cmd: list, operation_description: str) -> None:
         # normal FFmpegError so the worker fails the job cleanly instead of
         # hanging forever on a stalled/adversarial input.
         error_msg = f"{operation_description} timed out after {FFMPEG_TIMEOUT_SECONDS}s"
-        current_app.logger.error(f"FFmpeg error: {error_msg}")
+        # FFmpeg names its input in the error text, and a stored upload is
+        # named after the original filename: that name is at DEBUG only.
+        current_app.logger.error(f"FFmpeg error: {loggable_error(error_msg, *_command_files(cmd))}")
+        current_app.logger.debug(f"FFmpeg error (file names kept): {error_msg}")
         raise FFmpegTimeoutError(error_msg)
 
     except subprocess.CalledProcessError as e:
         error_msg = f"{operation_description} failed: {decode_ffmpeg_output(e.stderr)}"
-        current_app.logger.error(f"FFmpeg error: {error_msg}")
+        # FFmpeg names its input in the error text, and a stored upload is
+        # named after the original filename: that name is at DEBUG only.
+        current_app.logger.error(f"FFmpeg error: {loggable_error(error_msg, *_command_files(cmd))}")
+        current_app.logger.debug(f"FFmpeg error (file names kept): {error_msg}")
         raise FFmpegError(error_msg)

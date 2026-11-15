@@ -58,6 +58,7 @@ from src.services.recording_filters import (
 )
 from src.utils.localization import api_error, format_number, translate
 from src.utils.incognito_logging import incognito_route, incognito_log, describe_error, short_code
+from src.utils.error_text import log_failure, user_error_text
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
@@ -747,8 +748,12 @@ def auto_identify_speakers(recording_id):
     except ValueError as ve:
         return jsonify({'error': str(ve)}), 503
     except Exception as e:
-        current_app.logger.error(f"Error during auto speaker identification for recording {recording_id}: {e}", exc_info=True)
-        return jsonify(api_error('unexpected_error_detail', detail=str(e))), 500
+        # An LLM error can quote the transcript: metadata at ERROR, the text
+        # and the traceback at DEBUG; the answer has the provider's short message.
+        log_failure(current_app.logger, 'error',
+                    f"Error during auto speaker identification for recording {recording_id}", e, traceback=True)
+        return jsonify(api_error('unexpected_error_detail',
+                                 detail=user_error_text(e, db.session.get(Recording, recording_id)))), 500
 
 # --- Chat with Transcription ---
 
@@ -2174,6 +2179,7 @@ def upload_incognito():
     from src.tasks.processing import transcribe_incognito, generate_incognito_summary
 
     temp_filepath = None
+    request_dir = None
 
     try:
         if 'file' not in request.files:
@@ -2212,11 +2218,25 @@ def upload_incognito():
                 'max_size_mb': float(effective_limit_mb),
             }), 413
 
+        # The monthly transcription budget applies to an incognito request as
+        # to any other. It is checked before the upload is saved, so nothing
+        # of a refused request reaches the disk.
+        from src.services.transcription_tracking import transcription_tracker
+        can_proceed, _usage_pct, budget_msg = transcription_tracker.check_budget(current_user.id)
+        if not can_proceed:
+            incognito_log.warning(f"[Incognito] User {current_user.id} exceeded the transcription budget")
+            return jsonify({'incognito': True, 'error': budget_msg, 'budget_exceeded': True}), 403
+
         # Save to temp file - use secure temp directory. Suffix carries only
         # the extension, not the user's filename: the temp path is logged and
         # filenames can themselves be sensitive (no PHI in logs or paths).
         _ext = os.path.splitext(safe_filename)[1].lower() or '.audio'
-        with tempfile.NamedTemporaryFile(delete=False, suffix=_ext) as tmp:
+        # The request has a folder of its own under the incognito temporary
+        # folder: the upload, its converted copies and its chunks are written
+        # there and removed together (src/services/incognito_temp.py).
+        from src.services import incognito_temp
+        request_dir = incognito_temp.new_request_dir()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=_ext, dir=request_dir) as tmp:
             temp_filepath = tmp.name
             file.save(temp_filepath)
             incognito_log.info(f"[Incognito] Temp file saved: {temp_filepath}")
@@ -2271,6 +2291,8 @@ def upload_incognito():
         if result.get('error'):
             incognito_log.error(f"[Incognito] Transcription failed: type={result.get('error_type')}, "
                                 f"code={result.get('error_code')}")
+            if result.get('error_code') == 'transcription_budget_exceeded':
+                return jsonify({'incognito': True, 'error': result['error'], 'budget_exceeded': True}), 403
             # result['error'] is English; a known kind of failure carries
             # error_code and is answered in the interface language (#477).
             if result.get('error_code') == 'audio_decode_failed':
@@ -2289,9 +2311,14 @@ def upload_incognito():
 
         # Optionally generate summary
         summary = None
+        summary_budget_message = None
         if auto_summarize and result.get('transcription'):
             incognito_log.info("[Incognito] Auto-summarize requested, generating summary...")
-            summary = generate_incognito_summary(result['transcription'], current_user)
+            try:
+                summary = generate_incognito_summary(result['transcription'], current_user)
+            except TokenBudgetExceeded as budget_error:
+                # The transcript is still answered; the summary is left out.
+                summary_budget_message = str(budget_error)
 
         # Build response
         # Render markdown to HTML for summary display
@@ -2311,6 +2338,9 @@ def upload_incognito():
             'original_filename': original_filename,
             'file_size': file_size
         }
+        if summary_budget_message:
+            response_data['summary_error'] = summary_budget_message
+            response_data['summary_budget_exceeded'] = True
 
         incognito_log.info(f"[Incognito] Request completed successfully for user {current_user.id}")
 
@@ -2341,6 +2371,13 @@ def upload_incognito():
             except Exception as cleanup_error:
                 incognito_log.error(f"[Incognito] Failed to delete temp file {temp_filepath}: "
                                     f"{describe_error(cleanup_error)}")
+        if request_dir:
+            from src.services import incognito_temp
+            if incognito_temp.remove_request_dir(request_dir):
+                incognito_log.info("[Incognito] Request temp folder removed")
+            else:
+                incognito_log.error("[Incognito] Request temp folder could not be removed; "
+                                    "the hourly sweep removes it later")
 
 
 @recordings_bp.route('/api/recordings/incognito/chat', methods=['POST'])
@@ -2388,6 +2425,7 @@ def chat_incognito():
                                                  with_sources=True)
 
         user_id = current_user.id
+        app = current_app._get_current_object()
 
         incognito_log.info(f"[Incognito Chat] User {user_id} sending message "
                            f"({len(user_message)} characters, transcript {len(transcription)} characters, "
@@ -2398,16 +2436,27 @@ def chat_incognito():
 
         def generate():
             """Stream the chat response."""
+            # The budget check and the usage row need the database while the
+            # answer streams, as in the recording panel's /chat.
+            ctx = app.app_context()
+            ctx.push()
             try:
-                # No user_id, so nothing is tracked for incognito. The same
-                # events as the recording panel's /chat; [DONE] stays last
-                # for a tab loaded before this change.
-                response = call_chat_completion(messages, temperature=chat_temperature, stream=True)
-                for event in recording_events(process_streaming_with_thinking(response), segments):
+                # Counted against the user's monthly token budget: the usage
+                # row holds numbers and the model name only. The same events
+                # as the recording panel's /chat; [DONE] stays last for a tab
+                # loaded before this change.
+                response = call_chat_completion(messages, temperature=chat_temperature, stream=True,
+                                                user_id=user_id, operation_type='chat')
+                stream = process_streaming_with_thinking(response, user_id=user_id, operation_type='chat',
+                                                         app=app)
+                for event in recording_events(stream, segments):
                     yield event
 
                 yield "data: [DONE]\n\n"
 
+            except TokenBudgetExceeded as e:
+                incognito_log.warning(f"[Incognito Chat] Token budget exceeded for user {user_id}")
+                yield f"data: {json.dumps({'error': str(e), 'budget_exceeded': True})}\n\n"
             except Exception as e:
                 incognito_log.error(f"[Incognito Chat] Error during streaming: {describe_error(e)}")
                 # Provide more helpful error message for connection issues
@@ -2418,6 +2467,8 @@ def chat_incognito():
                     # The provider's text can quote the transcript or the
                     # message: the answer is a fixed message.
                     yield f"data: {json.dumps(api_error('chat_error'))}\n\n"
+            finally:
+                ctx.pop()
 
         return Response(generate(), mimetype='text/event-stream')
 
@@ -2474,6 +2525,9 @@ def generate_incognito_summary_endpoint():
         else:
             return jsonify(api_error('summary_generation_failed')), 503
 
+    except TokenBudgetExceeded as e:
+        incognito_log.warning(f"[Incognito Summary] Token budget exceeded for user {current_user.id}")
+        return jsonify({'error': str(e), 'budget_exceeded': True}), 403
     except Exception as e:
         incognito_log.error(f"[Incognito Summary] Error: {describe_error(e)}")
         # Provide more helpful error message for connection issues
@@ -3153,6 +3207,16 @@ def chat_with_transcription():
             # Thinking tags split off; `source` events are added below.
             yield from process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', app=app)
 
+        # Read here, in the request: the recording is not loaded while the
+        # answer streams.
+        _echo_sources = [value for value in (recording.transcription, recording.summary, recording.notes,
+                                             recording.title, recording.participants,
+                                             recording.original_filename, user_message)
+                         if isinstance(value, str)]
+
+        def chat_error_text(error):
+            return user_error_text(error, extra_sources=_echo_sources)
+
         def generate():
             # Push app context for entire generator execution
             # This is needed because call_chat_completion checks budget which requires db access
@@ -3176,24 +3240,30 @@ def chat_with_transcription():
                 app.logger.warning(f"Token budget exceeded for user {user_id}: {e}")
                 yield f"data: {json.dumps({'error': str(e), 'budget_exceeded': True})}\n\n"
             except Exception as e:
-                app.logger.error(f"Error during chat stream generation: {str(e)}")
+                log_failure(app.logger, 'error',
+                            f"Error during chat stream generation for recording {recording_id}", e)
                 # Provide more helpful error message for connection issues
                 error_msg = str(e).lower()
                 if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
                     yield f"data: {json.dumps(api_error('llm_connection_failed'))}\n\n"
                 else:
-                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                    # The provider's short message, without what it repeats
+                    # of the transcript or the question.
+                    yield f"data: {json.dumps({'error': chat_error_text(e)})}\n\n"
             finally:
                 ctx.pop()
 
         return Response(generate(), mimetype='text/event-stream')
 
     except Exception as e:
-        current_app.logger.error(f"Error in chat endpoint: {str(e)}")
+        log_failure(current_app.logger, 'error', "Error in chat endpoint", e)
         error_msg = str(e).lower()
         if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
             return jsonify(api_error('llm_connection_failed')), 503
-        return jsonify({'error': str(e)}), 500
+        _data = request.get_json(silent=True) or {}
+        _recording = db.session.get(Recording, _data.get('recording_id')) if isinstance(_data.get('recording_id'), int) else None
+        return jsonify({'error': user_error_text(
+            e, _recording, extra_sources=[v for v in (_data.get('message'),) if isinstance(v, str)])}), 500
 
 
 # --- Tag Management for Recordings ---
@@ -3268,7 +3338,7 @@ def add_tag_to_recording(recording_id):
         from src.services.tag_sharing import apply_tag_shares
         shares_created = apply_tag_shares(recording, tag, sharing_enabled=_self.ENABLE_INTERNAL_SHARING)
         if shares_created > 0:
-            current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording_id} via group tag '{tag.name}'")
+            current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording_id} via group tag {tag.id}")
 
         db.session.commit()
 

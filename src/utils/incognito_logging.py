@@ -37,6 +37,10 @@ import os
 import re
 from contextlib import contextmanager
 
+# Moved to a neutral module: ordinary requests describe provider errors the
+# same way at INFO and above. Imported here for the callers of this module.
+from src.utils.error_text import describe_error  # noqa: F401
+
 SAFE_LOGGER_NAME = 'speakr.incognito'
 
 # Metadata-only lines of the incognito path. Never pass content, a filename
@@ -45,7 +49,6 @@ incognito_log = logging.getLogger(SAFE_LOGGER_NAME)
 
 _active = contextvars.ContextVar('speakr_incognito_request', default=False)
 _installed = False
-_CODE = re.compile(r'^[A-Za-z0-9_.\-]{1,64}$')
 
 
 def incognito_active():
@@ -75,34 +78,6 @@ def carry_context(func):
     def bound(*args, **kwargs):
         return context.copy().run(func, *args, **kwargs)
     return bound
-
-
-def describe_error(error):
-    """An exception as class, provider, status, code and message length.
-
-    The message of a provider error can quote the transcript, the prompt or
-    the reply, so it is never part of the description.
-    """
-    parts = [type(error).__name__]
-    provider = getattr(error, 'provider', None)
-    if isinstance(provider, str) and _CODE.match(provider):
-        parts.append(f"provider={provider}")
-    status = getattr(error, 'status_code', None)
-    if status is None:
-        status = getattr(getattr(error, 'response', None), 'status_code', None)
-    if isinstance(status, int) and not isinstance(status, bool):
-        parts.append(f"status={status}")
-    code = getattr(error, 'code', None)
-    if isinstance(code, int) and not isinstance(code, bool):
-        parts.append(f"code={code}")
-    elif isinstance(code, str) and _CODE.match(code):
-        parts.append(f"code={code}")
-    try:
-        length = len(str(error))
-    except Exception:
-        length = 0
-    parts.append(f"length={length}")
-    return ' '.join(parts)
 
 
 def short_code(value):

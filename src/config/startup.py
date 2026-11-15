@@ -309,6 +309,16 @@ def initialize_recording_session_cleanup(app):
                     pruned = prune_tombstones()
                 if pruned:
                     app.logger.info(f"Pruned {pruned} recording tombstone(s)")
+                # Temporary files left by an incognito request that did not end normally.
+                with app.app_context():
+                    from src.services.incognito_temp import cleanup_stale
+                    cleanup_stale()
+                # Webhook delivery records past webhook_delivery_retention_days.
+                with app.app_context():
+                    from src.services.webhook_dispatch import prune_deliveries
+                    pruned_deliveries = prune_deliveries()
+                if pruned_deliveries:
+                    app.logger.info(f"Pruned {pruned_deliveries} webhook delivery record(s)")
             except Exception as e:
                 app.logger.error(f"Recording-session cleanup error: {e}", exc_info=True)
                 # Don't tight-loop on failure

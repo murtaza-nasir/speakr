@@ -18,6 +18,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import translate, api_error
+from src.utils.error_text import log_failure, user_error_text
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
 from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
 
@@ -193,7 +194,8 @@ def inquire_stream(user, data, mode='auto', tool_names=None):
     
     # The query text is user content: DEBUG only (discussion #603).
     current_app.logger.info(
-        f"Inquire chat - User: {user.username}, Query: {len(user_message or '')} characters, Filters: {filters}")
+        f"Inquire chat - User: {user.id}, Query: {len(user_message or '')} characters, "
+        f"Filters: {dict(filters, speaker_names=len(filters['speaker_names'])) if isinstance(filters, dict) and filters.get('speaker_names') else filters}")
     current_app.logger.debug(f"Inquire chat query of user {user.id}: '{user_message}'")
     
     # Capture user context and app before generator to avoid context issues
@@ -295,7 +297,7 @@ Use proper markdown formatting including headings (##), bold (**text**), bullet 
                     return
                     
             except Exception as e:
-                app.logger.warning(f"Router failed, defaulting to RAG: {e}")
+                log_failure(app.logger, 'warning', "Router failed, defaulting to RAG", e)
             
             # Step 2: Query enrichment - generate better search terms based on user intent
             yield create_status_response('enriching', 'Enriching search query...')
@@ -385,7 +387,7 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                 search_queries = [user_message] + enriched_terms[:3]  # Use original + top 3 enriched terms
                 
             except Exception as e:
-                app.logger.warning(f"Query enrichment failed, using original query: {e}")
+                log_failure(app.logger, 'warning', "Query enrichment failed, using original query", e)
                 search_queries = [user_message]
             
             # Step 2: Semantic search with multiple queries
@@ -818,8 +820,8 @@ Order your response with notes from the most recent meetings first. Always use p
             app.logger.warning(f"Token budget exceeded for user {user_id}: {e}")
             yield f"data: {json.dumps({'error': str(e), 'budget_exceeded': True})}\n\n"
         except Exception as e:
-            app.logger.error(f"Error in enhanced chat generation: {e}")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            log_failure(app.logger, 'error', f"Error in enhanced chat generation for user {user_id}", e)
+            yield f"data: {json.dumps({'error': user_error_text(e, extra_sources=[user_message] if isinstance(user_message, str) else ())})}\n\n"
         finally:
             ctx.pop()
 
@@ -883,8 +885,8 @@ def inquire_chat():
         return Response(library_events(stream, request_language()), mimetype='text/event-stream')
 
     except Exception as e:
-        current_app.logger.error(f"Error in inquire chat endpoint: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        log_failure(current_app.logger, 'error', "Error in inquire chat endpoint", e)
+        return jsonify({'error': user_error_text(e)}), 500
 
 
 # Filter groups in the order the downloaded file lists them

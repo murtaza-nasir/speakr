@@ -187,6 +187,51 @@ A script that calls `POST /api/recordings/<id>/share-internal` with `user_id` or
 
 Without a saved value and without `USER_SEARCH_SCOPE`, the level follows `show_usernames_in_ui`: `everyone` when usernames are shown, `exact` when they are hidden. A group admin who is not a site admin adds members by full username or full email address at every level. The user search of the admin pages is not affected.
 
+## Privacy and Security Settings
+
+The settings in this section were added for deployments with regulated data. The data concerned is described in [Privacy and regulated data](privacy.md). Each setting can also be set in `.env`, as listed under [Settings That Fall Back to .env](#settings-that-fall-back-to-env).
+
+| Setting | Variable in `.env` | Default | Effect |
+|---|---|---|---|
+| `session_idle_timeout_minutes` | `SESSION_IDLE_TIMEOUT_MINUTES` | `0` | Minutes without a request after which the user of a browser session must sign in again. `0`: no idle timeout. |
+| `api_query_tokens_enabled` | `API_QUERY_TOKENS_ENABLED` | `true` | `false`: an API token in the `?token=` query parameter is refused on every method. |
+| `webhook_delivery_retention_days` | `WEBHOOK_DELIVERY_RETENTION_DAYS` | `30` | Days after which a webhook delivery record is removed. `0`: the records are kept without limit. |
+| `webhook_omit_titles` | `WEBHOOK_OMIT_TITLES` | `false` | `true`: the recording title and the original file name are left out of webhook payloads. |
+| `auto_export_delete_with_recording` | `AUTO_EXPORT_DELETE_WITH_RECORDING` | `false` | `true`: the automatically exported file is deleted together with its recording. |
+| `incognito_temp_max_age_hours` | `INCOGNITO_TEMP_MAX_AGE_HOURS` | `6` | Hours after the last write at which a leftover temporary file of an incognito request is removed. |
+
+### Session idle timeout
+
+With `session_idle_timeout_minutes` above `0`, the time of the last request is kept in the signed session cookie. A browser session without a request for longer than the value is ended at the next request: an API request is answered with `401`, and a page request is redirected to the sign-in page. The following rules apply:
+
+- API tokens are not affected.
+- The requests sent in the background of an open page (the notification count, the job queue status and the refresh of the CSRF token) are not counted as activity. A tab left open is therefore signed out as well.
+- The "Remember me" cookie is not accepted while a timeout is set, and it is removed at the next request.
+- No request is sent during a recording that is held in the browser (an incognito recording, or any recording with server-side chunks turned off). The value must be longer than the longest expected recording. Otherwise the upload at the end is answered with `401`, and an incognito recording, which is held in the memory of that tab only, is lost when the user signs in again in the same tab.
+
+### Tokens in the query parameter
+
+The `?token=` query parameter is deprecated, because a URL with a token is recorded in proxy logs and in the browser history. By default the parameter is still accepted on `GET` and `HEAD` requests with a full-access token. With `api_query_tokens_enabled` set to `false`, a request that carries its token only in the query parameter is answered with `401` and the code `query_token_disabled`, on every method. Tokens in the `Authorization: Bearer`, `X-API-Token` and `API-Token` headers are accepted as before.
+
+Requests that cannot carry a header are affected as follows:
+
+- The web interface is not affected. Its audio and video players are authenticated by the session cookie.
+- Public links are not affected. The page and the audio of a public link are addressed by the id of the link.
+- The ASR Voice Recorder integration is not affected. Its token is sent in the `secret` field of the upload form.
+- A client that plays `GET /api/v1/recordings/{id}/audio?token=...` in a media element must be changed before the setting is turned off. The audio is then requested with a header, for example with `fetch`, and played from the downloaded data, or a player with support for request headers is used.
+
+### Webhook delivery records
+
+A delivery record holds the payload that was sent and the first 2,000 characters of the answer of the receiver. Every record older than `webhook_delivery_retention_days` is removed by the hourly cleanup, whatever its state. A delivery succeeds or fails for good within about an hour, so a record still waiting after the retention period belongs to a paused webhook. With `0`, no record is removed. See [Webhooks](webhooks.md#retention-of-delivery-records).
+
+### Exported files of deleted recordings
+
+With automatic export, the exported file of a deleted recording is renamed with the `[deleted]_` prefix by default, and its content is kept. This default was kept on purpose: the export folder is usually a notes vault in which the user edits the files, and notes that were exported in order to be kept would otherwise be removed by a retention rule. With `auto_export_delete_with_recording` set to `true`, the file is deleted together with the recording, whether the recording is deleted by a user, through the API or by a retention rule. Files renamed before the setting was turned on are not removed.
+
+### Temporary files of incognito requests
+
+Each incognito request has a folder of its own under `INCOGNITO_TEMP_DIR` (a variable in `.env` only; the default is `speakr-incognito` in the temporary folder of the system). The folder is removed before the request is answered. A folder left by a crash is removed at the next start and by the hourly cleanup, once nothing was written to it for `incognito_temp_max_age_hours`. Because of the age limit, the files of a request that is still running in another worker process are not removed. The value must therefore be longer than the longest incognito request.
+
 ## What's New After Updates
 
 After an update, each user sees a short list of the release's new features once, the next time they open Speakr. The list is closed with **Got it** and is not shown again on any of the user's devices. Accounts created after the update do not see it for that release.
@@ -218,7 +263,9 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | Setting | Variable in `.env` |
 |---|---|
 | `allow_registration` | `ALLOW_REGISTRATION` |
+| `api_query_tokens_enabled` | `API_QUERY_TOKENS_ENABLED` |
 | `asr_async_jobs` | `ASR_ASYNC_JOBS` |
+| `auto_export_delete_with_recording` | `AUTO_EXPORT_DELETE_WITH_RECORDING` |
 | `default_audio_player_position` | `DEFAULT_AUDIO_PLAYER_POSITION` |
 | `default_color_scheme` | `DEFAULT_COLOR_SCHEME` |
 | `default_ui_theme` | `DEFAULT_UI_THEME` |
@@ -232,10 +279,12 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | `help_center_label` | `HELP_CENTER_LABEL` |
 | `help_center_url` | `HELP_CENTER_URL` |
 | `incognito_mode_default` | `INCOGNITO_MODE_DEFAULT` |
+| `incognito_temp_max_age_hours` | `INCOGNITO_TEMP_MAX_AGE_HOURS` |
 | `max_concurrent_uploads` | `MAX_CONCURRENT_UPLOADS` |
 | `recording_tombstone_days` | `RECORDING_TOMBSTONE_DAYS` |
 | `registration_allowed_domains` | `REGISTRATION_ALLOWED_DOMAINS` |
 | `require_email_verification` | `REQUIRE_EMAIL_VERIFICATION` |
+| `session_idle_timeout_minutes` | `SESSION_IDLE_TIMEOUT_MINUTES` |
 | `show_usernames_in_ui` | `SHOW_USERNAMES_IN_UI` |
 | `sso_api_allowed_clients` | `SSO_API_ALLOWED_CLIENTS` |
 | `sso_api_client_names` | `SSO_API_CLIENT_NAMES` |
@@ -247,6 +296,8 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | `users_can_delete` | `USERS_CAN_DELETE` |
 | `video_passthrough_asr` | `VIDEO_PASSTHROUGH_ASR` |
 | `video_retention` | `VIDEO_RETENTION` |
+| `webhook_delivery_retention_days` | `WEBHOOK_DELIVERY_RETENTION_DAYS` |
+| `webhook_omit_titles` | `WEBHOOK_OMIT_TITLES` |
 
 ## Environment Variable Configuration
 
@@ -272,7 +323,7 @@ Beyond the UI-configurable settings above, several environment variables in your
 
 **USER_SEARCH_SCOPE**: Who a user can find in the share window by typing part of a username. One of `everyone`, `groups` (only people in one of the user's groups) or `exact` (the full username or the full email address is needed). Default: follows `SHOW_USERNAMES_IN_UI`. See [Who Users Can Find](#who-users-can-find).
 
-**ENABLE_PUBLIC_SHARING**: Controls whether public share links can be created. When `true`, authorized users can generate secure links for external sharing. When `false`, only internal sharing is available. Default: `true`.
+**ENABLE_PUBLIC_SHARING**: The switch for public share links. With `true`, public links are created by users who have the permission, and existing links are served. With `false`, no link is created, and every existing link is answered with `404` until the value is `true` again; the links are not deleted. The link of a user whose permission to share publicly was withdrawn is answered with `404` in the same way. Default: `true`.
 
 ### User Permissions
 

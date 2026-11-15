@@ -223,6 +223,14 @@ describe('IndexedDB transaction lifetime', () => {
         expect(updated.lastError).toBe('still failing');
     });
 
+    it('storeFailedUpload refuses an incognito upload and writes nothing', async () => {
+        const arrayBuffer = vi.fn(async () => new ArrayBuffer(8));
+        const file = { name: 'recording.webm', size: 2048, type: 'audio/webm', arrayBuffer };
+        await expect(storeFailedUpload({ file, clientId: 'c', notes: 'n', incognito: true })).rejects.toThrow();
+        expect(arrayBuffer).not.toHaveBeenCalled();
+        expect(store.size).toBe(0);
+    });
+
     it('updateRetryCount resolves without writing when the id is absent', async () => {
         await expect(updateRetryCount(999, 1, 'nope')).resolves.not.toThrow();
         expect(store.has(999)).toBe(false);

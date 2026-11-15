@@ -241,7 +241,7 @@ def apply_folder_shares(recording, folder, sharing_enabled=None):
         already.add(membership.user_id)
         created += 1
         current_app.logger.info(f"Auto-shared recording {recording.id} with user {membership.user_id} "
-                                f"via group folder '{folder.name}'")
+                                f"via group folder {folder.id}")
     if created:
         db.session.flush()
     return created

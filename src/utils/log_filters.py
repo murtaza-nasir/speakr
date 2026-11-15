@@ -49,3 +49,52 @@ def install():
     httpx_logger = logging.getLogger('httpx')
     if not any(isinstance(f, NoQueryString) for f in httpx_logger.filters):
         httpx_logger.addFilter(NoQueryString())
+
+
+# --- names of people and files (privacy review B2) ----------------------------
+#
+# At INFO and above the log names users, groups, tags, speakers and recordings
+# by id, and a file by its extension. A stored upload is named
+# <timestamp>_<uuid>_<original filename>: its timestamp and the start of its
+# uuid identify the file (the same value is in recording.audio_path) without
+# the name the user gave it. Names are logged at DEBUG.
+
+import os as _os
+import re as _re
+
+_STORED_NAME = _re.compile(r'^(\d{14})_([0-9a-f]{32})_')
+_EXTENSION = _re.compile(r'^\.[A-Za-z0-9]{1,10}$')
+_STORED_IN_TEXT = _re.compile(r'\d{14}_[0-9a-f]{32}_[^\s\'":,;]+')
+
+
+def loggable_path(path):
+    """A file for a log line at INFO or above, without the name a user chose."""
+    if not path:
+        return '<no file>'
+    name = _os.path.basename(str(path).rstrip('/'))
+    extension = _os.path.splitext(name)[1]
+    extension = extension.lower() if _EXTENSION.match(extension) else ''
+    stored = _STORED_NAME.match(name)
+    if stored:
+        return f"<stored file {stored.group(1)}_{stored.group(2)[:12]}{extension}>"
+    return f"<file {extension}>" if extension else '<file>'
+
+
+def loggable_error(error, *paths):
+    """The text of a file or FFmpeg error with the given files named as in loggable_path.
+
+    FFmpeg and the operating system put the path of the file in their error
+    text, and the path of a stored upload ends in the original filename.
+    """
+    text = str(error)
+    # Any stored upload named in the text, also one not passed in.
+    text = _STORED_IN_TEXT.sub(lambda m: loggable_path(m.group(0)), text)
+    for path in paths:
+        if not path:
+            continue
+        path = str(path)
+        label = loggable_path(path)
+        names = {path, _os.path.basename(path.rstrip('/')), _os.path.splitext(_os.path.basename(path.rstrip('/')))[0]}
+        for name in sorted((n for n in names if len(n) >= 3), key=len, reverse=True):
+            text = text.replace(name, label)
+    return text

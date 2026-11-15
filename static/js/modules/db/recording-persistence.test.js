@@ -436,4 +436,115 @@ describe('recording-persistence', () => {
             expect(mock.stores.get(STORE_NAME).get('current')).toBeDefined();
         });
     });
+
+    // An incognito recording is kept in memory only: nothing of it is written
+    // to IndexedDB at any point (privacy review, group C).
+    describe('incognito recordings are not written', () => {
+        const stored = () => {
+            const store = mock.stores.get(STORE_NAME);
+            return store ? store.get('current') : undefined;
+        };
+        const everything = () => JSON.stringify([...mock.stores.entries()]
+            .map(([name, rows]) => [name, [...rows.values()]]));
+
+        it('writes no session, chunk, notes or metadata for a recording started in incognito', async () => {
+            const session = await mod.startRecordingSession({
+                mode: 'microphone', incognito: true, notes: 'secret-notes-marker',
+                tags: [7], asrOptions: { hotwords: 'secret-hotword-marker' },
+            });
+            expect(session).toBeNull();
+            expect(mod.isInMemoryOnly()).toBe(true);
+            await mod.saveChunk(makeChunkBlob(8), 0);
+            await mod.saveChunk(makeChunkBlob(8), 1);
+            await mod.updateRecordingMetadata({ duration: 10, notes: 'secret-notes-marker' });
+            await mod.pruneOldChunks(1);
+            expect(stored()).toBeUndefined();
+            expect(everything()).not.toContain('secret');
+            expect(await mod.checkForRecoverableRecording()).toBeNull();
+            expect(await mod.recoverRecording()).toBeNull();
+        });
+
+        it('does not read the chunk data of an incognito recording', async () => {
+            await mod.startRecordingSession({ mode: 'microphone', incognito: true });
+            const chunk = makeChunkBlob(8);
+            await mod.saveChunk(chunk, 0);
+            expect(chunk.arrayBuffer).not.toHaveBeenCalled();
+        });
+
+        it('removes the copy of an earlier recording when an incognito recording starts', async () => {
+            await mod.startRecordingSession({ mode: 'meeting', notes: 'earlier' });
+            await mod.saveChunk(makeChunkBlob(4), 0);
+            expect(stored().chunks).toHaveLength(1);
+            await mod.startRecordingSession({ mode: 'meeting', incognito: true });
+            expect(stored()).toBeUndefined();
+        });
+
+        it('a chunk queued before the database opened is not written', async () => {
+            // The start and the first chunk are issued without awaiting, as MediaRecorder does.
+            const started = mod.startRecordingSession({ mode: 'meeting', incognito: true });
+            const saved = mod.saveChunk(makeChunkBlob(4), 0);
+            await Promise.all([started, saved]);
+            expect(stored()).toBeUndefined();
+        });
+
+        it('deletes the saved copy and stops writing when incognito is turned on during a recording', async () => {
+            const session = await mod.startRecordingSession({ mode: 'meeting', notes: 'secret-notes-marker' });
+            await mod.saveChunk(makeChunkBlob(4), 0);
+            expect(stored().chunks).toHaveLength(1);
+
+            const turnedOn = mod.makeSessionInMemoryOnly(session.startTime);
+            // A chunk and a notes update that arrive right after the switch.
+            const late = mod.saveChunk(makeChunkBlob(4), 1);
+            const lateNotes = mod.updateRecordingMetadata({ notes: 'secret-notes-marker 2' });
+            expect(await turnedOn).toBe(true);
+            await Promise.all([late, lateNotes]);
+            expect(stored()).toBeUndefined();
+            expect(everything()).not.toContain('secret');
+        });
+
+        it('a chunk being read when incognito is turned on is not written', async () => {
+            const session = await mod.startRecordingSession({ mode: 'meeting' });
+            let release;
+            const slow = { size: 4, arrayBuffer: () => new Promise((resolve) => { release = () => resolve(new ArrayBuffer(4)); }) };
+            const saving = mod.saveChunk(slow, 0);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            const turnedOn = mod.makeSessionInMemoryOnly(session.startTime);
+            release();
+            await saving;
+            await turnedOn;
+            expect(stored()).toBeUndefined();
+        });
+
+        it('stays in memory when incognito is turned off again', async () => {
+            const session = await mod.startRecordingSession({ mode: 'meeting' });
+            await mod.makeSessionInMemoryOnly(session.startTime);
+            // The toggle going off calls nothing; later chunks are still not written.
+            await mod.saveChunk(makeChunkBlob(4), 1);
+            await mod.updateRecordingMetadata({ incognito: false, notes: 'n' });
+            expect(stored()).toBeUndefined();
+            expect(mod.isInMemoryOnly()).toBe(true);
+        });
+
+        it('keeps the copy of another recording when the toggle changes with no recording of this page', async () => {
+            const other = await mod.startRecordingSession({ mode: 'meeting' });
+            await mod.saveChunk(makeChunkBlob(4), 0);
+            vi.resetModules();
+            const fresh = await import('./recording-persistence.js');   // a page reload
+            expect(await fresh.makeSessionInMemoryOnly(null)).toBe(false);
+            expect(await fresh.makeSessionInMemoryOnly('2020-01-01T00:00:00.000Z')).toBe(false);
+            expect(stored().startTime).toBe(other.startTime);
+            expect(stored().chunks).toHaveLength(1);
+        });
+
+        it('writes again for the next ordinary recording', async () => {
+            await mod.startRecordingSession({ mode: 'meeting', incognito: true });
+            await mod.saveChunk(makeChunkBlob(4), 0);
+            const next = await mod.startRecordingSession({ mode: 'meeting' });
+            expect(mod.isInMemoryOnly()).toBe(false);
+            await mod.saveChunk(makeChunkBlob(4), 0);
+            expect(stored().startTime).toBe(next.startTime);
+            expect(stored().chunks).toHaveLength(1);
+            expect(stored().incognito).toBe(false);
+        });
+    });
 });

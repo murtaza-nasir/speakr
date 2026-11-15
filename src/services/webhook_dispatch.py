@@ -110,6 +110,36 @@ def _global_enabled() -> bool:
     return os.environ.get('WEBHOOK_GLOBAL_ENABLED', 'true').lower() != 'false'
 
 
+def _env_backed(key):
+    """An env-backed system setting (System Settings first, then .env)."""
+    from src.models import SystemSetting
+    from src.utils.system_settings import ENV_BACKED_SETTINGS, env_fallback
+    env_var, default = ENV_BACKED_SETTINGS[key][:2]
+    fallback = env_fallback(env_var, default)
+    try:
+        value = SystemSetting.get_setting(key, fallback)
+    except Exception:
+        return fallback
+    return fallback if value is None else value
+
+
+def delivery_retention_days() -> int:
+    """webhook_delivery_retention_days; 0 (or less) keeps delivery records without limit."""
+    try:
+        return max(0, int(_env_backed('webhook_delivery_retention_days')))
+    except (TypeError, ValueError):
+        return 30
+
+
+def omit_titles() -> bool:
+    """webhook_omit_titles: leave the title and the original filename out of payloads."""
+    return bool(_env_backed('webhook_omit_titles'))
+
+
+# The payload fields that name a recording in the words of its owner.
+TITLE_FIELDS = ('title', 'original_filename')
+
+
 def _intranet_host_allowlist():
     """Return a compiled regex matching admin-allowlisted intranet hosts.
 
@@ -486,6 +516,9 @@ def enqueue_event(session, user_id, event_type, data):
     shared recordings. Returns the number of deliveries written or merged."""
     subscriptions = session.query(Webhook).filter_by(user_id=user_id, enabled=True).all()
     targets = [(w, user_id) for w in subscriptions if event_type in w.event_list]
+    if targets and isinstance(data, dict) and any(field in data for field in TITLE_FIELDS) and omit_titles():
+        # The receiver identifies the recording by recording_id.
+        data = {key: value for key, value in data.items() if key not in TITLE_FIELDS}
     targets += _shared_targets(session, event_type, data)
     if not targets:
         return 0
@@ -716,6 +749,38 @@ def run_dispatcher_pass(app=None, limit: int = 100) -> dict:
         with app.app_context():
             return _run_one()
     return _run_one()
+
+
+# ---- Pruning of delivery records -------------------------------------------
+
+def prune_deliveries(now=None, batch_size: int = 1000) -> int:
+    """Remove delivery records older than webhook_delivery_retention_days.
+
+    A delivery record holds the payload that was sent (recording id, title,
+    original filename, error text) and the start of the receiver's answer.
+    Records are removed by age whatever their state: a delivery succeeds or
+    fails for good within about an hour, and one still waiting after the
+    retention period belongs to a paused endpoint. With the setting at 0
+    nothing is removed. Deleted in batches so that a first run over a large
+    table does not hold a long write lock. Returns the number removed.
+    """
+    days = delivery_retention_days()
+    if days <= 0:
+        return 0
+    horizon = (now or datetime.utcnow()) - timedelta(days=days)
+    removed = 0
+    while True:
+        ids = [row_id for (row_id,) in db.session.query(WebhookDelivery.id)
+               .filter(WebhookDelivery.created_at < horizon)
+               .order_by(WebhookDelivery.id).limit(batch_size)]
+        if not ids:
+            break
+        removed += (WebhookDelivery.query.filter(WebhookDelivery.id.in_(ids))
+                    .delete(synchronize_session=False))
+        db.session.commit()
+        if len(ids) < batch_size:
+            break
+    return removed
 
 
 # ---- Background dispatcher thread -----------------------------------------

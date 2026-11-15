@@ -177,9 +177,10 @@ def update_speaker(speaker_id):
         refresh_renamed_recordings(renamed)
 
         current_app.logger.info(
-            f"Updated speaker {speaker_id} from '{old_name}' to '{new_name}': "
+            f"Renamed speaker {speaker_id} of user {current_user.id}: "
             f"{chunks_updated} transcript chunks, {recordings_updated} recordings"
         )
+        current_app.logger.debug(f"Updated speaker {speaker_id} from '{old_name}' to '{new_name}'")
 
         return jsonify({
             'success': True,
@@ -433,7 +434,8 @@ def clear_speaker_embeddings(speaker_id):
 
         db.session.commit()
 
-        current_app.logger.info(f"Cleared voice embeddings for speaker {speaker_id} ({speaker.name})")
+        current_app.logger.info(f"Cleared voice embeddings for speaker {speaker_id} of user {current_user.id}")
+        current_app.logger.debug(f"Cleared voice embeddings for speaker {speaker_id} ({speaker.name})")
 
         return jsonify({
             'success': True,

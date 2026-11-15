@@ -252,7 +252,8 @@ def create_share(recording_id):
 def get_shares():
     """Get all public shares for the current user."""
     shares = Share.query.filter_by(user_id=current_user.id).order_by(Share.created_at.desc()).all()
-    return jsonify([share.to_dict() for share in shares])
+    enabled = _self.ENABLE_PUBLIC_SHARING
+    return jsonify([share.to_dict(sharing_enabled=enabled) for share in shares])
 
 
 @shares_bp.route('/api/shares/overview', methods=['GET'])
@@ -292,7 +293,8 @@ def get_shares_overview():
             folders.update({f.id: f for f in Folder.query.filter(Folder.id.in_(sorted(wanted)))})
         return shares
 
-    public_links = [s.to_dict() for s in
+    sharing_enabled = _self.ENABLE_PUBLIC_SHARING
+    public_links = [s.to_dict(sharing_enabled=sharing_enabled) for s in
                     Share.query.filter_by(user_id=current_user.id)
                     .options(selectinload(Share.recording).load_only(
                         Recording.id, Recording.title, Recording.audio_deleted_at))

@@ -13,6 +13,7 @@ import time
 import threading
 import logging
 from pathlib import Path
+from src.utils.log_filters import loggable_error, loggable_path
 
 # Flask app components will be imported inside functions to avoid circular imports
 
@@ -184,7 +185,8 @@ class FileMonitor:
                 self._scan_directory_for_user(item, username_user_id)
                 self._scan_tag_subdirectories(item, username_user_id)
             elif item.name.startswith('user'):
-                self.logger.warning(f"Found user directory '{item.name}' but user ID {user_id} is not valid")
+                self.logger.warning(f"Found a user directory in the watch folder, but user ID {user_id} is not valid")
+                self.logger.debug(f"User directory without a valid user: '{item.name}'")
 
     def _scan_single_user_directory(self):
         """Scan directory for a single configured user."""
@@ -198,7 +200,8 @@ class FileMonitor:
             self._scan_directory_for_user(self.base_watch_directory, user_id)
             self._scan_tag_subdirectories(self.base_watch_directory, user_id)
         else:
-            self.logger.warning(f"Configured default username '{default_username}' is not valid")
+            self.logger.warning("The configured default username of the watch folder is not valid")
+            self.logger.debug(f"Configured default username '{default_username}' is not valid")
 
     def _scan_tag_subdirectories(self, directory, user_id):
         """Scan subdirectories that match auto-process tag folders."""
@@ -247,8 +250,10 @@ class FileMonitor:
         if key in self._extension_skipped:
             return
         self._extension_skipped.add(key)
-        self.logger.info(f"Skipping {file_path} in the watch folder: the extension "
+        # The name of the file at DEBUG; a file with no extension has no label.
+        self.logger.info(f"Skipping {loggable_path(file_path)} in the watch folder: the extension "
                          f"'{file_path.suffix or '(none)'}' is not a supported audio or video type")
+        self.logger.debug(f"Skipped in the watch folder: {file_path}")
 
     def _scan_files(self, directory, user_id, tag_id, skipped_here):
         for file_path in directory.iterdir():
@@ -278,19 +283,20 @@ class FileMonitor:
                 # File might have been picked up by another worker after iterdir()
                 continue
 
-            self.logger.info(f"Found potential audio file for user {user_id}: {file_path}")
+            self.logger.info(f"Found potential audio file for user {user_id}: {loggable_path(file_path)}")
+            self.logger.debug(f"Found potential audio file for user {user_id}: {file_path}")
 
             # --- Atomic Lock via Rename ---
             processing_path = file_path.with_suffix(file_path.suffix + '.processing')
 
             try:
                 file_path.rename(processing_path)
-                self.logger.info(f"Acquired lock for {file_path}, renamed to {processing_path}")
+                self.logger.info(f"Acquired lock for {loggable_path(file_path)}, renamed to {loggable_path(processing_path)}")
             except FileNotFoundError:
                 self.logger.debug(f"Could not acquire lock for {file_path}, already processed by another worker.")
                 continue
             except Exception as e:
-                self.logger.error(f"Error acquiring lock for {file_path}: {e}")
+                self.logger.error(f"Error acquiring lock for {loggable_path(file_path)}: {loggable_error(e, file_path)}")
                 continue
 
             # --- Process the locked file ---
@@ -302,7 +308,7 @@ class FileMonitor:
                 self._set_aside(processing_path, file_path, user_id, 'notifications.autoProcessRefused',
                                 f"refused: {e}", reason=str(e))
             except Exception as e:
-                self.logger.error(f"Error processing file {processing_path}: {e}", exc_info=True)
+                self.logger.error(f"Error processing file {loggable_path(processing_path)}: {loggable_error(e, processing_path)}", exc_info=True)
                 attempts = self._failures.get(str(file_path), (0, 0))[0] + 1
                 if attempts >= MAX_ATTEMPTS:
                     self._failures.pop(str(file_path), None)
@@ -314,10 +320,10 @@ class FileMonitor:
                 # Unlock the file by renaming it back; it is tried again after the delay
                 try:
                     processing_path.rename(file_path)
-                    self.logger.info(f"Unlocked {processing_path} after processing error "
+                    self.logger.info(f"Unlocked {loggable_path(processing_path)} after processing error "
                                      f"(attempt {attempts} of {MAX_ATTEMPTS}, next in {delay}s).")
                 except Exception as rename_err:
-                    self.logger.error(f"CRITICAL: Failed to unlock file {processing_path} after error: {rename_err}")
+                    self.logger.error(f"CRITICAL: Failed to unlock file {loggable_path(processing_path)} after error: {rename_err}")
 
     def _set_aside(self, processing_path, file_path, user_id, message_key, log_reason, reason=None):
         """Rename a file that cannot be processed to <name>.failed and tell its owner once."""
@@ -327,9 +333,10 @@ class FileMonitor:
         try:
             processing_path.rename(target)
         except Exception as e:
-            self.logger.error(f"CRITICAL: Failed to set aside {processing_path} as {target.name}: {e}")
+            self.logger.error(f"CRITICAL: Failed to set aside {loggable_path(processing_path)} as {loggable_path(target)} for user {user_id}: {loggable_error(e, processing_path, file_path, target)}")
             return
-        self.logger.warning(f"Set aside {file_path} as {target.name}, {log_reason}")
+        self.logger.warning(f"Set aside {loggable_path(file_path)} of user {user_id} as {loggable_path(target)}, {log_reason}")
+        self.logger.debug(f"Set aside {file_path} as {target.name}")
         try:
             from src.app import app
             from src.services.notifications import notify
@@ -340,7 +347,7 @@ class FileMonitor:
                 notify('auto_process.file_set_aside', message_key, user_ids=[user_id], level='warning',
                        params=params, dedupe_key=f'auto_process.file_set_aside:{user_id}:{target.name}'[:200])
         except Exception as e:
-            self.logger.warning(f"Could not notify user {user_id} about {target.name}: {e}")
+            self.logger.warning(f"Could not notify user {user_id} about a file set aside ({loggable_path(target)}): {loggable_error(e, target)}")
                 
     def _extract_user_id_from_dirname(self, dirname):
         """
@@ -416,7 +423,7 @@ class FileMonitor:
                 # Verify user exists
                 user = db.session.get(User, user_id)
                 if not user:
-                    self.logger.error(f"User ID {user_id} not found in database for file {processing_path}")
+                    self.logger.error(f"User ID {user_id} not found in database for file {loggable_path(processing_path)}")
                     # We must raise an exception to trigger the unlock mechanism
                     raise ValueError(f"User ID {user_id} not found")
 
@@ -466,7 +473,7 @@ class FileMonitor:
                         if md:
                             form['meeting_date'] = md.isoformat()
                 except Exception as e:
-                    self.logger.warning(f"Could not parse filename date for {original_filename}: {e}")
+                    self.logger.warning(f"Could not parse filename date for {loggable_path(original_filename)}: {loggable_error(e, original_filename)}")
 
                 from src.utils.titles import placeholder_titles
                 def _prepare(recording):
@@ -499,24 +506,24 @@ class FileMonitor:
                     )
 
                 recording_id = payload.get('id')
-                self.logger.info(f"Created recording record with ID: {recording_id} for user: {user.username}")
+                self.logger.info(f"Created recording record with ID: {recording_id} for user {user.id}")
 
                 # Remove the locked file from the watch directory now that ingestion
                 # has copied it into staging.  ingest never deletes its source.
                 try:
                     processing_path.unlink()
-                    self.logger.info(f"Deleted locked file: {processing_path}")
+                    self.logger.info(f"Deleted locked file: {loggable_path(processing_path)}")
                 except FileNotFoundError:
-                    self.logger.warning(f"Locked file {processing_path} was already deleted.")
+                    self.logger.warning(f"Locked file {loggable_path(processing_path)} was already deleted.")
 
                 self.logger.info(f"Queued background processing for recording ID: {recording_id}")
-                self.logger.info(f"Successfully processed and moved file from: {processing_path}")
+                self.logger.info(f"Successfully processed and moved file from: {loggable_path(processing_path)}")
 
                     
             except IngestionRefused:
                 raise
             except Exception as e:
-                self.logger.error(f"Error processing file {processing_path} for user {user_id}: {e}", exc_info=True)
+                self.logger.error(f"Error processing file {loggable_path(processing_path)} for user {user_id}: {loggable_error(e, processing_path)}", exc_info=True)
                 # Re-raise the exception to be caught by the calling method, which will handle unlocking.
                 raise
                 

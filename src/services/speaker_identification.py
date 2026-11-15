@@ -205,7 +205,9 @@ JSON Response:
                 f"[Auto-Identify] LLM Raw Response (schema mode): {len(response_content or '')} characters")
             current_app.logger.debug(f"[Auto-Identify] LLM Raw Response (schema mode): {response_content}")
         except Exception as schema_err:
-            current_app.logger.warning(f"[Auto-Identify] json_schema mode failed, falling back to json_object: {schema_err}")
+            from src.utils.error_text import log_failure
+            log_failure(current_app.logger, 'warning',
+                        "[Auto-Identify] json_schema mode failed, falling back to json_object", schema_err)
             response_content = None
 
     if response_content is None:
@@ -224,11 +226,12 @@ JSON Response:
         current_app.logger.debug(f"[Auto-Identify] LLM Raw Response: {response_content}")
 
     identified_map = safe_json_loads(response_content, {})
-    current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {identified_map}")
+    current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {len(identified_map or {})} entries")
+    current_app.logger.debug(f"[Auto-Identify] Parsed identified_map: {identified_map}")
 
     # --- Sanitize identified_map ---
     identified_map = _sanitize_identified_map(identified_map, speaker_labels, candidate_names=candidates)
-    current_app.logger.info(f"[Auto-Identify] Sanitized identified_map: {identified_map}")
+    current_app.logger.debug(f"[Auto-Identify] Sanitized identified_map: {identified_map}")
 
     # Map back to original speaker labels
     final_speaker_map = {}
@@ -236,7 +239,10 @@ JSON Response:
         if temp_label in identified_map:
             final_speaker_map[original_speaker] = identified_map[temp_label]
 
-    current_app.logger.info(f"[Auto-Identify] Final speaker_map: {final_speaker_map}")
+    current_app.logger.info(
+        f"[Auto-Identify] Final speaker_map: {sum(1 for v in final_speaker_map.values() if v)} of "
+        f"{len(final_speaker_map)} speakers named")
+    current_app.logger.debug(f"[Auto-Identify] Final speaker_map: {final_speaker_map}")
     return final_speaker_map
 
 
@@ -358,9 +364,9 @@ def apply_contextual_auto_labels(recording, user):
             transcription_data, user.id, candidate_names=candidates
         )
     except Exception as error:
-        current_app.logger.warning(
-            "[Auto-Identify] Contextual identification failed for recording %s: %s", recording.id, error
-        )
+        from src.utils.error_text import log_failure
+        log_failure(current_app.logger, 'warning',
+                    f"[Auto-Identify] Contextual identification failed for recording {recording.id}", error)
         return {}
 
     speaker_map = {label: name for label, name in speaker_map.items() if name}
@@ -383,6 +389,9 @@ def apply_contextual_auto_labels(recording, user):
         )
 
     current_app.logger.info(
-        "[Auto-Identify] Applied contextual speaker matches to recording %s: %s", recording.id, speaker_map
+        "[Auto-Identify] Applied %s contextual speaker matches to recording %s", len(speaker_map), recording.id
+    )
+    current_app.logger.debug(
+        "[Auto-Identify] Contextual speaker matches of recording %s: %s", recording.id, speaker_map
     )
     return speaker_map

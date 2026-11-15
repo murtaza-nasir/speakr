@@ -211,7 +211,9 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str = No
         server.sendmail(config['from_address'], to_email, msg.as_string())
         server.quit()
 
-        logger.info(f"Email sent successfully to {to_email}")
+        # The address at DEBUG only; the callers log the user id.
+        logger.info("Email sent successfully")
+        logger.debug(f"Email sent successfully to {to_email}")
         return True
 
     except smtplib.SMTPAuthenticationError as e:

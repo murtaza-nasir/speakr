@@ -142,6 +142,19 @@ The records are removed after `RECORDING_TOMBSTONE_DAYS` days (default 90), chec
 RECORDING_TOMBSTONE_DAYS=90
 ```
 
+## Webhook Delivery Records
+
+Every webhook delivery is stored with its payload. The payload holds the recording id and, unless `webhook_omit_titles` is on, the title of the recording. These records are removed `webhook_delivery_retention_days` days after their creation (default 30), checked every hour. With `0`, the records are kept without limit. Details are given in [Webhooks](webhooks.md#retention-of-delivery-records).
+
+```bash
+# Days to keep webhook delivery records (default 30, 0 keeps them)
+WEBHOOK_DELIVERY_RETENTION_DAYS=30
+```
+
+## Exported Files
+
+With automatic export, the exported file of a deleted recording is renamed with the `[deleted]_` prefix and kept. With `AUTO_EXPORT_DELETE_WITH_RECORDING=true`, the file is deleted together with the recording, also when the recording is removed by auto-deletion. See [Exported files of deleted recordings](system-settings.md#exported-files-of-deleted-recordings).
+
 ## Recordings Without an Owner
 
 Before the fix for #572, only the media of a deleted user's recordings was removed. The rows, with their transcripts, summaries, notes and embeddings, were kept without an owner. These leftovers are removed by a daily step at 2:00 AM. The step runs whether or not auto-deletion is enabled, since it is a matter of data integrity and not of retention.

@@ -32,6 +32,7 @@ from ..base import (
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.utils.error_body import summarize_error_body
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 
@@ -207,7 +208,7 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
         except (TranscriptionError, ConfigurationError):
             raise
         except Exception as e:
-            logger.error("AssemblyAI transcription failed: %s", e)
+            log_failure(logger, logging.ERROR, "AssemblyAI transcription failed", e)
             raise TranscriptionError(f"AssemblyAI transcription failed: {e}") from e
 
     @staticmethod

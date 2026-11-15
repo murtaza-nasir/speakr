@@ -63,7 +63,7 @@ def compute_title(recording, *, raise_budget_errors=False):
     template, source = resolve_naming_template(recording)
     if template:
         current_app.logger.info(
-            f"Using naming template '{template.name}' ({source}) for recording {recording.id}")
+            f"Using naming template {template.id} ({source}) for recording {recording.id}")
 
     ai_title = None
     if template is not None and not template.needs_ai_title():

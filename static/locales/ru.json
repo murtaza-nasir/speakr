@@ -2001,6 +2001,7 @@
   "incognito": {
     "audioNotStored": "Аудио не сохраняется в режиме инкогнито",
     "discardConfirm": "Отменить запись инкогнито? Её нельзя будет восстановить.",
+    "lostIfTabCloses": "Будет потеряна, если закрыть вкладку или браузер",
     "mode": "Режим инкогнито",
     "notSavedToAccount": "Не сохранено в учётной записи",
     "oneFileAtATime": "В режиме инкогнито только один файл за раз",
@@ -3563,6 +3564,7 @@
       "public_sharing_disabled": "Публичный доступ на этом сервере выключен",
       "public_sharing_off": "Публичный доступ отключён на этом сервере",
       "push_unavailable": "Push-уведомления недоступны",
+      "query_token_disabled": "Токен в параметре запроса ?token= на этом сервере не принимается; передайте его в заголовке Authorization: Bearer",
       "query_token_read_only": "Токен в параметре запроса ?token= принимается только в запросах GET и HEAD; передайте его в заголовке Authorization: Bearer",
       "question_required": "question обязательно",
       "recording_already_processing": "Запись уже обрабатывается",

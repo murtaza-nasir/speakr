@@ -19,6 +19,7 @@ from src.utils.ffprobe import get_codec_info, is_lossless_audio, FFProbeError
 from src.utils.ffmpeg_utils import (compress_audio, describe_size_change, describe_size_reduction,
                                     extract_audio_from_video, FFmpegError, FFmpegNotFoundError)
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE, AUDIO_UNSUPPORTED_CODECS
+from src.utils.log_filters import loggable_error, loggable_path
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,9 @@ def convert_if_needed(
     """
     if original_filename is None:
         original_filename = os.path.basename(filepath)
+    # The name the user gave the file: DEBUG only. Lines at INFO and above
+    # name the stored file (loggable_path).
+    logger.debug(f"Conversion check for {filepath} (original filename {original_filename!r})")
 
     # Get original file size
     original_size = os.path.getsize(filepath)
@@ -164,12 +168,12 @@ def convert_if_needed(
         try:
             codec_info = get_codec_info(filepath, timeout=10)
             logger.info(
-                f"Detected codec for {original_filename}: "
+                f"Detected codec for {loggable_path(filepath)}: "
                 f"audio_codec={codec_info.get('audio_codec')}, "
                 f"has_video={codec_info.get('has_video', False)}"
             )
         except FFProbeError as e:
-            logger.warning(f"Failed to probe {filepath}: {e}. Will attempt conversion.")
+            logger.warning(f"Failed to probe {loggable_path(filepath)}: {loggable_error(e, filepath)}. Will attempt conversion.")
             codec_info = None
 
     original_codec = codec_info.get('audio_codec') if codec_info else None
@@ -188,7 +192,7 @@ def convert_if_needed(
                 video_target_codec = 'mp3'
                 logger.warning(
                     f"AUDIO_CODEC '{AUDIO_CODEC}' is not supported by connector, "
-                    f"falling back to mp3 for video extraction from {original_filename}"
+                    f"falling back to mp3 for video extraction from {loggable_path(filepath)}"
                 )
 
         # Check if we can remux (copy) instead of transcode
@@ -203,7 +207,7 @@ def convert_if_needed(
 
         try:
             if can_remux:
-                logger.info(f"Extracting audio from video (remux, no transcoding): {original_filename}")
+                logger.info(f"Extracting audio from video (remux, no transcoding): {loggable_path(filepath)}")
                 output_filepath, mime_type = extract_audio_from_video(
                     filepath,
                     output_format='copy',
@@ -212,7 +216,7 @@ def convert_if_needed(
                 )
                 final_codec = audio_codec
             else:
-                logger.info(f"Extracting and converting audio from video to {video_target_codec.upper()}: {original_filename}")
+                logger.info(f"Extracting and converting audio from video to {video_target_codec.upper()}: {loggable_path(filepath)}")
                 output_filepath, mime_type = extract_audio_from_video(
                     filepath,
                     output_format=video_target_codec,
@@ -225,7 +229,7 @@ def convert_if_needed(
             final_size = os.path.getsize(output_filepath)
 
             logger.info(
-                f"Successfully extracted audio from {original_filename}: "
+                f"Successfully extracted audio from {loggable_path(filepath)}: "
                 f"{original_size/1024/1024:.1f}MB -> {final_size/1024/1024:.1f}MB "
                 f"({describe_size_change(original_size, final_size)})"
             )
@@ -244,7 +248,7 @@ def convert_if_needed(
             logger.error("FFmpeg not found")
             raise
         except FFmpegError as e:
-            logger.error(f"Failed to extract audio from video {filepath}: {e}")
+            logger.error(f"Failed to extract audio from video {loggable_path(filepath)}: {loggable_error(e, filepath)}")
             raise
     
     # Handle audio files - check if conversion needed
@@ -263,18 +267,18 @@ def convert_if_needed(
 
     if audio_codec is None:
         needs_conversion = True
-        logger.info(f"Unknown codec for {original_filename}, will attempt conversion")
+        logger.info(f"Unknown codec for {loggable_path(filepath)}, will attempt conversion")
     elif file_ext in ('.webm', '.weba') and is_webm_container:
         # WebM containers from MediaRecorder often lack seek cues, making browser
         # audio players unable to seek. Force conversion to a seekable format.
         needs_conversion = True
-        logger.info(f"Converting {original_filename} - WebM container lacks seek support")
+        logger.info(f"Converting {loggable_path(filepath)} - WebM container lacks seek support")
     elif is_asr_endpoint and audio_codec == 'aac':
         needs_conversion = True
         logger.info(f"Converting AAC-encoded file for ASR endpoint compatibility")
     elif audio_codec not in supported_codecs:
         needs_conversion = True
-        logger.info(f"Converting {original_filename} (codec: {audio_codec}) - unsupported for processing")
+        logger.info(f"Converting {loggable_path(filepath)} (codec: {audio_codec}) - unsupported for processing")
     
     if needs_conversion:
         # Determine target codec
@@ -282,7 +286,7 @@ def convert_if_needed(
         # This avoids double conversion: original → configured codec → mp3
         if needs_chunking:
             target_codec = 'mp3'
-            logger.info(f"Using MP3 for {original_filename} since chunking is needed")
+            logger.info(f"Using MP3 for {loggable_path(filepath)} since chunking is needed")
         else:
             # Fall back to mp3 if AUDIO_CODEC is unsupported by connector
             target_codec = AUDIO_CODEC
@@ -291,10 +295,10 @@ def convert_if_needed(
                     target_codec = 'mp3'
                     logger.warning(
                         f"AUDIO_CODEC '{AUDIO_CODEC}' is not supported by connector, "
-                        f"falling back to mp3 for {original_filename}"
+                        f"falling back to mp3 for {loggable_path(filepath)}"
                     )
 
-        logger.info(f"Converting {original_filename} to {target_codec.upper()}")
+        logger.info(f"Converting {loggable_path(filepath)} to {target_codec.upper()}")
 
         try:
             output_filepath, mime_type, _ = compress_audio(
@@ -308,7 +312,7 @@ def convert_if_needed(
             final_size = os.path.getsize(output_filepath)
 
             logger.info(
-                f"Successfully converted {original_filename}: "
+                f"Successfully converted {loggable_path(filepath)}: "
                 f"{original_size/1024/1024:.1f}MB -> {final_size/1024/1024:.1f}MB "
                 f"({describe_size_change(original_size, final_size)})"
             )
@@ -327,7 +331,7 @@ def convert_if_needed(
             logger.error("FFmpeg not found")
             raise
         except FFmpegError as e:
-            logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
+            logger.error(f"FFmpeg conversion failed for {loggable_path(filepath)}: {loggable_error(e, filepath)}")
             raise
     
     # Audio file with supported codec - check if we should compress lossless
@@ -341,7 +345,7 @@ def convert_if_needed(
                 compress_target_codec = 'mp3'
                 logger.warning(
                     f"AUDIO_CODEC '{AUDIO_CODEC}' is not supported by connector, "
-                    f"falling back to mp3 for lossless compression of {original_filename}"
+                    f"falling back to mp3 for lossless compression of {loggable_path(filepath)}"
                 )
 
         try:
@@ -375,7 +379,7 @@ def convert_if_needed(
                 final_size = os.path.getsize(compressed_path)
 
                 logger.info(
-                    f"Successfully compressed {original_filename}: "
+                    f"Successfully compressed {loggable_path(filepath)}: "
                     f"{original_size/1024/1024:.1f}MB -> {final_size/1024/1024:.1f}MB "
                     f"({describe_size_change(original_size, final_size)})"
                 )
@@ -407,14 +411,14 @@ def convert_if_needed(
             from src.utils.ffmpeg_utils import remux_mp3_in_place
             if mp3_duration_is_estimated(filepath):
                 logger.info(
-                    f"MP3 {original_filename} is missing a Xing/VBR header "
+                    f"MP3 {loggable_path(filepath)} is missing a Xing/VBR header "
                     f"(duration estimated from bitrate) — remuxing losslessly"
                 )
                 remux_mp3_in_place(filepath)
                 final_size = os.path.getsize(filepath)
         except Exception as e:
             logger.warning(
-                f"Xing header repair failed for {original_filename}: {e}. "
+                f"Xing header repair failed for {loggable_path(filepath)}: {loggable_error(e, filepath)}. "
                 f"Continuing with original file."
             )
 

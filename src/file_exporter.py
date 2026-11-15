@@ -13,6 +13,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from werkzeug.utils import secure_filename
+from src.utils.log_filters import loggable_error, loggable_path
 
 # Configuration from environment
 ENABLE_AUTO_EXPORT = os.environ.get('ENABLE_AUTO_EXPORT', 'false').lower() == 'true'
@@ -217,9 +218,31 @@ def _register_delete_listener():
 _register_delete_listener()
 
 
+def delete_export_with_recording():
+    """auto_export_delete_with_recording (AUTO_EXPORT_DELETE_WITH_RECORDING, default off).
+
+    Off, the export of a deleted recording is renamed with the [deleted]_
+    prefix and kept: the export folder is usually a notes vault (Obsidian,
+    Logseq) where the user may have edited the file, and a retention sweep
+    would otherwise remove notes the user exported in order to keep them. On,
+    the file is deleted with its recording, which a deployment for regulated
+    data needs: the file holds the transcript and the summary.
+    """
+    from src.models import SystemSetting
+    from src.utils.system_settings import ENV_BACKED_SETTINGS, env_fallback
+    env_var, default = ENV_BACKED_SETTINGS['auto_export_delete_with_recording'][:2]
+    fallback = env_fallback(env_var, default)
+    try:
+        value = SystemSetting.get_setting('auto_export_delete_with_recording', fallback)
+    except Exception:
+        return bool(fallback)
+    return bool(fallback if value is None else value)
+
+
 def mark_export_as_deleted(recording_id):
     """
-    Rename the export file to indicate the recording was deleted.
+    Rename the export file to indicate the recording was deleted, or delete
+    it when auto_export_delete_with_recording is on (then None is returned).
 
     Uses the recording's stored export filename when available (from the DB
     row if it still exists, or captured at ORM delete time otherwise) and
@@ -280,15 +303,21 @@ def mark_export_as_deleted(recording_id):
                 for name in candidates:
                     old_filepath = user_dir / f"{name}.md"
                     if old_filepath.exists():
+                        if delete_export_with_recording():
+                            old_filepath.unlink()
+                            logger.info(f"Deleted the export of recording {recording_id} with the recording")
+                            return None
                         new_filepath = user_dir / f"[deleted]_{name}.md"
                         old_filepath.rename(new_filepath)
-                        logger.info(f"Marked export as deleted: {new_filepath}")
+                        logger.info(f"Marked export as deleted: {loggable_path(new_filepath)}")
                         return str(new_filepath)
 
             return None
 
         except Exception as e:
-            logger.error(f"Failed to mark export as deleted for recording {recording_id}: {e}")
+            logger.error(f"Failed to mark or delete the export of deleted recording {recording_id}: "
+                         f"{type(e).__name__}")
+            logger.debug(f"Failed to mark export as deleted for recording {recording_id}: {e}")
             return None
 
 
@@ -723,7 +752,8 @@ def export_recording(recording_id):
             # Write to file (overwrites if exists)
             filepath.write_text(content, encoding='utf-8')
 
-            logger.info(f"Exported recording {recording_id} to {filepath}")
+            logger.info(f"Exported recording {recording_id} to {loggable_path(filepath)}")
+            logger.debug(f"Exported recording {recording_id} to {filepath}")
             return str(filepath)
 
         except Exception as e:

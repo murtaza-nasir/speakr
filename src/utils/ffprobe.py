@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 
 from src.utils.ffmpeg_utils import decode_ffmpeg_output
+from src.utils.log_filters import loggable_error, loggable_path
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,7 @@ def mp3_duration_is_estimated(filename: str, timeout: Optional[int] = None) -> b
             return False
         return 'Estimating duration from bitrate' in decode_ffmpeg_output(result.stderr)
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
-        logger.warning(f"Could not check MP3 duration header for {filename}: {e}")
+        logger.warning(f"Could not check MP3 duration header for {loggable_path(filename)}: {loggable_error(e, filename)}")
         return False
 
 
@@ -268,7 +269,7 @@ def try_repair_malformed_webm(filename: str, timeout: Optional[int] = None,
         with open(filename, 'rb') as f:
             head = f.read(max_scan_bytes)
     except OSError as e:
-        logger.warning(f"WebM repair: could not read {filename}: {e}")
+        logger.warning(f"WebM repair: could not read {loggable_path(filename)}: {loggable_error(e, filename)}")
         return None
 
     if head[:4] == _EBML_MAGIC:
@@ -286,7 +287,7 @@ def try_repair_malformed_webm(filename: str, timeout: Optional[int] = None,
             src.seek(offset)
             shutil.copyfileobj(src, dst, length=1024 * 1024)
     except OSError as e:
-        logger.warning(f"WebM repair: could not write trimmed candidate for {filename}: {e}")
+        logger.warning(f"WebM repair: could not write trimmed candidate for {loggable_path(filename)}: {loggable_error(e, filename)}")
         _quiet_remove(tmp_path)
         return None
 
@@ -294,18 +295,18 @@ def try_repair_malformed_webm(filename: str, timeout: Optional[int] = None,
     try:
         codec_info = get_codec_info(tmp_path, timeout=timeout)
     except FFProbeError as e:
-        logger.warning(f"WebM repair: trimmed candidate for {filename} still not probeable: {e}")
+        logger.warning(f"WebM repair: trimmed candidate for {loggable_path(filename)} still not probeable: {loggable_error(e, filename)}")
         _quiet_remove(tmp_path)
         return None
 
     try:
         os.replace(tmp_path, filename)
     except OSError as e:
-        logger.warning(f"WebM repair: could not replace {filename} with trimmed file: {e}")
+        logger.warning(f"WebM repair: could not replace {loggable_path(filename)} with trimmed file: {loggable_error(e, filename)}")
         _quiet_remove(tmp_path)
         return None
 
-    logger.info(f"WebM repair: trimmed {offset} leading bytes to reach EBML header in {filename}")
+    logger.info(f"WebM repair: trimmed {offset} leading bytes to reach EBML header in {loggable_path(filename)}")
     return codec_info
 
 
@@ -335,7 +336,7 @@ def is_video_file(filename: str, timeout: Optional[int] = None, codec_info: Opti
             codec_info = get_codec_info(filename, timeout=timeout)
         return codec_info['has_video']
     except FFProbeError as e:
-        logger.warning(f"Failed to probe {filename}: {e}")
+        logger.warning(f"Failed to probe {loggable_path(filename)}: {loggable_error(e, filename)}")
         return False
 
 
@@ -356,7 +357,7 @@ def is_audio_file(filename: str, timeout: Optional[int] = None, codec_info: Opti
             codec_info = get_codec_info(filename, timeout=timeout)
         return codec_info['has_audio']
     except FFProbeError as e:
-        logger.warning(f"Failed to probe {filename}: {e}")
+        logger.warning(f"Failed to probe {loggable_path(filename)}: {loggable_error(e, filename)}")
         return False
 
 
@@ -377,7 +378,7 @@ def get_audio_codec(filename: str, timeout: Optional[int] = None, codec_info: Op
             codec_info = get_codec_info(filename, timeout=timeout)
         return codec_info['audio_codec']
     except FFProbeError as e:
-        logger.warning(f"Failed to probe {filename}: {e}")
+        logger.warning(f"Failed to probe {loggable_path(filename)}: {loggable_error(e, filename)}")
         return None
 
 
@@ -404,7 +405,7 @@ def needs_audio_conversion(filename: str, supported_codecs: list, timeout: Optio
         
         # If no audio at all, cannot convert
         if not codec_info['has_audio']:
-            logger.warning(f"File {filename} has no audio streams")
+            logger.warning(f"File {loggable_path(filename)} has no audio streams")
             return False, None
         
         audio_codec = codec_info['audio_codec']
@@ -416,7 +417,7 @@ def needs_audio_conversion(filename: str, supported_codecs: list, timeout: Optio
         return True, audio_codec
         
     except FFProbeError as e:
-        logger.warning(f"Failed to probe {filename}: {e}")
+        logger.warning(f"Failed to probe {loggable_path(filename)}: {loggable_error(e, filename)}")
         # Default to attempting conversion on error
         return True, None
 
@@ -447,7 +448,7 @@ def is_lossless_audio(filename: str, timeout: Optional[int] = None, codec_info: 
         audio_codec = codec_info['audio_codec']
         return audio_codec in lossless_codecs if audio_codec else False
     except FFProbeError as e:
-        logger.warning(f"Failed to probe {filename}: {e}")
+        logger.warning(f"Failed to probe {loggable_path(filename)}: {loggable_error(e, filename)}")
         return False
 
 
@@ -479,7 +480,7 @@ def get_duration(filename: str, timeout: Optional[int] = None, codec_info: Optio
         # This works for WebM and other files without duration metadata
         return _get_duration_from_packets(filename, timeout=timeout)
     except FFProbeError as e:
-        logger.warning(f"Failed to probe {filename}: {e}")
+        logger.warning(f"Failed to probe {loggable_path(filename)}: {loggable_error(e, filename)}")
         return None
 
 
@@ -534,10 +535,10 @@ def _get_duration_from_packets(filename: str, timeout: Optional[int] = None) -> 
 
         return None
     except subprocess.TimeoutExpired:
-        logger.warning(f"Packet scan timed out for {filename}")
+        logger.warning(f"Packet scan timed out for {loggable_path(filename)}")
         return None
     except Exception as e:
-        logger.warning(f"Error scanning packets for {filename}: {e}")
+        logger.warning(f"Error scanning packets for {loggable_path(filename)}: {loggable_error(e, filename)}")
         return None
 
 
@@ -565,7 +566,7 @@ def get_creation_date(filename: str, timeout: Optional[int] = None, use_file_mti
     try:
         probe_data = probe(filename, timeout=timeout)
     except FFProbeError as e:
-        logger.warning(f"Failed to probe {filename} for creation date: {e}")
+        logger.warning(f"Failed to probe {loggable_path(filename)} for creation date: {loggable_error(e, filename)}")
         # Even if probe fails, we can still try file mtime
         if use_file_mtime:
             return _get_file_mtime(filename)
@@ -628,7 +629,7 @@ def _get_file_mtime(filename: str) -> Optional[datetime]:
         from datetime import timezone as _tz
         return datetime.fromtimestamp(stat_info.st_mtime, tz=_tz.utc).replace(tzinfo=None)
     except (OSError, ValueError) as e:
-        logger.warning(f"Failed to get file mtime for {filename}: {e}")
+        logger.warning(f"Failed to get file mtime for {loggable_path(filename)}: {loggable_error(e, filename)}")
         return None
 
 
