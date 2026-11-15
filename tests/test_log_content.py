@@ -461,8 +461,8 @@ def test_group_changes_log_ids_and_no_names_at_info(world, log):
     app.config["WTF_CSRF_ENABLED"] = False
     s = uuid.uuid4().hex[:8]
     with app.app_context():
-        admin = User(username=f"osprey-admin-marker-{s}", email=f"adm_{s}@local.test", password="x", is_admin=True)
-        member = User(username=f"osprey-member-marker-{s}", email=f"mem_{s}@local.test", password="x")
+        admin = User(username=f"ospreyadm-{s}", email=f"adm_{s}@local.test", password="x", is_admin=True)
+        member = User(username=f"ospreymem-{s}", email=f"mem_{s}@local.test", password="x")
         db.session.add_all([admin, member])
         db.session.commit()
         admin_id, member_id = admin.id, member.id
@@ -489,7 +489,7 @@ def test_group_changes_log_ids_and_no_names_at_info(world, log):
                 Group.query.filter_by(id=group_id).delete()
             User.query.filter(User.id.in_([admin_id, member_id])).delete(synchronize_session=False)
             db.session.commit()
-    _assert_only_at_debug(log, "Gyrfalcon-group-marker", "osprey-admin-marker", "osprey-member-marker")
+    _assert_only_at_debug(log, "Gyrfalcon-group-marker", "ospreyadm-", "ospreymem-")
     default_log = _default_log(log)
     assert "Gyrfalcon" not in default_log and "osprey" not in default_log
     # Every line still says what happened to which id.
