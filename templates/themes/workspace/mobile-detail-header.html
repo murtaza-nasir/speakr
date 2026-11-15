@@ -33,17 +33,19 @@
                 <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
                       class="chip chip--dot"
                       :style="{ '--chip-c': getFolderMarkColor(selectedRecording.folder_id) }">
-                    <i class="fas fa-folder"></i>
+                    <i class="fas fa-folder chip__icon"></i>
                     <span class="chip__label" v-text="getFolderName(selectedRecording.folder_id)"></span>
+                    <i v-if="selectedRecording.folder && selectedRecording.folder.is_foreign" class="fas fa-share-nodes chip__shared"></i>
                 </span>
                 <button v-for="tag in getRecordingTags(selectedRecording)" :key="tag.id"
                         @click.stop="filterByTag(tag)"
                         class="chip chip--dot chip--clickable"
-                        :style="{ '--chip-c': tag.color }"
+                        :style="{ '--chip-c': tag.color, '--chip-mark': folderMarkColor(tag.color) }"
                         :title="tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : tag.name">
-                    <i v-if="tag.group_id" class="fas fa-users"></i>
+                    <i v-if="tag.group_id" class="fas fa-users chip__icon"></i>
                     <i v-else class="fas fa-tag"></i>
                     <span class="chip__label" v-text="tag.name"></span>
+                    <i v-if="tag.is_foreign" class="fas fa-share-nodes chip__shared"></i>
                 </button>
                 <span v-if="selectedRecording.is_shared" class="chip bg-purple-500 text-white">
                     <i class="fas fa-arrow-down"></i><span class="chip__label" v-text="t('sharing.sharedBadge')"></span>

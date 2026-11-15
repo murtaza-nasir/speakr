@@ -40,9 +40,9 @@
                             <span class="ws-row__meta">
                                 <!-- Folder dot, only in the All view and while folders are on -->
                                 <span v-if="recording.folder && recording.folder.is_foreign && !recording.incognito"
-                                      class="ws-glyph"
-                                      :style="{ color: folderMarkColor(recording.folder.color) || '' }"
+                                      class="ws-glyph ws-glyph--shared"
                                       :title="t('sharing.sharedBadge') + ': ' + recording.folder.name">
+                                    <i class="fas fa-folder" :style="{ color: folderMarkColor(recording.folder.color) || '' }"></i>
                                     <i class="fas fa-share-nodes"></i>
                                 </span>
                                 <button v-if="foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito && !(recording.folder && recording.folder.is_foreign)"

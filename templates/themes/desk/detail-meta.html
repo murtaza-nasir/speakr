@@ -24,15 +24,17 @@
                       class="chip"
                       :style="{ '--chip-color': getFolderMarkColor(selectedRecording.folder_id) }"
                       :title="t('tooltips.folderLabel', { name: getFolderName(selectedRecording.folder_id) })">
-                    <i class="fas fa-folder"></i>
+                    <i class="fas fa-folder chip__icon"></i>
                     <span class="chip__label">${ getFolderName(selectedRecording.folder_id) }</span>
+                    <i v-if="selectedRecording.folder && selectedRecording.folder.is_foreign" class="fas fa-share-nodes chip__shared"></i>
                 </span>
                 <span v-for="tag in selectedRecording.tags" :key="tag.id"
                       class="chip"
-                      :style="{ '--chip-color': tag.color || '#6B7280' }"
+                      :style="{ '--chip-color': tag.color || '#6B7280', '--chip-mark': folderMarkColor(tag.color || '#6B7280') }"
                       :title="tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : tag.name">
-                    <i v-if="tag.group_id" class="fas fa-users"></i>
+                    <i v-if="tag.group_id" class="fas fa-users chip__icon"></i>
                     <span class="chip__label">${tag.name}</span>
+                    <i v-if="tag.is_foreign" class="fas fa-share-nodes chip__shared"></i>
                 </span>
             </div>
 

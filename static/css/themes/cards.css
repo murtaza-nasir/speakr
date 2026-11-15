@@ -287,7 +287,16 @@ html[data-ui-theme="cards"] .chip[style*="--tag"]::before {
     content: ''; width: 7px; height: 7px; border-radius: 50%; flex: none;
     background: var(--tag); margin-right: 5px;
 }
-html[data-ui-theme="cards"] .chip[style*="--tag"] > i { font-size: 10px; }
+html[data-ui-theme="cards"] .chip[style*="--tag"] > i { display: none; }
+/* A folder or group tag: its icon in the chip colour takes the dot's place */
+html[data-ui-theme="cards"] .chip[style*="--tag"] > .chip__icon {
+    display: inline-block;
+    font-size: 10px;
+    opacity: 1;
+    color: var(--chip-mark, var(--tag));
+}
+html[data-ui-theme="cards"] .chip[style*="--tag"]:has(> .chip__icon)::before { display: none; }
+html[data-ui-theme="cards"] .chip[style*="--tag"] > .chip__shared { display: inline-block; color: var(--c-text-3); opacity: 1; }
 html[data-ui-theme="cards"] .chip[style*="--tag"] > i + .chip__label { margin-left: 0; }
 
 html[data-ui-theme="cards"] .pill-status { border-radius: var(--c-r-pill); font-size: var(--c-fs-xs); font-weight: 600; padding: 2px 10px; border: 0; }

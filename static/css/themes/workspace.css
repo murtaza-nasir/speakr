@@ -448,6 +448,15 @@ html[data-ui-theme="workspace"] .chip--dot::before {
     flex: 0 0 auto;
 }
 html[data-ui-theme="workspace"] .chip--dot > i { display: none; }
+/* A folder or group tag: its icon in the chip colour takes the dot's place */
+html[data-ui-theme="workspace"] .chip--dot > .chip__icon {
+    display: inline-block;
+    font-size: 10px;
+    opacity: 1;
+    color: var(--chip-mark, var(--chip-c, var(--text-light)));
+}
+html[data-ui-theme="workspace"] .chip--dot:has(> .chip__icon)::before { display: none; }
+html[data-ui-theme="workspace"] .chip--dot > .chip__shared { display: inline-block; color: var(--text-light); opacity: 1; }
 html[data-ui-theme="workspace"] .chip--clickable:hover { opacity: 1; background: var(--bg-tertiary); }
 html[data-ui-theme="workspace"] .chip-meta {
     background: transparent;
@@ -930,6 +939,9 @@ html[data-ui-theme="workspace"] .ws-row__meta {
 html[data-ui-theme="workspace"] .ws-tagdots { display: inline-flex; gap: 3px; align-items: center; }
 html[data-ui-theme="workspace"] .ws-glyph { font-size: 10px; color: var(--text-light); line-height: 1; display: inline-flex; align-items: center; }
 html[data-ui-theme="workspace"] button.ws-glyph:hover { color: var(--text-primary); }
+/* A folder shared by someone else: its folder icon, then a small share mark */
+html[data-ui-theme="workspace"] .ws-glyph--shared { gap: 3px; }
+html[data-ui-theme="workspace"] .ws-glyph--shared > .fa-share-nodes { font-size: 8px; }
 /* The folder glyph overlaps the row's right padding instead of taking meta width, so titles keep their full width. */
 html[data-ui-theme="workspace"] .ws-glyph--folder {
     position: absolute; top: 0; bottom: 0; right: -4px; width: 10px;

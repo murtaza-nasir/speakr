@@ -827,6 +827,17 @@ html.dark select.field {
     text-overflow: ellipsis;
 }
 
+/* The leading mark of a folder or tag chip says what the chip is: a folder
+   icon for a folder, a people icon for a group tag (.chip__icon); a plain
+   tag has no icon (the themes that draw a colour dot keep the dot for it,
+   and draw the icon in the chip's colour in place of the dot). A chip
+   shared by someone else carries a small share mark after its name
+   (.chip__shared). --chip-mark is the chip's colour for a mark drawn
+   straight on the page (folderMarkColor). */
+.chip > .chip__icon,
+.chip > .chip__shared { flex: none; }
+.chip > .chip__shared { font-size: 9px; opacity: 0.7; }
+
 .chip--clickable {
     cursor: pointer;
 }

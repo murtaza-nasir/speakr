@@ -543,6 +543,15 @@ html[data-ui-theme="classic"] .chip[style*='--chip-dot']::before {
     flex: none;
 }
 html[data-ui-theme="classic"] .chip[style*='--chip-dot'] > i { display: none; }
+/* A folder or group tag: its icon in the chip colour takes the dot's place */
+html[data-ui-theme="classic"] .chip[style*='--chip-dot'] > .chip__icon {
+    display: inline-block;
+    font-size: 10px;
+    opacity: 1;
+    color: var(--chip-mark, var(--chip-dot, var(--text-3)));
+}
+html[data-ui-theme="classic"] .chip[style*='--chip-dot']:has(> .chip__icon)::before { display: none; }
+html[data-ui-theme="classic"] .chip[style*='--chip-dot'] > .chip__shared { display: inline-block; color: var(--text-3); opacity: 1; }
 
 /* Selection mode */
 html[data-ui-theme="classic"] .selection-checkbox { accent-color: var(--primary); }

@@ -339,6 +339,14 @@ html[data-ui-theme="focus"] body .chip::before {
     background-image: none;
 }
 html[data-ui-theme="focus"] body .chip > i { color: var(--f-text-3); }
+/* A folder or group tag: its icon in the chip colour (--chip-mark, set beside
+   the inline background) takes the dot's place. A plain tag keeps the dot,
+   without the tag icon the phone header gives it. */
+html[data-ui-theme="focus"] body .chip[style*="--chip-mark"] > i:not(.chip__icon, .chip__shared) { display: none; }
+html[data-ui-theme="focus"] body .chip > .chip__icon { font-size: 10px; opacity: 1; color: var(--chip-mark, var(--f-text-3)); }
+html[data-ui-theme="focus"] body .chip:has(> .chip__icon) { padding-left: 2px; gap: 5px; }
+html[data-ui-theme="focus"] body .chip:has(> .chip__icon)::before { display: none; }
+html[data-ui-theme="focus"] body .chip > .chip__shared { opacity: 1; }
 html[data-ui-theme="focus"] body .chip--clickable:hover { opacity: 1; color: var(--f-text) !important; }
 html[data-ui-theme="focus"] body .chip-meta {
     background: transparent;
