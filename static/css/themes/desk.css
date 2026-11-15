@@ -239,6 +239,15 @@ html[data-ui-theme="desk"] .chip::before {
     background: var(--chip-color, currentColor);
 }
 html[data-ui-theme="desk"] .chip > i { display: none; }
+/* A folder or group tag: its icon in the chip colour takes the dot's place */
+html[data-ui-theme="desk"] .chip > .chip__icon {
+    display: inline-block;
+    font-size: 10px;
+    opacity: 1;
+    color: var(--chip-mark, var(--chip-color, currentColor));
+}
+html[data-ui-theme="desk"] .chip:has(> .chip__icon)::before { display: none; }
+html[data-ui-theme="desk"] .chip > .chip__shared { display: inline-block; color: var(--text-3); opacity: 1; }
 html[data-ui-theme="desk"] .chip--clickable:hover { box-shadow: inset 0 0 0 1px var(--line); background: var(--row-hover); opacity: 1; }
 html[data-ui-theme="desk"] .chip-meta { border-radius: var(--r-2); }
 
