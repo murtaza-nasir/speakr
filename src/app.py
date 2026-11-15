@@ -705,27 +705,23 @@ app.config['WTF_CSRF_CHECK_DEFAULT'] = False
 
 
 @app.before_request
-def record_user_presence():
-    """Remember when the signed-in account was last active (admin user list).
+def record_last_active():
+    """Note the time of this use of the signed-in account (admin user list).
 
-    Every authenticated request counts, whether it came from a browser session
-    or an API token, so this runs before the checks below that can refuse a
-    request (a CSRF rejection or a token scope the route does not allow). A
-    request that presents neither a session nor a token has no account to
-    record and is ignored, and so are static assets. Presence is best-effort,
-    so a database failure here never fails the request the user made.
+    A request of an account counts, from a browser session or with an API
+    token, unless its route is one that an open tab requests on a timer
+    (src/services/last_active.py holds the list). This runs before the checks
+    below, so a request that one of them refuses (a CSRF rejection, a token
+    scope the route does not allow) still counts. The write is made outside
+    the session of the request, waits a fraction of a second at most and
+    swallows its errors, so it can neither delay nor fail the request.
     """
-    if not request.endpoint or request.endpoint == 'static':
+    from src.services.last_active import counts_as_activity, record_activity
+    if not counts_as_activity(request.endpoint):
         return
     if not current_user.is_authenticated:
         return
-    from src.services.presence import record_activity
-    try:
-        record_activity(current_user)
-    except Exception:
-        app.logger.warning('Could not record presence for user %s',
-                           getattr(current_user, 'id', '?'), exc_info=True)
-        db.session.rollback()
+    record_activity(current_user)
 
 
 @app.before_request

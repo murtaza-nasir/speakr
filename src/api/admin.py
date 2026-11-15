@@ -23,7 +23,7 @@ from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chun
 from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
 from src.services.storage_quota import default_quota_mb
-from src.services import login_lock, presence
+from src.services import login_lock
 from src.auth.permissions import CREATE_GROUPS, set_user_grant, user_has_grant
 from src.config.startup import get_file_monitor_functions
 
@@ -113,6 +113,30 @@ def group_management():
 
 
 
+def _user_list_order():
+    """ORDER BY of the user list, from ?sort= and ?order=.
+
+    sort=username orders by name without regard to case. sort=last_active
+    orders by the time of the last use and is honoured for site admins only,
+    who are the only ones given that time; accounts that were never used come
+    first in ascending order (least recently used first) and last in
+    descending order. Anything else is the order by id. The id closes every
+    order, so the pages are stable.
+    """
+    descending = (request.args.get('order') or '').lower() == 'desc'
+    sort = (request.args.get('sort') or '').lower()
+    if sort == 'username':
+        column = db.func.lower(User.username)
+        return (column.desc() if descending else column.asc(), User.id.asc())
+    if sort == 'last_active' and current_user.is_admin:
+        # A CASE, not NULLS FIRST/LAST: the same order on SQLite and PostgreSQL.
+        never = db.case((User.last_seen_at.is_(None), 0), else_=1)
+        if descending:
+            return (never.desc(), User.last_seen_at.desc(), User.id.asc())
+        return (never.asc(), User.last_seen_at.asc(), User.id.asc())
+    return (User.id.desc() if descending else User.id.asc(),)
+
+
 @admin_bp.route('/admin/users', methods=['GET'])
 @login_required
 def admin_get_users():
@@ -185,7 +209,8 @@ def admin_get_users():
     if page < 1:
         page = 1
 
-    users = base_query.order_by(User.id.asc()).offset((page - 1) * per_page).limit(per_page).all()
+    users = (base_query.order_by(*_user_list_order())
+             .offset((page - 1) * per_page).limit(per_page).all())
 
     user_data = []
     # Only a site admin can unlock an account, so only a site admin sees the lock (#529)
@@ -252,16 +277,14 @@ def admin_get_users():
             'transcription_usage_percentage': round(transcription_usage_percentage, 1),
             'login_locked': user.id in locked_ids,
             'create_groups_granted': user.id in create_groups_ids,
-            # Presence for the "Last activity" column: the timestamp of the most
-            # recent authenticated request (null = never) and whether it is
-            # inside the online window. Stored as naive UTC like every other
-            # timestamp; the explicit designator makes this new field an
-            # unambiguous instant for clients and for the <time datetime>
-            # attribute that renders it.
-            'last_seen_at': (user.last_seen_at.isoformat() + 'Z')
-                            if user.last_seen_at else None,
-            'online': presence.is_online(user.last_seen_at),
         })
+        if current_user.is_admin:
+            # The time of the last use (src/services/last_active.py), null
+            # when there was none. For site admins only. Stored as naive UTC
+            # like every other timestamp; the designator makes it an
+            # unambiguous instant for the <time datetime> attribute.
+            user_data[-1]['last_seen_at'] = (
+                user.last_seen_at.isoformat() + 'Z' if user.last_seen_at else None)
 
     has_next = page < total_pages
     has_prev = page > 1

@@ -322,9 +322,9 @@ def _run_migrations(app, engine):
             app.logger.info("Added sso_provider column to user table")
         if add_column_if_not_exists(engine, 'user', 'sso_subject', 'VARCHAR(255)'):
             app.logger.info("Added sso_subject column to user table")
-        # Most recent authenticated request, for the admin "Last activity"
-        # column (src/services/presence.py). NULL for an account that has not
-        # made one since the upgrade; no backfill is possible or wanted.
+        # Time of the last use of the account, for the admin "Last active"
+        # column (src/services/last_active.py). NULL for an account that was
+        # not used since the upgrade; there is nothing to backfill it from.
         if add_column_if_not_exists(engine, 'user', 'last_seen_at', 'DATETIME'):
             app.logger.info("Added last_seen_at column to user table")
         

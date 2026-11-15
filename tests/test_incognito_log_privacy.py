@@ -227,11 +227,22 @@ def _assert_no_content(log, *more):
 
 
 def _database():
-    """Every row of every table, so that a changed row counts as much as a new one."""
+    """Every row of every table, so that a changed row counts as much as a new one.
+
+    One column is left out: user.last_seen_at, the time of the last use of the
+    account. An incognito request updates it like any other request, and it
+    says nothing about the request (tests/test_admin_last_active.py checks
+    that the time is the only value stored).
+    """
+    from sqlalchemy import select
     with app.app_context():
         db.session.rollback()
-        return {table.name: sorted(repr(tuple(row)) for row in db.session.execute(table.select()))
-                for table in db.metadata.tables.values()}
+        snapshot = {}
+        for table in db.metadata.tables.values():
+            columns = [c for c in table.columns if (table.name, c.name) != ('user', 'last_seen_at')]
+            snapshot[table.name] = sorted(
+                repr(tuple(row)) for row in db.session.execute(select(*columns)))
+        return snapshot
 
 
 def _llm(fake):
