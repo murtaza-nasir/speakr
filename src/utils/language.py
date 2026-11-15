@@ -7,11 +7,12 @@ in the wild. WhisperX and other ASR backends expect ISO 639-1 codes (`fr`,
 arbitrary input to a clean ISO code or returns None to mean "auto-detect".
 
 Whitelist below matches the languages WhisperX accepts and the dropdown
-offered in account settings.
+offered in account settings (filled from static/js/asr-languages.js).
 """
 
 # ISO 639-1 codes accepted by WhisperX. Source: faster-whisper tokenizer.
-# Keep this in sync with the dropdown in templates/account.html.
+# Keep this in sync with CODES in static/js/asr-languages.js, the list the
+# account page and the upload options are filled from.
 SUPPORTED_CODES = frozenset({
     "af", "am", "ar", "as", "az", "ba", "be", "bg", "bn", "bo", "br", "bs",
     "ca", "cs", "cy", "da", "de", "el", "en", "es", "et", "eu", "fa", "fi",
@@ -115,31 +116,116 @@ def normalize_language_code(value):
 
 
 # Full output/translation target language names shared by the account preference
-# and the translation menu. Each entry is (full_name, iso_code); the iso code
-# doubles as the i18n key suffix under `languages.*`. Keep this list in sync
-# with the locale files.
+# and the translation menu. Each entry is (full_name, iso_code). The stored
+# value is the English name, which is placed into the LLM prompt. The list
+# holds every code of SUPPORTED_CODES (the shared ASR list in
+# static/js/asr-languages.js) under the English name the browser shows for it,
+# plus "Portuguese (Brazilian)", in alphabetical order. A name already stored
+# for a user must keep its spelling. The pages label an entry with the
+# `languages.<code>` locale key when the locale has one, and with the
+# browser's own language name otherwise, so a new entry needs no locale key.
 OUTPUT_LANGUAGES = [
-    ("English", "en"),
-    ("Spanish", "es"),
-    ("French", "fr"),
-    ("German", "de"),
-    ("Italian", "it"),
-    ("Portuguese", "pt"),
-    ("Dutch", "nl"),
-    ("Russian", "ru"),
-    ("Chinese", "zh"),
-    ("Japanese", "ja"),
-    ("Korean", "ko"),
+    ("Afrikaans", "af"),
+    ("Albanian", "sq"),
+    ("Amharic", "am"),
     ("Arabic", "ar"),
+    ("Armenian", "hy"),
+    ("Assamese", "as"),
+    ("Azerbaijani", "az"),
+    ("Bangla", "bn"),
+    ("Bashkir", "ba"),
+    ("Basque", "eu"),
+    ("Belarusian", "be"),
+    ("Bosnian", "bs"),
+    ("Breton", "br"),
+    ("Bulgarian", "bg"),
+    ("Burmese", "my"),
+    ("Cantonese", "yue"),
+    ("Catalan", "ca"),
+    ("Chinese", "zh"),
+    ("Croatian", "hr"),
+    ("Czech", "cs"),
+    ("Danish", "da"),
+    ("Dutch", "nl"),
+    ("English", "en"),
+    ("Estonian", "et"),
+    ("Faroese", "fo"),
+    ("Filipino", "tl"),
+    ("Finnish", "fi"),
+    ("French", "fr"),
+    ("Galician", "gl"),
+    ("Georgian", "ka"),
+    ("German", "de"),
+    ("Greek", "el"),
+    ("Gujarati", "gu"),
+    ("Haitian Creole", "ht"),
+    ("Hausa", "ha"),
+    ("Hawaiian", "haw"),
+    ("Hebrew", "he"),
     ("Hindi", "hi"),
-    ("Polish", "pl"),
-    ("Ukrainian", "uk"),
-    ("Vietnamese", "vi"),
-    ("Thai", "th"),
-    ("Turkish", "tr"),
+    ("Hungarian", "hu"),
+    ("Icelandic", "is"),
     ("Indonesian", "id"),
-    ("Swedish", "sv"),
+    ("Italian", "it"),
+    ("Japanese", "ja"),
+    ("Javanese", "jw"),
+    ("Kannada", "kn"),
+    ("Kazakh", "kk"),
+    ("Khmer", "km"),
+    ("Korean", "ko"),
+    ("Lao", "lo"),
+    ("Latin", "la"),
+    ("Latvian", "lv"),
+    ("Lingala", "ln"),
+    ("Lithuanian", "lt"),
+    ("Luxembourgish", "lb"),
+    ("Macedonian", "mk"),
+    ("Malagasy", "mg"),
+    ("Malay", "ms"),
+    ("Malayalam", "ml"),
+    ("Maltese", "mt"),
+    ("Maori", "mi"),
+    ("Marathi", "mr"),
+    ("Mongolian", "mn"),
+    ("Nepali", "ne"),
+    ("Norwegian", "no"),
+    ("Norwegian Nynorsk", "nn"),
+    ("Occitan", "oc"),
+    ("Pashto", "ps"),
+    ("Persian", "fa"),
+    ("Polish", "pl"),
+    ("Portuguese", "pt"),
     ("Portuguese (Brazilian)", "pt-BR"),
+    ("Punjabi", "pa"),
+    ("Romanian", "ro"),
+    ("Russian", "ru"),
+    ("Sanskrit", "sa"),
+    ("Serbian", "sr"),
+    ("Shona", "sn"),
+    ("Sindhi", "sd"),
+    ("Sinhala", "si"),
+    ("Slovak", "sk"),
+    ("Slovenian", "sl"),
+    ("Somali", "so"),
+    ("Spanish", "es"),
+    ("Sundanese", "su"),
+    ("Swahili", "sw"),
+    ("Swedish", "sv"),
+    ("Tajik", "tg"),
+    ("Tamil", "ta"),
+    ("Tatar", "tt"),
+    ("Telugu", "te"),
+    ("Thai", "th"),
+    ("Tibetan", "bo"),
+    ("Turkish", "tr"),
+    ("Turkmen", "tk"),
+    ("Ukrainian", "uk"),
+    ("Urdu", "ur"),
+    ("Uzbek", "uz"),
+    ("Vietnamese", "vi"),
+    ("Welsh", "cy"),
+    ("Yiddish", "yi"),
+    ("Yoruba", "yo"),
 ]
 
 
