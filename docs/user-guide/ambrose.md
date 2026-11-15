@@ -48,6 +48,7 @@ An incognito recording has a chat as well, with these differences:
 
 - The chat is never stored. It is removed when you open another recording or close the tab.
 - Ambrose answers from the transcript of the incognito recording only. It does not search your other recordings.
+- An answer can be copied but not downloaded: no download buttons are shown for an incognito recording.
 
 ## Citations
 

@@ -298,11 +298,11 @@ Adjust audio playback speed from 0.5x to 3x on all audio/video players throughou
 
 ### Incognito Mode
 
-Process transcriptions without saving anything to the database. When incognito mode is enabled (`ENABLE_INCOGNITO_MODE=true`), users can upload and transcribe audio files with the assurance that the audio is deleted immediately after processing and no record is stored in the database. Close the tab and it's gone - perfect for sensitive content that shouldn't persist.
+Process transcriptions without saving anything to the database. When incognito mode is enabled (`ENABLE_INCOGNITO_MODE=true`), users can upload and transcribe audio files with the assurance that the audio is deleted immediately after processing and no record is stored in the database. Close the tab and it's gone - perfect for sensitive content that shouldn't persist. The summary, the notes, the transcript and the chat of an incognito recording can be copied. They cannot be downloaded as files, because the download routes need a stored recording, so no download buttons are shown for one.
 
 ### Responsive Design
 
-Access Speakr from any device with interfaces that adapt to screen size. Desktop users get a full three-panel layout with simultaneous access to recordings, transcripts, and chat. Mobile users receive a streamlined interface optimized for touch interaction and smaller screens.
+Access Speakr from any device with interfaces that adapt to screen size. Desktop users get a full three-panel layout with simultaneous access to recordings, transcripts, and chat. On a phone, the recording list and a recording are separate screens: one top bar, four tabs, a slim player strip and labeled sheets for actions and details. See [Phone Layout](user-guide/pwa.md#phone-layout).
 
 ## Administrative Control
 

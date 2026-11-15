@@ -244,36 +244,36 @@ A tour of Speakr, section by section. Click any image to view it full size.
 <div class="screenshot-grid">
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/mobile-main.png" alt="Mobile main view" />
-    <p class="caption">The main view on mobile</p>
+    <p class="caption">The recording list on a phone</p>
   </div>
 
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/mobile-summary.png" alt="Mobile summary" />
-    <p class="caption">Summary tab with bottom navigation</p>
+    <p class="caption">A recording on a phone: top bar, details, summary, player strip and tabs</p>
   </div>
 </div>
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/mobile-transcript.png" alt="Mobile transcript" />
-    <p class="caption">Transcript in bubble view</p>
+    <p class="caption">The transcript with its pinned bar</p>
   </div>
 
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/mobile-recording.png" alt="Mobile recording" />
-    <p class="caption">Recording with notes on mobile</p>
+    <p class="caption">Recording with notes on a phone</p>
   </div>
 </div>
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/mobile-speaker-id.png" alt="Mobile speaker identification" />
-    <p class="caption">Identifying speakers on mobile</p>
+    <p class="caption">Identifying speakers on a phone</p>
   </div>
 
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/mobile-upload.png" alt="Mobile upload" />
-    <p class="caption">The upload sheet on mobile</p>
+    <p class="caption">The upload sheet on a phone</p>
   </div>
 </div>
 
