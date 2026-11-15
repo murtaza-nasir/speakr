@@ -641,16 +641,31 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
      * Rename a speaker in the whole recording, as one undo step. `match`
      * marks the rename as an accepted voice match ({ label, name, speakerId }),
      * reported by acceptedMatches() until the next save.
+     *
+     * Renaming into a name the recording already has merges the two
+     * speakers. `also` lists names that are the same person under another
+     * spelling or link (e.g. 'dana lee' when the target is 'Dana Lee'):
+     * their segments get the same name and speaker id in the same step, so
+     * that one speaker is left. They are not part of the voice match.
      */
-    const renameSpeaker = (from, to, { speakerId, match = null } = {}) => {
+    const renameSpeaker = (from, to, { speakerId, match = null, also = [] } = {}) => {
         const value = asSpeaker(to, speakerId);
         if (!speakerName(value).trim()) return false;
-        const list = [];
-        for (let i = 0; i < segs.length; i++) if (segs[i].speaker === from && !same(speakerValue(segs[i]), value)) list.push(i);
+        const others = new Set((also || []).filter((name) => name !== from));
+        const list = [];         // the segments of `from`
+        const rest = [];         // the segments of `also` that differ from the target
+        for (let i = 0; i < segs.length; i++) {
+            if (same(speakerValue(segs[i]), value)) continue;
+            if (segs[i].speaker === from) list.push(i);
+            else if (others.has(segs[i].speaker)) rest.push(i);
+        }
         if (!list.length) return false;
+        const idx = rest.length ? [...list, ...rest].sort((a, b) => a - b) : list;
+        // The match covers the segments of `from` only
+        const meta = match ? { match: rest.length ? { ...match, ids: list.map((i) => segs[i].id) } : match } : null;
         return transact('rename', () => exec({
-            k: 'mset', f: 'speaker', idx: list, a: list.map((i) => speakerValue(segs[i])), am: true, b: value, bm: false,
-        }), { meta: match ? { match } : null }).changed;
+            k: 'mset', f: 'speaker', idx, a: idx.map((i) => speakerValue(segs[i])), am: true, b: value, bm: false,
+        }), { meta }).changed;
     };
 
     /** Replace the text of several segments as one undo step: [{ index, text }]. */
@@ -756,7 +771,7 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
         const out = [];
         for (let k = 0; k < pointer; k++) {
             const meta = log[k].meta;
-            if (meta && meta.match && !meta.recorded) out.push({ ...meta.match, ids: log[k].ids });
+            if (meta && meta.match && !meta.recorded) out.push({ ...meta.match, ids: meta.match.ids || log[k].ids });
         }
         return out;
     };

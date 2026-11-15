@@ -22,6 +22,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css') }}">
     {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <!-- The app's own confirm, message and input dialogs (window.confirmDialog, alertDialog, promptDialog) -->
+    <script src="{{ url_for('static', filename='js/app-dialog.js') }}"></script>
     <style>
         /* Hide Vue content until compiled */
         [v-cloak] {
@@ -2277,10 +2279,10 @@ Summarization Instructions:
                     }
                 };
 
-                const addManualTranscriptionModel = () => {
-                    const id = window.prompt(t('adminDashboard.enterModelIdPrompt'));
+                const addManualTranscriptionModel = async () => {
+                    const id = ((await promptDialog({ message: t('adminDashboard.enterModelIdPrompt'), confirmLabel: t('common.add') })) || '').trim();
                     if (!id) return;
-                    manualModelRows.value.push({ value: id.trim(), label: id.trim() });
+                    manualModelRows.value.push({ value: id, label: id });
                 };
 
                 const saveVisibleTranscriptionModels = async () => {
@@ -2536,16 +2538,16 @@ Summarization Instructions:
                         if (!r.ok) throw new Error(data.error || t('errors.requestFailed', { status: r.status }));
                         voiceEmbedding.value = data;
                     } catch (e) {
-                        alert(e.message);   // how every other action on this page reports failure
+                        alertDialog(e.message);   // how every other action on this page reports failure
                     } finally {
                         voiceEmbeddingBusy.value = false;
                     }
                 };
                 const checkVoiceEmbedding = () => _voiceEmbeddingPost('/admin/voice-embeddings/check');
-                const rebaselineVoiceEmbedding = () => {
+                const rebaselineVoiceEmbedding = async () => {
                     // Discards the reference the existing profiles were built
                     // against; restoring the old backend cannot undo it.
-                    if (!confirm(t('adminDashboard.voiceEmbedding.rebaselineConfirm'))) return;
+                    if (!(await confirmDialog({ message: t('adminDashboard.voiceEmbedding.rebaselineConfirm'), confirmLabel: t('common.continue'), danger: true }))) return;
                     return _voiceEmbeddingPost('/admin/voice-embeddings/rebaseline');
                 };
 
@@ -2963,7 +2965,7 @@ Summarization Instructions:
                         
                     } catch (error) {
                         console.error('Error updating setting:', error);
-                        alert(error.message);
+                        alertDialog(error.message);
                     }
                 };
                 
@@ -3037,7 +3039,7 @@ Summarization Instructions:
                 
                 const addUser = async () => {
                     if (newUser.value.password !== newUser.value.confirmPassword) {
-                        alert(t('adminDashboard.passwordsDoNotMatch'));
+                        alertDialog(t('adminDashboard.passwordsDoNotMatch'));
                         return;
                     }
                     
@@ -3092,7 +3094,7 @@ Summarization Instructions:
                         
                     } catch (error) {
                         console.error('Error adding user:', error);
-                        alert(error.message);
+                        alertDialog(error.message);
                     }
                 };
                 
@@ -3151,7 +3153,7 @@ Summarization Instructions:
                         
                     } catch (error) {
                         console.error('Error updating user:', error);
-                        alert(error.message);
+                        alertDialog(error.message);
                     }
                 };
                 
@@ -3179,7 +3181,7 @@ Summarization Instructions:
                         if (row) row.login_locked = false;
                     } catch (error) {
                         console.error('Error unlocking user login:', error);
-                        alert(error.message);
+                        alertDialog(error.message);
                     }
                 };
 
@@ -3216,7 +3218,7 @@ Summarization Instructions:
                         
                     } catch (error) {
                         console.error('Error deleting user:', error);
-                        alert(error.message);
+                        alertDialog(error.message);
                     }
                 };
                 
@@ -3246,7 +3248,7 @@ Summarization Instructions:
 
                     } catch (error) {
                         console.error('Error toggling admin status:', error);
-                        alert(error.message);
+                        alertDialog(error.message);
                     }
                 };
 
@@ -3277,7 +3279,7 @@ Summarization Instructions:
 
                     } catch (error) {
                         console.error('Error toggling public sharing permission:', error);
-                        alert(error.message);
+                        alertDialog(error.message);
                     }
                 };
 
@@ -3370,7 +3372,7 @@ Summarization Instructions:
                         teamToDelete.value = null;
                         await loadGroups();
                     } catch (error) {
-                        alert(error.message);
+                        alertDialog(error.message);
                     }
                 };
 
@@ -3461,7 +3463,7 @@ Summarization Instructions:
                 };
 
                 const removeTeamMember = async (member) => {
-                    if (!confirm(t('groups.removeMemberConfirm', { username: member.username }))) return;
+                    if (!(await confirmDialog({ message: t('groups.removeMemberConfirm', { username: member.username }), confirmLabel: t('common.remove'), danger: true }))) return;
 
                     teamMemberError.value = '';
                     try {
@@ -3682,7 +3684,7 @@ Summarization Instructions:
                 };
 
                 const deleteTeamTag = async (tag) => {
-                    if (!confirm(t('groups.deleteTagConfirm', { name: tag.name }))) return;
+                    if (!(await confirmDialog({ message: t('groups.deleteTagConfirm', { name: tag.name }), confirmLabel: t('common.delete'), danger: true }))) return;
 
                     teamTagError.value = '';
                     try {
@@ -4082,7 +4084,7 @@ Summarization Instructions:
                 
                 const reembedAllRecordings = async () => {
                     if (isProcessingRecordings.value) return;
-                    if (!confirm(t('adminDashboard.reembedConfirm'))) {
+                    if (!(await confirmDialog({ message: t('adminDashboard.reembedConfirm'), confirmLabel: t('common.continue'), danger: false }))) {
                         return;
                     }
                     isProcessingRecordings.value = true;

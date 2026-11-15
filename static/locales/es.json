@@ -948,7 +948,10 @@
         "edge": "borde de segmento",
         "quiet": "pausa"
       }
-    }
+    },
+    "undoAction": "Deshacer",
+    "suggestionMergeInto": "Combinar con {{name}}",
+    "suggestionMerged": "{{label}} combinado con {{name}}"
   },
   "findReplace": {
     "open": "Buscar y reemplazar (Ctrl+F)",
@@ -1241,7 +1244,15 @@
     "untitled": "Grabación sin título",
     "upload": "Subir",
     "warning": "Advertencia",
-    "yes": "Sí"
+    "yes": "Sí",
+    "rename": "Renombrar",
+    "unlink": "Desvincular",
+    "continue": "Continuar",
+    "remove": "Quitar",
+    "revoke": "Retirar",
+    "rotate": "Rotar",
+    "discard": "Descartar",
+    "add": "Agregar"
   },
   "confirms": {
     "discardUnsavedRecording": "¿Salir y descartar la grabación sin guardar?"

@@ -87,7 +87,8 @@
                                 <span v-text="row.suggestionLabel"></span>
                                 <i class="fas fa-play asr-suggest__play" aria-hidden="true"></i>
                             </button>
-                            <button type="button" class="asr-suggest__accept" data-asr-action="accept-suggestion" @click.stop="acceptSuggestion(row.speaker)" v-text="t('asrEditor.suggestionAccept')"></button>
+                            <button type="button" class="asr-suggest__accept" data-asr-action="accept-suggestion" @click.stop="acceptSuggestion(row.speaker)"
+                                    :title="row.suggestionMerge || null" v-text="row.suggestionMerge ? t('asrEditor.merge') : t('asrEditor.suggestionAccept')"></button>
                         </div>
                         <textarea class="asr-seg__text" rows="1" dir="auto" :value="row.seg.sentence"
                                   :aria-label="t('asrEditor.textInput', { n: row.number })"
@@ -125,7 +126,8 @@
                             <span v-text="pickerSuggestion.label"></span>
                             <i class="fas fa-play asr-suggest__play" aria-hidden="true"></i>
                         </button>
-                        <button type="button" class="asr-suggest__accept" @click="acceptSuggestion(pickerSuggestion.speaker)" v-text="t('asrEditor.suggestionAccept')"></button>
+                        <button type="button" class="asr-suggest__accept" @click="acceptSuggestion(pickerSuggestion.speaker)"
+                                :title="pickerSuggestion.merge || null" v-text="pickerSuggestion.merge ? t('asrEditor.merge') : t('asrEditor.suggestionAccept')"></button>
                     </div>
                     <ul id="asr-picker-list" class="asr-pop__list" role="listbox">
                         <template v-for="(option, i) in pickerOptions" :key="option.kind + ':' + option.name">

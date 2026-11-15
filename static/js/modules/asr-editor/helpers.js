@@ -83,15 +83,19 @@ export function buildSpeakerOptions({ recording = [], saved = [], voice = [], qu
 /**
  * The best voice match for an unnamed speaker of the recording, or null.
  * `suggestions` is what /speakers/suggestions/<id> returns per label. A
- * match is not offered for a named speaker, nor when another speaker of the
- * recording already has that name.
+ * match is not offered for a named speaker.
+ *
+ * When a speaker of the recording already has the matched name (the
+ * diarization split one person into two labels), the match is still offered,
+ * as a merge: `merge` is true and `same` lists that speaker's name as the
+ * recording spells it (more than one when the spellings differ in case).
  */
 export function bestSuggestion(suggestions, label, recordingSpeakers = []) {
     if (!isPlaceholderSpeaker(label)) return null;
     const best = ((suggestions && suggestions[label]) || [])[0];
     if (!best || !best.name) return null;
-    if (recordingSpeakers.some((name) => lower(name) === lower(best.name))) return null;
-    return best;
+    const same = recordingSpeakers.filter((name) => name !== label && lower(name) === lower(best.name));
+    return { ...best, merge: same.length > 0, same };
 }
 
 /**

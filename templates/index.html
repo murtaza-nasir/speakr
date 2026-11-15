@@ -191,6 +191,8 @@
     <!-- i18n System -->
     {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <!-- The app's own confirm, message and input dialogs (window.confirmDialog, alertDialog, promptDialog) -->
+    <script src="{{ url_for('static', filename='js/app-dialog.js') }}"></script>
 
     <!-- Initialize i18n immediately with fallback -->
     <script>

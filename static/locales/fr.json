@@ -948,7 +948,10 @@
         "edge": "bord de segment",
         "quiet": "pause"
       }
-    }
+    },
+    "undoAction": "Annuler",
+    "suggestionMergeInto": "Fusionner avec {{name}}",
+    "suggestionMerged": "{{label}} fusionné avec {{name}}"
   },
   "findReplace": {
     "open": "Rechercher et remplacer (Ctrl+F)",
@@ -1241,7 +1244,15 @@
     "untitled": "Sans titre",
     "upload": "Télécharger",
     "warning": "Avertissement",
-    "yes": "Oui"
+    "yes": "Oui",
+    "rename": "Renommer",
+    "unlink": "Dissocier",
+    "continue": "Continuer",
+    "remove": "Retirer",
+    "revoke": "Retirer",
+    "rotate": "Renouveler",
+    "discard": "Abandonner",
+    "add": "Ajouter"
   },
   "confirms": {
     "discardUnsavedRecording": "Quitter et abandonner l'enregistrement non sauvegardé ?"

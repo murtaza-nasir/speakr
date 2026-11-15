@@ -39,16 +39,16 @@ function memoryStorage() {
 }
 
 beforeEach(() => {
-    globalThis.window = {};
+    // The question is the app's own dialog (static/js/app-dialog.js), which resolves to the answer
+    globalThis.window = { confirmDialog: vi.fn() };
     globalThis.sessionStorage = memoryStorage();
     globalThis.localStorage = memoryStorage();
-    globalThis.confirm = vi.fn();
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 7, title: 'Saved' }) });
 });
 
 afterEach(() => {
     vi.restoreAllMocks();
-    for (const name of ['window', 'sessionStorage', 'localStorage', 'confirm', 'fetch']) delete globalThis[name];
+    for (const name of ['window', 'sessionStorage', 'localStorage', 'fetch']) delete globalThis[name];
 });
 
 describe('incognito recording across a reload', () => {
@@ -59,14 +59,14 @@ describe('incognito recording across a reload', () => {
         await composable.selectRecording({ id: 7, title: 'Saved' });
 
         expect(IncognitoStorage.hasIncognitoRecording()).toBe(true);
-        expect(globalThis.confirm).not.toHaveBeenCalled();
+        expect(globalThis.window.confirmDialog).not.toHaveBeenCalled();
         expect(state.selectedRecording.value.id).toBe(7);
     });
 
     it('keeps the transcript when the switch prompt is declined', async () => {
         IncognitoStorage.saveIncognitoRecording(incognito());
         const { state, composable } = setup({ incognitoRecording: ref(incognito()), selectedRecording: ref(incognito()) });
-        globalThis.confirm.mockReturnValue(false);
+        globalThis.window.confirmDialog.mockResolvedValue(false);
 
         await composable.selectRecording({ id: 7 });
 
@@ -77,7 +77,7 @@ describe('incognito recording across a reload', () => {
     it('discards the transcript when the switch prompt is accepted', async () => {
         IncognitoStorage.saveIncognitoRecording(incognito());
         const { state, composable } = setup({ incognitoRecording: ref(incognito()), selectedRecording: ref(incognito()) });
-        globalThis.confirm.mockReturnValue(true);
+        globalThis.window.confirmDialog.mockResolvedValue(true);
 
         await composable.selectRecording({ id: 7 });
 

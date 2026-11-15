@@ -948,7 +948,10 @@
         "edge": "segment edge",
         "quiet": "quiet point"
       }
-    }
+    },
+    "undoAction": "Undo",
+    "suggestionMergeInto": "Merge into {{name}}",
+    "suggestionMerged": "{{label}} merged into {{name}}"
   },
   "findReplace": {
     "open": "Find and replace (Ctrl+F)",
@@ -1241,7 +1244,15 @@
     "untitled": "Untitled",
     "upload": "Upload",
     "warning": "Warning",
-    "yes": "Yes"
+    "yes": "Yes",
+    "rename": "Rename",
+    "unlink": "Unlink",
+    "continue": "Continue",
+    "remove": "Remove",
+    "revoke": "Revoke",
+    "rotate": "Rotate",
+    "discard": "Discard",
+    "add": "Add"
   },
   "confirms": {
     "discardUnsavedRecording": "Leave and discard the unsaved recording?"

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     MAX_UNIT_SEGMENTS, RENDER_ALL_SEGMENTS, bubbleUnits, charsPerLine, createTranscriptWindow,
-    estimateUnitHeight, runUnits, segmentUnits, unitOfSegment,
+    estimateUnitHeight, runUnits, segmentRuns, segmentUnits, unitOfSegment,
 } from './transcript-window.js';
 
 const seg = (i, speaker = 'A', words = 8) => ({ sentence: Array(words).fill('word').join(' '), startTime: i * 2, speaker, originalIndex: i });
@@ -16,6 +16,40 @@ const runsOf = (speakers) => {
     });
     return runs;
 };
+
+describe('segmentRuns', () => {
+    // A plain-text transcript with "[Speaker]: text" lines, as processedTranscription parses it: no times
+    const legacy = [
+        { speakerId: 'Ana', speaker: 'Ana', sentence: 'Good morning.', color: 'c-1', showSpeaker: true },
+        { speakerId: 'Ana', speaker: 'Ana', sentence: 'Shall we start?', color: 'c-1', showSpeaker: false },
+        { speakerId: 'Ben', speaker: 'Ben', sentence: 'Yes.', color: 'c-2', showSpeaker: true },
+        { speakerId: 'Ana', speaker: 'Ana', sentence: 'The budget first.', color: 'c-1', showSpeaker: true },
+    ];
+
+    it('groups consecutive segments of one speaker and numbers every segment', () => {
+        const runs = segmentRuns(legacy);
+        expect(runs.map((r) => [r.speaker, r.color, r.runOffset, r.segments.length])).toEqual([['Ana', 'c-1', 0, 2], ['Ben', 'c-2', 2, 1], ['Ana', 'c-1', 3, 1]]);
+        expect(runs.flatMap((r) => r.segments.map((s) => s.originalIndex))).toEqual([0, 1, 2, 3]);
+        expect(runs[0].segments[1].sentence).toBe('Shall we start?');
+    });
+
+    it('gives the simple view its units for a transcript without times', () => {
+        const units = runUnits(segmentRuns(legacy));
+        expect(units.map((u) => [u.first, u.count, u.speaker])).toEqual([[0, 2, 'Ana'], [2, 1, 'Ben'], [3, 1, 'Ana']]);
+        expect(units.map((u) => u.segments.map((s) => s.sentence).join(' ')).join(' | ')).toBe('Good morning. Shall we start? | Yes. | The budget first.');
+    });
+
+    it('starts a run for lines before the first speaker, and returns nothing for nothing', () => {
+        const runs = segmentRuns([{ speakerId: null, speaker: null, sentence: 'Intro' }, { speakerId: 'Ana', speaker: 'Ana', sentence: 'Hi' }]);
+        expect(runs.map((r) => [r.speaker, r.segments.length])).toEqual([[null, 1], ['Ana', 1]]);
+        expect(segmentRuns(undefined)).toEqual([]);
+    });
+
+    it('keeps the start time of a timed transcript', () => {
+        const runs = segmentRuns([{ speakerId: 'A', speaker: 'A', startTime: 0 }, { speakerId: 'B', speaker: 'B', startTime: 6 }]);
+        expect(runs.map((r) => r.startTime)).toEqual([0, 6]);
+    });
+});
 
 describe('runUnits', () => {
     it('makes one unit of a turn and keeps the turn\'s fields', () => {

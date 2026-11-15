@@ -56,7 +56,7 @@ The ASR editor shows your transcription the way the transcript reads: each segme
 
 **Change Speakers**: Click a speaker chip to open the speaker picker. It lists the speakers of this recording first, then your saved speakers (those whose voice matches come first), and accepts a new name typed into its field. Check **All segments of …** to rename a speaker in the whole recording in one step. With one or more segments selected, the keys **1** to **9** assign the recording's speakers in the order shown in the picker.
 
-**Voice Match Suggestions**: When a speaker is still an unnamed label (such as `SPEAKER_00`) and its voice matches one of your saved speakers, the best match is offered on the speaker's first segment and in the picker, for example "Dana Lee, 87%". Click the suggestion to hear a few of that speaker's longest segments, and **Accept** to rename the speaker in the whole recording. The match is recorded when you save, exactly as in the speaker identification dialog.
+**Voice Match Suggestions**: When a speaker is still an unnamed label (such as `SPEAKER_00`) and its voice matches one of your saved speakers, the best match is offered on the speaker's first segment and in the picker, for example "Dana Lee, 87%". The lane header of that speaker in the timeline offers it as well. Click the suggestion to hear a few of that speaker's longest segments, and **Accept** to rename the speaker in the whole recording; the message that follows has **Undo** in it. When the diarization split one person into two labels and both match the same saved speaker, both are offered: after you accept one, the button of the other reads **Merge**, and it gives those segments the same speaker, so one speaker and one lane are left. The match is recorded when you save, exactly as in the speaker identification dialog.
 
 **Select Segments**: Click beside the text of a segment to select it, Shift-click to select a range, and Ctrl-click (Cmd-click on a Mac) to add or remove single segments. The toolbar then offers **Set speaker**, **Merge** and **Delete** for the selection.
 
@@ -64,10 +64,10 @@ The ASR editor shows your transcription the way the transcript reads: each segme
 
 **Playback**: **Space** plays and pauses while the cursor is not in a text field, **L** loops the selected segment, and **S** splits it at the playhead. The segment being played is highlighted; the crosshair button in the toolbar turns following it on and off.
 
-**Timeline**: Above the transcript, the timeline shows the waveform of the audio and one lane per speaker, with every segment as a block in the color of its speaker chip. The bar at its foot is an overview of the whole recording; drag its window to scroll. Click the ruler to move the playhead, drag the waveform to scroll, scroll with the wheel, and zoom with Ctrl+wheel (Cmd on a Mac), a pinch, or the magnifier buttons. A click on a block selects its segment in the transcript and a segment selected in the transcript is brought into view on the timeline; a double-click plays the segment.
+**Timeline**: Above the transcript, the timeline shows the waveform of the audio and one lane per speaker, with every segment as a block in the color of its speaker chip. The bar at its foot is an overview of the whole recording; drag its window to scroll. Click the ruler to move the playhead, drag the waveform to scroll, scroll with the wheel, and zoom with Ctrl+wheel (Cmd on a Mac), a pinch, or the magnifier buttons. A click on a block selects its segment in the transcript and changes nothing, and a segment selected in the transcript is brought into view on the timeline; a double-click plays the segment.
 
 - Drag an **edge** of a block to change the start or end. The edge of a neighbor that touches it moves with it; hold **Alt** to move one edge alone.
-- Drag a **block** to move it in time, or up or down to another lane to give it that speaker.
+- Drag a **block** to move it in time, or up or down to another lane to give it that speaker. The speaker changes once the block is more than half a lane away from its own.
 - Drag on **empty lane space** to add a segment there, then type its text.
 
 While you drag, the edge snaps to the edges of other segments, to the playhead and to pauses in the audio; hold **Ctrl** (Cmd) to turn snapping off, and press **Esc** to cancel the drag. Each drag is one undo step. On a phone, scroll with the waveform or the overview and drag in a lane with one finger. The waveform is prepared the first time the editor of a recording opens, which takes a few seconds for a recording of several hours; the lanes work in the meantime. **Timeline** at the top left of it folds the timeline away, and the editor remembers that.
@@ -95,6 +95,8 @@ The ASR editor includes several quality-of-life features for working through lon
 **Autosave**: When enabled in your account preferences (`Account → Preferences → Autosave editor`), edits are saved automatically two seconds after the last keystroke. The Save indicator briefly flashes "Saved" each time a save completes. Autosave is opt-in so users who prefer explicit control over save points can leave it off.
 
 **Save Without Closing**: **Save** keeps the editor open after saving, useful when you want to commit progress mid-edit without losing your place; **Save and close** saves and closes it.
+
+**Update the Summary**: Check **Update the summary with the new names** in the footer to have the summary regenerated after you save, as in the speaker identification dialog. It is off each time the editor opens, applies to **Save** and to **Save and close**, and does nothing when the editor has no changes of yours to save. Autosave never regenerates the summary; the next save you make yourself does, for the edits autosave stored. The checkbox is not shown for a translation or an incognito recording.
 
 **Ctrl+S**: Pressing `Ctrl+S` (or `Cmd+S` on macOS) anywhere in the editor saves without closing. Equivalent to clicking the save-without-closing button.
 

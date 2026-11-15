@@ -403,8 +403,9 @@ def test_the_editor_opens_over_a_page_that_is_still_there(viewer, segments):
     assert split < 100, f"splitting a segment cost {split:.0f} ms of style and layout"
     assert scrolled < 100, f"scrolling the editor cost {scrolled:.0f} ms of style and layout"
 
-    page.once("dialog", lambda dialog: dialog.accept())
+    # The edit is not saved: the app's own dialog asks before it is discarded
     page.locator(".asr-editor-modal .modal-close").click()
+    page.locator("[data-app-dialog] [data-app-dialog-confirm]").click()
     page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
     viewer.check("editor over the long transcript")
 
@@ -478,3 +479,27 @@ def test_a_short_transcript_is_rendered_whole(viewer):
     page.wait_for_timeout(300)
     assert page.locator(FIND).count() == 0
     viewer.check("short transcript")
+
+
+def test_a_plain_text_transcript_with_speaker_lines_is_shown_in_both_views(viewer):
+    """Recordings from before the JSON transcript store "[Speaker]: text" lines."""
+    page = viewer.page
+    recording_id = viewer.ids[MEETING_TITLE]
+    lines = ["[Ana]: Good morning.", "Shall we start?", "[Ben]: Yes, with the budget.", "[Ana]: Fine."]
+    spoken = ["Good morning. Shall we start?", "Yes, with the budget.", "Fine."]
+    try:
+        response = page.request.post(
+            f"{BASE}/recording/{recording_id}/update_transcription",
+            headers={"X-CSRFToken": viewer.csrf(), "Content-Type": "application/json"},
+            data=json.dumps({"transcription": "\n".join(lines)}))
+        assert response.ok
+        viewer.open(recording_id, view="simple")
+        assert page.eval_on_selector_all(SEGMENT, "els => els.map(e => e.innerText.trim())") == spoken
+        turns = page.eval_on_selector_all(f"{LIST} .speaker-run", "els => els.map(e => e.innerText)")
+        assert [name for turn, name in zip(turns, ["Ana", "Ben", "Ana"]) if name in turn] == ["Ana", "Ben", "Ana"]
+        viewer.check("plain-text transcript, simple view")
+        viewer.open(recording_id, view="bubble")
+        assert page.eval_on_selector_all(SEGMENT, "els => els.map(e => e.innerText.trim())") == spoken
+        viewer.check("plain-text transcript, bubble view")
+    finally:
+        viewer.store(recording_id, meeting_segments())

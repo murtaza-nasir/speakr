@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css') }}">
     {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <!-- The app's own confirm, message and input dialogs (window.confirmDialog, alertDialog, promptDialog) -->
+    <script src="{{ url_for('static', filename='js/app-dialog.js') }}"></script>
     <script src="{{ url_for('static', filename='js/asr-languages.js') }}"></script>
     <script src="{{ url_for('static', filename='js/folder-tree.js') }}"></script>
     <script src="{{ url_for('static', filename='js/token-dates.js') }}"></script>
@@ -261,7 +263,7 @@
                 
             } catch (error) {
                 console.error('Error updating language:', error);
-                alert(tf('account.languageUpdateFailed', 'Couldn\'t update language. Try again.'));
+                alertDialog(tf('account.languageUpdateFailed', 'Couldn\'t update language. Try again.'));
                 // Revert the dropdown to previous value if update failed
                 document.getElementById('ui_language').value = currentUILanguage;
                 document.getElementById('ui_language').disabled = false;
@@ -718,7 +720,7 @@
                                     {% if has_password %}
                                     <form method="POST" action="{{ url_for('auth.sso_unlink') }}">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                        <button type="submit" onclick="return confirm(t('account.ssoUnlinkConfirm'))" class="btn btn--ghost w-full">
+                                        <button type="submit" onclick="event.preventDefault(); const form = this.form; confirmDialog({ message: t('account.ssoUnlinkConfirm'), confirmLabel: t('common.unlink'), danger: true }).then((ok) => { if (ok) form.submit(); });" class="btn btn--ghost w-full">
                                             <i class="fas fa-unlink"></i><span data-i18n="account.ssoUnlinkAccount" data-i18n-params='{"provider": "{{ sso_provider_name }}"}'>Unlink {{ sso_provider_name }} account</span>
                                         </button>
                                     </form>
@@ -3460,7 +3462,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             async function deleteSpeakerFromTab(speakerId, speakerName) {
-                if (!confirm(tf('account.confirmDeleteNamed', `Are you sure you want to delete "${speakerName}"?`, { name: speakerName }))) {
+                if (!(await confirmDialog({ message: tf('account.confirmDeleteNamed', `Are you sure you want to delete "${speakerName}"?`, { name: speakerName }), confirmLabel: tf('common.delete', 'Delete'), danger: true }))) {
                     return;
                 }
 
@@ -4410,13 +4412,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     if (!response.ok) throw new Error('Failed to revoke');
                     loadShares();
                 } catch (error) {
-                    alert(t('sharedTranscripts.revokeFailed'));
+                    alertDialog(t('sharedTranscripts.revokeFailed'));
                 }
             }
 
             async function handleDeleteShare(event) {
                 const shareId = event.currentTarget.dataset.shareId;
-                if (!confirm(tf('dialogs.deleteShare.message', 'Delete this share link? The link stops working.'))) return;
+                if (!(await confirmDialog({ message: tf('dialogs.deleteShare.message', 'Delete this share link? The link stops working.'), confirmLabel: tf('common.delete', 'Delete'), danger: true }))) return;
                 
                 try {
                     // Get CSRF token
@@ -4434,7 +4436,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     if (!response.ok) throw new Error('Failed to delete');
                     loadShares();
                 } catch (error) {
-                    alert(tf('account.sharesTab.deleteFailed', 'Error deleting share.'));
+                    alertDialog(tf('account.sharesTab.deleteFailed', 'Error deleting share.'));
                 }
             }
 
@@ -4459,7 +4461,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
                     if (!response.ok) throw new Error('Failed to update');
                 } catch (error) {
-                    alert(tf('account.sharesTab.updateFailed', 'Error updating share.'));
+                    alertDialog(tf('account.sharesTab.updateFailed', 'Error updating share.'));
                     event.currentTarget.checked = !value; // Revert on failure
                 }
             }
@@ -4539,7 +4541,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             if (typeof showToast === 'function') {
                                 showToast(message, 'error');
                             } else {
-                                alert(message);
+                                alertDialog(message);
                             }
                             return;
                         }
@@ -4628,7 +4630,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         changePasswordForm.addEventListener('submit', (event) => {
             if (newPasswordInput.value !== confirmPasswordInput.value) {
                 event.preventDefault();
-                alert(tf('account.passwordMismatch', 'New password and confirmation do not match.'));
+                alertDialog(tf('account.passwordMismatch', 'New password and confirmation do not match.'));
             }
         });
 
@@ -4775,7 +4777,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         // Delete individual speaker
         async function deleteSpeaker(speakerId, speakerName) {
-            if (!confirm(tf('account.confirmDeleteNamed', `Are you sure you want to delete "${speakerName}"?`, { name: speakerName }))) {
+            if (!(await confirmDialog({ message: tf('account.confirmDeleteNamed', `Are you sure you want to delete "${speakerName}"?`, { name: speakerName }), confirmLabel: tf('common.delete', 'Delete'), danger: true }))) {
                 return;
             }
             
@@ -5629,7 +5631,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         // Delete tag
         async function deleteTag(tagId, tagName) {
-            if (!confirm(tf('account.confirmDeleteNamed', `Are you sure you want to delete "${tagName}"?`, { name: tagName }))) {
+            if (!(await confirmDialog({ message: tf('account.confirmDeleteNamed', `Are you sure you want to delete "${tagName}"?`, { name: tagName }), confirmLabel: tf('common.delete', 'Delete'), danger: true }))) {
                 return;
             }
             
@@ -6097,7 +6099,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         // Delete folder
         async function deleteFolder(folderId, folderName) {
-            if (!confirm(tf('account.organizer.confirmDeleteFolder', 'Delete the folder "' + folderName + '"?\n\nThe recordings in it are kept.', { name: folderName }))) {
+            if (!(await confirmDialog({ message: tf('account.organizer.confirmDeleteFolder', 'Delete the folder "' + folderName + '"?\n\nThe recordings in it are kept.', { name: folderName }), confirmLabel: tf('common.delete', 'Delete'), danger: true }))) {
                 return;
             }
 
@@ -6725,7 +6727,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         // Make revokeToken globally accessible for inline onclick handlers
         window.revokeToken = async function(tokenId, tokenName) {
-            if (!confirm(tf('account.tokensTab.confirmRevoke', `Are you sure you want to revoke the token "${tokenName}"? This action cannot be undone and any applications using this token will lose access.`, { name: tokenName }))) {
+            if (!(await confirmDialog({ message: tf('account.tokensTab.confirmRevoke', `Are you sure you want to revoke the token "${tokenName}"? This action cannot be undone and any applications using this token will lose access.`, { name: tokenName }), confirmLabel: tf('common.revoke', 'Revoke'), danger: true }))) {
                 return;
             }
 
@@ -6926,7 +6928,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         });
 
         document.getElementById('deleteTemplateBtn')?.addEventListener('click', async () => {
-            if (!currentTemplate || !confirm(tf('account.templatesTab.confirmDelete', 'Delete this template?'))) {
+            if (!currentTemplate || !(await confirmDialog({ message: tf('account.templatesTab.confirmDelete', 'Delete this template?'), confirmLabel: tf('common.delete', 'Delete'), danger: true }))) {
                 return;
             }
 
@@ -7168,7 +7170,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         });
 
         document.getElementById('ipDeleteTemplateBtn')?.addEventListener('click', async () => {
-            if (!ipCurrentTemplate || !confirm(tf('account.promptTemplatesTab.confirmDelete', 'Delete this prompt?'))) return;
+            if (!ipCurrentTemplate || !(await confirmDialog({ message: tf('account.promptTemplatesTab.confirmDelete', 'Delete this prompt?'), confirmLabel: tf('common.delete', 'Delete'), danger: true }))) return;
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
                 const response = await fetch(`/api/initial-prompt-templates/${ipCurrentTemplate.id}`, {
@@ -7518,7 +7520,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         });
 
         document.getElementById('deleteExportTemplateBtn')?.addEventListener('click', async () => {
-            if (!currentExportTemplate || !confirm(tf('account.exportTemplatesTab.confirmDelete', 'Delete this export template?'))) {
+            if (!currentExportTemplate || !(await confirmDialog({ message: tf('account.exportTemplatesTab.confirmDelete', 'Delete this export template?'), confirmLabel: tf('common.delete', 'Delete'), danger: true }))) {
                 return;
             }
 
@@ -7674,8 +7676,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             });
 
             document.getElementById('renameExportsBtn')?.addEventListener('click', async (e) => {
-                if (!confirm(t('exportTemplates.renameConfirm'))) return;
+                // Read before the question: the event has no currentTarget once the handler has waited
                 const btn = e.currentTarget;
+                if (!(await confirmDialog({ message: t('exportTemplates.renameConfirm'), confirmLabel: t('common.rename'), danger: false }))) return;
                 btn.disabled = true;
                 try {
                     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -7986,7 +7989,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         });
 
         document.getElementById('deleteNamingTemplateBtn')?.addEventListener('click', async () => {
-            if (!currentNamingTemplate || !confirm(tf('account.namingTemplatesTab.confirmDelete', 'Delete this naming template?'))) {
+            if (!currentNamingTemplate || !(await confirmDialog({ message: tf('account.namingTemplatesTab.confirmDelete', 'Delete this naming template?'), confirmLabel: tf('common.delete', 'Delete'), danger: true }))) {
                 return;
             }
 

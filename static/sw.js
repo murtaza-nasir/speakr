@@ -12,6 +12,7 @@ const ASSETS_TO_CACHE = [
   '/static/css/tailwind.css',
   '/static/js/app.modular.js',
   '/static/js/i18n.js',
+  '/static/js/app-dialog.js',
   '/static/js/csrf-refresh.js',
   '/static/img/icon-192x192.png',
   '/static/img/icon-512x512.png',

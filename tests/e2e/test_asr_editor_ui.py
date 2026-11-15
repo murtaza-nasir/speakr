@@ -45,7 +45,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
 from browser_checks import PageProblems, check_common, en, login, open_page  # noqa: E402
-from seed_recordings import TITLES, meeting_segments  # noqa: E402
+from seed_recordings import SENTENCES, TITLES, meeting_segments  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
 BASE = os.environ.get("SPEAKR_BASE_URL", "http://127.0.0.1:8899").rstrip("/")
@@ -63,6 +63,7 @@ MAX_ROWS_IN_DOM = 80
 ROW = ".asr-pane .asr-seg"
 TEXT = ".asr-pane .asr-seg textarea"
 CANVAS = "[data-asr-timeline-canvas]"
+DIALOG = "[data-app-dialog]"
 # The timeline's handle for tests and the console (static/js/modules/asr-editor/timeline.js)
 TL = f"document.querySelector('{CANVAS}').__tl"
 # A full redraw of the timeline must fit a frame with room to spare. The
@@ -78,8 +79,9 @@ class Editor:
         self.context = browser.new_context(viewport=viewport, locale="en-US")
         self.page = self.context.new_page()
         self.problems = PageProblems(self.page, BASE)
-        # Every confirm dialog is recorded and answered with `agree`
-        self.asked, self.agree = [], True
+        # The app asks in its own dialogs (static/js/app-dialog.js): a dialog
+        # of the browser is recorded here and fails the test's check
+        self.native = []
         self.page.on("dialog", self._dialog)
         login(self.page, BASE, ADMIN_EMAIL, ADMIN_PASSWORD)
         self.problems.reset()
@@ -91,11 +93,8 @@ class Editor:
         self.context.close()
 
     def _dialog(self, dialog):
-        self.asked.append(dialog.message)
-        if self.agree:
-            dialog.accept()
-        else:
-            dialog.dismiss()
+        self.native.append(f"{dialog.message} (during {os.environ.get('PYTEST_CURRENT_TEST', '?')})")
+        dialog.dismiss()
 
     # -- the stored transcript, through the app's own routes ---------------
 
@@ -138,7 +137,20 @@ class Editor:
         started = time.monotonic()
         button.click()
         self.page.locator(ROW).first.wait_for(state="visible", timeout=60000)
-        return time.monotonic() - started
+        seconds = time.monotonic() - started
+        self.opened()
+        return seconds
+
+    def opened(self):
+        """Wait until the dialog has finished opening. It opens with a short scale and
+        slide animation (a sheet that slides up on a phone); while it runs, nothing in it
+        is where it will be: a point computed on the timeline then misses an edge by a
+        few pixels, and a measured position is off by the rest of the slide."""
+        self.page.wait_for_function(
+            "() => { const m = document.querySelector('.asr-editor-modal'); if (!m) return false; "
+            "const o = m.closest('.modal-overlay'); "
+            "return [...m.getAnimations(), ...(o ? o.getAnimations() : [])].every(a => a.playState === 'finished'); }",
+            timeout=10000)
 
     def rows(self):
         return self.page.locator(ROW)
@@ -187,14 +199,22 @@ class Editor:
         self.page.locator(".asr-editor-modal .pill-status--success").wait_for(state="visible", timeout=timeout)
         self.page.wait_for_function("() => !document.querySelector('[data-asr-dirty]')", timeout=timeout)
 
+    def question(self):
+        """The app's own dialog: the question it asks before something is discarded or deleted."""
+        return self.page.locator(DIALOG)
+
     def discard(self):
         """Close the editor, agreeing to discard when it asks."""
-        self.agree = True
         self.page.locator(".asr-editor-modal .modal-close").click()
+        self.page.wait_for_function(
+            f"() => !document.querySelector('.asr-editor-modal') || !!document.querySelector('{DIALOG}')", timeout=10000)
+        if self.question().count():
+            self.question().locator("[data-app-dialog-confirm]").click()
         self.page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
 
     def check(self, label):
         check_common(self.page, self.problems, label)
+        assert not self.native, f"{label}: a dialog of the browser was shown: {self.native}"
 
     # -- the timeline ------------------------------------------------------------
 
@@ -205,6 +225,7 @@ class Editor:
     def tl_ready(self, waveform=True):
         self.page.locator(CANVAS).wait_for(state="visible", timeout=10000)
         self.page.wait_for_function(f"() => {TL} && {TL}.width > 0 && {TL}.stats.frames > 0", timeout=10000)
+        self.opened()
         if waveform:
             self.page.wait_for_function(f"() => {TL}.waveform === 'ready'", timeout=30000)
 
@@ -229,6 +250,21 @@ class Editor:
         for key in keys:
             self.page.keyboard.up(key)
         self.page.wait_for_timeout(150)
+
+    def tl_lanes(self, count):
+        """The lanes, once the timeline has drawn the model's `count` speakers (it rebuilds them with its next frame)."""
+        self.page.wait_for_function(f"(n) => {TL}.lanes.length === n", arg=count, timeout=5000)
+        return self.tl("lanes")
+
+    def lane_offers(self, words):
+        """Wait until the lane headers offer exactly these voice-match buttons (they follow the model with the next frame)."""
+        try:
+            self.page.wait_for_function(
+                "(words) => JSON.stringify([...document.querySelectorAll(\"[data-asr-action='timeline-accept']\")].map(e => e.textContent.trim())) === JSON.stringify(words)",
+                arg=words, timeout=5000)
+        except Exception:
+            found = self.page.eval_on_selector_all("[data-asr-action='timeline-accept']", "els => els.map(e => e.textContent.trim())")
+            raise AssertionError(f"the lane headers offer {found}, not {words}")
 
     def tl_segments(self):
         return self.tl("segments")
@@ -500,20 +536,61 @@ def test_find_and_replace_is_one_undo_step(meeting):
 
 
 def test_closing_asks_before_unsaved_changes_are_discarded(meeting):
+    """The question is the app's own dialog, over the editor: Cancel and Esc keep the
+    editor and the edit, Discard closes it."""
     editor, recording_id = meeting
     page = editor.page
     editor.caret_in(0, 0)
     page.keyboard.type("DRAFT ")
     assert editor.dirty()
+    question = editor.question()
+    cancel = question.locator("[data-app-dialog-cancel]")
+    discard = question.locator("[data-app-dialog-confirm]")
+    focused = "() => { const a = document.activeElement; return a.hasAttribute('data-app-dialog-confirm') ? 'confirm' : a.hasAttribute('data-app-dialog-cancel') ? 'cancel' : a.tagName; }"
 
-    # Saying no keeps the editor and the edit
-    editor.asked.clear()
-    editor.agree = False
-    page.locator(".asr-editor-footer").get_by_role("button", name=en("common.cancel"), exact=True).click()
-    page.wait_for_timeout(300)
-    editor.agree = True
-    assert editor.asked == [en("asrEditor.discardConfirm")]
-    assert editor.texts()[0].startswith("DRAFT ")
+    # Cancel in the footer asks; the dialog names the action on a danger button
+    footer_cancel = page.locator(".asr-editor-footer").get_by_role("button", name=en("common.cancel"), exact=True)
+    footer_cancel.click()
+    question.wait_for(state="visible", timeout=5000)
+    assert question.locator(".app-dialog__message").inner_text() == en("asrEditor.discardConfirm")
+    assert discard.inner_text().strip() == en("common.discard") and "btn--danger" in discard.get_attribute("class")
+    assert cancel.inner_text().strip() == en("common.cancel")
+    assert question.locator("[role='alertdialog'][aria-modal='true']").count() == 1
+    # It lies over the editor: the middle of its panel is the dialog, not the editor under it
+    assert page.evaluate("""() => { const r = document.querySelector('.app-dialog__panel').getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!top.closest('[data-app-dialog]'); }""")
+    assert page.evaluate("() => Number(getComputedStyle(document.querySelector('[data-app-dialog]')).zIndex) > Number(getComputedStyle(document.querySelector('.asr-editor-modal').closest('.modal-overlay')).zIndex)")
+    page.wait_for_timeout(300)      # the dialog fades in
+    editor.shot("asr-editor-test-discard-dialog")
+    # The focus is on the action and Tab stays in the dialog
+    assert page.evaluate(focused) == "confirm"
+    page.keyboard.press("Tab")
+    assert page.evaluate(focused) == "cancel"
+    page.keyboard.press("Tab")
+    assert page.evaluate(focused) == "confirm"
+    page.keyboard.press("Shift+Tab")
+    assert page.evaluate(focused) == "cancel"
+    # Keys do not reach the editor under it (Ctrl+Z would undo the edit)
+    page.keyboard.press("Control+z")
+    cancel.click()
+    question.wait_for(state="detached", timeout=5000)
+    assert page.locator(".asr-editor-modal").count() == 1
+    assert editor.texts()[0].startswith("DRAFT ") and editor.dirty()
+    # The focus is back where it was
+    assert page.evaluate("() => document.activeElement.textContent.trim()") == en("common.cancel")
+
+    # Esc cancels as well, and closes only the question
+    page.locator(".asr-editor-modal .modal-close").click()
+    question.wait_for(state="visible", timeout=5000)
+    page.keyboard.press("Escape")
+    question.wait_for(state="detached", timeout=5000)
+    assert page.locator(".asr-editor-modal").count() == 1 and editor.texts()[0].startswith("DRAFT ")
+    # So does a click beside the panel
+    page.locator(".asr-editor-modal .modal-close").click()
+    question.wait_for(state="visible", timeout=5000)
+    page.mouse.click(5, 5)
+    question.wait_for(state="detached", timeout=5000)
+    assert page.locator(".asr-editor-modal").count() == 1 and editor.texts()[0].startswith("DRAFT ")
 
     # The edit is kept as a local draft: after a reload it is offered and restored
     page.wait_for_timeout(1300)
@@ -527,14 +604,114 @@ def test_closing_asks_before_unsaved_changes_are_discarded(meeting):
     assert editor.texts()[0].startswith("DRAFT ")
     assert editor.dirty()
 
-    # Saying yes closes it; nothing was saved and the draft is gone
-    editor.discard()
+    # Discard closes it (Enter presses the focused action); nothing was saved and the draft is gone
+    page.locator(".asr-editor-modal .modal-close").click()
+    question.wait_for(state="visible", timeout=5000)
+    page.keyboard.press("Enter")
+    page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
+    assert question.count() == 0
     assert editor.stored(recording_id) == meeting_segments()
     editor.click_edit()
     assert page.locator("[data-asr-draft]").count() == 0
     assert not editor.texts()[0].startswith("DRAFT ")
     editor.check("editor, discard and draft")
     editor.discard()
+
+
+def test_the_summary_is_regenerated_after_a_save_when_asked(meeting):
+    """The footer has the checkbox of the Identify Speakers dialog. The save that asks for
+    the summary is intercepted here: it reaches the server without that request (this
+    instance has no text model to ask), and the answer says a summary was queued."""
+    editor, recording_id = meeting
+    page = editor.page
+    label = page.locator("[data-asr-regenerate-summary]")
+    box = label.locator("input[type=checkbox]")
+    assert label.inner_text().strip() == en("help.regenerateSummaryAfterNames")
+    assert not box.is_checked(), "the checkbox is on when the editor opens"
+    footer = page.locator(".asr-editor-footer").bounding_box()
+    place = label.bounding_box()
+    assert place["x"] >= footer["x"] and place["x"] + place["width"] <= footer["x"] + footer["width"]
+
+    sent = []
+    statuses = ["SUMMARIZING", "COMPLETED"]
+    polled = []
+
+    def save(route):
+        body = route.request.post_data_json
+        sent.append(body)
+        response = route.fetch(post_data=json.dumps({**body, "regenerate_summary": False}))
+        answer = response.json()
+        answer["summary_queued"] = bool(body.get("regenerate_summary"))
+        route.fulfill(status=response.status, content_type="application/json", body=json.dumps(answer))
+
+    def status(route):
+        polled.append(1)
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps({"status": statuses.pop(0) if len(statuses) > 1 else statuses[0]}))
+
+    save_url = f"**/recording/{recording_id}/update_transcript"
+    status_url = f"**/recording/{recording_id}/status"
+    page.route(save_url, save)
+    page.route(status_url, status)
+    any_save = lambda r: r.method == "POST" and "/update_transcri" in r.url      # noqa: E731
+    started = page.locator("#toastContainer .toast-message").filter(has_text=en("help.summaryRegenerationStarted"))
+    try:
+        # On, but nothing was changed: nothing is asked for
+        box.check()
+        with page.expect_request(any_save) as plain:
+            editor.action("save").click()
+        assert plain.value.url.endswith("/update_transcription") and sent == []
+        assert started.count() == 0
+        page.wait_for_function("() => !document.querySelector(\"[data-asr-action='save']\").disabled", timeout=10000)
+
+        # Off: an edit is saved by the plain route and the summary is left alone
+        box.uncheck()
+        editor.caret_in(0, 0)
+        page.keyboard.type("One ")
+        with page.expect_request(any_save) as plain:
+            editor.save()
+        assert plain.value.url.endswith("/update_transcription") and sent == []
+        assert started.count() == 0
+
+        # On, with a change, Save: the route of the speaker dialog, asking for the summary
+        box.check()
+        editor.caret_in(1, 0)
+        page.keyboard.type("Two ")
+        with page.expect_request(any_save) as asked:
+            editor.save()
+        assert asked.value.url.endswith("/update_transcript")
+        assert sent[-1]["regenerate_summary"] is True and sent[-1]["speaker_map"] == {}
+        assert [s["sentence"] for s in sent[-1]["transcript_data"]][:2] == ["One " + SENTENCES[0], "Two " + SENTENCES[1]]
+        started.wait_for(state="visible", timeout=5000)
+        editor.shot("asr-editor-test-regenerate-summary")
+        # The editor stays open while the summary is waited for, and afterwards
+        done = page.locator("#toastContainer .toast-message").filter(has_text=en("help.summaryUpdated"))
+        done.wait_for(state="visible", timeout=20000)
+        assert len(polled) == 2
+        assert page.locator(".asr-editor-modal").count() == 1 and box.is_checked()
+        assert editor.texts()[:2] == ["One " + SENTENCES[0], "Two " + SENTENCES[1]] and not editor.dirty()
+        assert [s["sentence"] for s in editor.stored(recording_id)][:2] == ["One " + SENTENCES[0], "Two " + SENTENCES[1]]
+
+        # Save and close asks for it as well
+        statuses[:] = ["COMPLETED"]
+        editor.caret_in(2, 0)
+        page.keyboard.type("Three ")
+        with page.expect_request(any_save) as asked:
+            editor.action("save-close").click()
+        assert asked.value.url.endswith("/update_transcript") and sent[-1]["regenerate_summary"] is True
+        page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
+        assert len(sent) == 2
+        done.first.wait_for(state="visible", timeout=20000)
+        assert editor.stored(recording_id)[2]["sentence"] == "Three " + SENTENCES[2]
+
+        # Off again when the editor is opened the next time
+        editor.click_edit()
+        assert not box.is_checked()
+        editor.check("editor, summary after saving")
+        editor.discard()
+    finally:
+        page.unroute(save_url)
+        page.unroute(status_url)
 
 
 def test_playback_keys_and_the_playing_segment(meeting):
@@ -606,6 +783,39 @@ def test_a_voice_match_is_accepted_and_saved_like_in_the_speaker_dialog(editor):
         page.wait_for_function(f"!{audio}.paused", timeout=10000)
         page.evaluate(f"{audio}.pause()")
 
+        # The lane header of the timeline offers the same match the same way:
+        # the name and percent, which play the speaker, and a button with a
+        # word on it. Nothing in a lane header is a button with only an icon.
+        editor.tl_ready(waveform=False)
+        lane_offer = page.locator("[data-asr-lane-suggestion]")
+        assert lane_offer.count() == 1
+        assert page.locator(".asr-tl__lane").first.locator("[data-asr-lane-suggestion]").count() == 1
+        assert en("asrEditor.suggestion").replace("{{name}}", "Dana Lee").replace("{{percent}}", "87%") in lane_offer.inner_text()
+        accept = editor.action("timeline-accept")
+        assert accept.inner_text().strip() == en("asrEditor.suggestionAccept")
+        wordless = page.eval_on_selector_all(".asr-tl__heads button", "els => els.filter(e => !e.textContent.trim()).length")
+        assert wordless == 0, "a lane header has a button without a word on it"
+        head = page.locator(".asr-tl__heads").bounding_box()
+        pill = lane_offer.bounding_box()
+        assert pill["x"] >= head["x"] and pill["x"] + pill["width"] <= head["x"] + head["width"] + 0.5, f"the match does not fit its lane header: {pill} in {head}"
+        editor.shot("asr-editor-test-lane-match")
+        lane_offer.locator(".asr-suggest__name").click()
+        page.wait_for_function(f"!{audio}.paused", timeout=10000)
+        page.evaluate(f"{audio}.pause()")
+        # Accepting there renames the speaker and says so, with Undo in the message
+        accept.click()
+        assert editor.speakers() == ["Dana Lee" if s["speaker"] == "SPEAKER_00" else s["speaker"] for s in seeded]
+        editor.lane_offers([])
+        toast = page.locator("#toastContainer .toast-message").filter(has_text="Dana Lee")
+        toast.wait_for(state="visible", timeout=5000)
+        assert toast.locator(".toast__action").inner_text().strip() == en("asrEditor.undoAction")
+        toast.locator(".toast__action").click()
+        assert editor.speakers() == [s["speaker"] for s in seeded]
+        assert editor.action("undo").is_disabled() and not editor.dirty()
+        editor.lane_offers([en("asrEditor.suggestionAccept")])
+        assert offer.count() == 1
+        toast.wait_for(state="detached", timeout=5000)
+
         # Accept renames the speaker in the whole recording, as one undo step
         editor.action("accept-suggestion").click()
         named = ["Dana Lee" if s["speaker"] == "SPEAKER_00" else s["speaker"] for s in seeded]
@@ -656,7 +866,7 @@ def test_the_timeline_shows_the_recording_and_follows_the_selection(meeting):
 
     # One lane per speaker, in the colours of the speaker chips, and the waveform of the audio
     assert editor.tl("lanes") == [{"name": "SPEAKER_00", "count": 6}, {"name": "SPEAKER_01", "count": 6}]
-    heads = page.eval_on_selector_all(".asr-tl__lane .asr-tl__name-1", "els => els.map(e => e.textContent.trim())")
+    heads = page.eval_on_selector_all(".asr-tl__lane .asr-tl__name", "els => els.map(e => e.textContent.trim())")
     assert heads == ["SPEAKER_00", "SPEAKER_01"]
     swatch = page.locator("[data-asr-lane-swatch]").first.evaluate("el => getComputedStyle(el).backgroundColor")
     chip = page.locator(f"{ROW} .asr-seg__chip").first.evaluate("el => getComputedStyle(el).backgroundColor")
@@ -714,6 +924,104 @@ def test_the_timeline_shows_the_recording_and_follows_the_selection(meeting):
     assert page.evaluate("() => localStorage.getItem('speakr.asrEditor.timeline')") == "1"
     editor.check("editor timeline, reopened")
     editor.discard()
+
+
+def test_two_labels_matched_to_one_person_are_merged(editor):
+    """The diarization split one person into two labels and both match the same saved
+    speaker. Accepting one keeps the offer for the other, as a merge."""
+    page = editor.page
+    recording_id = editor.ids[MEETING_TITLE]
+    seeded = meeting_segments()
+    labels = [s["speaker"] for s in seeded]
+    editor.store(recording_id, seeded)
+    answer = {"success": True, "recording_id": recording_id, "suggestions": {
+        "SPEAKER_00": [{"speaker_id": 0, "name": "Dana Lee", "similarity": 87.2, "confidence": 0.9}],
+        "SPEAKER_01": [{"speaker_id": 0, "name": "Dana Lee", "similarity": 83.4, "confidence": 0.9}]}}
+    pattern = "**/speakers/suggestions/*"
+    page.route(pattern, lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(answer)))
+    accept_word, merge_word = en("asrEditor.suggestionAccept"), en("asrEditor.merge")
+    merge_into = en("asrEditor.suggestionMergeInto").replace("{{name}}", "Dana Lee")
+    try:
+        editor.open(recording_id)
+        editor.tl_ready(waveform=False)
+        offers = page.locator("[data-asr-suggestion]")
+        lane_offers = page.locator("[data-asr-lane-suggestion]")
+        offers.first.wait_for(state="visible", timeout=10000)
+        assert offers.count() == 2
+        editor.lane_offers([accept_word, accept_word])
+
+        # Accept the first: the second is still offered, now as a merge
+        page.locator(f"{ROW}[data-index='0'] [data-asr-action='accept-suggestion']").click()
+        one_named = ["Dana Lee" if label == "SPEAKER_00" else label for label in labels]
+        assert editor.speakers() == one_named
+        assert offers.count() == 1
+        editor.lane_offers([merge_word])
+        assert "83%" in lane_offers.inner_text() and "Dana Lee" in lane_offers.inner_text()
+        merge = editor.action("timeline-accept")
+        assert merge.inner_text().strip() == merge_word and merge.get_attribute("title") == merge_into
+        in_pane = page.locator(f"{ROW}[data-index='1'] [data-asr-action='accept-suggestion']")
+        assert in_pane.inner_text().strip() == merge_word and in_pane.get_attribute("title") == merge_into
+        editor.shot("asr-editor-test-lane-merge")
+        # The picker lists the person once
+        page.locator(f"{ROW}[data-index='1'] .asr-seg__chip").click()
+        page.locator("[data-asr-popover='picker']").wait_for(state="visible", timeout=5000)
+        options = page.eval_on_selector_all("[data-asr-option]", "els => els.map(e => e.dataset.asrOption)")
+        assert options.count("Dana Lee") == 1, options
+        page.keyboard.press("Escape")
+        page.locator("[data-asr-popover='picker']").wait_for(state="detached", timeout=5000)
+
+        # Merge: one speaker, one lane, one undo step
+        merge.click()
+        assert editor.speakers() == ["Dana Lee"] * len(seeded)
+        assert editor.tl_lanes(1) == [{"name": "Dana Lee", "count": len(seeded)}]
+        assert offers.count() == 0
+        editor.lane_offers([])
+        toast = page.locator("#toastContainer .toast-message").filter(
+            has_text=en("asrEditor.suggestionMerged").replace("{{label}}", "SPEAKER_01").replace("{{name}}", "Dana Lee"))
+        toast.wait_for(state="visible", timeout=5000)
+        assert editor.tl("undoDepth") == 2
+        # Undo restores the label and the offer; once more, both labels
+        editor.action("undo").click()
+        assert editor.speakers() == one_named
+        assert [lane["name"] for lane in editor.tl_lanes(2)] == ["Dana Lee", "SPEAKER_01"]
+        editor.lane_offers([merge_word])
+        editor.action("undo").click()
+        assert editor.speakers() == labels
+        editor.lane_offers([accept_word, accept_word])
+        editor.action("redo").click()
+        editor.action("redo").click()
+        assert editor.speakers() == ["Dana Lee"] * len(seeded)
+
+        # Saved: both labels go out under their own label, mapped to the one
+        # name, so the server names both and learns the voice from both
+        with page.expect_request(lambda r: r.method == "POST" and r.url.endswith(f"/recording/{recording_id}/update_transcript")) as sent:
+            editor.save()
+        body = sent.value.post_data_json
+        assert body["speaker_map"] == {"SPEAKER_00": {"name": "Dana Lee", "isMe": False}, "SPEAKER_01": {"name": "Dana Lee", "isMe": False}}
+        assert [s["speaker"] for s in body["transcript_data"]] == labels
+        stored = editor.stored(recording_id)
+        assert [s["speaker"] for s in stored] == ["Dana Lee"] * len(seeded)
+        assert len({s.get("speaker_id") for s in stored}) == 1 and stored[0].get("speaker_id") is not None
+        assert editor.speakers() == ["Dana Lee"] * len(seeded) and not editor.dirty()
+        editor.check("editor, merged voice matches")
+        editor.discard()
+
+        # After a reload the recording has one speaker, in the transcript and in the editor
+        page.unroute(pattern)
+        open_page(page, editor.problems, BASE, f"/recordings/{recording_id}", settle_ms=1500)
+        editor.click_edit()
+        editor.tl_ready(waveform=False)
+        assert editor.speakers() == ["Dana Lee"] * len(seeded)
+        assert editor.tl_lanes(1) == [{"name": "Dana Lee", "count": len(seeded)}]
+        assert page.locator("[data-asr-suggestion]").count() == 0
+        editor.check("editor, one speaker after the merge")
+        editor.discard()
+    finally:
+        page.unroute(pattern)
+        saved = page.request.get(f"{BASE}/speakers")
+        for speaker in (saved.json() if saved.ok else []):
+            if speaker.get("name") == "Dana Lee":
+                page.request.delete(f"{BASE}/speakers/{speaker['id']}", headers={"X-CSRFToken": editor.csrf()})
 
 
 def test_dragging_an_edge_changes_the_times_and_undo_restores_them(editor):
@@ -836,6 +1144,61 @@ def test_dragging_a_block_moves_it_or_changes_its_speaker(meeting):
     editor.discard()
 
 
+def test_a_click_on_a_block_selects_it_and_changes_nothing(meeting):
+    """A press that barely moves is a click. The speaker changes only when a block
+    is dragged more than half a lane up or down."""
+    editor, recording_id = meeting
+    page = editor.page
+    editor.tl_ready()
+    seeded = meeting_segments()
+    x, y = editor.tl_point(14.5, lane=0)
+    lane = editor.tl("laneY(1)") - editor.tl("laneY(0)")
+
+    def press(dx, dy):
+        page.mouse.move(x, y)
+        page.mouse.down()
+        if dx or dy:
+            page.mouse.move(x + dx, y + dy, steps=3)
+        page.mouse.up()
+        page.wait_for_timeout(100)
+
+    def unchanged(what):
+        assert editor.tl_segments() == seeded, f"{what} changed the transcript"
+        assert editor.tl("undoDepth") == 0 and not editor.dirty(), f"{what} left an edit"
+        assert editor.selected() == [2]
+
+    # No movement, and movement under the threshold in either direction
+    for dx, dy in [(0, 0), (3, 0), (0, 3), (-3, -3), (3, 3)]:
+        press(dx, dy)
+        unchanged(f"a click that moved by {dx}, {dy}")
+    # A drag, but less than half a lane up or down and not sideways
+    for dy in (round(lane * 0.45), -round(lane * 0.45)):
+        press(0, dy)
+        unchanged(f"a drag of {dy} px up or down")
+    # A tap with an unsteady finger
+    page.evaluate("""([sel, x, y]) => {
+        const canvas = document.querySelector(sel);
+        const fire = (type, dx, dy) => canvas.dispatchEvent(new PointerEvent(type, {
+            pointerId: 9, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: x + dx, clientY: y + dy, button: 0, buttons: 1 }));
+        fire('pointerdown', 0, 0);
+        fire('pointermove', 4, 3);
+        fire('pointermove', 7, 6);
+        fire('pointerup', 7, 6);
+    }""", [CANVAS, x, y])
+    page.wait_for_timeout(100)
+    unchanged("a tap that moved by 7, 6")
+
+    # More than half a lane down: now the speaker changes, and only the speaker
+    press(0, round(lane * 0.6))
+    moved = editor.tl_segments()[2]
+    assert (moved["speaker"], moved["start_time"], moved["end_time"]) == ("SPEAKER_01", 12.0, 17.5)
+    assert editor.tl("undoDepth") == 1
+    editor.action("undo").click()
+    assert editor.tl_segments() == seeded
+    editor.check("editor timeline, clicks")
+    editor.discard()
+
+
 def test_dragging_on_empty_lane_space_adds_a_segment(meeting):
     editor, recording_id = meeting
     page = editor.page
@@ -893,6 +1256,11 @@ def test_phone_width(browser):
         assert menu.evaluate("el => getComputedStyle(el).opacity") == "1"
         box = menu.bounding_box()
         assert box["width"] >= 39.5 and box["height"] >= 39.5, f"the row menu is a small touch target: {box}"
+        # The footer: the summary checkbox on its own line, the three buttons under it, all within the screen
+        summary = page.locator("[data-asr-regenerate-summary]").bounding_box()
+        buttons = [b.bounding_box() for b in page.locator(".asr-editor-footer__actions button").all()]
+        assert len(buttons) == 3 and all(b["x"] >= 0 and b["x"] + b["width"] <= 390.5 for b in buttons), f"the footer buttons do not fit: {buttons}"
+        assert summary["x"] >= 0 and summary["x"] + summary["width"] <= 390.5 and summary["y"] + summary["height"] <= buttons[0]["y"] + 1, f"the summary checkbox: {summary}"
         phone.shot("asr-editor-test-phone")
 
         # The timeline fits the phone; its lanes are dragged with one finger
@@ -924,7 +1292,10 @@ def test_phone_width(browser):
         phone.shot("asr-editor-test-phone-timeline-closed")
         phone.action("timeline-toggle").click()
 
-        # Split at the cursor and merge with previous, from the menu
+        # Split at the cursor and merge with previous, from the menu. (The list
+        # went to the added segment at the end; back to the top.)
+        page.evaluate("() => { document.querySelector('.asr-list').scrollTop = 0; }")
+        page.locator(f"{ROW}[data-index='1']").wait_for(state="visible", timeout=5000)
         phone.caret_in(1, len("Morning."))
         menu.click()
         sheet = page.locator("[data-asr-popover='menu']")

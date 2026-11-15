@@ -948,7 +948,10 @@
         "edge": "borda de segmento",
         "quiet": "pausa"
       }
-    }
+    },
+    "undoAction": "Desfazer",
+    "suggestionMergeInto": "Mesclar com {{name}}",
+    "suggestionMerged": "{{label}} mesclado com {{name}}"
   },
   "findReplace": {
     "open": "Localizar e substituir (Ctrl+F)",
@@ -1241,7 +1244,15 @@
     "untitled": "Sem Título",
     "upload": "Enviar",
     "warning": "Aviso",
-    "yes": "Sim"
+    "yes": "Sim",
+    "rename": "Renomear",
+    "unlink": "Desvincular",
+    "continue": "Continuar",
+    "remove": "Remover",
+    "revoke": "Revogar",
+    "rotate": "Rotacionar",
+    "discard": "Descartar",
+    "add": "Adicionar"
   },
   "confirms": {
     "discardUnsavedRecording": "Sair e descartar a gravação não salva?"

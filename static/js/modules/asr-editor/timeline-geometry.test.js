@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { createAsrModel } from './model.js';
 import {
     CREATE_MIN, MAX_PPS, MIN_LENGTH,
-    beginCreate, beginMove, beginResize, buildLanes, changesOf, clampView, createTo, findSnap, hitTest,
-    indexInLane, lowerBound, minPps, moveTo, nextLaneOrder, overviewWindow, resizeTo, revealInView, rulerStep,
+    beginCreate, beginMove, beginResize, buildLanes, changesOf, clampView, createTo, dragSlop, edgeSlop, findSnap, hitTest,
+    indexInLane, isDrag, leavesLane, lowerBound, minPps, moveTo, movesInTime, nextLaneOrder, overviewWindow, resizeTo, revealInView, rulerStep,
     upperBound, zoomAt,
 } from './timeline-geometry.js';
 
@@ -147,6 +147,49 @@ describe('hit testing', () => {
     it('looks back far enough for a long block', () => {
         const segs = [seg(1, 'A', 0, 60), seg(2, 'A', 60, 61)];
         expect(hitTest(segs, 550, { t0: 50, pps: 100 }, 60).seg.id).toBe(1);
+    });
+});
+
+describe('a click is not a drag', () => {
+    it('takes a press that barely moves, in either direction, as a click', () => {
+        const slop = dragSlop(false);
+        expect(isDrag(0, 0, slop)).toBe(false);
+        expect(isDrag(slop - 1, -(slop - 1), slop)).toBe(false);
+        expect(isDrag(slop, 0, slop)).toBe(true);
+        expect(isDrag(0, -slop, slop)).toBe(true);
+    });
+
+    it('allows a finger more movement than a mouse', () => {
+        expect(dragSlop(true)).toBeGreaterThan(dragSlop(false));
+        expect(edgeSlop(true)).toBeGreaterThan(edgeSlop(false));
+        expect(isDrag(6, 6, dragSlop(true))).toBe(false);
+    });
+
+    it('keeps a block in its lane until it was dragged more than half a lane up or down', () => {
+        expect(leavesLane(0, 36)).toBe(false);
+        expect(leavesLane(18, 36)).toBe(false);
+        expect(leavesLane(-18, 36)).toBe(false);
+        expect(leavesLane(20, 36)).toBe(true);
+        expect(leavesLane(-20, 36)).toBe(true);
+    });
+
+    it('keeps the times of a block that is dragged straight to another lane', () => {
+        expect(movesInTime(4, dragSlop(false))).toBe(false);
+        expect(movesInTime(5, dragSlop(false))).toBe(true);
+        expect(movesInTime(9, dragSlop(true))).toBe(false);
+    });
+
+    it('changes nothing for a drag that stays under these limits', () => {
+        const model = createAsrModel([
+            { speaker: 'A', sentence: 'one', start_time: 0, end_time: 4 },
+            { speaker: 'B', sentence: 'two', start_time: 5, end_time: 9 },
+        ]);
+        const { lanes, maxLength } = buildLanes(model.segments, ['A', 'B']);
+        const env = { lanes, maxLength, pps: 30, playhead: 0, duration: 20, quietNear: null };
+        const st = beginMove(lanes[0].segs, 0, 0, 1);
+        // Active, but neither far enough sideways (keepTime) nor out of its lane
+        moveTo(st, 0.1, 0, { alt: false, ctrl: false, keepTime: true }, env);
+        expect(changesOf(st, (li) => lanes[li].name)).toEqual([]);
     });
 });
 

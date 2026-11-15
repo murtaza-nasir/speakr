@@ -5,6 +5,7 @@
 
 import * as IncognitoStorage from '../db/incognito-storage.js';
 import { matchTagsByLabelName } from '../utils/label-links.js';
+import { confirmDialog } from '../utils/dialogs.js';
 
 // Guarded: the module can run before i18n.js has loaded.
 const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
@@ -217,7 +218,7 @@ export function useRecordings(state, utils, reprocessComposable) {
 
     const selectRecording = async (recording) => {
         if (hasUnsavedRecording()) {
-            if (!confirm(t('confirms.discardUnsavedRecording'))) {
+            if (!(await confirmDialog({ message: t('confirms.discardUnsavedRecording'), confirmLabel: t('common.discard'), danger: true }))) {
                 return;
             }
             // User chose to leave → actually discard the unsaved/recovered
@@ -233,7 +234,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         if (incognitoRecording && incognitoRecording.value &&
             selectedRecording.value?.id === 'incognito' &&
             recording?.id !== 'incognito') {
-            if (!confirm(t('incognito.switchDiscardConfirm'))) {
+            if (!(await confirmDialog({ message: t('incognito.switchDiscardConfirm'), confirmLabel: t('common.discard'), danger: true }))) {
                 return;
             }
             // Clear incognito recording immediately - this is the "incognito" promise

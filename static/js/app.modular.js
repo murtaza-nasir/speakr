@@ -25,6 +25,7 @@ import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
 import { useNotifications } from './modules/composables/notifications.js';
 import { useTranscriptView } from './modules/composables/transcript-view.js';
+import { segmentRuns } from './modules/utils/transcript-window.js';
 import { useBulkSelection } from './modules/composables/bulk-selection.js';
 import { useBulkOperations } from './modules/composables/bulk-operations.js';
 import { useFolders } from './modules/composables/folders.js';
@@ -799,6 +800,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const asrEditorDirty = ref(false);
             const asrEditorRev = ref(0);
             const asrEditorSaving = ref(false);
+            // The footer's checkbox: regenerate the summary after the save (off when the editor opens)
+            const asrEditorRegenerateSummary = ref(false);
             // Regenerate summary dialog (#584). prompt is the textarea; base is
             // the start-from entry it began as; resolvedPrompt is the viewer's
             // resolved prompt, which an unchanged owner run leaves to the server.
@@ -1996,7 +1999,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
                 showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, speakerModalVideoCollapsed, toggleSpeakerModalVideo, showShareModal, showSharesListModal,
-                showTextEditorModal, showAsrEditorModal, asrEditorSession, asrEditorDirty, asrEditorRev, asrEditorSaving, showRegenerateSummaryModal, regenSummary, userSummaryPrompt, editingRecording, editingTranscriptionContent,
+                showTextEditorModal, showAsrEditorModal, asrEditorSession, asrEditorDirty, asrEditorRev, asrEditorSaving, asrEditorRegenerateSummary, showRegenerateSummaryModal, regenSummary, userSummaryPrompt, editingRecording, editingTranscriptionContent,
                 findReplace, availableSpeakers,
                 showEditParticipantsModal, editingParticipantsList, editingParticipantSuggestions, allParticipants,
                 recordingToShare, shareOptions,
@@ -2639,6 +2642,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         isJson: false,
                         segments: segments,
                         simpleSegments: simpleSegments,
+                        // The simple view renders the turns, also for a
+                        // plain-text transcript with [Speaker]: lines
+                        simpleSegmentRuns: segmentRuns(simpleSegments),
                         bubbleRows: bubbleRows,
                         speakers: speakerList.map(speaker => ({
                             name: speaker,
@@ -4804,6 +4810,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 asrEditorSession,
                 asrEditorDirty,
                 asrEditorSaving,
+                asrEditorRegenerateSummary,
                 transcriptView: transcriptViewComposable.transcriptView,
                 transcriptFind: transcriptViewComposable.transcriptFind,
                 transcriptFindLabel: transcriptViewComposable.transcriptFindLabel,

@@ -17,6 +17,22 @@ export const MAX_PPS = 400;
 export const SNAP_PX = 8;
 export const CREATE_MIN = 0.1;      // a shorter drag on empty lane space creates nothing
 
+// ---- click or drag -------------------------------------------------------------
+//
+// A press on the timeline that barely moves is a click: it selects or seeks
+// and never changes a segment. A finger is less steady than a mouse.
+
+/** Pixels a press moves before it drags a block or draws a new segment. */
+export const dragSlop = (isTouch = false) => (isTouch ? 10 : 4);
+/** Pixels a press on an edge moves before it drags the edge. */
+export const edgeSlop = (isTouch = false) => (isTouch ? 8 : 2);
+/** True once a press has moved far enough, in either direction, to be a drag. */
+export const isDrag = (dx, dy, slop) => Math.abs(dx) >= slop || Math.abs(dy) >= slop;
+/** True once a dragged block has moved sideways far enough for its times to change. */
+export const movesInTime = (dx, slop) => Math.abs(dx) >= Math.max(5, slop);
+/** True once a block was dragged far enough up or down to leave its lane: more than half a lane. */
+export const leavesLane = (dy, laneHeight) => Math.abs(dy) >= laneHeight * 0.55;
+
 const fin = Number.isFinite;
 
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);

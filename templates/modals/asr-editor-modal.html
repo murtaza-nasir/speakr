@@ -101,7 +101,14 @@
                 <i class="fas fa-keyboard text-[10px]" aria-hidden="true"></i>
                 <span v-text="t('asrEditor.ctrlSHint')"></span>
             </span>
-            <div class="flex justify-end gap-2 ml-auto">
+            <!-- The checkbox of the Identify Speakers dialog, with its wording and its
+                 server route (regenerate_summary on update_transcript). Not for a
+                 translation or an incognito recording, which that route does not store. -->
+            <label v-if="asrEditorSession && canRegenerateSummary(asrEditorSession)" class="asr-editor-footer__summary" data-asr-regenerate-summary>
+                <input type="checkbox" v-model="asrEditorRegenerateSummary">
+                <span v-text="t('help.regenerateSummaryAfterNames')"></span>
+            </label>
+            <div class="asr-editor-footer__actions">
                 <button @click="closeAsrEditorModal()" class="btn btn--ghost" v-text="t('common.cancel')"></button>
                 <button @click="saveAsrTranscription(true)" class="btn btn--ghost" data-asr-action="save" :disabled="asrEditorSaving" :title="t('asrEditor.saveWithoutClosing')">
                     <i class="fas fa-save text-xs"></i>

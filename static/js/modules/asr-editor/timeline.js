@@ -24,8 +24,8 @@
 import { bestSuggestion, formatExact, speakerColorClass } from './helpers.js';
 import {
     CREATE_MIN, MAX_PPS, MERGE_PPS,
-    beginCreate, beginMove, beginResize, buildLanes, changesOf, clamp, clampView, createTo, hitTest,
-    lowerBound, minPps as minPpsOf, moveTo, nextLaneOrder, overviewWindow, resizeTo, revealInView, round3,
+    beginCreate, beginMove, beginResize, buildLanes, changesOf, clamp, clampView, createTo, dragSlop, edgeSlop, hitTest,
+    isDrag, leavesLane, lowerBound, minPps as minPpsOf, moveTo, movesInTime, nextLaneOrder, overviewWindow, resizeTo, revealInView, round3,
     rulerStep, upperBound, zoomAt,
 } from './timeline-geometry.js';
 import { levelFor, loadPeaks, quietNear } from './timeline-peaks.js';
@@ -99,6 +99,7 @@ export function createAsrEditorTimeline() {
             const laneHeight = ref(36);
             const waveHeight = ref(40);
             const waveState = ref('none');           // none | loading | ready
+            const narrow = ref(isNarrow());          // phone width: the voice matches are listed above the lanes
 
             // ---- state of the drawing, none of it reactive -------------------
 
@@ -251,9 +252,11 @@ export function createAsrEditorTimeline() {
                         color: speakerColorClass(session.colorMap, lane.name),
                         number: number >= 0 && number < 9 ? String(number + 1) : '',
                         match: match ? translate('asrEditor.suggestion', { name: match.name, percent: percent(Math.round(match.similarity)) }) : '',
+                        // The name is already in the recording: accepting merges the two speakers
+                        merge: match && match.merge ? translate('asrEditor.suggestionMergeInto', { name: match.name }) : '',
                     };
                 });
-                const signature = (list) => list.map((l) => `${l.name}\u0001${l.color}\u0001${l.number}\u0001${l.match}`).join('\u0002');
+                const signature = (list) => list.map((l) => `${l.name}\u0001${l.color}\u0001${l.number}\u0001${l.match}\u0001${l.merge}`).join('\u0002');
                 if (signature(next) !== signature(lanes.value)) {
                     lanes.value = next;
                     layout();
@@ -826,12 +829,12 @@ export function createAsrEditorTimeline() {
                         const sel = selection();
                         if (!(sel.size === 1 && sel.has(hit.seg.id))) selectSeg(hit.seg);
                         const edgeTime = hit.zone === 'l' ? hit.seg.start_time : hit.seg.end_time;
-                        drag = { kind: 'resize', li, st: beginResize(segs, hit.index, hit.zone), offset: p.x - xOf(edgeTime), x0: p.x, active: false };
+                        drag = { kind: 'resize', li, st: beginResize(segs, hit.index, hit.zone), offset: p.x - xOf(edgeTime), x0: p.x, slop: edgeSlop(isTouch), active: false };
                         setCursor('ew-resize');
                     } else if (hit) {
-                        drag = { kind: 'move', li, seg: hit.seg, index: hit.index, x0: p.x, y0: p.y, active: false, clickMods: mods, st: null, laneMoved: false, timeMoved: false };
+                        drag = { kind: 'move', li, seg: hit.seg, index: hit.index, x0: p.x, y0: p.y, slop: dragSlop(isTouch), active: false, clickMods: mods, st: null, laneMoved: false, timeMoved: false };
                     } else {
-                        drag = { kind: 'create', li, x0: p.x, from: round3(clamp(tOf(p.x), 0, duration)), active: false, st: null };
+                        drag = { kind: 'create', li, x0: p.x, slop: dragSlop(isTouch), from: round3(clamp(tOf(p.x), 0, duration)), active: false, st: null };
                     }
                 }
             };
@@ -861,7 +864,7 @@ export function createAsrEditorTimeline() {
                 syncEnv();
                 if (d.kind === 'resize') {
                     if (!d.active) {
-                        if (Math.abs(x - d.x0) < 2) return;
+                        if (!isDrag(x - d.x0, 0, d.slop)) return;
                         d.active = true;
                     }
                     const st = resizeTo(d.st, tOf(x - d.offset), mods, env);
@@ -874,7 +877,8 @@ export function createAsrEditorTimeline() {
                 }
                 if (d.kind === 'move') {
                     if (!d.active) {
-                        if (Math.abs(x - d.x0) < 4 && Math.abs(y - d.y0) < 4) return;
+                        // Less than this is a click: it selects and changes nothing
+                        if (!isDrag(x - d.x0, y - d.y0, d.slop)) return;
                         d.active = true;
                         d.st = beginMove(data.lanes[d.li].segs, d.index, d.li, tOf(d.x0) - d.seg.start_time);
                         if (!selection().has(d.seg.id)) selectSeg(d.seg);
@@ -882,10 +886,10 @@ export function createAsrEditorTimeline() {
                     }
                     let lane = clamp(laneAt(y), 0, data.lanes.length - 1);
                     if (!d.laneMoved) {
-                        if (Math.abs(y - d.y0) < LANE * 0.55) lane = d.li; else d.laneMoved = true;
+                        if (leavesLane(y - d.y0, LANE)) d.laneMoved = true; else lane = d.li;
                     }
                     // Straight up or down: the times stay as they are
-                    if (!d.timeMoved && Math.abs(x - d.x0) >= 5) d.timeMoved = true;
+                    if (!d.timeMoved && movesInTime(x - d.x0, d.slop)) d.timeMoved = true;
                     moveOptions.alt = mods.alt;
                     moveOptions.ctrl = mods.ctrl;
                     moveOptions.keepTime = !d.timeMoved;
@@ -899,7 +903,7 @@ export function createAsrEditorTimeline() {
                 }
                 if (d.kind === 'create') {
                     if (!d.active) {
-                        if (Math.abs(x - d.x0) < 4) return;
+                        if (!isDrag(x - d.x0, 0, d.slop)) return;
                         d.active = true;
                         d.st = beginCreate(data.lanes[d.li].segs, d.li, d.from, env);
                         if (session.pane && selection().size) session.pane.clearSelection();
@@ -1123,6 +1127,7 @@ export function createAsrEditorTimeline() {
             };
 
             const acceptSuggestion = (name) => { if (session.pane) session.pane.acceptSuggestion(name); };
+            const previewSpeaker = (name) => { if (session.pane) session.pane.previewSpeaker(name); };
 
             // ---- the session's way in ---------------------------------------
 
@@ -1151,7 +1156,12 @@ export function createAsrEditorTimeline() {
             let themeObserver = null;
             let peaksAbort = null;
             const narrowQuery = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 639px)') : null;
-            const onNarrowChange = () => { layout(); sizeCanvas(); touch(); };
+            const onNarrowChange = () => {
+                narrow.value = isNarrow();
+                layout();
+                // The header column has another width now
+                nextTick(() => { if (!destroyed) { sizeCanvas(); touch(); } });
+            };
             const onWindowResize = () => {
                 if ((window.devicePixelRatio || 1) !== dpr) { sizeCanvas(); touch(); }
             };
@@ -1300,8 +1310,8 @@ export function createAsrEditorTimeline() {
 
             return {
                 root, box, canvas, mini, heads, tip,
-                open, lanes, laneHeight, waveHeight, waveState,
-                toggleOpen, zoomIn, zoomOut, zoomFit, acceptSuggestion,
+                open, lanes, laneHeight, waveHeight, waveState, narrow,
+                toggleOpen, zoomIn, zoomOut, zoomFit, acceptSuggestion, previewSpeaker,
                 rulerHeight: RULER, overviewHeight: OVERVIEW,
             };
         },

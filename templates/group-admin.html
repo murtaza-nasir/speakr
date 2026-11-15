@@ -21,6 +21,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css') }}">
     {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <!-- The app's own confirm, message and input dialogs (window.confirmDialog, alertDialog, promptDialog) -->
+    <script src="{{ url_for('static', filename='js/app-dialog.js') }}"></script>
     <style>
         /* Hide Vue content until compiled */
         [v-cloak] {
@@ -948,7 +950,7 @@
                         teamToDelete.value = null;
                         await loadGroups();
                     } catch (error) {
-                        alert(error.message);
+                        alertDialog(error.message);
                     }
                 };
 
@@ -1039,7 +1041,7 @@
                 };
 
                 const removeTeamMember = async (member) => {
-                    if (!confirm(t('groups.removeMemberConfirm', { username: member.username }))) return;
+                    if (!(await confirmDialog({ message: t('groups.removeMemberConfirm', { username: member.username }), confirmLabel: t('common.remove'), danger: true }))) return;
 
                     teamMemberError.value = '';
                     try {
@@ -1260,7 +1262,7 @@
                 };
 
                 const deleteTeamTag = async (tag) => {
-                    if (!confirm(t('groups.deleteTagConfirm', { name: tag.name }))) return;
+                    if (!(await confirmDialog({ message: t('groups.deleteTagConfirm', { name: tag.name }), confirmLabel: t('common.delete'), danger: true }))) return;
 
                     teamTagError.value = '';
                     try {
@@ -1436,7 +1438,7 @@
                 };
 
                 const deleteTeamFolder = async (folder) => {
-                    if (!confirm(t('groups.deleteFolderConfirm', { name: folder.name }))) return;
+                    if (!(await confirmDialog({ message: t('groups.deleteFolderConfirm', { name: folder.name }), confirmLabel: t('common.delete'), danger: true }))) return;
 
                     teamFolderError.value = '';
                     try {

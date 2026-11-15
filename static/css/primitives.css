@@ -1201,6 +1201,22 @@ html.dark .modal-overlay {
     justify-content: space-between;
 }
 
+/* The app's own confirm, message and input dialogs (static/js/app-dialog.js),
+   in place of the browser's. Above the other dialogs and their popovers,
+   under the toasts. */
+.modal-overlay.app-dialog { z-index: 200; }
+.app-dialog__message {
+    margin: 0;
+    color: var(--text-primary);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+.app-dialog__input { margin-top: var(--sp-3); }
+.app-dialog .modal-footer .btn { min-width: 5rem; justify-content: center; }
+@media (max-width: 640px) {
+    .app-dialog .modal-footer .btn { flex: 1 1 0; min-height: 44px; }
+}
+
 /* Variant: danger-leaning modals get a subtle danger accent on the title */
 .modal-panel--danger .modal-header { border-bottom-color: var(--border-danger); }
 .modal-panel--danger .modal-title { color: var(--text-danger); }

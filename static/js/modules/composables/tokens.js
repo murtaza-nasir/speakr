@@ -3,6 +3,8 @@
  * Handles API token operations for user authentication
  */
 
+import { confirmDialog } from '../utils/dialogs.js';
+
 const { ref, computed } = Vue;
 
 // Parse a backend INSTANT timestamp (naive UTC) — append 'Z' so it's read as
@@ -167,7 +169,7 @@ export function useTokens({ showToast, setGlobalError }) {
     };
 
     const revokeToken = async (tokenId, tokenName) => {
-        if (!confirm(t('apiTokens.revokeConfirm', { name: tokenName }, `Are you sure you want to revoke the token "${tokenName}"? This action cannot be undone and any applications using this token will lose access.`))) {
+        if (!(await confirmDialog({ message: t('apiTokens.revokeConfirm', { name: tokenName }, `Are you sure you want to revoke the token "${tokenName}"? This action cannot be undone and any applications using this token will lose access.`), confirmLabel: t('common.revoke'), danger: true }))) {
             return;
         }
 

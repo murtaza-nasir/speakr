@@ -661,12 +661,22 @@ export function createAsrEditorPane() {
             const acceptSuggestion = (label) => {
                 const match = suggestionOf(label);
                 if (!match) return;
-                model.renameSpeaker(label, match.name, {
+                // When the name is already in the recording this merges the two
+                // speakers: one name and one speaker id for both, in one step.
+                const changed = model.renameSpeaker(label, match.name, {
                     speakerId: match.speaker_id,
+                    also: match.same,
                     match: { label, name: match.name, speakerId: match.speaker_id },
                 });
                 if (popover.kind === 'picker') closePopover();
-                session.toast(translate('asrEditor.suggestionAccepted', { label, name: match.name }));
+                if (!changed) return;
+                // The toast takes the rename back with one click, as long as
+                // it is still the last edit.
+                const rev = model.rev;
+                session.toast(translate(match.merge ? 'asrEditor.suggestionMerged' : 'asrEditor.suggestionAccepted', { label, name: match.name }), {
+                    action: () => { if (model.rev === rev) undo(); },
+                    actionLabel: translate('asrEditor.undoAction'),
+                });
             };
 
             const openPicker = (row, event) => {
@@ -1141,6 +1151,7 @@ export function createAsrEditorPane() {
                         match: match ? suggestionLabel(match) : '',
                         suggestion,
                         suggestionLabel: suggestion ? suggestionLabel(suggestion) : '',
+                        suggestionMerge: suggestion && suggestion.merge ? translate('asrEditor.suggestionMergeInto', { name: suggestion.name }) : '',
                     });
                 }
                 return out;
@@ -1150,7 +1161,10 @@ export function createAsrEditorPane() {
                 void tick.value;
                 if (popover.kind !== 'picker' || !popover.speaker) return null;
                 const match = suggestionOf(popover.speaker);
-                return match ? { label: suggestionLabel(match), speaker: popover.speaker } : null;
+                return match ? {
+                    label: suggestionLabel(match), speaker: popover.speaker,
+                    merge: match.merge ? translate('asrEditor.suggestionMergeInto', { name: match.name }) : '',
+                } : null;
             });
 
             const draftOffer = computed(() => {
@@ -1216,6 +1230,7 @@ export function createAsrEditorPane() {
                     startMonitor();
                 },
                 acceptSuggestion,
+                previewSpeaker,
             };
 
             onMounted(() => {

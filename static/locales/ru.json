@@ -948,7 +948,10 @@
         "edge": "край сегмента",
         "quiet": "пауза"
       }
-    }
+    },
+    "undoAction": "Отменить",
+    "suggestionMergeInto": "Объединить с {{name}}",
+    "suggestionMerged": "{{label}} объединён с {{name}}"
   },
   "findReplace": {
     "open": "Найти и заменить (Ctrl+F)",
@@ -1241,7 +1244,15 @@
     "untitled": "Без названия",
     "upload": "Загрузить",
     "warning": "Предупреждение",
-    "yes": "Да"
+    "yes": "Да",
+    "rename": "Переименовать",
+    "unlink": "Отвязать",
+    "continue": "Продолжить",
+    "remove": "Удалить",
+    "revoke": "Отозвать",
+    "rotate": "Сменить",
+    "discard": "Отбросить",
+    "add": "Добавить"
   },
   "confirms": {
     "discardUnsavedRecording": "Уйти и отменить несохранённую запись?"
