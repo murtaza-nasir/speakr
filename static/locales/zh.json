@@ -3502,6 +3502,8 @@
       "invalid_username_length": "用户名必须为 2 到 20 个字符。",
       "invalid_with_sources": "with_sources 必须为 true 或 false",
       "job_not_found": "未找到任务",
+      "upload_canceled": "上传已取消",
+      "invalid_client_upload_id": "client_upload_id 无效",
       "job_not_cancelable": "此任务无法取消",
       "job_already_finished": "任务已结束",
       "job_retry_failed_only": "只能重试失败的任务",

@@ -3502,6 +3502,8 @@
       "invalid_username_length": "O nome de usuário deve ter de 2 a 20 caracteres.",
       "invalid_with_sources": "with_sources deve ser true ou false",
       "job_not_found": "Tarefa não encontrada",
+      "upload_canceled": "O envio foi cancelado",
+      "invalid_client_upload_id": "client_upload_id inválido",
       "job_not_cancelable": "Esta tarefa não pode ser cancelada",
       "job_already_finished": "A tarefa já foi concluída",
       "job_retry_failed_only": "Somente tarefas com falha podem ser repetidas",

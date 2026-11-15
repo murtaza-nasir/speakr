@@ -2158,6 +2158,32 @@ def discard_upload_join(group):
     return jsonify({'success': True, 'removed': removed})
 
 
+@recordings_bp.route('/upload/cancel', methods=['POST'])
+@login_required
+def cancel_upload_route():
+    """Discard what an aborted upload leaves on the server.
+
+    Body: {"client_upload_id": "<the id sent with the upload form>"}. The
+    browser aborts its request first and then calls this. An ingestion that
+    is still running discards its file or its recording when it reads the
+    mark; a recording it has already stored is deleted here
+    (recording_deleted), unless it is COMPLETED or older than 15 minutes
+    (recording_kept). An id the server has never seen is marked as well: its
+    upload may still arrive.
+    """
+    from src.services.upload_cancel import cancel_upload, client_upload_id_from
+    client_upload_id = client_upload_id_from(request.get_json(silent=True) or {})
+    if not client_upload_id:
+        return jsonify(api_error('invalid_client_upload_id')), 400
+    try:
+        result = cancel_upload(current_user, client_upload_id)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error canceling an upload of user {current_user.id}: {e}", exc_info=True)
+        return jsonify(api_error('unexpected_error')), 500
+    return jsonify({'success': True, **result})
+
+
 @recordings_bp.route('/api/recordings/incognito', methods=['POST'])
 @login_required
 @incognito_route

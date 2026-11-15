@@ -12,6 +12,7 @@ import { computeUploadTimeout } from '../utils/upload-timeout.js';
 import { recorderInUse } from '../utils/recorder-state.js';
 import { confirmDialog } from '../utils/dialogs.js';
 import { getFriendlyError } from '../utils/upload-errors.js';
+import { uploadCancelPlan } from '../utils/upload-cancel.js';
 import {
     sortQueuedForJoin, moveQueuedItem, placeQueuedItem, totalJoinDuration,
     newJoinGroupId, MAX_JOIN_FILES,
@@ -390,6 +391,55 @@ export function useUpload(state, utils) {
         }
     };
 
+    // Cancel an upload: a file that still waits is removed from the queue;
+    // one in flight has its request aborted and the server is told to
+    // discard what the aborted request may still produce (the converted
+    // file, the recording). Resolves to { ok, action, reason }, see
+    // uploadCancelPlan. A file whose upload has finished is a job on the
+    // server by then and is canceled there (cancelJob in app.modular.js).
+    const cancelUpload = async (clientId) => {
+        const item = uploadQueue.value.find(entry => entry.clientId === clientId);
+        const plan = uploadCancelPlan(item);
+        if (plan.action === 'remove') {
+            uploadQueue.value = uploadQueue.value.filter(entry => entry.clientId !== clientId);
+            return { ok: true, ...plan };
+        }
+        if (plan.action !== 'abort') return { ok: false, ...plan };
+
+        item.uploadCanceled = true;
+        // The other files of a join are stopped with it, and the parts the
+        // server holds are discarded.
+        const group = item.join ? item.join.group : null;
+        const stopped = group
+            ? uploadQueue.value.filter(entry => entry.join && entry.join.group === group)
+            : [item];
+        for (const entry of stopped) {
+            entry.uploadCanceled = true;
+            if (entry._xhr) {
+                try { entry._xhr.abort(); } catch (_) { /* already finished */ }
+            }
+        }
+        try {
+            const token = await getUploadCsrfToken();
+            const headers = token ? { 'X-CSRFToken': token } : {};
+            if (group) {
+                // The parts of a join are stored apart from recordings.
+                await fetch(`/upload/join/${encodeURIComponent(group)}`, { method: 'DELETE', headers });
+            } else {
+                await fetch('/upload/cancel', {
+                    method: 'POST',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ client_upload_id: item.clientId }),
+                });
+            }
+        } catch (e) {
+            console.warn('[Upload] Could not tell the server about a canceled upload:', e);
+        }
+        const gone = new Set(stopped.map(entry => entry.clientId));
+        uploadQueue.value = uploadQueue.value.filter(entry => !gone.has(entry.clientId));
+        return { ok: true, ...plan };
+    };
+
     // Cancel a waiting file from the upload progress queue
     const cancelWaitingFile = (clientId) => {
         const index = uploadQueue.value.findIndex(item => item.clientId === clientId);
@@ -653,6 +703,9 @@ export function useUpload(state, utils) {
                 formData.append('keep_audio_only', 'true');
             }
 
+            // Names this upload for POST /upload/cancel (cancelUpload below).
+            formData.append('client_upload_id', fileItem.clientId);
+
             // Use XMLHttpRequest for per-file upload progress. XHR bypasses
             // the fetch interceptor in csrf-refresh.js, so this path must
             // handle CSRF token expiry itself: Flask-WTF's default
@@ -734,6 +787,9 @@ export function useUpload(state, utils) {
 
                 xhr.onerror = () => reject(uploadError(t('errors.networkErrorDuringUpload'), 'Network error during upload'));
                 xhr.ontimeout = () => reject(uploadError(t('errors.uploadTimedOut'), 'Upload timed out'));
+                // abort() fires neither of the two above; without this the
+                // upload of a canceled file would wait forever.
+                xhr.onabort = () => reject(uploadError('Upload canceled', 'Upload canceled'));
 
                 // Without an explicit timeout, a stalled connection (no FIN/RST,
                 // just no progress) hangs forever and ontimeout never fires — so
@@ -761,6 +817,7 @@ export function useUpload(state, utils) {
                         fileItem.serverProcessing = fraction >= 1;
                     },
                     onXhr: (xhr) => { fileItem._xhr = xhr; },
+                    isCanceled: () => !!fileItem.uploadCanceled,
                 });
             } else {
                 // Refresh the token right before sending, and retry exactly once
@@ -776,6 +833,10 @@ export function useUpload(state, utils) {
                     data = await sendUpload(await getUploadCsrfToken());
                 }
             }
+
+            // The answer arrived at the moment the user canceled: the server
+            // deletes this recording (POST /upload/cancel), so it is not shown.
+            if (fileItem.uploadCanceled) return;
 
             // One part of a join is stored; the part that completes the group
             // gets the recording back.
@@ -885,6 +946,10 @@ export function useUpload(state, utils) {
             }
 
         } catch (error) {
+            if (fileItem.uploadCanceled) {
+                // Stopped by cancelUpload: not a failure, nothing to retry.
+                return;
+            }
             if (fileItem.joinCancelled) {
                 // Stopped because another part of its join failed.
                 fileItem.status = 'failed';
@@ -1403,6 +1468,7 @@ export function useUpload(state, utils) {
         addFilesToQueue,
         removeFromQueue,
         cancelWaitingFile,
+        cancelUpload,
         clearCompletedUploads,
         startUpload,
         startUploadAndClose,

@@ -3502,6 +3502,8 @@
       "invalid_username_length": "Der Benutzername muss 2 bis 20 Zeichen lang sein.",
       "invalid_with_sources": "with_sources muss true oder false sein",
       "job_not_found": "Auftrag nicht gefunden",
+      "upload_canceled": "Der Upload wurde abgebrochen",
+      "invalid_client_upload_id": "Ungültige client_upload_id",
       "job_not_cancelable": "Dieser Auftrag kann nicht abgebrochen werden",
       "job_already_finished": "Der Auftrag ist bereits beendet",
       "job_retry_failed_only": "Nur fehlgeschlagene Aufträge können wiederholt werden",

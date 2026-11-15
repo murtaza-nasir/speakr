@@ -56,6 +56,11 @@ def _job(user_id, recording_id, status, job_type='transcribe', **fields):
 
 
 def _client(user_id):
+    # The tests hold one app context, and flask-login keeps the user of the
+    # last request on it: a request as someone else starts without it.
+    from flask import g, has_app_context
+    if has_app_context():
+        g.pop('_login_user', None)
     client = app.test_client()
     with client.session_transaction() as s:
         s['_user_id'] = str(user_id)
