@@ -197,12 +197,20 @@ def log(caplog):
 
 
 @pytest.fixture
-def temp_folder(tmp_path):
-    """The temporary folder of the request, so that leftovers can be counted."""
+def temp_folder(tmp_path, monkeypatch):
+    """The temporary folder of the request, so that leftovers can be counted.
+
+    Incognito files go to a folder of their own (INCOGNITO_TEMP_DIR); nothing
+    of the request may be written to the temporary folder of the system, and
+    the incognito folder must be empty again after the request.
+    """
     folder = tmp_path / "tmp"
     folder.mkdir()
+    incognito = tmp_path / "incognito"
+    monkeypatch.setenv("INCOGNITO_TEMP_DIR", str(incognito))
     with patch.object(tempfile, "tempdir", str(folder)):
         yield folder
+    assert not incognito.exists() or list(incognito.iterdir()) == []
 
 
 def _wav():

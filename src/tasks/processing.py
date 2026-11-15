@@ -1610,7 +1610,9 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
     elif diarize and not supports_diarization:
         current_app.logger.warning("Diarization requested but connector doesn't support it - transcribing without diarization")
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    # The chunks of an incognito file stay in the folder of its request.
+    from src.services.incognito_temp import dir_for_temp_files
+    with tempfile.TemporaryDirectory(dir=dir_for_temp_files(filepath)) as temp_dir:
         try:
             # Create chunks (passes connector_specs for duration-based chunking if needed)
             current_app.logger.info(f"Creating chunks for large file: {loggable_path(filepath)}")

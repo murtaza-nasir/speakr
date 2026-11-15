@@ -2179,6 +2179,7 @@ def upload_incognito():
     from src.tasks.processing import transcribe_incognito, generate_incognito_summary
 
     temp_filepath = None
+    request_dir = None
 
     try:
         if 'file' not in request.files:
@@ -2230,7 +2231,12 @@ def upload_incognito():
         # the extension, not the user's filename: the temp path is logged and
         # filenames can themselves be sensitive (no PHI in logs or paths).
         _ext = os.path.splitext(safe_filename)[1].lower() or '.audio'
-        with tempfile.NamedTemporaryFile(delete=False, suffix=_ext) as tmp:
+        # The request has a folder of its own under the incognito temporary
+        # folder: the upload, its converted copies and its chunks are written
+        # there and removed together (src/services/incognito_temp.py).
+        from src.services import incognito_temp
+        request_dir = incognito_temp.new_request_dir()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=_ext, dir=request_dir) as tmp:
             temp_filepath = tmp.name
             file.save(temp_filepath)
             incognito_log.info(f"[Incognito] Temp file saved: {temp_filepath}")
@@ -2365,6 +2371,13 @@ def upload_incognito():
             except Exception as cleanup_error:
                 incognito_log.error(f"[Incognito] Failed to delete temp file {temp_filepath}: "
                                     f"{describe_error(cleanup_error)}")
+        if request_dir:
+            from src.services import incognito_temp
+            if incognito_temp.remove_request_dir(request_dir):
+                incognito_log.info("[Incognito] Request temp folder removed")
+            else:
+                incognito_log.error("[Incognito] Request temp folder could not be removed; "
+                                    "the hourly sweep removes it later")
 
 
 @recordings_bp.route('/api/recordings/incognito/chat', methods=['POST'])

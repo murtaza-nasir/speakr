@@ -1240,6 +1240,13 @@ _session_policy.init_app(app)
 from src.config.outbound_warnings import log_plain_http_warnings as _log_plain_http_warnings
 _log_plain_http_warnings(app)
 
+# Temporary files left by an incognito request that did not end normally.
+# In every process: only entries older than incognito_temp_max_age_hours are
+# removed, so workers starting together and a request in flight are safe.
+from src.services.incognito_temp import cleanup_stale as _cleanup_incognito_temp
+with app.app_context():
+    _cleanup_incognito_temp()
+
 # --- No-Crawl System: HTTP Headers ---
 @app.after_request
 def add_no_crawl_headers(response):
