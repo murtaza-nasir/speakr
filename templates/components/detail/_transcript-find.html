@@ -2,27 +2,33 @@
      A long transcript renders only the part near the viewport, which is all
      the browser's own find can see; this bar searches the whole transcript.
      Included in the desktop and the phone transcript panels, above the
-     scrolling area. Its texts are those of the editors' find bar. -->
-<div v-if="transcriptFind.open" class="find-replace-bar transcript-find" data-transcript-find @click.stop>
+     scrolling area. Its texts are those of the editors' find bar.
+     The Identify speakers dialog includes it for its own transcript, with
+     the names of its find state (find_state, find_label, find_go,
+     find_close) and the name of its list (find_name). -->
+{%- set _find = find_state|default('transcriptFind') -%}
+{%- set _label = find_label|default('transcriptFindLabel') -%}
+{%- set _go = find_go|default('goToTranscriptMatch') -%}
+{%- set _close = find_close|default('closeTranscriptFind') -%}
+<div v-if="{{ _find }}.open" class="find-replace-bar transcript-find" data-transcript-find{% if find_name %}="{{ find_name }}"{% endif %} @click.stop @keydown.esc.stop.prevent="{{ _close }}">
     <div class="find-replace-bar__fields">
         <div class="find-replace-bar__field">
             <i class="fas fa-search find-replace-bar__icon"></i>
-            <input type="text" class="field field--sm" v-model="transcriptFind.query"
+            <input type="text" class="field field--sm" v-model="{{ _find }}.query"
                    :placeholder="t('findReplace.find')" :aria-label="t('findReplace.find')"
-                   @keydown.enter.exact.prevent="goToTranscriptMatch(1)"
-                   @keydown.shift.enter.prevent="goToTranscriptMatch(-1)"
-                   @keydown.esc.stop.prevent="closeTranscriptFind">
-            <span class="find-replace-bar__count t-meta" aria-live="polite" v-text="transcriptFindLabel"></span>
+                   @keydown.enter.exact.prevent="{{ _go }}(1)"
+                   @keydown.shift.enter.prevent="{{ _go }}(-1)">
+            <span class="find-replace-bar__count t-meta" aria-live="polite" v-text="{{ _label }}"></span>
         </div>
     </div>
     <div class="find-replace-bar__actions">
-        <button type="button" class="btn btn--icon btn--sm" @click="goToTranscriptMatch(-1)" :disabled="!transcriptFind.total" :title="t('findReplace.previous')">
+        <button type="button" class="btn btn--icon btn--sm" @click="{{ _go }}(-1)" :disabled="!{{ _find }}.total" :title="t('findReplace.previous')">
             <i class="fas fa-chevron-up"></i>
         </button>
-        <button type="button" class="btn btn--icon btn--sm" @click="goToTranscriptMatch(1)" :disabled="!transcriptFind.total" :title="t('findReplace.next')">
+        <button type="button" class="btn btn--icon btn--sm" @click="{{ _go }}(1)" :disabled="!{{ _find }}.total" :title="t('findReplace.next')">
             <i class="fas fa-chevron-down"></i>
         </button>
-        <button type="button" class="btn btn--icon btn--sm" @click="closeTranscriptFind" :title="t('buttons.close')">
+        <button type="button" class="btn btn--icon btn--sm" @click="{{ _close }}" :title="t('buttons.close')">
             <i class="fas fa-times"></i>
         </button>
     </div>

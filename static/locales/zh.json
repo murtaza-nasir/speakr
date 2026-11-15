@@ -951,7 +951,8 @@
     },
     "undoAction": "撤销",
     "suggestionMergeInto": "合并到 {{name}}",
-    "suggestionMerged": "{{label}} 已合并到 {{name}}"
+    "suggestionMerged": "{{label}} 已合并到 {{name}}",
+    "updateSummary": "更新摘要"
   },
   "findReplace": {
     "open": "查找和替换 (Ctrl+F)",
@@ -3849,7 +3850,7 @@
     "subtitle": "共享录音",
     "pageTitle": "{{title}} · Speakr",
     "builtWith": "构建于",
-    "followPlayer": "跟随音频播放"
+    "follow": "跟随"
   },
   "datePicker": {
     "apply": "应用",

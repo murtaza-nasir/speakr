@@ -170,9 +170,11 @@ When someone clicks your share link, they're taken to a streamlined view of your
 
 At the top of the page, recipients see the recording title prominently displayed along with a note indicating it's a shared recording. The audio player sits just below, providing full playback controls so they can listen to the original recording at their own pace. The player shows the total duration and current position, allowing recipients to navigate to specific moments or replay important sections.
 
-The main content area is divided between the transcription and summary (if you've chosen to share it). The transcription appears with clear formatting, including speaker labels if your recording includes speaker diarization. Each identified speaker appears as a colored tag, making it easy to follow multi-person conversations. The interface includes view options like Simple and Bubble modes if speaker identification is present, and a copy button to easily extract the text.
+The transcript looks as it does on the recording page: speaker turns in the same colors, with the Simple and Bubble views when the recording has speakers. A click on a line plays the audio from there. While the audio plays, the playing line is highlighted and kept in view. Scrolling away stops that, so the page does not pull a reader back; the Follow button returns to the playing line. Copy puts the whole transcript on the clipboard.
 
-If you've enabled summary sharing, it appears in a dedicated panel with its own copy functionality. The summary is rendered with full markdown formatting, presenting a professional overview of the key points from your recording. Your notes, if shared, would appear in a similar panel, providing additional context and insights.
+A long transcript opens at once, because only the part on screen is rendered. For such a transcript the browser's own search would see only that part, so Ctrl+F (or the search button) opens a find bar that searches the whole transcript. Printing the page prints the whole transcript.
+
+The summary and your notes, when shared, each have a tab with a copy button and are shown with their markdown formatting. The page follows the visitor's light or dark system setting, and works on a phone.
 
 At the bottom of the page, recipients see a small footer that reads "Built with Speakr" and links to the Speakr project. This gives your shares a professional appearance while maintaining the focus on your content. The entire experience is read-only - recipients cannot edit anything, cannot access your other recordings, and cannot see any of your account information or settings.
 

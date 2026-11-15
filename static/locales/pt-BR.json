@@ -951,7 +951,8 @@
     },
     "undoAction": "Desfazer",
     "suggestionMergeInto": "Mesclar com {{name}}",
-    "suggestionMerged": "{{label}} mesclado com {{name}}"
+    "suggestionMerged": "{{label}} mesclado com {{name}}",
+    "updateSummary": "Atualizar o resumo"
   },
   "findReplace": {
     "open": "Localizar e substituir (Ctrl+F)",
@@ -3849,7 +3850,7 @@
     "subtitle": "Gravação compartilhada",
     "pageTitle": "{{title}} · Speakr",
     "builtWith": "Feito com",
-    "followPlayer": "Acompanhar a reprodução do áudio"
+    "follow": "Seguir"
   },
   "datePicker": {
     "apply": "Aplicar",

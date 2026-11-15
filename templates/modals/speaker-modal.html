@@ -11,10 +11,12 @@
      the right; "Show all segments" keeps the highlight and adds Previous /
      Next turn buttons. On phones the two panes are tabs.
 
-     Performance: every segment stays in the DOM. .speaker-segment carries
-     content-visibility: auto (styles.css), so off-screen rows skip layout
-     and paint, and v-memo keys each row on its own speaker's name, so typing
-     a name re-renders only that speaker's rows.
+     Performance: the transcript pane renders only the rows near its
+     viewport, with the window of the recording page's transcript
+     (composables/transcript-view.js, the list named "speakers"); two spacers
+     stand for the rest. v-memo keys each row on its own speaker's name, so
+     typing a name re-renders only that speaker's rows. Ctrl+F opens the
+     pane's find bar when the transcript is not rendered whole.
 
      Template rules: no object literals inside ${ } (use v-text), no window.*
      in expressions. -->
@@ -283,43 +285,53 @@
                         </div>
                     </template>
                     <span v-else class="t-meta" v-text="t('speakerModal.selectHint')"></span>
+                    <!-- Find, for a transcript that is not rendered whole -->
+                    <button v-if="speakerTranscriptView.windowed" class="btn btn--icon btn--sm spk-find" @click="toggleSpeakerFind"
+                            :title="t('findReplace.find')" :aria-label="t('findReplace.find')">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
+
+                {% with find_state = 'speakerFind', find_label = 'speakerFindLabel', find_go = 'goToSpeakerMatch', find_close = 'closeSpeakerFind', find_name = 'speakers' %}{% include 'components/detail/_transcript-find.html' %}{% endwith %}
 
                 <!-- Transcript -->
                 <div ref="speakerModalTranscriptRef"
                      class="speaker-modal-transcript custom-scrollbar"
                      style="flex: 1 1 auto; min-height: 0; overflow-y: auto;">
-                    <div v-if="speakerModalData.isJson">
-                        <div v-for="segment in visibleModalSegments"
-                             :key="segment.index"
-                             v-memo="[segment.index, segment.speakerId, segment.sentence, speakerMap[segment.speakerId] ? speakerMap[segment.speakerId].name : '', selectedSpeaker === segment.speakerId, !!selectedSpeaker, onlySelectedSpeaker, playingSegmentIndex === segment.index, editingSpeakerIndex === segment.index]"
+                    <div v-if="speakerModalData.isJson" data-tv-list="speakers">
+                        <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: speakerTranscriptView.before + 'px' }"></div>
+                        <div v-for="unit in speakerTranscriptView.segments"
+                             :key="unit.segment.index"
+                             :data-tv-unit="unit.unit"
+                             v-memo="[unit.unit, unit.segment.index, unit.segment.speakerId, unit.segment.sentence, speakerMap[unit.segment.speakerId] ? speakerMap[unit.segment.speakerId].name : '', selectedSpeaker === unit.segment.speakerId, !!selectedSpeaker, onlySelectedSpeaker, playingSegmentIndex === unit.segment.index, editingSpeakerIndex === unit.segment.index]"
                              class="speaker-segment spk-seg group"
-                             :class="{ 'is-playing': playingSegmentIndex === segment.index, 'is-dimmed': selectedSpeaker && !onlySelectedSpeaker && selectedSpeaker !== segment.speakerId }"
-                             :data-segment-index="segment.index">
-                            <button v-if="segment.start !== null" class="spk-seg-time" @click="playModalSegment(segment)"
-                                    :title="t('speakerModal.play')">${ formatClock(segment.start) }</button>
+                             :class="{ 'is-playing': playingSegmentIndex === unit.segment.index, 'is-dimmed': selectedSpeaker && !onlySelectedSpeaker && selectedSpeaker !== unit.segment.speakerId }"
+                             :data-segment-index="unit.segment.index">
+                            <button v-if="unit.segment.start !== null" class="spk-seg-time" @click="playModalSegment(unit.segment)"
+                                    :title="t('speakerModal.play')">${ formatClock(unit.segment.start) }</button>
                             <span v-else></span>
-                            <span :class="[speakerColor(segment.speakerId), 'speaker-tag']"
-                                  class="spk-seg-speaker" :title="segment.speakerId">${ labelOf(segment.speakerId) }</span>
-                            <span class="spk-seg-text" @click="playModalSegment(segment)">${ segment.sentence }</span>
+                            <span :class="[speakerColor(unit.segment.speakerId), 'speaker-tag']"
+                                  class="spk-seg-speaker" :title="unit.segment.speakerId">${ labelOf(unit.segment.speakerId) }</span>
+                            <span class="spk-seg-text" data-tv-text @click="playModalSegment(unit.segment)">${ unit.segment.sentence }</span>
                             <span class="spk-seg-actions">
-                                <button @click.stop="openSpeakerChangeDropdown(segment.index)" class="btn btn--icon btn--sm"
+                                <button @click.stop="openSpeakerChangeDropdown(unit.segment.index)" class="btn btn--icon btn--sm"
                                         :title="t('speakerModal.changeSpeaker')" :aria-label="t('speakerModal.changeSpeaker')">
                                     <i class="fas fa-user-edit text-[10px]"></i>
                                 </button>
-                                <button @click.stop="openEditTextModal(segment.index)" class="btn btn--icon btn--sm"
+                                <button @click.stop="openEditTextModal(unit.segment.index)" class="btn btn--icon btn--sm"
                                         :title="t('speakerModal.editText')" :aria-label="t('speakerModal.editText')">
                                     <i class="fas fa-edit text-[10px]"></i>
                                 </button>
                             </span>
-                            <div v-if="editingSpeakerIndex === segment.index" class="spk-seg-reassign" @click.stop>
+                            <div v-if="editingSpeakerIndex === unit.segment.index" class="spk-seg-reassign" @click.stop>
                                 <select class="field field--sm" :aria-label="t('speakerModal.changeSpeaker')"
-                                        @change="changeSpeaker(segment.index, $event.target.value)">
+                                        @change="changeSpeaker(unit.segment.index, $event.target.value)">
                                     <option value="" v-text="t('speakerModal.changeSpeaker')"></option>
-                                    <option v-for="id in orderedSpeakers" :key="id" :value="id" :disabled="id === segment.speakerId">${ labelOf(id) }</option>
+                                    <option v-for="id in orderedSpeakers" :key="id" :value="id" :disabled="id === unit.segment.speakerId">${ labelOf(id) }</option>
                                 </select>
                             </div>
                         </div>
+                        <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: speakerTranscriptView.after + 'px' }"></div>
                     </div>
                     <div v-else class="whitespace-pre-wrap text-sm text-[var(--text-primary)]">${ speakerModalData.plainText }</div>
                 </div>

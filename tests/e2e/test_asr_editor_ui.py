@@ -626,7 +626,7 @@ def test_the_summary_is_regenerated_after_a_save_when_asked(meeting):
     page = editor.page
     label = page.locator("[data-asr-regenerate-summary]")
     box = label.locator("input[type=checkbox]")
-    assert label.inner_text().strip() == en("help.regenerateSummaryAfterNames")
+    assert label.inner_text().strip() == en("asrEditor.updateSummary")
     assert not box.is_checked(), "the checkbox is on when the editor opens"
     footer = page.locator(".asr-editor-footer").bounding_box()
     place = label.bounding_box()

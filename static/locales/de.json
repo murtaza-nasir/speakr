@@ -951,7 +951,8 @@
     },
     "undoAction": "Rückgängig",
     "suggestionMergeInto": "Mit {{name}} zusammenführen",
-    "suggestionMerged": "{{label}} mit {{name}} zusammengeführt"
+    "suggestionMerged": "{{label}} mit {{name}} zusammengeführt",
+    "updateSummary": "Zusammenfassung aktualisieren"
   },
   "findReplace": {
     "open": "Suchen und ersetzen (Strg+F)",
@@ -3849,7 +3850,7 @@
     "subtitle": "Geteilte Aufnahme",
     "pageTitle": "{{title}} · Speakr",
     "builtWith": "Erstellt mit",
-    "followPlayer": "Der Audiowiedergabe folgen"
+    "follow": "Folgen"
   },
   "datePicker": {
     "apply": "Übernehmen",

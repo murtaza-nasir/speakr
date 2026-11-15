@@ -30,6 +30,16 @@
  * the time of the print, the whole transcript is written into a plain
  * element (#transcript-print) that the print stylesheet shows in place of
  * the page (styles.css).
+ *
+ * Other transcripts use the same window. The public share page
+ * (static/js/share-page.js) is one more page with the list above. The
+ * Identify speakers dialog (composables/speaker-modal.js) is a second list
+ * on the recording page, so it has a name: its list is the element with
+ * data-tv-list="speakers" and its find bar the one with
+ * data-transcript-find="speakers". It gives its own units (`source`) and
+ * texts to search (`sentences`), and its rows are found by their place in
+ * that list (`segmentAttribute`), as the dialog may show a part of the
+ * transcript.
  */
 
 import { bubbleUnits, charsPerLine, createTranscriptWindow, runUnits, segmentUnits } from '../utils/transcript-window.js';
@@ -37,10 +47,6 @@ import { buildMatcher, findMatches } from '../utils/find-replace.js';
 
 // Pixels rendered above and below the viewport.
 const OVERSCAN = 700;
-const LIST = '[data-tv-list]';
-const FIND_BAR = '[data-transcript-find]';
-const HIGHLIGHT = 'transcript-find';
-const HIGHLIGHT_CURRENT = 'transcript-find-current';
 const PRINT_ID = 'transcript-print';
 const PRINT_CLASS = 'print-transcript';
 
@@ -49,8 +55,61 @@ const scrollable = (el) => {
     return overflow === 'auto' || overflow === 'scroll' || overflow === 'overlay';
 };
 
-export function useTranscriptView({ processedTranscription, transcriptionViewMode, recordingId, recordingTitle, relayoutOn = [], scrollSegmentIntoView, t = (key) => key }) {
+/**
+ * Scroll a transcript segment to the middle of its list.
+ *
+ * The heights of units that are not rendered yet are estimates, so a single
+ * scrollIntoView is inaccurate for a far jump: it aims at the estimate, and
+ * scrolling then renders the real heights, which moves the target under the
+ * animation. For a far target this centers it instantly on each frame until
+ * it stops moving. A near target (playback going on to the next segment) is
+ * rendered already: one smooth scroll is accurate there.
+ */
+export const scrollSegmentIntoView = (el) => {
+    if (!el) return;
+    const r0 = el.getBoundingClientRect();
+    const near = r0.bottom > -50 && r0.top < window.innerHeight + 50;
+    if (near) {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return;
+    }
+    let attempts = 0;
+    let lastTop = null;
+    const step = () => {
+        if (!el.isConnected) return;
+        el.scrollIntoView({ block: 'center', behavior: 'auto' });
+        const top = el.getBoundingClientRect().top;
+        attempts += 1;
+        if ((lastTop !== null && Math.abs(top - lastTop) < 1) || attempts >= 8) return;
+        lastTop = top;
+        requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+};
+
+/**
+ * Options beyond those of the recording page:
+ *   name              which list and find bar on the page ('' is the page's transcript)
+ *   source            a ref of { kind, units } in place of the views of processedTranscription
+ *   sentences         () => the texts the find bar searches, by the index the units count in
+ *   segmentAttribute  the attribute that carries that index on a rendered segment
+ *   placeKey          () => a value; while it stays the same, the segment at the top of the
+ *                     view stays there when the units change (default: recordingId)
+ *   print             'windowed' (a transcript that is not rendered whole), 'always' or false
+ */
+export function useTranscriptView({
+    processedTranscription, transcriptionViewMode, recordingId, recordingTitle, relayoutOn = [], scrollSegmentIntoView, t = (key) => key,
+    name = '', source: ownSource = null, sentences: ownSentences = null, segmentAttribute = 'data-segment-index',
+    placeKey = recordingId, print = 'windowed',
+}) {
     const { shallowReactive, reactive, computed, watch, nextTick } = Vue;
+
+    // A bare data-tv-list attribute is the list without a name
+    const LIST = `[data-tv-list="${name}"]`;
+    const FIND_BAR = `[data-transcript-find="${name}"]`;
+    const HIGHLIGHT = name ? `transcript-find-${name}` : 'transcript-find';
+    const HIGHLIGHT_CURRENT = `${HIGHLIGHT}-current`;
+    const indexOf = (el) => Number(el.getAttribute(segmentAttribute));
 
     const model = createTranscriptWindow();
     // What the templates render: the units of the window for the view that
@@ -75,7 +134,7 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
     let rebase = null;              // { segment, within }: the segment to keep at the top of the view
     let lastRecording = null;
 
-    const source = computed(() => {
+    const source = ownSource || computed(() => {
         const transcript = processedTranscription.value || {};
         if (transcript.isError) return { kind: 'none', units: [] };
         if (!transcript.hasDialogue) return { kind: 'segment', units: segmentUnits(transcript.simpleSegments) };
@@ -221,6 +280,9 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
         const list = activeList();
         if (!list || model.whole) return null;
         const at = frameOf(list);
+        // The list has not been scrolled: there is no place to keep, and
+        // whatever is above its first unit (padding, a legend) stays in view
+        if (at.y <= 0) return null;
         for (const el of unitElements(list)) {
             const rect = el.getBoundingClientRect();
             if (rect.bottom <= at.top) continue;
@@ -235,7 +297,7 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
     // view stays there.
     function relayout() {
         const next = source.value;
-        const recording = recordingId ? recordingId() : null;
+        const recording = placeKey ? placeKey() : null;
         // A place that is still to be restored (the list was replaced meanwhile) is kept
         const keep = recording !== lastRecording ? null : (rebase || (shownFor ? topSegment() : null));
         lastRecording = recording;
@@ -275,7 +337,7 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
 
     // ---- showing a segment ---------------------------------------------------
 
-    const segmentElement = (list, index) => list.querySelector(`[data-segment-index="${index}"]`);
+    const segmentElement = (list, index) => list.querySelector(`[${segmentAttribute}="${index}"]`);
 
     /** Bring a segment into view; a segment outside the window is rendered first. */
     const revealSegment = (index) => {
@@ -331,12 +393,13 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
         if (!list) return;
         const all = [];
         const current = [];
-        for (const el of list.querySelectorAll('[data-segment-index]')) {
-            const index = Number(el.dataset.segmentIndex);
+        for (const el of list.querySelectorAll(`[${segmentAttribute}]`)) {
+            const index = indexOf(el);
             let m = firstMatchFrom(index);
             if (m >= matches.length || matches[m].index !== index) continue;
             const sentence = sentences[index];
-            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            // The text of the segment, where a row shows more than that
+            const walker = document.createTreeWalker(el.querySelector('[data-tv-text]') || el, NodeFilter.SHOW_TEXT);
             let node = walker.nextNode();
             while (node && !node.data.includes(sentence)) node = walker.nextNode();
             if (!node) continue;
@@ -356,8 +419,9 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
     }
 
     const search = () => {
-        const transcript = processedTranscription.value || {};
-        sentences = find.open ? (transcript.simpleSegments || []).map((segment) => segment.sentence || '') : [];
+        if (!find.open) sentences = [];
+        else if (ownSentences) sentences = ownSentences();
+        else sentences = ((processedTranscription.value || {}).simpleSegments || []).map((segment) => segment.sentence || '');
         matches = find.open ? findMatches(sentences, buildMatcher(find.query)) : [];
         find.total = matches.length;
         find.current = -1;
@@ -403,15 +467,16 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
 
     watch(() => find.query, search);
     // Another transcript, or the transcript was edited
-    watch(processedTranscription, () => { if (find.open) search(); });
+    watch(ownSentences ? source : processedTranscription, () => { if (find.open) search(); });
     watch(() => (recordingId ? recordingId() : null), () => { if (find.open) closeTranscriptFind(); });
 
     document.addEventListener('keydown', (event) => {
         if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || String(event.key).toLowerCase() !== 'f') return;
         // The whole transcript is on the page: the browser's find sees all of it
-        if (!view.windowed || !activeList()) return;
+        const list = view.windowed ? activeList() : null;
+        if (!list) return;
         // A dialog is open over the transcript
-        if ([...document.querySelectorAll('.modal-overlay')].some((el) => el.getClientRects().length)) return;
+        if ([...document.querySelectorAll('.modal-overlay')].some((el) => el.getClientRects().length && !el.contains(list))) return;
         // A second Ctrl+F, in the bar's own field, goes to the browser's find
         const active = document.activeElement;
         if (find.open && active && active.closest && active.closest(FIND_BAR)) return;
@@ -428,7 +493,7 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
     };
     const beginPrint = () => {
         endPrint();
-        if (!view.windowed || !activeList()) return;
+        if ((!view.windowed && print !== 'always') || !activeList()) return;
         const transcript = processedTranscription.value || {};
         const root = document.createElement('div');
         root.id = PRINT_ID;
@@ -450,8 +515,10 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
         document.body.appendChild(root);
         document.documentElement.classList.add(PRINT_CLASS);
     };
-    window.addEventListener('beforeprint', beginPrint);
-    window.addEventListener('afterprint', endPrint);
+    if (print) {
+        window.addEventListener('beforeprint', beginPrint);
+        window.addEventListener('afterprint', endPrint);
+    }
 
     return {
         transcriptView: view, revealSegment, refreshTranscriptView: schedule,

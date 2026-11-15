@@ -7,10 +7,9 @@
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>{{ recording.title }} · Speakr</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v=app_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css', v=app_version) }}">
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/vue.global.js', v=app_version) }}"></script>
-        <!-- All dependencies bundled locally for offline support -->
-<script src="{{ url_for('static', filename='vendor/js/axios.min.js', v=app_version) }}"></script>
     {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js', v=app_version) }}"></script>
         <!-- All dependencies bundled locally for offline support -->
@@ -52,12 +51,10 @@
             }
         }
 
-        // Wait for DOM to be ready before applying theme
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', applyTheme);
-        } else {
-            applyTheme();
-        }
+        // At once, before the first paint and before the page's script reads
+        // the mode (waiting for DOMContentLoaded left the button out of step
+        // with a dark system setting)
+        applyTheme();
     </script>
     <!-- Tailwind utilities, compiled at build time (scripts/build_css.sh). Last in
          <head> so that, as with the former runtime build, they follow the page's
@@ -66,17 +63,17 @@
     {% include 'includes/ui_theme.html' %}
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
-    <div id="app" class="h-full flex flex-col" data-recording='{{ recording|tojson|safe }}'>
+    <div id="app" class="share-page h-full flex flex-col">
         <!-- Header -->
         <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
-            <div class="flex items-center gap-3">
-                <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="Speakr" class="app-logo w-8 h-8">
-                <div>
-                    <h1 class="text-xl font-bold text-[var(--text-primary)]">${ recording.title }</h1>
+            <div class="flex items-center gap-3 min-w-0">
+                <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="Speakr" class="app-logo w-8 h-8 flex-shrink-0">
+                <div class="min-w-0">
+                    <h1 class="text-xl font-bold text-[var(--text-primary)] truncate">${ recording.title }</h1>
                     <p class="text-sm text-[var(--text-muted)]">${ t('sharePage.subtitle') }</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-shrink-0">
                 <button @click="toggleDarkMode"
                         class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
                         :title="t('buttons.toggleTheme')">
@@ -88,7 +85,7 @@
         <!-- Main Content -->
         <main class="flex-1 flex flex-col overflow-hidden">
             <!-- Audio Player - Fixed at top -->
-            <div class="bg-[var(--bg-secondary)] p-4 border-b border-[var(--border-primary)] flex-shrink-0">
+            <div class="share-print-hide bg-[var(--bg-secondary)] p-4 border-b border-[var(--border-primary)] flex-shrink-0">
                 <div class="max-w-4xl mx-auto">
                     <!-- Show message if audio has been deleted -->
                     <div v-if="recording.audio_deleted_at"
@@ -158,7 +155,7 @@
                             <input type="range" min="0" max="1" step="0.05" :value="playerVolume"
                                    @input="(e) => setAudioVolume(parseFloat(e.target.value))"
                                    :aria-label="t('speakerModal.volume')"
-                                   class="volume-slider w-20 h-1.5 rounded-full cursor-pointer">
+                                   class="volume-slider w-20 h-1.5 rounded-full cursor-pointer hidden sm:block">
                         </div>
                     </div>
                     </div>
@@ -166,7 +163,7 @@
             </div>
 
             <!-- Tab Navigation - Fixed below audio player -->
-            <div class="bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] flex-shrink-0">
+            <div class="share-print-hide bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] flex-shrink-0">
                 <div class="max-w-4xl mx-auto">
                     <div class="flex">
                         <button @click="activeTab = 'transcription'"
@@ -209,107 +206,40 @@
                 <div class="w-full max-w-4xl mx-auto p-4 flex-1 flex flex-col overflow-hidden">
                     <!-- Transcription View -->
                     <div v-show="activeTab === 'transcription'" class="w-full flex-1 flex flex-col overflow-hidden">
-                        <!-- Transcription Controls -->
-                        <div class="flex items-center justify-between mb-4 flex-shrink-0">
-                            <div v-if="readableMode ? hasDialogue : processedTranscription.hasDialogue" class="view-mode-toggle">
-                                <button @click="transcriptView = 'simple'"
-                                        :class="['toggle-button', transcriptView === 'simple' ? 'active' : '']">
+                        <!-- Transcript controls -->
+                        <div class="share-controls flex-shrink-0">
+                            <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
+                                <button @click="transcriptionViewMode = 'simple'"
+                                        :class="['toggle-button', transcriptionViewMode === 'simple' ? 'active' : '']">
                                     <i class="fas fa-list mr-1"></i>${ t('transcription.simple') }
                                 </button>
-                                <button @click="transcriptView = 'bubble'"
-                                        :class="['toggle-button', transcriptView === 'bubble' ? 'active' : '']">
+                                <button @click="transcriptionViewMode = 'bubble'"
+                                        :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']">
                                     <i class="fas fa-comments mr-1"></i>${ t('transcription.bubble') }
                                 </button>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <div v-if="!recording.audio_deleted_at && (readableMode ? hasDialogue : processedTranscription.hasDialogue)"
-                                     class="follow-player-control text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                                     @click="toggleFollowPlayerMode"
-                                     :title="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')">
-                                    <input type="checkbox"
-                                           :checked="followPlayerMode"
-                                           @click.stop="toggleFollowPlayerMode"
-                                           :aria-label="t('sharePage.followPlayer')"
-                                           class="cursor-pointer">
-                                    <i class="fas fa-arrows-alt-v follow-icon"></i>
-                                </div>
-                                <button @click="copyTranscript" class="copy-btn">
+                            <div class="share-controls__actions">
+                                <!-- Shown once the reader has moved away from the playing segment -->
+                                <button v-if="followPaused" @click="resumeFollowing" class="copy-btn" data-share-follow
+                                        :title="t('tooltips.followPlayerDisabled')">
+                                    <i class="fas fa-location-arrow mr-1"></i>${ t('sharePage.follow') }
+                                </button>
+                                <!-- Find, for a transcript that is not rendered whole (the
+                                     browser's own find sees only the rendered part) -->
+                                <button v-if="transcriptView.windowed" @click="toggleTranscriptFind" class="copy-btn" data-share-find
+                                        :title="t('findReplace.find')" :aria-label="t('findReplace.find')">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                                <button @click="copyTranscript" class="copy-btn" data-share-copy>
                                     <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
                                 </button>
                             </div>
                         </div>
 
-                        {% if readable_mode and transcript %}
-                        <!-- SERVER-RENDERED VERSION (for READABLE_PUBLIC_LINKS mode) -->
-                        <!-- Speaker Legend (only for bubble view) -->
-                        {% if transcript.has_speakers and transcript.speakers %}
-                        <div v-show="transcriptView === 'bubble'"
-                             :class="['speaker-legend', legendExpanded ? 'expanded' : '', 'flex-shrink-0', 'mb-4']">
-                            <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
-                                <div class="speaker-legend-title">
-                                    <i class="fas fa-users"></i>
-                                    ${ t('form.speakers') }
-                                    <span class="speaker-count-indicator">({{ transcript.speakers|length }})</span>
-                                </div>
-                                <i class="fas fa-chevron-down speaker-legend-toggle"></i>
-                            </div>
-                            <div class="speaker-legend-content">
-                                {% for speaker in transcript.speakers %}
-                                <div class="speaker-legend-item {{ speaker.color }}">
-                                    <span class="speaker-name">{{ speaker.name }}</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endif %}
+                        {% include 'components/detail/_transcript-find.html' %}
 
-                        <!-- Transcription Content - Scrollable Box (Server-rendered for accessibility) -->
-                        <div class="w-full flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick"
-                             tabindex="0" role="region" :aria-label="t('transcription.title')">
-                            {% if transcript.is_json and transcript.segments %}
-                            <!-- Simple View (server-rendered) -->
-                            <div v-show="transcriptView === 'simple'" class="transcription-simple-view">
-                                {% for segment in transcript.segments %}
-                                <div class="speaker-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors mb-2"
-                                     data-start-time="{{ segment.start_time }}"
-                                     data-end-time="{{ segment.end_time }}"
-                                     data-segment-index="{{ loop.index0 }}"
-                                     style="margin-bottom: 0.5rem !important;">
-                                    {% if segment.show_speaker and segment.speaker %}
-                                    <div class="speaker-tablet {{ segment.color }}">{{ segment.speaker }}</div>
-                                    {% endif %}
-                                    <div class="speaker-text">{{ segment.text }}</div>
-                                </div>
-                                {% endfor %}
-                            </div>
-
-                            <!-- Bubble View (server-rendered) -->
-                            <div v-show="transcriptView === 'bubble'" class="transcription-with-speakers">
-                                {% set ns = namespace(last_speaker=None) %}
-                                {% for segment in transcript.segments %}
-                                {% if segment.speaker != ns.last_speaker %}
-                                {% if not loop.first %}</div>{% endif %}
-                                <div class="bubble-row {% if segment.speaker and 'me' in segment.speaker|lower %}speaker-me{% endif %}">
-                                {% endif %}
-                                    <div class="speaker-bubble {{ segment.color }} {% if segment.speaker and 'me' in segment.speaker|lower %}speaker-me{% endif %} cursor-pointer"
-                                         data-start-time="{{ segment.start_time }}"
-                                         data-end-time="{{ segment.end_time }}"
-                                         data-segment-index="{{ loop.index0 }}">
-                                        <div class="speaker-bubble-content">{{ segment.text }}</div>
-                                    </div>
-                                {% set ns.last_speaker = segment.speaker %}
-                                {% endfor %}
-                                {% if transcript.segments %}</div>{% endif %}
-                            </div>
-                            {% else %}
-                            <!-- Plain Text View (for non-JSON transcriptions) -->
-                            <div class="whitespace-pre-wrap bidi-auto cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors">{{ transcript.plain_text }}</div>
-                            {% endif %}
-                        </div>
-                        {% else %}
-                        <!-- VUE-RENDERED VERSION (default) -->
-                        <!-- Speaker Legend (only for bubble view) -->
-                        <div v-if="processedTranscription.hasDialogue && processedTranscription.speakers.length > 0 && transcriptView === 'bubble'"
+                        <!-- Speaker legend (bubble view) -->
+                        <div v-if="processedTranscription.hasDialogue && processedTranscription.speakers.length > 0 && transcriptionViewMode === 'bubble'"
                              :class="['speaker-legend', legendExpanded ? 'expanded' : '', 'flex-shrink-0', 'mb-4']">
                             <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
                                 <div class="speaker-legend-title">
@@ -328,76 +258,84 @@
                             </div>
                         </div>
 
-                        <!-- Transcription Content - Scrollable Box -->
-                        <div class="w-full flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick"
+                        <!-- The transcript, laid out as on the recording page. Only the
+                             part near the viewport is rendered (composables/
+                             transcript-view.js): the two spacers stand for the rest. -->
+                        <div ref="transcriptBox" class="w-full flex-1 overflow-y-auto transcription-box"
                              tabindex="0" role="region" :aria-label="t('transcription.title')">
-                            <!-- Simple View -->
-                            <div v-if="transcriptView === 'simple'" class="transcription-simple-view">
-                                <div v-for="(segment, index) in processedTranscription.simpleSegments"
-                                     :key="segment.startTime ?? Math.random()"
-                                     :class="['speaker-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors mb-2', { 'active-playing-segment': currentPlayingSegmentIndex === index }]"
-                                     :data-start-time="segment.startTime"
-                                     :data-end-time="segment.endTime"
-                                     :data-segment-index="index"
-                                     style="margin-bottom: 0.5rem !important;">
-                                    <div v-if="segment.showSpeaker" :class="['speaker-tablet', segment.color]">
-                                        ${segment.speaker}
-                                    </div>
-                                    <div class="speaker-text">
-                                        ${segment.sentence}
-                                    </div>
+                            <!-- Simple view: speaker turns -->
+                            <div v-if="processedTranscription.hasDialogue && transcriptionViewMode === 'simple'" class="transcription-simple-view">
+                                <div data-tv-list>
+                                    <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
+                                    {# The speaker turn of the visitor's UI theme, as on the recording page #}
+                                    {% with ui_slot = 'transcript-turn', transcript_read_only = true %}{% include 'themes/slot.html' %}{% endwith %}
+                                    <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
                                 </div>
                             </div>
 
-                            <!-- Bubble View -->
-                            <div v-else-if="transcriptView === 'bubble'" class="transcription-with-speakers">
-                                <div v-for="(row, rowIndex) in processedTranscription.bubbleRows"
-                                     :key="rowIndex"
+                            <!-- Bubble view -->
+                            <div v-else-if="processedTranscription.hasDialogue" class="transcription-with-speakers" data-tv-list>
+                                <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
+                                <div v-for="row in transcriptView.rows" :key="row.key" :data-tv-unit="row.unit"
                                      :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
-                                    <div v-for="(bubble, bubbleIndex) in row.bubbles"
-                                         :key="bubble.startTime ?? Math.random()"
-                                         :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', 'cursor-pointer', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]"
+                                    <div v-for="bubble in row.bubbles"
+                                         :key="bubble.index"
+                                         :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === bubble.index }]"
+                                         @click="seekAudioFromEvent"
                                          :data-start-time="bubble.startTime"
-                                         :data-end-time="bubble.endTime"
-                                         :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
-                                        <div class="speaker-bubble-content">
-                                            ${bubble.sentence}
-                                        </div>
+                                         :data-segment-index="bubble.index">
+                                        <div class="speaker-bubble-content">${bubble.sentence}</div>
                                     </div>
+                                </div>
+                                <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
+                            </div>
+
+                            <!-- Segments without speakers -->
+                            <div v-else-if="processedTranscription.isJson" class="transcription-simple-view">
+                                <div data-tv-list>
+                                    <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
+                                    <div v-for="unit in transcriptView.segments" :key="unit.key" :data-tv-unit="unit.unit"
+                                         :class="['transcript-segment p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === unit.first }]"
+                                         @click="seekAudioFromEvent"
+                                         :data-start-time="unit.segment.startTime"
+                                         :data-segment-index="unit.first">${unit.segment.sentence}</div>
+                                    <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
                                 </div>
                             </div>
 
-                            <!-- Plain Text View (for non-JSON transcriptions) -->
-                            <div v-if="!processedTranscription.isJson" class="whitespace-pre-wrap bidi-auto cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors">
-                                ${processedTranscription.content}
-                            </div>
+                            <!-- A transcript that is not stored as segments -->
+                            <div v-else class="whitespace-pre-wrap bidi-auto p-2">${processedTranscription.content}</div>
                         </div>
-                        {% endif %}
                     </div>
 
-                    <!-- Summary View -->
+                    <!-- Summary and notes: HTML cleaned on the server (md_to_html).
+                         v-pre keeps Vue from compiling it as part of this template,
+                         so an expression written in a summary stays text. -->
                     {% if recording.summary %}
                     <div v-show="activeTab === 'summary'" class="w-full flex-1 flex flex-col overflow-hidden">
-                        <div class="flex items-center justify-end mb-4 flex-shrink-0">
-                            <button @click="copySummary" class="copy-btn">
-                                <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
-                            </button>
+                        <div class="share-controls flex-shrink-0">
+                            <div class="share-controls__actions">
+                                <button @click="copySummary" class="copy-btn">
+                                    <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
+                                </button>
+                            </div>
                         </div>
-                        <div class="w-full flex-1 overflow-y-auto summary-box">
+                        <div class="w-full flex-1 overflow-y-auto summary-box" v-pre>
                             {{ recording.summary|safe }}
                         </div>
                     </div>
                     {% endif %}
 
-                    <!-- Notes View -->
                     {% if recording.notes %}
                     <div v-show="activeTab === 'notes'" class="w-full flex-1 flex flex-col overflow-hidden">
-                        <div class="flex items-center justify-end mb-4 flex-shrink-0">
-                            <button @click="copyNotes" class="copy-btn">
-                                <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
-                            </button>
+                        <div class="share-controls flex-shrink-0">
+                            <div class="share-controls__actions">
+                                <button @click="copyNotes" class="copy-btn">
+                                    <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
+                                </button>
+                            </div>
                         </div>
-                        <div class="w-full flex-1 overflow-y-auto notes-box">
+                        <div class="w-full flex-1 overflow-y-auto notes-box" v-pre>
                             {{ recording.notes|safe }}
                         </div>
                     </div>
@@ -430,493 +368,32 @@
         {% include 'modals/toast-container.html' %}
     </div>
 
-    <script>
-        const { createApp, ref, computed } = Vue;
+    {# What the page shows, for static/js/share-page.js. tojson escapes <, >, &
+       and ', so the block cannot be closed from inside. #}
+    <script type="application/json" id="share-data">{{ recording|tojson }}</script>
 
-        // Translations come embedded in the page (includes/i18n_bootstrap.html)
-        // for the viewer's language: their own interface language when signed
-        // in, else the browser's Accept-Language. A locale that was not
-        // embedded (e.g. a saved preferredLanguage) is fetched here.
-        const i18nVersion = ref(0);
-        if (window.i18n) {
-            window.addEventListener('i18nReady', () => { i18nVersion.value++; });
-            if (!window.i18n.isReady) {
-                window.i18n.init({{ (user_language or 'en')|tojson }});
-            }
-        }
+    {% if readable_mode %}
+    {# READABLE_PUBLIC_LINKS: the whole transcript as plain HTML for readers
+       that do not run the page's script. A browser that runs it keeps this
+       as inert text and shows the windowed transcript above instead. #}
+    <noscript>
+        <article id="transcript-readable">
+            <h1>{{ recording.title }}</h1>
+            {% if recording.transcript.segments is defined %}
+            {%- set ns = namespace(last=-2) -%}
+            {% for segment in recording.transcript.segments %}
+            {%- if segment[0] != ns.last and segment[0] >= 0 %}<h2>{{ recording.transcript.speakers[segment[0]] }}</h2>
+            {% endif -%}
+            {%- set ns.last = segment[0] -%}
+            <p>{{ segment[3] }}</p>
+            {% endfor %}
+            {% else %}
+            <p style="white-space: pre-wrap">{{ recording.transcript.text }}</p>
+            {% endif %}
+        </article>
+    </noscript>
+    {% endif %}
 
-        const app = createApp({
-            setup() {
-                // Reading i18nVersion makes templates re-render when the
-                // translations finish loading.
-                function t(key, params) {
-                    i18nVersion.value;
-                    return window.i18n ? window.i18n.t(key, params || {}) : key;
-                }
-                const appElement = document.querySelector('#app');
-                const recordingData = JSON.parse(appElement.dataset.recording);
-                const recording = ref(recordingData);
-
-                function updateDocumentTitle() {
-                    if (!window.i18n || !window.i18n.isReady) return;
-                    const title = t('sharePage.pageTitle', { title: recording.value.title || '' });
-                    if (title !== 'sharePage.pageTitle') document.title = title;
-                }
-                updateDocumentTitle();
-                window.addEventListener('i18nReady', updateDocumentTitle);
-                const activeTab = ref('transcription');
-                const transcriptView = ref('simple');
-                const audioPlayer = ref(null);
-                const legendExpanded = ref(false);
-                const isDarkMode = ref(document.documentElement.classList.contains('dark'));
-
-                // Readable mode flag from server
-                const readableMode = {{ 'true' if readable_mode else 'false' }};
-                const currentPlayingSegmentIndex = ref(-1);
-                const followPlayerMode = ref(localStorage.getItem('shareFollowPlayerMode') === 'true');
-
-                // Server-rendered transcript info (only used in readable mode)
-                const hasDialogue = ref({{ 'true' if transcript and transcript.has_speakers else 'false' }});
-                const plainTextTranscript = {{ (transcript.plain_text if transcript else '')|tojson|safe }};
-
-                // Custom audio player state
-                const audioIsPlaying = ref(false);
-                const audioCurrentTime = ref(0);
-                // Use server-side duration if available (more reliable for formats like WebM)
-                const audioDuration = ref(recordingData.audio_duration || 0);
-                const audioIsMuted = ref(false);
-                const playerVolume = ref(1.0);
-
-                // Playback speed state
-                const playbackRate = ref(1.0);
-                const showSpeedMenu = ref(false);
-                const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
-
-                // Computed property for progress percentage
-                const audioProgressPercent = computed(() => {
-                    if (!audioDuration.value) return 0;
-                    return (audioCurrentTime.value / audioDuration.value) * 100;
-                });
-
-                // Format time as m:ss or h:mm:ss
-                function formatAudioTime(seconds) {
-                    if (!seconds || isNaN(seconds)) return '0:00';
-                    const hours = Math.floor(seconds / 3600);
-                    const mins = Math.floor((seconds % 3600) / 60);
-                    const secs = Math.floor(seconds % 60);
-                    if (hours > 0) {
-                        return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    }
-                    return `${mins}:${secs.toString().padStart(2, '0')}`;
-                }
-
-                // Audio event handlers
-                function handleAudioPlayPause(event) {
-                    audioIsPlaying.value = !event.target.paused;
-                }
-
-                function handleCustomAudioTimeUpdate(event) {
-                    audioCurrentTime.value = event.target.currentTime;
-                    updateHighlightedSegment(event.target.currentTime);
-                }
-
-                function updateHighlightedSegment(currentTime) {
-                    // Find all segments and determine which one is currently playing
-                    const segments = document.querySelectorAll('[data-segment-index]');
-                    let newIndex = -1;
-
-                    segments.forEach((el) => {
-                        const startTime = parseFloat(el.dataset.startTime) || 0;
-                        const endTime = parseFloat(el.dataset.endTime) || Infinity;
-                        const index = parseInt(el.dataset.segmentIndex);
-
-                        if (currentTime >= startTime && currentTime < endTime) {
-                            newIndex = index;
-                        }
-
-                        // Update highlight class
-                        if (currentTime >= startTime && currentTime < endTime) {
-                            el.classList.add('active-playing-segment');
-                        } else {
-                            el.classList.remove('active-playing-segment');
-                        }
-                    });
-
-                    currentPlayingSegmentIndex.value = newIndex;
-
-                    // Auto-scroll to active segment if follow mode is on
-                    if (followPlayerMode.value && newIndex >= 0) {
-                        const activeEl = document.querySelector(`[data-segment-index="${newIndex}"]`);
-                        if (activeEl) {
-                            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }
-                }
-
-                function toggleFollowPlayerMode() {
-                    followPlayerMode.value = !followPlayerMode.value;
-                    localStorage.setItem('shareFollowPlayerMode', followPlayerMode.value);
-                    if (followPlayerMode.value && currentPlayingSegmentIndex.value >= 0) {
-                        const activeEl = document.querySelector(`[data-segment-index="${currentPlayingSegmentIndex.value}"]`);
-                        if (activeEl) {
-                            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }
-                }
-
-                function handleAudioLoadedMetadata(event) {
-                    // Only set browser duration if we don't already have a server-side duration
-                    if (!audioDuration.value || audioDuration.value === 0) {
-                        const duration = event.target.duration;
-                        if (duration && isFinite(duration) && duration > 0) {
-                            audioDuration.value = duration;
-                        }
-                    }
-                    // Apply saved playback rate when audio loads
-                    if (playbackRate.value !== 1) {
-                        event.target.playbackRate = playbackRate.value;
-                    }
-                }
-
-                function handleAudioDurationChange(event) {
-                    // Only set browser duration if we don't already have a server-side duration
-                    if (!audioDuration.value || audioDuration.value === 0) {
-                        const duration = event.target.duration;
-                        if (duration && isFinite(duration) && duration > 0) {
-                            audioDuration.value = duration;
-                        }
-                    }
-                }
-
-                function handleAudioEnded() {
-                    audioIsPlaying.value = false;
-                }
-
-                // Audio control functions
-                function toggleAudioPlayback() {
-                    if (!audioPlayer.value) return;
-                    if (audioPlayer.value.paused) {
-                        audioPlayer.value.play();
-                    } else {
-                        audioPlayer.value.pause();
-                    }
-                }
-
-                function toggleAudioMute() {
-                    if (!audioPlayer.value) return;
-                    audioPlayer.value.muted = !audioPlayer.value.muted;
-                    audioIsMuted.value = audioPlayer.value.muted;
-                }
-
-                function setAudioVolume(value) {
-                    if (!audioPlayer.value) return;
-                    playerVolume.value = value;
-                    audioPlayer.value.volume = value;
-                    if (value > 0 && audioIsMuted.value) {
-                        audioPlayer.value.muted = false;
-                        audioIsMuted.value = false;
-                    }
-                }
-
-                function seekAudioByPercent(percent) {
-                    if (!audioPlayer.value || !audioDuration.value || !isFinite(audioDuration.value)) return;
-                    const time = (percent / 100) * audioDuration.value;
-                    audioPlayer.value.currentTime = time;
-                }
-
-                // Playback speed functions
-                function formatPlaybackRate(rate) {
-                    if (rate === 1) return '1x';
-                    return `${rate}x`;
-                }
-
-                function setPlaybackRate(rate) {
-                    playbackRate.value = rate;
-                    localStorage.setItem('playbackRate', rate);
-                    if (audioPlayer.value) {
-                        audioPlayer.value.playbackRate = rate;
-                    }
-                }
-
-                // Initialize playback rate from localStorage
-                const savedRate = localStorage.getItem('playbackRate');
-                if (savedRate) {
-                    const rate = parseFloat(savedRate);
-                    if (playbackSpeeds.includes(rate)) {
-                        playbackRate.value = rate;
-                    }
-                }
-
-                // processedTranscription computed property (used in Vue mode, not readable mode)
-                const processedTranscription = computed(() => {
-                    if (readableMode) {
-                        // In readable mode, content is server-rendered, so just return minimal info
-                        return { hasDialogue: hasDialogue.value, isJson: true, speakers: [], simpleSegments: [], bubbleRows: [] };
-                    }
-
-                    if (!recording.value?.transcription) {
-                        return { hasDialogue: false, content: '', speakers: [], simpleSegments: [], bubbleRows: [] };
-                    }
-
-                    const transcription = recording.value.transcription;
-                    let transcriptionData;
-
-                    try {
-                        transcriptionData = JSON.parse(transcription);
-                    } catch (e) {
-                        transcriptionData = null;
-                    }
-
-                    if (transcriptionData && Array.isArray(transcriptionData)) {
-                        const wasDiarized = transcriptionData.some(segment => segment.speaker);
-
-                        if (!wasDiarized) {
-                            const segments = transcriptionData.map(segment => ({
-                                sentence: segment.sentence,
-                                startTime: segment.start_time,
-                                endTime: segment.end_time
-                            }));
-                            return {
-                                hasDialogue: false,
-                                isJson: true,
-                                content: segments.map(s => s.sentence).join('\n'),
-                                simpleSegments: segments,
-                                speakers: [],
-                                bubbleRows: []
-                            };
-                        }
-
-                        const speakers = [...new Set(transcriptionData.map(segment => segment.speaker).filter(Boolean))];
-                        const speakerColors = {};
-                        speakers.forEach((speaker, index) => {
-                            speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
-                        });
-
-                        const simpleSegments = transcriptionData.map(segment => ({
-                            speakerId: segment.speaker,
-                            speaker: segment.speaker,
-                            sentence: segment.sentence,
-                            startTime: segment.start_time ?? segment.startTime,
-                            endTime: segment.end_time ?? segment.endTime,
-                            color: speakerColors[segment.speaker] || 'speaker-color-1'
-                        }));
-
-                        const processedSimpleSegments = [];
-                        let lastSpeaker = null;
-                        simpleSegments.forEach(segment => {
-                            processedSimpleSegments.push({
-                                ...segment,
-                                showSpeaker: segment.speaker !== lastSpeaker
-                            });
-                            lastSpeaker = segment.speaker;
-                        });
-
-                        const bubbleRows = [];
-                        let lastBubbleSpeaker = null;
-                        simpleSegments.forEach(segment => {
-                            if (bubbleRows.length === 0 || segment.speaker !== lastBubbleSpeaker) {
-                                bubbleRows.push({
-                                    speaker: segment.speaker,
-                                    color: segment.color,
-                                    isMe: segment.speaker && (typeof segment.speaker === 'string') && segment.speaker.toLowerCase().includes('me'),
-                                    bubbles: []
-                                });
-                                lastBubbleSpeaker = segment.speaker;
-                            }
-                            bubbleRows[bubbleRows.length - 1].bubbles.push({
-                                sentence: segment.sentence,
-                                startTime: segment.startTime ?? segment.start_time,
-                                endTime: segment.endTime ?? segment.end_time,
-                                color: segment.color
-                            });
-                        });
-
-                        return {
-                            hasDialogue: true,
-                            isJson: true,
-                            segments: simpleSegments,
-                            simpleSegments: processedSimpleSegments,
-                            bubbleRows: bubbleRows,
-                            speakers: speakers.map(speaker => ({
-                                name: speaker,
-                                color: speakerColors[speaker]
-                            }))
-                        };
-                    }
-                    return { hasDialogue: false, content: transcription, speakers: [], simpleSegments: [], bubbleRows: [] };
-                });
-
-                // Helper to get global index for bubble view highlighting
-                function getBubbleGlobalIndex(rowIndex, bubbleIndex) {
-                    let globalIndex = 0;
-                    for (let i = 0; i < rowIndex; i++) {
-                        globalIndex += processedTranscription.value.bubbleRows[i]?.bubbles?.length || 0;
-                    }
-                    return globalIndex + bubbleIndex;
-                }
-
-                function seekAudio(startTime) {
-                    if (recording.value.audio_deleted_at) return;
-                    if (startTime && audioPlayer.value) {
-                        audioPlayer.value.currentTime = parseFloat(startTime);
-                        audioPlayer.value.play();
-                    }
-                }
-
-                function handleTranscriptClick(event) {
-                    if (recording.value.audio_deleted_at) return;
-                    // Use closest() to find the segment element even when clicking on child elements
-                    const segmentEl = event.target.closest('[data-start-time]');
-                    if (segmentEl && audioPlayer.value) {
-                        const startTime = segmentEl.dataset.startTime;
-                        audioPlayer.value.currentTime = parseFloat(startTime);
-                        audioPlayer.value.play();
-                    }
-                }
-
-                function copyTranscript(event) {
-                    const button = event?.currentTarget;
-                    let textToCopy = '';
-                    if (readableMode) {
-                        // Use server-provided plain text (already formatted with speaker labels if diarized)
-                        textToCopy = plainTextTranscript || recording.value.transcription;
-                    } else {
-                        // Use Vue-computed data
-                        if (processedTranscription.value.isJson && processedTranscription.value.simpleSegments) {
-                            textToCopy = processedTranscription.value.simpleSegments.map(s =>
-                                s.speaker ? `[${s.speaker}]: ${s.sentence}` : s.sentence
-                            ).join('\n');
-                        } else {
-                            textToCopy = recording.value.transcription;
-                        }
-                    }
-                    navigator.clipboard.writeText(textToCopy).then(() => {
-                        animateCopyButton(button);
-                        showToast(tr('messages.transcriptionCopied', 'Transcript copied'));
-                    });
-                }
-
-                function copySummary(event) {
-                    const button = event?.currentTarget;
-                    const textToCopy = recording.value.summary_raw || recording.value.summary;
-                    navigator.clipboard.writeText(textToCopy).then(() => {
-                        animateCopyButton(button);
-                        showToast(tr('messages.summaryCopied', 'Summary copied'));
-                    });
-                }
-
-                function copyNotes(event) {
-                    const button = event?.currentTarget;
-                    const textToCopy = recording.value.notes_raw || recording.value.notes;
-                    navigator.clipboard.writeText(textToCopy).then(() => {
-                        animateCopyButton(button);
-                        showToast(tr('messages.notesCopied', 'Notes copied'));
-                    });
-                }
-
-                function animateCopyButton(button) {
-                    if (!button) return;
-                    const icon = button.querySelector('i');
-                    if (icon) {
-                        const originalClass = icon.className;
-                        icon.className = 'fas fa-check mr-1';
-                        setTimeout(() => {
-                            icon.className = originalClass;
-                        }, 2000);
-                    }
-                }
-
-                function toggleDarkMode() {
-                    const newDarkMode = !isDarkMode.value;
-                    isDarkMode.value = newDarkMode;
-
-                    if (newDarkMode) {
-                        document.documentElement.classList.add('dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                    }
-
-                    localStorage.setItem('darkMode', newDarkMode.toString());
-                    // The color scheme class follows the mode (theme-light-* / theme-dark-*).
-                    if (typeof applyTheme === 'function') applyTheme();
-                    if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
-                }
-
-                // Translate with an English fallback (this public page may
-                // render without the i18n bundle).
-                function tr(key, fallback) {
-                    if (window.i18n && typeof window.i18n.t === 'function') {
-                        const value = window.i18n.t(key);
-                        if (value && value !== key) return value;
-                    }
-                    return fallback;
-                }
-
-                // The shared toast (static/js/modules/utils/toast.js), loaded on
-                // first use as this page is not a module.
-                function showToast(message) {
-                    import('/static/js/modules/utils/toast.js')
-                        .then(m => m.showToast(message, 'fa-check-circle', 3000, 'success'))
-                        .catch(err => console.error('Toast failed:', err));
-                }
-
-                return {
-                    t,
-                    recording,
-                    activeTab,
-                    transcriptView,
-                    audioPlayer,
-                    readableMode,
-                    hasDialogue,
-                    processedTranscription,
-                    currentPlayingSegmentIndex,
-                    followPlayerMode,
-                    toggleFollowPlayerMode,
-                    getBubbleGlobalIndex,
-                    legendExpanded,
-                    isDarkMode,
-                    seekAudio,
-                    handleTranscriptClick,
-                    copyTranscript,
-                    copySummary,
-                    copyNotes,
-                    toggleDarkMode,
-                    // Custom audio player
-                    audioIsPlaying,
-                    audioCurrentTime,
-                    audioDuration,
-                    audioIsMuted,
-                    playerVolume,
-                    audioProgressPercent,
-                    formatAudioTime,
-                    handleAudioPlayPause,
-                    handleCustomAudioTimeUpdate,
-                    handleAudioLoadedMetadata,
-                    handleAudioDurationChange,
-                    handleAudioEnded,
-                    toggleAudioPlayback,
-                    toggleAudioMute,
-                    setAudioVolume,
-                    seekAudioByPercent,
-                    // Playback speed
-                    playbackRate,
-                    showSpeedMenu,
-                    playbackSpeeds,
-                    formatPlaybackRate,
-                    setPlaybackRate
-                };
-            }
-        });
-
-        app.config.compilerOptions.delimiters = ['${', '}'];
-        app.mount('#app');
-
-        // Hide loading overlay after app mounts
-        Vue.nextTick(() => {
-            if (window.AppLoader) {
-                AppLoader.waitForReady();
-            }
-        });
-    </script>
+    <script type="module" src="{{ url_for('static', filename='js/share-page.js', v=app_version) }}"></script>
 </body>
 </html>

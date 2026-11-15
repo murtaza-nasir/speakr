@@ -140,6 +140,8 @@ A transcript of more than 300 segments is drawn only around the part you are rea
 - **Esc** or the x closes the bar.
 - Press Ctrl+F again while the cursor is in the bar to reach the browser's own search.
 
+The Identify speakers dialog and the [public share page](sharing.md#what-recipients-experience) draw a long transcript the same way and have the same find bar, also behind a search button.
+
 On a shorter transcript, Ctrl+F opens the browser's search as usual, because the whole transcript is on the page. To replace text, use the find and replace bar of the [editor](#advanced-asr-segment-editing).
 
 ## Recording Stats

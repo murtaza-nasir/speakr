@@ -6,6 +6,13 @@
  * user moves through it. It reads the stored transcription directly instead
  * of processedTranscription, so typing a name re-renders only that speaker's
  * rows, not every segment of the recording.
+ *
+ * The transcript pane renders only the rows near its viewport, with the
+ * window of the recording page's transcript (transcript-view.js, the list
+ * named "speakers"): a row exists in the DOM only while it is near the
+ * view, so anything that needs one on screen calls revealModalSegment.
+ * Ctrl+F opens the pane's find bar when the transcript is not rendered
+ * whole, as the browser's find then sees only a part of it.
  */
 
 import {
@@ -13,6 +20,8 @@ import {
     buildNameOptions, findSavedSpelling, playingSegmentPosition, turnStarts,
     formatClock, mergeSpeakerSegments, MINOR_SPEAKER_SECONDS,
 } from '../utils/speaker-modal-model.js';
+import { segmentUnits } from '../utils/transcript-window.js';
+import { useTranscriptView } from './transcript-view.js';
 
 const SORT_KEY = 'speakerModalSort';
 const SORT_MODES = ['duration', 'appearance', 'name'];
@@ -99,6 +108,45 @@ export function useSpeakerModal(state, utils) {
         if (!selectedSpeaker.value || !onlySelectedSpeaker.value) return segs;
         return segs.filter(s => s.speakerId === selectedSpeaker.value);
     });
+
+    // The rows of the pane as a windowed list: one unit per row, counted by
+    // its place among the rows shown (with one speaker selected, those are a
+    // part of the transcript).
+    const modalRows = computed(() => (speakerModalData.value.isJson
+        ? { kind: 'segment', units: segmentUnits(visibleModalSegments.value) }
+        : { kind: 'none', units: [] }));
+    const modalView = useTranscriptView({
+        name: 'speakers',
+        source: modalRows,
+        sentences: () => visibleModalSegments.value.map(segment => segment.sentence),
+        segmentAttribute: 'data-tv-unit',
+        recordingId: () => (showSpeakerModal.value && selectedRecording.value ? selectedRecording.value.id : null),
+        // Another speaker or the other filter is another list: its rows have other places
+        placeKey: () => [showSpeakerModal.value, selectedRecording.value?.id, onlySelectedSpeaker.value ? selectedSpeaker.value : ''].join('|'),
+        relayoutOn: [speakerModalTab],
+        scrollSegmentIntoView: (el) => el.scrollIntoView({ block: 'center', behavior: 'auto' }),
+        t,
+        print: false,
+    });
+
+    /** Place of a segment among the rows shown, or -1. `index` is its index in the stored transcript. */
+    const rowOfSegment = (index) => {
+        const rows = visibleModalSegments.value;
+        let lo = 0;
+        let hi = rows.length - 1;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (rows[mid].index === index) return mid;
+            if (rows[mid].index < index) lo = mid + 1; else hi = mid - 1;
+        }
+        return -1;
+    };
+    /** Bring a segment's row into view; a row outside the window is rendered first. */
+    const revealModalSegment = (index) => {
+        const row = rowOfSegment(index);
+        if (row >= 0) modalView.revealSegment(row);
+    };
+    utils.revealSpeakerModalSegment = revealModalSegment;
 
     const selectedSpeakerTurns = computed(() =>
         selectedSpeaker.value && !onlySelectedSpeaker.value
@@ -238,13 +286,17 @@ export function useSpeakerModal(state, utils) {
 
     // ------------------------------------------------------- list & filter
 
-    const scrollTranscriptTo = (index, block = 'start') => {
+    // To the top of the pane (null), or to a segment, shown in the middle
+    const scrollTranscriptTo = (index) => {
         nextTick(() => {
             const container = speakerModalTranscriptRef.value;
             if (!container) return;
-            if (index === null) { container.scrollTop = 0; return; }
-            const el = container.querySelector(`[data-segment-index="${index}"]`);
-            if (el) el.scrollIntoView({ block, behavior: 'auto' });
+            if (index === null) {
+                container.scrollTop = 0;
+                modalView.refreshTranscriptView();
+                return;
+            }
+            revealModalSegment(index);
         });
     };
 
@@ -260,7 +312,7 @@ export function useSpeakerModal(state, utils) {
             if (onlySelectedSpeaker.value) scrollTranscriptTo(null);
             else {
                 const first = selectedSpeakerTurns.value[0];
-                if (first !== undefined) scrollTranscriptTo(visibleModalSegments.value[first].index, 'center');
+                if (first !== undefined) scrollTranscriptTo(visibleModalSegments.value[first].index);
             }
         }
         if (openTranscript) speakerModalTab.value = 'transcript';
@@ -274,7 +326,7 @@ export function useSpeakerModal(state, utils) {
     const showAllSegments = () => {
         onlySelectedSpeaker.value = false;
         const first = selectedSpeakerTurns.value[0];
-        if (first !== undefined) scrollTranscriptTo(visibleModalSegments.value[first].index, 'center');
+        if (first !== undefined) scrollTranscriptTo(visibleModalSegments.value[first].index);
     };
 
     const showOnlySelectedSpeaker = () => {
@@ -286,7 +338,7 @@ export function useSpeakerModal(state, utils) {
         const turns = selectedSpeakerTurns.value;
         if (!turns.length) return;
         currentTurn.value = (currentTurn.value + delta + turns.length) % turns.length;
-        scrollTranscriptTo(visibleModalSegments.value[turns[currentTurn.value]].index, 'center');
+        scrollTranscriptTo(visibleModalSegments.value[turns[currentTurn.value]].index);
     };
 
     const setSpeakerSort = (mode) => {
@@ -330,11 +382,17 @@ export function useSpeakerModal(state, utils) {
     // --------------------------------------------------------------- player
 
     const player = () => speakerModalPlayer.value;
+    // A pause right after (another row clicked, the dialog closed) ends the
+    // start of playback; that is not an error.
+    const play = (el) => {
+        const started = el.play();
+        if (started && started.catch) started.catch(() => {});
+    };
 
     const toggleModalPlayback = () => {
         const el = player();
         if (!el) return;
-        if (el.paused) { sampleStopAt = null; el.play(); } else el.pause();
+        if (el.paused) { sampleStopAt = null; play(el); } else el.pause();
     };
 
     const playFrom = (seconds, stopAt = null) => {
@@ -342,7 +400,7 @@ export function useSpeakerModal(state, utils) {
         if (!el || seconds === null || !isFinite(seconds)) return;
         el.currentTime = Math.max(0, seconds);
         sampleStopAt = stopAt;
-        el.play();
+        play(el);
     };
 
     const playModalSegment = (segment) => playFrom(segment.start);
@@ -430,6 +488,10 @@ export function useSpeakerModal(state, utils) {
         speakerModalData, speakerStats, orderedSpeakers, mainSpeakers, minorSpeakers, minorSpeakersSeconds, showMinorSpeakers,
         speakerListEntries, canPlayModalAudio, minorSpeakerSeconds: MINOR_SPEAKER_SECONDS,
         visibleModalSegments, selectedSpeaker, onlySelectedSpeaker, selectedSpeakerTurns, currentTurn,
+        speakerTranscriptView: modalView.transcriptView, revealModalSegment,
+        speakerFind: modalView.transcriptFind, speakerFindLabel: modalView.transcriptFindLabel,
+        toggleSpeakerFind: modalView.toggleTranscriptFind, closeSpeakerFind: modalView.closeTranscriptFind,
+        goToSpeakerMatch: modalView.goToTranscriptMatch,
         playingSegmentIndex, speakerColor, speakerMeta, speakerShare, labelOf,
         selectSpeaker, clearSelectedSpeaker, showAllSegments, showOnlySelectedSpeaker, goToTurn,
         mergeSpeakersInto,

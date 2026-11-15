@@ -1,3 +1,6 @@
+{#- One speaker turn of the simple transcript. The public share page
+    (templates/share.html) includes this slot with transcript_read_only,
+    which leaves out what opens the editor. -#}
                     <div v-for="run in transcriptView.runs"
                          :key="run.key"
                          :data-tv-unit="run.unit"
@@ -14,8 +17,10 @@
                              :key="`seg-${segment.originalIndex}-${segment.startTime}`"
                              :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === segment.originalIndex }]"
                              @click="seekAudioFromEvent"
+{%- if not transcript_read_only %}
                              @dblclick.stop="openAsrEditorAtSegment(segment.originalIndex)"
                              :title="t('tooltips.doubleClickToEditSegment')"
+{%- endif %}
                              :data-start-time="segment.startTime"
                              :data-segment-index="segment.originalIndex">
                             <div class="speaker-text">

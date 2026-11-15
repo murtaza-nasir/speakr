@@ -14,8 +14,10 @@
                              :key="`seg-${segment.originalIndex}-${segment.startTime}`"
                              :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === segment.originalIndex }]"
                              @click="seekAudioFromEvent"
+{%- if not transcript_read_only %}
                              @dblclick.stop="openAsrEditorAtSegment(segment.originalIndex)"
                              :title="t('tooltips.doubleClickToEditSegment')"
+{%- endif %}
                              :data-start-time="segment.startTime"
                              :data-segment-index="segment.originalIndex">
                             <div class="speaker-text">
