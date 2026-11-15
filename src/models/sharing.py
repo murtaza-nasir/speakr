@@ -37,8 +37,11 @@ class Share(db.Model):
         db.Index('ix_share_user_id', 'user_id'),
     )
 
-    def to_dict(self):
-        """Convert model to dictionary representation."""
+    def to_dict(self, sharing_enabled=None):
+        """Convert model to dictionary representation.
+
+        A list passes sharing_enabled so the setting is read once for all rows.
+        """
         return {
             'id': self.id,
             'public_id': self.public_id,
@@ -49,7 +52,14 @@ class Share(db.Model):
             'recording_title': self.recording.title if self.recording else "N/A",
             'audio_available': self.recording.audio_deleted_at is None if self.recording else True,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            # False while the link answers 404: public sharing is off, the
+            # owner lost the permission to share publicly, or it expired.
+            'active': self._is_active(sharing_enabled),
         }
+
+    def _is_active(self, sharing_enabled=None):
+        from src.services.public_shares import link_is_active
+        return link_is_active(self, sharing_enabled)
 
 
 class InternalShare(db.Model):
