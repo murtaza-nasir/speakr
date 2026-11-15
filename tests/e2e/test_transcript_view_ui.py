@@ -286,9 +286,12 @@ def test_find_goes_to_a_match_far_away(viewer, segments):
     assert viewer.segment(target).inner_text().strip() == segments[target]["sentence"]
     assert_small(viewer.state(), "at the match")
     # The match is marked in the text (CSS highlight API, where the browser has it)
-    marked = page.evaluate("""() => (window.CSS && CSS.highlights && window.Highlight)
-        ? [...(CSS.highlights.get('transcript-find-current') || [])].map((range) => range.toString()) : null""")
-    if marked is not None:
+    read_marked = """() => (window.CSS && CSS.highlights && window.Highlight)
+        ? [...(CSS.highlights.get('transcript-find-current') || [])].map((range) => range.toString()) : null"""
+    if page.evaluate(read_marked) is not None:
+        # The mark is set a frame after the row is rendered
+        page.wait_for_function(f"() => ({read_marked})().length > 0", timeout=5000)
+        marked = page.evaluate(read_marked)
         assert marked == [f"Segment {target}:"], f"marked: {marked}"
     viewer.shot("transcript-view-test-find")
 
