@@ -218,6 +218,54 @@ ProcessingJob.query.filter_by(recording_id=recording_id).delete()
 db.session.delete(recording)
 ```
 
+### 5. Asynchronous Jobs of the WhisperX ASR Service
+
+The `asr_endpoint` connector uses the jobs API of the WhisperX ASR service (version 0.5.0 and later) when the service advertises it in `/health` and `asr_async_jobs` is on. Inside a transcription job, the audio is sent with `POST /jobs`, the remote job is polled with `GET /jobs/<id>`, the result is fetched from `GET /jobs/<id>/result`, and the remote job is then removed with `DELETE /jobs/<id>`. The code is in `src/services/transcription/connectors/asr_endpoint.py` and `src/services/transcription/provider_tasks.py`.
+
+#### Saved Task
+
+As soon as the service accepts a job, its id is saved in `ProcessingJob.provider_task`, in a transaction of its own:
+
+```json
+{"provider": "asr_endpoint", "audio_sha256": "...", "task": {"job_id": "...", "base_url": "http://whisperx:9000"}}
+```
+
+A saved task is used only for the same provider, the same service URL and the same audio bytes.
+
+#### Resume After a Restart
+
+Processing jobs that were running when Speakr stopped are put back in the queue at startup. When such a job runs again, or when a failed attempt is retried, the saved remote job is polled and the audio is not submitted again. The audio is submitted again, once per attempt, only when the service no longer knows the job, when its result has expired, or when the service reports the job as `interrupted` after a restart of its own.
+
+Each submit carries an `Idempotency-Key` of the form `speakr-<recording id>-<processing job id>-<audio hash>-<parameter digest>`. A submit whose answer was lost is therefore attached to the job that is already running.
+
+#### Remote Cleanup
+
+A remote job and its transcript are removed from the service at these points:
+
+| When | Where |
+|---|---|
+| The result was fetched | the connector |
+| The remote job failed or was cancelled on the service | the connector |
+| The processing job ended for good: a permanent error, or the last retry failed | `release_remote_task()` from the job queue |
+| The processing job completed with a task left over | `release_remote_task()` from the job queue |
+| The recording or the processing job was deleted, or the recording was reset | `cancel_remote_tasks()` |
+| The synchronous request took over while a job was saved | the connector |
+| Old processing jobs are cleaned up | one more attempt for a task that is still saved |
+
+A failed attempt with retries left keeps the remote job, so that the retry can poll it. Cleanup is best effort. When the service cannot be reached, the task stays saved and the remote job is kept until its result expires on the service (`job_result_ttl_seconds` in the capabilities).
+
+#### Requests Outside a Processing Job
+
+Three kinds of request have no processing job to save a task on: the chunks of a chunked transcription, incognito mode and the voice check. Their remote jobs cannot be resumed, so the connector deletes the remote job on every failed attempt (a timeout, failed polls, an unreadable result or a shutdown). Their `Idempotency-Key` is built by `audio_task_key()`:
+
+| Request | Key before the parameter digest |
+|---|---|
+| Chunk | `speakr-<recording id>-chunk<n>-<audio hash>`; without a recording, a scope made for the call takes the place of the recording id |
+| Incognito mode | `speakr-incognito-<user id>-<audio hash>` |
+| Voice check | `speakr-voice-check-<audio hash>` |
+
+A retry of the same chunk therefore attaches to a job the service still holds, and different audio never shares a key.
+
 ## Frontend Components
 
 ### 1. Unified Progress Tracking System (`static/js/app.modular.js`)

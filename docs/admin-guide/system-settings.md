@@ -50,6 +50,9 @@ With the jobs API in use:
 - The remote job id is saved on the processing job. A retry after a failed attempt or a restart of Speakr polls the same job. The audio is submitted again only when the service no longer knows the job or its result has expired.
 - Each submit has an `Idempotency-Key` header built from the recording, the processing job, the audio and the transcription parameters, so a repeated submit is attached to the job already running.
 - After a busy answer (503, or 413 with `Retry-After`), the submit is repeated once the `Retry-After` time has passed, within the ASR timeout.
+- A transcription that has no processing job to save the job id on cannot be resumed: a chunk of a chunked transcription, incognito mode and the voice check. Its job is deleted from the service when the attempt fails, and its `Idempotency-Key` is built from the recording or the user, the chunk number and the audio.
+
+To find out which path a transcription took, see [WhisperX Asynchronous Jobs](../troubleshooting.md#whisperx-asynchronous-jobs). The technical details are in [Job Queue System](../advanced/job-queue-system.md#5-asynchronous-jobs-of-the-whisperx-asr-service).
 - After a job error marked as not retryable, such as `audio_too_long` or `file_too_large`, the recording is marked failed without a retry. Other job errors are retried up to `JOB_MAX_RETRIES`.
 - The ASR timeout applies to each attempt. A job still running at the timeout is kept on the service, and the next attempt resumes it.
 - When a recording or its processing job is deleted, the remote job is cancelled on the service.
