@@ -3539,6 +3539,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            // Clear all failed jobs in one step. The rows leave the queue;
+            // the recordings stay in the library as failed.
+            const clearFailedJobs = async () => {
+                try {
+                    const response = await fetch('/api/recordings/jobs/clear-failed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (response.ok) {
+                        // Uploads that failed before a job existed are rows too.
+                        uploadQueue.value = uploadQueue.value.filter(item =>
+                            !['failed', 'FAILED'].includes(item.status)
+                        );
+                        await fetchJobQueueStatus(true);
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('Error clearing failed jobs:', error);
+                }
+                return false;
+            };
+
             // Combined clear function for backward compatibility
             const clearAllCompleted = () => {
                 clearCompletedJobs();
@@ -4794,6 +4816,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 jobQueueClockOffset,
                 cancelJob,
                 cancelProgressItem,
+                clearFailedJobs,
                 recentlyCompletedBackend,
                 clearAllCompleted,
                 allCompletedCount,

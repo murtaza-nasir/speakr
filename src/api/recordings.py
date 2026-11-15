@@ -3038,6 +3038,37 @@ def clear_completed_jobs():
         return jsonify(api_error('unexpected_error')), 500
 
 
+@recordings_bp.route('/api/recordings/jobs/clear-failed', methods=['POST'])
+@login_required
+def clear_failed_jobs():
+    """Remove all failed jobs of the current user from the queue list.
+
+    Only the job rows go. The recordings stay in the library as FAILED, where
+    each can be reprocessed or deleted; DELETE on one failed job of a new
+    upload is the call that deletes its recording as well.
+    """
+    try:
+        from src.models import ProcessingJob
+
+        failed = ProcessingJob.query.filter(
+            ProcessingJob.user_id == current_user.id,
+            ProcessingJob.status == 'failed'
+        )
+        # An ASR service job that could not be removed when its processing
+        # job failed gets one more attempt before the row goes.
+        _cancel_remote_asr_jobs(failed.filter(ProcessingJob.provider_task.isnot(None)).all())
+        deleted = failed.delete(synchronize_session=False)
+
+        db.session.commit()
+        current_app.logger.info(f"Cleared {deleted} failed jobs for user {current_user.id}")
+        return jsonify({'success': True, 'deleted': deleted})
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error clearing failed jobs: {e}", exc_info=True)
+        return jsonify(api_error('unexpected_error')), 500
+
+
 @recordings_bp.route('/status/<int:recording_id>', methods=['GET'])
 @login_required
 def get_status(recording_id):
