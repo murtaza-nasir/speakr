@@ -93,8 +93,8 @@ def prefix_cache_flags():
     """The prefix-cache pair, read at call time.
 
     Callers that lay out prompts (and tests that patch the module attributes)
-    must see the current values, so the flags are read when a prompt is built
-    rather than captured at import.
+    must see the current values, so the flags are read when a prompt is built,
+    not captured at import. Every prompt-building site reads them here.
     """
     return PREFIX_CACHE_OPTIMIZED_PROMPTS, TEXT_MODEL_CACHE_BREAKPOINTS
 

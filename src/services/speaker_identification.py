@@ -92,7 +92,7 @@ def identify_speakers_from_transcript(transcription_data, user_id, candidate_nam
 
     if candidates:
         from src.config.prompts import DEFAULT_CONTEXTUAL_SPEAKER_PROMPT
-        from src.tasks.processing import PREFIX_CACHE_OPTIMIZED_PROMPTS
+        from src.tasks.processing import prefix_cache_flags
         from src.transcription_prompts import build_transcript_prompt_parts
 
         guidance = SystemSetting.get_setting(
@@ -120,10 +120,14 @@ def identify_speakers_from_transcript(transcription_data, user_id, candidate_nam
         # Reuses the shared transcript-first prefix so the layout matches the
         # title/summary calls when prefix caching is enabled; with it off
         # CONTEXTUAL_SPEAKER_SYSTEM_MESSAGE keeps the upstream layout.
+        # The flags are read through prefix_cache_flags() like everywhere else.
+        # The prompt stays one string here: this call never carried a cache
+        # breakpoint, so the second flag is not passed on.
+        prefix_cache_optimized, _cache_breakpoints = prefix_cache_flags()
         system_msg, prompt = build_transcript_prompt_parts(
             transcript_text,
             suffix,
-            PREFIX_CACHE_OPTIMIZED_PROMPTS,
+            prefix_cache_optimized,
             system_message=CONTEXTUAL_SPEAKER_SYSTEM_MESSAGE,
         )
     else:
