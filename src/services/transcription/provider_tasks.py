@@ -103,7 +103,8 @@ def provider_task_context(recording_id, provider, audio_path):
 
     from src.services.job_queue import job_progress_writer
     key = f"speakr-{recording_id}-{job_id}-{audio_sha256[:16]}"
-    return ProviderTaskContext(saved, save, key, job_progress_writer(job_id))
+    # A service that reports progress reports a share of the work (0..1).
+    return ProviderTaskContext(saved, save, key, job_progress_writer(job_id, 'fraction'))
 
 
 def provider_task_for(recording_id, provider, audio_path):

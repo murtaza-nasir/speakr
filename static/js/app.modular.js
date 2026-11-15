@@ -40,6 +40,7 @@ import {
     promptsDiffer, runVariables, saveLabel, sourceLabel,
 } from './modules/utils/regenerate-summary.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
+import { clockOffsetMs, queueFieldsFromJob } from './modules/utils/queue-data.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
 import { installTabsBarFit } from './modules/utils/tabs-bar-fit.js';
 import {
@@ -3231,6 +3232,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return detailsMap;
             });
 
+            // Added to Date.now() before an elapsed time is computed from a
+            // job's started_at (queue-data.js elapsedSeconds).
+            const jobQueueClockOffset = ref(0);
+
             // Fetch job queue status from backend (with debounce protection)
             const fetchJobQueueStatus = async (force = false) => {
                 const now = Date.now();
@@ -3245,6 +3250,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (response.ok) {
                         const data = await response.json();
                         allJobs.value = data.jobs || [];
+                        // Server clock minus this browser's, for elapsed times.
+                        jobQueueClockOffset.value = clockOffsetMs(data.server_time);
                     } else if (response.status === 429) {
                         console.warn('Job queue polling rate limited');
                     }
@@ -3502,6 +3509,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (items.has(key) && !['queued', 'translating'].includes(status)) continue;
                         const percent = translationProgressPercent(job);
                         items.set(key, {
+                            // Stage code, real progress, times and actions
+                            // (queue-data.js); the fields below keep their
+                            // meaning for the current popup.
+                            ...queueFieldsFromJob(job),
                             id: key,
                             recordingId: job.recording_id,
                             jobId: job.id,
@@ -3549,7 +3560,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         : job.job_type === 'convert' ? t('status.queuedConversion')
                         : job.queue_type === 'transcription' ? t('status.queuedTranscription') : null;
                     if (!existing || ['queued', 'transcribing', 'summarizing'].includes(unifiedStatus)) {
+                        const queueFields = queueFieldsFromJob(job);
                         items.set(key, {
+                            ...queueFields,
                             id: key,
                             recordingId: job.recording_id,
                             jobId: job.id,
@@ -3558,7 +3571,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             status: unifiedStatus,
                             stage,
                             statusLabel: isJoining ? t('progressQueue.joining') : (isConverting ? t('progressQueue.converting') : queuedLabel),
-                            progress: stage ? 25 : (unifiedStatus === 'transcribing' ? 50 : (unifiedStatus === 'summarizing' ? 80 : null)),
+                            // A percent only where the server holds a real
+                            // number (chunks, a measured fraction); null
+                            // means a moving bar with the elapsed time.
+                            progress: queueFields.progress,
                             progressMessage: unifiedStatus === 'queued' ? t('progressQueue.positionInQueue', { position: job.position || '?' }) :
                                              isJoining ? t('progressQueue.joiningMessage') :
                                              isConverting ? t('progressQueue.convertingMessage') :
@@ -4721,6 +4737,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 retryJob,
                 deleteJob,
                 clearCompletedJobs,
+                jobQueueClockOffset,
                 recentlyCompletedBackend,
                 clearAllCompleted,
                 allCompletedCount,

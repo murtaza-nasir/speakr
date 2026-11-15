@@ -81,28 +81,24 @@ class StitchTargetMismatch(Exception):
     """
 
 
-def job_progress_writer(job_id):
+def job_progress_writer(job_id, kind='chunks'):
     """A callback that stores ``(done, total)`` on a running job.
 
-    It writes on its own connection and commits at once, so the queue poll
-    sees the progress while the job's own session is still open. A failed
-    write is logged and ignored: progress is display only and must never
-    fail the job.
+    The writes go through the job's control (src/services/job_control.py):
+    on a connection of their own, committed at once, and at most one per
+    PROGRESS_WRITE_INTERVAL, so the queue poll sees the progress while the
+    job's own session is still open and a fast loop costs no extra commits.
+    A failed write is logged and ignored: progress is display only and must
+    never fail the job. ``kind`` is the unit: 'chunks' or 'fraction'.
     """
-    def write(done, total):
-        try:
-            from sqlalchemy import update
-            from src.database import db
-            from src.models import ProcessingJob
+    from src.services import job_control
 
-            with db.engine.begin() as conn:
-                conn.execute(
-                    update(ProcessingJob)
-                    .where(ProcessingJob.id == job_id, ProcessingJob.status == 'processing')
-                    .values(progress_done=done, progress_total=total)
-                )
-        except Exception as e:
-            logger.warning(f"Could not store progress for job {job_id}: {e}")
+    control = job_control.current()
+    if control.job_id != job_id:
+        control = job_control.JobControl(job_id)
+
+    def write(done, total):
+        control.report(done, total, kind)
 
     return write
 
@@ -309,7 +305,8 @@ class FairJobQueue:
                             )
                             # A retried job reports its progress from 0 again.
                             .values(status='processing', started_at=claim_time,
-                                    progress_done=None, progress_total=None)
+                                    progress_done=None, progress_total=None,
+                                    progress_kind=None, stage=None, stage_detail=None)
                         )
 
                         if result.rowcount == 0:

@@ -76,6 +76,9 @@ class FakeWhisperX:
         self.submit_answers = []   # (status, headers, body) answered before a job is accepted
         self.poll_answers = []     # (status, headers, body) answered before the job state
         self.drop_submit_response = False
+        # None: a fraction is an estimate until the job is done, as the service
+        # reports it. False: every fraction is measured.
+        self.estimated = None
         self._ids = 0
 
     @property
@@ -102,7 +105,8 @@ class FakeWhisperX:
         status, stage, fraction = job['state'][:3]
         error = job['state'][3] if len(job['state']) > 3 else None
         return {'job_id': job_id, 'status': status,
-                'progress': {'stage': stage, 'fraction': fraction, 'fraction_estimated': status != 'done',
+                'progress': {'stage': stage, 'fraction': fraction,
+                             'fraction_estimated': (status != 'done') if self.estimated is None else self.estimated,
                              'elapsed_seconds': 1.0, 'eta_seconds': None},
                 'error': error, 'deduplicated': False, 'submissions': 1,
                 'poll_after_seconds': self.poll_after,
@@ -310,7 +314,8 @@ def test_submit_poll_result_delete(clock):
 
     # Saved at once, forgotten once the result is stored and deleted.
     assert store == [{'job_id': 'job0001', 'base_url': BASE}, None]
-    assert progress == [(0, 100), (20, 100), (70, 100), (100, 100)]
+    # Only a measured fraction is stored; the estimates of a running job are not.
+    assert progress == [(100, 100)]
     assert fake.deleted == ['job0001']
 
 
@@ -784,6 +789,7 @@ def test_processing_sends_the_job_key_saves_the_job_and_resumes_it(clock):
     try:
         # First attempt: the service is still running the job at the timeout.
         fake = FakeWhisperX(script=[('running', 'whisper', 0.25)], poll_after=60)
+        fake.estimated = False  # a measured fraction is stored
         with pytest.raises(TranscriptionError):
             _run_processing(rid, path, _connector(fake))
         submit = fake.calls('POST', '/jobs')[0]

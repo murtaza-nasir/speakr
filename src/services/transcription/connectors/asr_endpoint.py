@@ -30,6 +30,7 @@ from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.config.app_config import ASR_ENABLE_CHUNKING, ASR_MAX_DURATION_SECONDS
 from src.utils.error_body import summarize_error_body
 from src.utils.log_filters import loggable_params
+from src.services.job_control import JobCanceled
 
 from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
@@ -426,13 +427,21 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                             raise
 
                     response = self._parse_response(data)
-                except BaseException:
+                except BaseException as stop:
                     # A timeout, failed polls, an unreadable result or a
                     # shutdown: a saved job is left for the retry that
-                    # resumes it. A job nothing saved is removed now.
-                    if not resumable and job_id is not None:
-                        logger.info(f"ASR job {job_id}: deleted on the service, nothing can resume it")
-                        self._delete_job(client, job_id)
+                    # resumes it. A job nothing saved is removed now, and so
+                    # is the job of a canceled processing job: no retry
+                    # follows a cancel.
+                    canceled = isinstance(stop, JobCanceled)
+                    if job_id is not None and (canceled or not resumable):
+                        reason = "the processing job was canceled" if canceled else "nothing can resume it"
+                        logger.info(f"ASR job {job_id}: deleted on the service, {reason}")
+                        if self._delete_job(client, job_id) and canceled:
+                            # Confirmed gone: nothing is left for the queue
+                            # to remove. Unconfirmed, the saved task stays
+                            # and the queue tries once more.
+                            save(None)
                     raise
                 self._delete_job(client, job_id)
                 save(None)
@@ -455,6 +464,8 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         """POST /jobs; waits out a busy answer (413 or 503 with Retry-After)."""
         content_type = request.mime_type or 'application/octet-stream'
         while True:
+            if request.should_cancel and request.should_cancel():
+                raise JobCanceled(None)
             _rewind(request)
             files = {'audio_file': (request.filename, request.audio_file, content_type)}
             logger.info(f"Submitting ASR job to {self.base_url}/jobs with params: {loggable_params(params)}")
@@ -492,6 +503,10 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         state: Dict[str, Any] = {}
         failures = 0
         while True:
+            # A safe point: the owner canceled the processing job. The caller
+            # removes the job from the service.
+            if request.should_cancel and request.should_cancel():
+                raise JobCanceled(job_id)
             response = None
             try:
                 response = client.get(f"{self.base_url}/jobs/{job_id}", timeout=POLL_REQUEST_TIMEOUT_SECONDS)
@@ -597,25 +612,35 @@ class ASREndpointConnector(BaseTranscriptionConnector):
     @staticmethod
     def _note_progress(job_id: str, data: Dict[str, Any], request: TranscriptionRequest,
                        state: Dict[str, Any]) -> None:
-        """Log stage changes and store the estimated fraction on the processing job."""
+        """Log stage changes; store the stage and a measured fraction on the processing job.
+
+        A fraction the service marks as estimated (fraction_estimated) is
+        logged and not stored: Speakr shows a number only where one was
+        measured, and a moving bar with the elapsed time otherwise.
+        """
         progress = data.get('progress') if isinstance(data.get('progress'), dict) else {}
         stage = progress.get('stage')
         fraction = progress.get('fraction')
         if isinstance(fraction, bool) or not isinstance(fraction, (int, float)):
             fraction = None
+        estimated = bool(progress.get('fraction_estimated'))
         status = data.get('status')
         if state.get('stage') != (status, stage):
             state['stage'] = (status, stage)
             detail = f", stage {stage}" if stage else ""
             if fraction is not None:
-                estimated = " (estimated)" if progress.get('fraction_estimated') else ""
-                detail += f", {fraction:.0%}{estimated}"
+                detail += f", {fraction:.0%}{' (estimated)' if estimated else ''}"
             logger.info(f"ASR job {job_id}: {status}{detail}")
-        if fraction is not None and request.report_progress:
-            done = max(0, min(100, int(round(fraction * 100))))
+            if request.report_stage:
+                request.report_stage(stage_word(status, stage))
+        if request.report_progress:
+            done = None if fraction is None or estimated else max(0, min(100, int(round(fraction * 100))))
             if state.get('done') != done:
                 state['done'] = done
-                request.report_progress(done, 100)
+                if done is None:
+                    request.report_progress(None, None)
+                else:
+                    request.report_progress(done, 100)
 
     def _raise_for_status(self, response: httpx.Response, what: str) -> None:
         body_excerpt = summarize_error_body(response.text or '', 800)
@@ -817,6 +842,31 @@ class _RemoteJobGone(Exception):
     def __init__(self, message: str, still_stored: bool = False):
         super().__init__(message)
         self.still_stored = still_stored
+
+
+# The service's stage names in Speakr's words. Names are matched by what they
+# contain, so "whisper", "transcribe" and "transcription" are one stage; a
+# name that matches nothing is not shown.
+_STAGE_WORDS = (
+    (('diar', 'speaker', 'embed'), 'diarizing'),
+    (('align',), 'aligning'),
+    (('whisper', 'transcri', 'asr', 'decod'), 'transcribing'),
+    (('load', 'prepar', 'convert', 'preprocess', 'vad', 'download'), 'preparing'),
+)
+
+
+def stage_word(status: Any, stage: Any) -> Optional[str]:
+    """Speakr's word for what the service reports: waiting, preparing,
+    transcribing, aligning or diarizing; None for a stage it does not name."""
+    if status == 'queued':
+        return 'waiting'
+    if not isinstance(stage, str) or not stage:
+        return None
+    name = stage.lower()
+    for needles, word in _STAGE_WORDS:
+        if any(needle in name for needle in needles):
+            return word
+    return None
 
 
 _PROCESSING_JOB_GONE = "ASR job {job_id} was removed from the service: its processing job no longer exists"

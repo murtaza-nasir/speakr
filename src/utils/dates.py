@@ -21,3 +21,16 @@ def to_utc_naive(dt: Optional[datetime]) -> Optional[datetime]:
     if dt.tzinfo is not None:
         return dt.astimezone(timezone.utc).replace(tzinfo=None)
     return dt
+
+
+def utc_iso(dt: Optional[datetime]) -> Optional[str]:
+    """An ISO 8601 string with an explicit UTC marker, e.g. 2026-11-15T09:30:00Z.
+
+    For answers whose reader computes with the instant (the elapsed time of a
+    running job). Stored values are naive UTC; the trailing Z says so, and
+    the browser's parseServerInstant reads both forms.
+    """
+    dt = to_utc_naive(dt)
+    if dt is None:
+        return None
+    return dt.isoformat() + 'Z'

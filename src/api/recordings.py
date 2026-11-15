@@ -2828,6 +2828,8 @@ def get_job_queue_status():
             for place, queued in enumerate(order, 1):
                 places[queued.id] = place + currently_processing
 
+        from src.utils.dates import utc_iso
+
         job_details = []
         for job in all_jobs:
             recording = db.session.get(Recording, job.recording_id)
@@ -2837,6 +2839,7 @@ def get_job_queue_status():
 
             queue_type = queue_name_for(job.job_type)
             position = places.get(job.id)
+            finished = job.completed_at if job.status in ('completed', 'failed') else None
 
             job_details.append({
                 'id': job.id,
@@ -2850,12 +2853,24 @@ def get_job_queue_status():
                 'error_message': job.error_message,
                 'progress_done': job.progress_done,
                 'progress_total': job.progress_total,
-                'created_at': job.created_at.isoformat() if job.created_at else None,
-                'started_at': job.started_at.isoformat() if job.started_at else None,
-                'completed_at': job.completed_at.isoformat() if job.completed_at else None
+                # A real number or nothing: {'done', 'total'} in chunks, or
+                # {'fraction'} a service measured. Never an estimate.
+                'progress': job.progress(),
+                'progress_kind': job.progress_kind_or_default(),
+                'stage': job.job_stage(),
+                'stage_detail': job.stage_detail if job.status == 'processing' else None,
+                'queue_position': position,
+                'queue': queue_type if job.status == 'queued' else None,
+                'cancel_requested': job.cancel_requested_at is not None,
+                'can_cancel': job.can_cancel(),
+                # UTC, with the Z marker.
+                'created_at': utc_iso(job.created_at),
+                'started_at': utc_iso(job.started_at),
+                'completed_at': utc_iso(job.completed_at),
+                'finished_at': utc_iso(finished),
             })
 
-        return jsonify({'jobs': job_details})
+        return jsonify({'jobs': job_details, 'server_time': utc_iso(datetime.utcnow())})
     except Exception as e:
         current_app.logger.error(f"Error fetching job queue status: {e}", exc_info=True)
         return jsonify(api_error('unexpected_error')), 500
@@ -2896,6 +2911,10 @@ def retry_failed_job(job_id):
         job.completed_at = None
         job.progress_done = None
         job.progress_total = None
+        job.progress_kind = None
+        job.stage = None
+        job.stage_detail = None
+        job.cancel_requested_at = None
         db.session.commit()
 
         current_app.logger.info(f"Job {job_id} queued for retry by user {current_user.id}")
