@@ -2671,7 +2671,8 @@
     "addSelected": "Compartilhar com a seleção ({{count}})",
     "sharedWithCount": "Gravação compartilhada. Pessoas adicionadas: {{count}}",
     "alreadySharedCount": "Já tinham acesso: {{count}}",
-    "notSharedCount": "Não foi possível adicionar: {{count}}"
+    "notSharedCount": "Não foi possível adicionar: {{count}}",
+    "searchRateLimited": "Muitas buscas. Aguarde um minuto e tente novamente."
   },
   "sidebar": {
     "advancedSearch": "Busca avançada",

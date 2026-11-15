@@ -2671,7 +2671,8 @@
     "addSelected": "Share with selected ({{count}})",
     "sharedWithCount": "Recording shared. People added: {{count}}",
     "alreadySharedCount": "Already had access: {{count}}",
-    "notSharedCount": "Couldn't add: {{count}}"
+    "notSharedCount": "Couldn't add: {{count}}",
+    "searchRateLimited": "Too many searches. Wait a minute and try again."
   },
   "sidebar": {
     "advancedSearch": "Advanced search",

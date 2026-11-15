@@ -2671,7 +2671,8 @@
     "addSelected": "与所选人员共享（{{count}}）",
     "sharedWithCount": "录音已共享。已添加人数：{{count}}",
     "alreadySharedCount": "已有访问权限：{{count}}",
-    "notSharedCount": "无法添加：{{count}}"
+    "notSharedCount": "无法添加：{{count}}",
+    "searchRateLimited": "搜索过于频繁。请等待一分钟后重试。"
   },
   "sidebar": {
     "advancedSearch": "高级搜索",

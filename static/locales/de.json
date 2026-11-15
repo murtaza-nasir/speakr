@@ -2671,7 +2671,8 @@
     "addSelected": "Mit Auswahl teilen ({{count}})",
     "sharedWithCount": "Aufnahme geteilt. Hinzugefügte Personen: {{count}}",
     "alreadySharedCount": "Hatten bereits Zugriff: {{count}}",
-    "notSharedCount": "Nicht hinzugefügt: {{count}}"
+    "notSharedCount": "Nicht hinzugefügt: {{count}}",
+    "searchRateLimited": "Zu viele Suchanfragen. Warten Sie eine Minute und versuchen Sie es erneut."
   },
   "sidebar": {
     "advancedSearch": "Erweiterte Suche",

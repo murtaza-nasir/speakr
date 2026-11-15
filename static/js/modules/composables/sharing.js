@@ -436,6 +436,13 @@ export function useSharing(state, utils) {
             isSearchingUsers.value = true;
             try {
                 const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+                if (response.status === 429) {
+                    // The per-person search limit; the answer has no JSON body.
+                    if (seq !== userSearchSeq) return;
+                    setGlobalError(t('sharing.searchRateLimited'));
+                    internalShareSearchResults.value = [];
+                    return;
+                }
                 if (!response.ok) {
                     if (response.status === 403) {
                         throw new Error(t('sharing.internalSharingDisabled'));
@@ -687,6 +694,9 @@ export function useSharing(state, utils) {
             if (!searchResponse.ok) {
                 if (searchResponse.status === 403) {
                     throw new Error(t('sharing.internalSharingDisabled'));
+                }
+                if (searchResponse.status === 429) {
+                    throw new Error(t('sharing.searchRateLimited'));
                 }
                 throw new Error(t('sharing.findUserFailed'));
             }

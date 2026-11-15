@@ -2671,7 +2671,8 @@
     "addSelected": "Поделиться с выбранными ({{count}})",
     "sharedWithCount": "Запись открыта. Добавлено людей: {{count}}",
     "alreadySharedCount": "Уже имели доступ: {{count}}",
-    "notSharedCount": "Не удалось добавить: {{count}}"
+    "notSharedCount": "Не удалось добавить: {{count}}",
+    "searchRateLimited": "Слишком много поисковых запросов. Подождите минуту и повторите попытку."
   },
   "sidebar": {
     "advancedSearch": "Расширенный поиск",

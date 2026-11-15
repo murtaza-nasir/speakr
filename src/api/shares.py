@@ -32,11 +32,36 @@ shares_bp = Blueprint('shares', __name__)
 
 # Import has_recording_access from app context
 has_recording_access = None
+limiter = None
 
-def init_shares_helpers(_has_recording_access):
+def init_shares_helpers(_has_recording_access, _limiter=None):
     """Initialize helper functions from app."""
-    global has_recording_access
+    global has_recording_access, limiter
     has_recording_access = _has_recording_access
+    limiter = _limiter
+
+
+def rate_limit(limit_string, **limit_options):
+    """Apply an endpoint limit after the app injects Flask-Limiter.
+
+    Applied lazily, as in src/api/auth.py and src/api/api_v1.py: the limiter
+    is injected after this module is imported.
+    """
+    def decorator(f):
+        from functools import wraps
+        state = {'limited': None}
+
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if limiter is not None and getattr(limiter, 'enabled', True):
+                if state['limited'] is None:
+                    state['limited'] = limiter.limit(limit_string, **limit_options)(f)
+                return state['limited'](*args, **kwargs)
+            return f(*args, **kwargs)
+
+        wrapper._rate_limit = limit_string
+        return wrapper
+    return decorator
 
 
 def process_transcription_for_template(transcription_str):
@@ -401,8 +426,20 @@ def delete_share(share_id):
 
 # --- Internal Sharing Routes ---
 
+# Searches per signed-in person. A full email address resolves to a username
+# at every level of user_search_scope, so the search is not left open to
+# running through a list of addresses. The share window waits 300 ms after
+# the last keystroke, which stays far below this.
+USER_SEARCH_RATE_LIMIT = '30 per minute'
+
+
+def _user_search_rate_key():
+    return f"user:{current_user.get_id()}"
+
+
 @shares_bp.route('/api/users/search', methods=['GET'])
 @login_required
+@rate_limit(USER_SEARCH_RATE_LIMIT, key_func=_user_search_rate_key)
 def search_users():
     """Find people to share a recording with (D#519).
 
@@ -412,7 +449,8 @@ def search_users():
     email address always finds its account. Up to 10 accounts, never the
     person searching; a query under 2 characters returns nothing, so the list
     of accounts is never sent in one response. The email address is part of a
-    result only for a site admin.
+    result only for a site admin. More than USER_SEARCH_RATE_LIMIT searches by
+    one person are answered 429 with Retry-After.
     """
     if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
