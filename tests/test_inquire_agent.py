@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Tests for src/services/inquire_agent.py — the agentic Inquire tool loop.
+"""Tests for the agentic Inquire tool loop: src/services/inquire_agent.py
+and its tools, prompts and compaction modules.
 
 Covers: toolbox availability gating, filter scoping, notes ownership,
 transcript pagination, result truncation, history sanitization/compaction,
@@ -273,7 +274,7 @@ def test_search_tool_scopes_and_shapes(data, monkeypatch):
         foreign = db.session.get(Recording, data['r3'])
         stray = NS(recording_id=foreign.id, recording=foreign, speaker_name=None,
                    start_time=None, chunk_index=0, content='should not appear')
-        monkeypatch.setattr(ia, 'semantic_search_chunks',
+        monkeypatch.setattr('src.services.inquire_tools.semantic_search_chunks',
                             lambda uid, q, f, k: [(chunk, 0.9), (stray, 0.8)])
         ctx = ia.ToolContext(data['owner'], {}, {data['r1'], data['r2']},
                              {'summaries': True, 'notes': False})
@@ -289,9 +290,9 @@ def test_search_tool_modes_and_keyword_fallback(data, monkeypatch):
         kw_chunk = NS(id=990001, recording_id=r1.id, recording=r1, speaker_name='Bob',
                       start_time=10.0, chunk_index=1, content='the MR rate improved')
         sem_calls, kw_calls = [], []
-        monkeypatch.setattr(ia, 'semantic_search_chunks',
+        monkeypatch.setattr('src.services.inquire_tools.semantic_search_chunks',
                             lambda uid, q, f, k: sem_calls.append(q) or [])
-        monkeypatch.setattr(ia, 'basic_text_search_chunks',
+        monkeypatch.setattr('src.services.inquire_tools.basic_text_search_chunks',
                             lambda uid, q, f, k: kw_calls.append(q) or [(kw_chunk, 0.9)])
         ctx = ia.ToolContext(data['owner'], {}, {data['r1']}, {'summaries': True, 'notes': False})
 
@@ -543,7 +544,7 @@ def test_compact_history_uses_llm_and_keeps_tail(data, monkeypatch):
     with app.app_context():
         history = [{'role': 'user' if i % 2 == 0 else 'assistant', 'content': f'm{i}'}
                    for i in range(12)]
-        monkeypatch.setattr(ia, 'call_chat_completion',
+        monkeypatch.setattr('src.services.inquire_compaction.call_chat_completion',
                             lambda **kw: nonstream_response('MEMORY BLOCK'))
         memory, kept, folded = ia.compact_history(data['owner'], None, history, keep_last=8)
         assert memory == 'MEMORY BLOCK'
@@ -556,7 +557,7 @@ def test_compact_history_degrades_to_truncation(data, monkeypatch):
         history = [{'role': 'user', 'content': f'm{i}'} for i in range(12)]
         def boom(**kw):
             raise RuntimeError('llm down')
-        monkeypatch.setattr(ia, 'call_chat_completion', boom)
+        monkeypatch.setattr('src.services.inquire_compaction.call_chat_completion', boom)
         memory, kept, folded = ia.compact_history(data['owner'], 'old mem', history, keep_last=8)
         assert 'truncated' in memory.lower() and 'old mem' in memory
         assert len(kept) == 8 and folded == 4
@@ -722,6 +723,24 @@ def test_thinking_filter_streaming():
     vis3, th3 = f.flush()
     assert (vis1 + vis2 + vis3) == 'Hello  world'
     assert th2 == 'hidden' or th1 == 'hidden' or th3 == 'hidden'
+
+
+def test_runner_reexports_the_split_modules():
+    """The runner stays the import surface after the split: tools, prompts and
+    compaction live in their own modules, re-exported from inquire_agent."""
+    from src.services import inquire_compaction, inquire_prompts, inquire_tools
+    assert ia.tool_search_text is inquire_tools.tool_search_text
+    assert ia.tool_search_transcripts is inquire_tools.tool_search_transcripts
+    assert ia.tool_find_people is inquire_tools.tool_find_people
+    assert ia.build_toolbox is inquire_tools.build_toolbox
+    assert ia.ToolContext is inquire_tools.ToolContext
+    assert ia._system_prompt is inquire_prompts._system_prompt
+    assert ia._recording_tools_block is inquire_prompts._recording_tools_block
+    assert ia._names_line is inquire_prompts._names_line
+    assert ia.compact_history is inquire_compaction.compact_history
+    assert ia.sanitize_history is inquire_compaction.sanitize_history
+    assert ia.citation_lines is inquire_compaction.citation_lines
+    assert ia.run_inquire_agent.__module__ == 'src.services.inquire_agent'
 
 
 if __name__ == '__main__':

@@ -230,7 +230,7 @@ def test_search_text_and_search_transcripts_take_one_name_or_a_list(people, monk
     with app.app_context():
         ctx = _ctx(people)
         seen = []
-        monkeypatch.setattr(ia, 'basic_text_search_chunks',
+        monkeypatch.setattr('src.services.inquire_tools.basic_text_search_chunks',
                             lambda user_id, query, filters, top_k: seen.append(filters) or [])
         ia.tool_search_transcripts(ctx, {'query': 'grant', 'mode': 'keyword', 'speakers': 'Mohammed'})
         ia.tool_search_transcripts(ctx, {'query': 'grant', 'mode': 'keyword', 'speakers': ['Mohammed', 'Muhammad']})

@@ -255,7 +255,7 @@ def test_search_transcripts_narrows_by_tag_and_folder(lib, monkeypatch):
             chunk = TranscriptChunk.query.filter_by(recording_id=r1.id).first()
             return [(chunk, 0.9)]
 
-        monkeypatch.setattr(ia, 'semantic_search_chunks', fake_search)
+        monkeypatch.setattr('src.services.inquire_tools.semantic_search_chunks', fake_search)
         ctx = _owner_ctx(lib)
         res = ia.tool_search_transcripts(ctx, {'query': 'freeze', 'tags': ['Budget'], 'folder': 'Alpha'})
         assert seen['ids'] == {lib['r1']}
