@@ -10,8 +10,9 @@ the local draft, the phone layout, and saving. The timeline above the pane
 seeks or selects, an edge is dragged to change a time, a block to another
 lane to change its speaker, empty lane space to add a segment, each as one
 undo step. The lane headers beside it are DOM: the name of a lane opens the
-speaker picker for the whole speaker (rename or merge), and a button under
-the last lane adds a speaker. A second part loads a transcript of 20,000 segments (about ten
+speaker picker for the whole speaker (rename or merge), a button in the header
+cell of the overview adds a speaker, and a lane without segments has a button
+that removes its speaker. A second part loads a transcript of 20,000 segments (about ten
 hours) and checks that only the rows in view are in the DOM, that the end of
 the list can be reached, that an edit there is saved in reasonable time, and
 that the timeline redraws well inside a frame.
@@ -1445,13 +1446,27 @@ def test_a_speaker_is_added_and_saved_only_with_segments(meeting):
     picker = page.locator("[data-asr-popover='picker']")
     key_of = lambda lane: page.locator(f".asr-tl__lane[data-asr-lane='{lane}'] [data-asr-lane-swatch]").inner_text().strip()  # noqa: E731
 
-    # Under the last lane: a button with an icon and words. The new speaker is
-    # the next label, has an empty lane and a number key, and is no unsaved change.
+    removers = page.locator("[data-asr-action='lane-remove']")
+    remove_of = lambda lane: page.locator(f".asr-tl__lane[data-asr-lane='{lane}'] [data-asr-action='lane-remove']")  # noqa: E731
+
+    # In the header cell of the overview, beside its label: a button with an
+    # icon and words. The lane headers have no row of their own for it: they
+    # are as tall as the canvas. The new speaker is the next label, has an
+    # empty lane and a number key, and is no unsaved change.
     add = editor.action("add-speaker")
     assert add.inner_text().strip() == en("asrEditor.addSpeaker")
-    last = page.locator(".asr-tl__lane").last.bounding_box()
-    box = add.bounding_box()
-    assert box["y"] >= last["y"] + last["height"] - 1, f"the Add speaker button is not under the last lane: {box} {last}"
+    assert add.get_attribute("aria-label") == en("asrEditor.addSpeaker")
+    cell = page.locator(".asr-tl__mini-label")
+    assert en("asrEditor.timeline.overview") in cell.inner_text()
+    inside = lambda box, outer: (box["x"] >= outer["x"] - 0.5 and box["x"] + box["width"] <= outer["x"] + outer["width"] + 0.5  # noqa: E731
+                                 and box["y"] >= outer["y"] - 0.5 and box["y"] + box["height"] <= outer["y"] + outer["height"] + 0.5)
+    assert inside(add.bounding_box(), cell.bounding_box()), f"the Add speaker button does not fit the overview cell: {add.bounding_box()} in {cell.bounding_box()}"
+    label = page.locator(".asr-tl__mini-text").bounding_box()
+    assert label["x"] + label["width"] <= add.bounding_box()["x"], "the Add speaker button covers the Overview label"
+    assert abs(cell.bounding_box()["height"] - page.locator(".asr-tl__mini-box").bounding_box()["height"]) <= 1
+    heads, canvas = page.locator(".asr-tl__heads").bounding_box(), page.locator(CANVAS).bounding_box()
+    assert abs(heads["height"] - canvas["height"]) <= 1, f"the lane headers have a row the canvas does not: {heads} {canvas}"
+    assert removers.count() == 0, "a lane with segments offers to remove its speaker"
     add.click()
     editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0)])
     assert key_of(2) == "3"
@@ -1472,6 +1487,38 @@ def test_a_speaker_is_added_and_saved_only_with_segments(meeting):
     editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0), ("SPEAKER_03", 0)])
     assert not editor.dirty()
 
+    # A lane without segments has a button that removes its speaker; a lane
+    # with segments has none. It is a target of its own, beside the name.
+    assert removers.count() == 2 and remove_of(0).count() == 0 and remove_of(1).count() == 0
+    remove = remove_of(2)
+    assert remove.get_attribute("aria-label") == en("asrEditor.removeSpeaker") and remove.get_attribute("title") == en("asrEditor.removeSpeaker")
+    a, b = editor.lane_name(2).bounding_box(), remove.bounding_box()
+    assert a["x"] + a["width"] + 4 <= b["x"], f"the lane name and the remove button touch: {a} {b}"
+    assert inside(b, page.locator(".asr-tl__lane[data-asr-lane='2']").bounding_box())
+    editor.shot("asr-editor-test-remove-speaker")
+    # Removed without a question, as one undo step; the next speaker takes its number key
+    depth = editor.tl("undoDepth")
+    remove.click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_03", 0)])
+    editor.undo_depth(depth + 1)
+    assert editor.question().count() == 0 and page.locator("[data-asr-popover]").count() == 0
+    assert key_of(2) == "3" and not editor.dirty()
+    assert editor.tl_segments() == seeded
+    editor.action("undo").click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0), ("SPEAKER_03", 0)])
+    assert [key_of(2), key_of(3)] == ["3", "4"]
+    editor.action("redo").click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_03", 0)])
+    page.keyboard.press("Control+z")
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0), ("SPEAKER_03", 0)])
+    # By keyboard, and the label of a removed speaker is handed out again
+    remove_of(3).focus()
+    page.keyboard.press("Enter")
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0)])
+    add.click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0), ("SPEAKER_03", 0)])
+    assert not editor.dirty()
+
     # The row picker lists the added speakers with the recording's, and assigns one
     page.locator(f"{ROW}[data-index='0'] .asr-seg__chip").click()
     picker.wait_for(state="visible", timeout=5000)
@@ -1486,13 +1533,31 @@ def test_a_speaker_is_added_and_saved_only_with_segments(meeting):
     page.wait_for_function("() => !!document.querySelector('[data-asr-dirty]')", timeout=5000)
     # The added speakers keep their number keys when they get a segment
     assert [key_of(2), key_of(3)] == ["3", "4"]
+    # With a segment the speaker cannot be removed
+    assert removers.count() == 1 and remove_of(2).count() == 0 and remove_of(3).count() == 1
 
     # Its number key assigns the selection
     editor.select_row(1)
     page.keyboard.press("4")
     editor.speakers_are([expected[0], "SPEAKER_03"] + expected[2:])
     editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 5), ("SPEAKER_02", 1), ("SPEAKER_03", 1)])
+    assert removers.count() == 0
     page.keyboard.press("Control+z")
+    editor.speakers_are(expected)
+    editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 6), ("SPEAKER_02", 1), ("SPEAKER_03", 0)])
+
+    # An added speaker that lost its segments again keeps its lane and can be
+    # removed (the first two number keys are SPEAKER_01 and SPEAKER_00 now)
+    editor.select_row(0)
+    page.keyboard.press("2")
+    editor.speakers_are(labels)
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0), ("SPEAKER_03", 0)])
+    assert removers.count() == 2
+    remove_of(2).click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_03", 0)])
+    editor.action("undo").click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0), ("SPEAKER_03", 0)])
+    editor.action("undo").click()
     editor.speakers_are(expected)
     editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 6), ("SPEAKER_02", 1), ("SPEAKER_03", 0)])
 
@@ -1549,6 +1614,25 @@ def test_a_speaker_is_added_and_saved_only_with_segments(meeting):
     editor.action("add-speaker").click()
     editor.lanes_are([("SPEAKER_02", 1), ("SPEAKER_01", 6), ("SPEAKER_00", 5), ("SPEAKER_03", 0)])
     assert not editor.dirty()
+
+    # With many speakers the lanes scroll: the button stays in view after each
+    # speaker it adds, and the last lane can be removed
+    lanes = [("SPEAKER_02", 1), ("SPEAKER_01", 6), ("SPEAKER_00", 5), ("SPEAKER_03", 0)]
+    for number in range(4, 18):
+        editor.action("add-speaker").click()
+        lanes.append((f"SPEAKER_{number:02d}", 0))
+        editor.tl_lanes(len(lanes))
+    editor.lanes_are(lanes)
+    body = page.locator(".asr-tl__body")
+    sizes = body.evaluate("el => [el.scrollHeight, el.clientHeight]")
+    assert sizes[0] > sizes[1], f"the lanes do not scroll with {len(lanes)} speakers: {sizes}"
+    page.wait_for_function(
+        "() => { const b = document.querySelector('.asr-tl__body').getBoundingClientRect(); "
+        "const a = document.querySelector(\"[data-asr-action='add-speaker']\").getBoundingClientRect(); "
+        "return a.top >= b.top - 0.5 && a.bottom <= b.bottom + 0.5; }", timeout=5000)
+    remove_of(len(lanes) - 1).click()
+    editor.lanes_are(lanes[:-1])
+    assert not editor.dirty()
     page.locator(".asr-editor-modal .modal-close").click()
     page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
     assert editor.question().count() == 0
@@ -1569,10 +1653,21 @@ def test_lane_names_and_add_speaker_on_a_phone(browser):
         phone.tl_ready(waveform=False)
         phone.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6)])
         head = page.locator(".asr-tl__heads").bounding_box()
-        for target in (phone.lane_name(0), phone.action("add-speaker")):
-            box = target.bounding_box()
-            assert box["x"] >= head["x"] - 0.5 and box["x"] + box["width"] <= head["x"] + head["width"] + 0.5, f"does not fit the lane header: {box} in {head}"
-            assert box["height"] >= 27.5, f"a small touch target: {box}"
+        box = phone.lane_name(0).bounding_box()
+        assert box["x"] >= head["x"] - 0.5 and box["x"] + box["width"] <= head["x"] + head["width"] + 0.5, f"does not fit the lane header: {box} in {head}"
+        assert box["height"] >= 27.5, f"a small touch target: {box}"
+        # Add speaker is in the header cell of the overview: the plus alone
+        # beside "Overview" (no room for its words), named for assistive technology
+        add = phone.action("add-speaker")
+        cell = page.locator(".asr-tl__mini-label").bounding_box()
+        box = add.bounding_box()
+        assert box["x"] >= cell["x"] - 0.5 and box["x"] + box["width"] <= cell["x"] + cell["width"] + 0.5, f"does not fit the overview cell: {box} in {cell}"
+        assert box["width"] >= 35.5 and box["height"] >= 25.5, f"a small touch target: {box}"
+        assert add.inner_text().strip() == "" and add.get_attribute("aria-label") == en("asrEditor.addSpeaker")
+        label = page.locator(".asr-tl__mini-text")
+        assert label.inner_text().strip() == en("asrEditor.timeline.overview")
+        assert label.evaluate("el => el.scrollWidth <= el.clientWidth"), "the Overview label is cut off"
+        assert abs(head["height"] - page.locator(CANVAS).bounding_box()["height"]) <= 1
 
         # The picker of the whole speaker is a sheet at the foot of the screen
         sheet = phone.lane_picker(1, "SPEAKER_01")
@@ -1585,6 +1680,23 @@ def test_lane_names_and_add_speaker_on_a_phone(browser):
         phone.lanes_are([("SPEAKER_00", 6), ("Linus", 6)])
 
         phone.action("add-speaker").click()
+        phone.lanes_are([("SPEAKER_00", 6), ("Linus", 6), ("SPEAKER_02", 0)])
+        # The empty lane has the remove button, within its header
+        remove = page.locator("[data-asr-action='lane-remove']")
+        assert remove.count() == 1
+        # (the header column is wider while a lane has the button, so that the label beside it is whole)
+        head = page.locator(".asr-tl__heads").bounding_box()
+        shown = phone.lane_name(2).locator(".asr-tl__name-text")
+        assert shown.evaluate("el => el.scrollWidth <= el.clientWidth"), "the label of the added speaker is cut off"
+        canvas = page.locator(CANVAS).bounding_box()
+        assert canvas["width"] >= 230 and canvas["x"] + canvas["width"] <= 390.5, f"the timeline does not fit: {canvas}"
+        box = remove.bounding_box()
+        assert box["x"] + box["width"] <= head["x"] + head["width"] + 0.5 and box["width"] >= 27.5 and box["height"] >= 27.5, f"the remove button: {box}"
+        name = phone.lane_name(2).bounding_box()
+        assert name["x"] + name["width"] <= box["x"], f"the lane name and the remove button overlap: {name} {box}"
+        remove.click()
+        phone.lanes_are([("SPEAKER_00", 6), ("Linus", 6)])
+        phone.action("undo").click()
         phone.lanes_are([("SPEAKER_00", 6), ("Linus", 6), ("SPEAKER_02", 0)])
         widths = page.evaluate("() => [document.documentElement.scrollWidth, window.innerWidth]")
         assert widths[0] <= widths[1], f"the editor is wider than the phone: {widths}"
