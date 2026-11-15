@@ -242,13 +242,25 @@
                             <thead class="bg-[var(--bg-tertiary)]">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.id')}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.username')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
+                                        :aria-sort="userSort.key === 'username' ? (userSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
+                                        <button type="button" @click="sortUserListBy('username')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
+                                            <span>${t('adminDashboard.username')}</span>
+                                            <i class="fas text-[10px]" :class="userSort.key === 'username' ? (userSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
+                                        </button>
+                                    </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.email')}</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.admin')}</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.publicShare')}</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.recordings')}</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.storageUsed')}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.lastActivity')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
+                                        :aria-sort="userSort.key === 'last_active' ? (userSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
+                                        <button type="button" @click="sortUserListBy('last_active')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
+                                            <span>${t('adminDashboard.lastActive')}</span>
+                                            <i class="fas text-[10px]" :class="userSort.key === 'last_active' ? (userSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
+                                        </button>
+                                    </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.actions')}</th>
                                 </tr>
                             </thead>
@@ -277,16 +289,14 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
                                         ${ formatFileSize(user.storage_used) }<span v-if="user.storage_quota_mb" class="text-xs" :class="storagePctClass(storagePct(user)) || 'text-[var(--text-muted)]'"> / ${ formatFileSize(user.storage_quota_mb * 1048576) }</span>
                                     </td>
-                                    <!-- Presence: green inside the online window, red
-                                         outside it, exact timestamp on hover. -->
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <!-- Last active: relative time, the full date and time on hover -->
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">
                                         <time v-if="user.last_seen_at"
                                               :datetime="user.last_seen_at"
-                                              :class="user.online ? 'text-[var(--text-success-strong)]' : 'text-[var(--text-danger-strong)]'"
                                               :title="formatDate(user.last_seen_at)">
                                             ${ formatRelativeTime(user.last_seen_at) }
                                         </time>
-                                        <span v-else class="text-[var(--text-muted)]">${ t('adminDashboard.never') }</span>
+                                        <span v-else>${ t('adminDashboard.never') }</span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
                                         <div class="flex space-x-2">
@@ -2467,6 +2477,17 @@ Summarization Instructions:
                 // Computed properties
                 // Methods
                 let userSearchTimer = null;
+                // Order of the user list. The list is paged by the server, so
+                // the server sorts it; no key means the order by id. The first
+                // click on a column sorts ascending (for "Last active": never
+                // used first, then the least recently used), the next reverses.
+                const userSort = ref({ key: null, dir: 1 });
+                const sortUserListBy = (key) => {
+                    userSort.value = userSort.value.key === key
+                        ? { key, dir: -userSort.value.dir }
+                        : { key, dir: 1 };
+                    loadUsers(1);
+                };
                 const loadUsers = async (page) => {
                     const targetPage = (page === undefined || page === null) ? userPage.value : page;
                     isLoadingUsers.value = true;
@@ -2475,6 +2496,10 @@ Summarization Instructions:
                         params.set('page', targetPage);
                         params.set('per_page', userPerPage.value);
                         if (userSearchQuery.value) params.set('search', userSearchQuery.value);
+                        if (userSort.value.key) {
+                            params.set('sort', userSort.value.key);
+                            params.set('order', userSort.value.dir > 0 ? 'asc' : 'desc');
+                        }
                         const response = await fetch('/admin/users?' + params.toString());
                         if (!response.ok) throw new Error('Failed to load users');
 
@@ -2995,8 +3020,8 @@ Summarization Instructions:
                     if (isNaN(date.getTime())) return t('adminDashboard.never');
                     return date.toLocaleDateString(window.i18n?.getIntlLocale?.()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale?.());
                 };
-                // Elapsed time for the "Last activity" cell ("2 min ago"). The
-                // exact timestamp stays available in the cell's title. Templates
+                // Elapsed time for the "Last active" cell ("3 hours ago"). The
+                // full date and time stay available in the cell's title. Templates
                 // cannot reach window.i18n (Vue resolves names against the
                 // component), so the i18n call is exposed through setup.
                 const formatRelativeTime = (dateString) => i18nInstance.formatRelativeTime(dateString);
@@ -4392,6 +4417,8 @@ Summarization Instructions:
                     updateSetting,
                     formatDate,
                     formatRelativeTime,
+                    userSort,
+                    sortUserListBy,
                     parseInstant,
                     getSettingDescription,
                     permissionModes,

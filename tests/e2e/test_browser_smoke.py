@@ -125,60 +125,78 @@ def test_settings_pages(browser_page, path):
     _check_common(page, problems, path)
 
 
-def test_admin_users_table_shows_last_activity(browser_page):
-    """The User Management table renders the presence column from the listing.
+def test_admin_users_table_shows_last_active(browser_page):
+    """The User Management table renders the Last active column from the listing.
 
-    The column is additive, so a fresh instance exercises it with the admin
-    who just signed in: a relative time inside the online window, coloured
-    green, with the exact timestamp in the title. Any row that has no
-    recorded activity must say "Never" in the neutral colour instead of
-    leaving the cell blank.
+    A fresh instance exercises it with the admin who just signed in: a
+    relative time in muted text, with the full date and time in the title and
+    no color for an online state. A row without a recorded time must say
+    "Never" instead of leaving the cell blank. A click on the column header
+    sorts the list on the server and marks the header as sorted.
     """
     page, problems = browser_page
     _open(page, problems, "/admin")
 
     table = page.locator("table").filter(
-        has=page.locator("th", has_text="Last activity")).first
-    table.locator("th", has_text="Last activity").first.wait_for(
-        state="visible", timeout=15000)
+        has=page.locator("th", has_text="Last active")).first
+    header = table.locator("th", has_text="Last active").first
+    header.wait_for(state="visible", timeout=15000)
 
     headers = [h.strip().lower() for h in table.locator("thead th").all_inner_texts()]
-    assert headers[-2:] == ["last activity", "actions"], (
-        f"/admin: Last activity is not the column before Actions: {headers}")
+    assert headers[-2:] == ["last active", "actions"], (
+        f"/admin: Last active is not the column before Actions: {headers}")
 
-    rows = table.locator("tbody tr")
-    checked = 0
-    for index in range(rows.count()):
-        cells = rows.nth(index).locator("td")
-        if cells.count() < 9:  # the empty-state or loading row
-            continue
-        cell = cells.nth(7)
-        text = cell.inner_text().strip()
-        assert text, f"/admin: empty Last activity cell in row {index}"
-        value = cell.locator("time, span").first
-        classes = value.get_attribute("class") or ""
-        if text == "Never":
-            assert value.evaluate("el => el.tagName") == "SPAN", (
-                "/admin: Never should not be a time element")
-            assert "text-[var(--text-muted)]" in classes, (
-                f"/admin: Never is not neutral: {classes}")
-            assert not value.get_attribute("title"), (
-                "/admin: Never should not carry a timestamp title")
-        else:
-            assert value.evaluate("el => el.tagName") == "TIME", (
-                f"/admin: {text!r} is not a time element")
-            stamp = value.get_attribute("datetime")
-            assert stamp, f"/admin: {text!r} has no machine-readable datetime"
-            assert stamp.endswith("Z"), (
-                f"/admin: {text!r} datetime is not an explicit UTC instant: {stamp}")
-            assert value.get_attribute("title"), (
-                f"/admin: {text!r} has no exact timestamp title")
-            assert ("text-[var(--text-success-strong)]" in classes
-                    or "text-[var(--text-danger-strong)]" in classes), (
-                f"/admin: {text!r} is not coloured: {classes}")
-        checked += 1
+    def check_rows():
+        rows = table.locator("tbody tr")
+        checked = 0
+        for index in range(rows.count()):
+            cells = rows.nth(index).locator("td")
+            if cells.count() < 9:  # the empty-state or loading row
+                continue
+            cell = cells.nth(7)
+            text = cell.inner_text().strip()
+            assert text, f"/admin: empty Last active cell in row {index}"
+            cell_classes = cell.get_attribute("class") or ""
+            assert "text-[var(--text-muted)]" in cell_classes, (
+                f"/admin: Last active is not muted: {cell_classes}")
+            value = cell.locator("time, span").first
+            classes = (value.get_attribute("class") or "") + " " + cell_classes
+            assert "success" not in classes and "danger" not in classes, (
+                f"/admin: {text!r} carries an online color: {classes}")
+            if text == "Never":
+                assert value.evaluate("el => el.tagName") == "SPAN", (
+                    "/admin: Never should not be a time element")
+                assert not value.get_attribute("title"), (
+                    "/admin: Never should not carry a timestamp title")
+            else:
+                assert value.evaluate("el => el.tagName") == "TIME", (
+                    f"/admin: {text!r} is not a time element")
+                stamp = value.get_attribute("datetime")
+                assert stamp, f"/admin: {text!r} has no machine-readable datetime"
+                assert stamp.endswith("Z"), (
+                    f"/admin: {text!r} datetime is not an explicit UTC instant: {stamp}")
+                assert value.get_attribute("title"), (
+                    f"/admin: {text!r} has no full date and time in its title")
+            checked += 1
+        return checked
 
-    assert checked, "/admin: no user rows to check"
+    assert check_rows(), "/admin: no user rows to check"
+
+    # Sorting: the first click asks the server for ascending order.
+    assert header.get_attribute("aria-sort") == "none"
+    with page.expect_response(
+            lambda r: "/admin/users?" in r.url and "sort=last_active" in r.url) as sorted_response:
+        header.locator("button").click()
+    assert "order=asc" in sorted_response.value.url, sorted_response.value.url
+    assert sorted_response.value.ok
+    page.wait_for_function(
+        "el => el.getAttribute('aria-sort') === 'ascending'", arg=header.element_handle())
+    with page.expect_response(
+            lambda r: "/admin/users?" in r.url and "order=desc" in r.url):
+        header.locator("button").click()
+    page.wait_for_function(
+        "el => el.getAttribute('aria-sort') === 'descending'", arg=header.element_handle())
+    assert check_rows(), "/admin: no user rows after sorting"
     _check_common(page, problems, "/admin")
 
 
