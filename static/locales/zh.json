@@ -3628,7 +3628,6 @@
       "summary_field_required": "summary 字段为必填项",
       "summary_generate_denied": "您没有为此录音生成摘要的权限",
       "summary_generation_failed": "无法生成摘要。请检查语言模型服务是否正在运行。",
-      "summary_generation_failed_detail": "无法生成摘要：{{detail}}",
       "summary_llm_not_configured": "摘要服务不可用（未配置 LLM 客户端）",
       "summary_openrouter_not_configured": "摘要服务不可用（未配置 OpenRouter 客户端）",
       "system_info_unavailable": "无法获取系统信息",

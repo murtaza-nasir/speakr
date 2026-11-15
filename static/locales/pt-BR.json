@@ -3628,7 +3628,6 @@
       "summary_field_required": "O campo summary é obrigatório",
       "summary_generate_denied": "Você não tem permissão para gerar o resumo desta gravação",
       "summary_generation_failed": "Não foi possível gerar o resumo. Verifique se o serviço do modelo de linguagem está em execução.",
-      "summary_generation_failed_detail": "Não foi possível gerar o resumo: {{detail}}",
       "summary_llm_not_configured": "O serviço de resumo não está disponível (cliente LLM não configurado)",
       "summary_openrouter_not_configured": "O serviço de resumo não está disponível (cliente OpenRouter não configurado)",
       "system_info_unavailable": "Não foi possível obter as informações do sistema",

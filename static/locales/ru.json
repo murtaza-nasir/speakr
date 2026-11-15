@@ -3628,7 +3628,6 @@
       "summary_field_required": "Поле summary обязательно",
       "summary_generate_denied": "У вас нет прав на создание резюме для этой записи",
       "summary_generation_failed": "Не удалось создать резюме. Проверьте, что сервис языковой модели запущен.",
-      "summary_generation_failed_detail": "Не удалось создать резюме: {{detail}}",
       "summary_llm_not_configured": "Сервис резюме недоступен (клиент LLM не настроен)",
       "summary_openrouter_not_configured": "Сервис резюме недоступен (клиент OpenRouter не настроен)",
       "system_info_unavailable": "Не удалось получить сведения о системе",

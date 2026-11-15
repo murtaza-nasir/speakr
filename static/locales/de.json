@@ -3628,7 +3628,6 @@
       "summary_field_required": "Das Feld summary ist erforderlich",
       "summary_generate_denied": "Sie haben keine Berechtigung, eine Zusammenfassung für diese Aufnahme zu erstellen",
       "summary_generation_failed": "Die Zusammenfassung konnte nicht erstellt werden. Prüfen Sie, ob der Dienst des Sprachmodells läuft.",
-      "summary_generation_failed_detail": "Die Zusammenfassung konnte nicht erstellt werden: {{detail}}",
       "summary_llm_not_configured": "Der Zusammenfassungsdienst ist nicht verfügbar (LLM-Client nicht konfiguriert)",
       "summary_openrouter_not_configured": "Der Zusammenfassungsdienst ist nicht verfügbar (OpenRouter-Client nicht konfiguriert)",
       "system_info_unavailable": "Systeminformationen konnten nicht abgerufen werden",

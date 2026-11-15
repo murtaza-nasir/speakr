@@ -3628,7 +3628,6 @@
       "summary_field_required": "Le champ summary est requis",
       "summary_generate_denied": "Vous n'avez pas l'autorisation de générer un résumé pour cet enregistrement",
       "summary_generation_failed": "Impossible de générer le résumé. Vérifiez que le service du modèle de langage est en cours d'exécution.",
-      "summary_generation_failed_detail": "Impossible de générer le résumé : {{detail}}",
       "summary_llm_not_configured": "Le service de résumé n'est pas disponible (client LLM non configuré)",
       "summary_openrouter_not_configured": "Le service de résumé n'est pas disponible (client OpenRouter non configuré)",
       "system_info_unavailable": "Impossible de récupérer les informations système",

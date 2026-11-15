@@ -3628,7 +3628,6 @@
       "summary_field_required": "summary field required",
       "summary_generate_denied": "You do not have permission to generate summary for this recording",
       "summary_generation_failed": "Couldn't generate the summary. Check that the language model service is running.",
-      "summary_generation_failed_detail": "Couldn't generate summary: {{detail}}",
       "summary_llm_not_configured": "Summary service is not available (LLM client not configured)",
       "summary_openrouter_not_configured": "Summary service is not available (OpenRouter client not configured)",
       "system_info_unavailable": "Unable to retrieve system information",
