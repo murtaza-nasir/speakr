@@ -30,7 +30,7 @@ A row has no link to the recording, the account or the group it names. The rows 
 | Event | Recorded when | Details |
 |---|---|---|
 | `auth.login.succeeded` | A sign-in with a password or through SSO succeeded | `method`, `remember` |
-| `auth.login.failed` | A sign-in was refused. One row per minute for each address and account. | `reason`: `bad_password`, `unknown_account`, `no_local_password`, `locked`, `password_login_disabled`, `unverified_email` or `sso_error`. The address that was typed is not stored. |
+| `auth.login.failed` | A sign-in was refused. One row per minute for each address and account. | `method`, and `reason`: `bad_password`, `unknown_account`, `no_local_password`, `locked`, `password_login_disabled`, `unverified_email` or `sso_error`. The address that was typed is not stored. |
 | `auth.login.locked` | The limit of wrong passwords was reached and sign-in was locked | `minutes` |
 | `auth.logout` | A signed-in user signed out | |
 | `auth.registered` | An account was created through the registration page | |
@@ -106,9 +106,9 @@ Rows with `imported` in the details were copied from the table `share_audit_log`
 
 | Event | Recorded when | Details |
 |---|---|---|
-| `incognito.used` | An incognito upload was processed | None |
+| `incognito.used` | An incognito upload was requested. The outcome is `success`, `denied` (incognito mode is off, or the transcription budget is used up) or `failed`. | None |
 
-One row is written for an incognito upload, with the account, the time and the outcome. The client address, the user agent and the id of an API token are not stored in this row, whatever the value of `audit_log_store_ip`. Nothing about the file, its size, its duration or its content is stored. Incognito chat and summary requests are not recorded.
+One row is written for each incognito upload, also for one that is refused or fails, with the account, the time and the outcome. The client address, the user agent and the id of an API token are not stored in this row, whatever the value of `audit_log_store_ip`. Nothing about the file, its size, its duration or its content is stored. Incognito chat and summary requests are not recorded.
 
 ## Events that are not recorded
 
@@ -117,7 +117,8 @@ One row is written for an incognito upload, with the account, the time and the o
 - Changes of tags, folders, and of the personal inbox, star and archive state
 - Shares made by a group tag or a group folder
 - A sign-in through the "Remember me" cookie, and a request with an invalid API token
-- The status requests that an open page sends on a timer, and the waveform of a recording
+- The status requests that are sent on a timer from an open page, and the waveform of a recording
+- Two requests of a site administrator in which titles of recordings of other users are returned: the preview of automatic deletion (`GET /admin/auto-deletion/preview`), and the processing of recordings for Ask Ambrose on the admin page, where the titles of recordings that failed are returned
 - Text copied or saved in the browser after a recording was opened
 
 ## Settings
@@ -131,13 +132,13 @@ The settings are changed under **System settings** or in `.env`. A value in `.en
 | `audit_log_store_ip` | `AUDIT_LOG_STORE_IP` | `full` | `full`: the client address is stored. `truncated`: the `/24` network of an IPv4 address or the `/48` network of an IPv6 address is stored. `off`: no address is stored. |
 | `audit_log_record_views` | `AUDIT_LOG_RECORD_VIEWS` | `true` | `false`: `recording.viewed` and `recording.media.played` are not recorded. Downloads, exports, reads through API v1 and the events of public links are recorded in either case. |
 
-While the log is off, three kinds of events are still recorded, so that turning the log off is itself on record: a change of one of the `audit_log_*` settings, the reading and export of the log, and the removal of old rows. Every other event, including `incognito.used`, is not recorded while the log is off.
+While the log is off, four kinds of events are still recorded, so that turning the log off is itself on record: a change of one of the `audit_log_*` settings, the reading and export of the log, the removal of old rows, and the `audit.write_failed` row. Every other event, including `incognito.used`, is not recorded while the log is off.
 
 A change of `audit_log_store_ip` applies to new rows. Addresses in existing rows are not changed.
 
-Rows past the retention period are removed once a day, at 2:00 in the time of the server. A retention period of 2190 days (six years) is common for deployments under HIPAA. The period required for a deployment is decided by its compliance office.
+Rows past the retention period are removed once a day, at 2:00 in the time of the server. A period of 2190 days is six years. The period required for a deployment is decided by its compliance office.
 
-The client address is the address that the application receives. Behind a reverse proxy, `TRUSTED_PROXY_HOPS` must be set, otherwise the address of the proxy is stored.
+The client address is the address received by the application. Behind a reverse proxy, `TRUSTED_PROXY_HOPS` must be set, otherwise the address of the proxy is stored.
 
 ## The Audit log tab
 
@@ -146,10 +147,10 @@ The tab is shown to site administrators. Group administrators have no access to 
 - **Table.** The newest events are listed first, in the order in which they were written. An event of a read or a sign-in is written up to a second after it happened, so two events of the same second can be listed in either order; the time of each event is exact. A row is opened with a click and then shows the details, the affected account, the owner of the recording and the user agent. A deleted account is shown as "Deleted user" with its id.
 - **Filters.** From, To, User (a username or an id; events by that account and events that concern it), Events (a group of events), Recording ID, Result and Access by. Dates are days in the time zone of the browser.
 - **Paging.** The result is paged with **Older** and **Newer**, 50 rows at a time.
-- **Export.** With **Export CSV** and **Export JSONL**, the rows of the current filter are downloaded as a file, with the columns of the table unchanged. In the CSV file, a text cell that begins with `=`, `+`, `-` or `@` is preceded by an apostrophe, so that a spreadsheet does not read it as a formula.
+- **Export.** With **Export CSV** and **Export JSONL**, the rows of the current filter are downloaded as a file, with the columns of the table unchanged. In the CSV file, a text cell that begins with `=`, `+`, `-` or `@` is preceded by an apostrophe, so that it is not read as a formula in a spreadsheet.
 - **View activity.** With the button of this name in a row of the user list, the tab is opened with the User filter set to that account.
 
-Administrators have no page that shows a recording of another user. The events of one recording are found with the Recording ID filter.
+Administrators have no page on which the content of a recording of another user is shown. The events of one recording are found with the Recording ID filter.
 
 ### Ids that are used again
 
@@ -175,18 +176,18 @@ curl -H "Authorization: Bearer $TOKEN" -o audit.jsonl \
 
 The parameters are `from` and `to` (a date or an ISO 8601 date and time in UTC; `to` is exclusive), `user`, `group`, `event`, `recording_id`, `outcome`, `actor_kind`, `before_id`, `after_id` and `limit` (1 to 500).
 
-A copy kept on another host is the protection against a later change of the table. No route of the application changes or deletes a row, but a person with access to the database can do both. This gap is closed by a scheduled export to a system outside the reach of the server administrators.
+A copy kept on another host is the protection against a later change of the table. No row is changed or deleted through a route of the application, but a person with access to the database can do both. This gap is closed by a scheduled export to a system outside the reach of the server administrators.
 
 ## Failures
 
 Events of reads and sign-ins are written by a background writer, about once per second, so that a page is never delayed by the log. Events of changes, shares and administrative actions are written in the same database transaction as the action: such a row exists exactly when the action took effect.
 
-A batch that cannot be written is tried again after 1, 5, 15 and 60 seconds. After that, every event of the batch is written to the application log as one line that begins with `AUDIT-FALLBACK`, at the level `ERROR`, and the next batch that is written adds an `audit.write_failed` row with the number of events. The line holds the same values as the row, including the client address when addresses are stored. These lines should be kept by the collector of the container log.
+A batch that cannot be written is tried again after 1, 5, 15 and 60 seconds. After that, every event of the batch is written to the application log as one line that begins with `AUDIT-FALLBACK`, at the level `ERROR`, and an `audit.write_failed` row with the number of events is added with the next batch that is written. An event for which the queue of the writer is full is written to the application log in the same way. The line holds the same values as the row, including the client address when addresses are stored. These lines should be kept by the collector of the container log.
 
 After a kill of the server process, up to one second of read and sign-in events can be missing. Events of changes are not affected.
 
 ## Upgrade
 
-- **The log is on after the upgrade.** From the first start, events are recorded with the client address, for 365 days. The settings above change both. A notice on the Audit log tab states this until an administrator dismisses it.
-- **Internal shares.** Earlier releases recorded changes of internal shares in the table `share_audit_log`, whose rows were deleted with the recording. At the first start after the upgrade, these rows are copied once into `audit_event` (migration `0009_copy_share_audit_log_to_audit_event`), with time, actor, target account, recording, address and permission flags. The free-text note of the old rows is not copied. The old table is no longer written and is removed in a later release.
+- **The log is on after the upgrade.** From the first start, events are recorded with the client address, for 365 days. Both are changed with the settings above. This is stated in a notice on the Audit log tab until an administrator dismisses it.
+- **Internal shares.** In earlier releases, changes of internal shares were recorded in the table `share_audit_log`, whose rows were deleted with the recording and with the account that made the change. At the first start after the upgrade, these rows are copied once into `audit_event` (migration `0009_copy_share_audit_log_to_audit_event`), with time, actor, target account, recording, address and permission flags. The free-text note of the old rows is not copied. The old table is no longer written and is removed in a later release. Until then its remaining rows, with the address and the note, are still deleted with the recording, while the copies in `audit_event` remain.
 - **Size.** As an estimate, a row takes about 350 bytes including its indexes, and about 150 MB per year can be expected for an installation with 40 active users per day.
