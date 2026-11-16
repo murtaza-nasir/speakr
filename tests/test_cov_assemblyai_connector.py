@@ -182,7 +182,7 @@ def test_transcribe_diarized_flow_parses_utterances():
     assert resp.provider == 'assemblyai'
     # storage format round-trips with ms converted to seconds
     stored = json.loads(resp.to_storage_format())
-    assert stored[0] == {'speaker': 'A', 'sentence': 'Hello there', 'start_time': 0.25, 'end_time': 2.95}
+    assert stored[0] == {'speaker': 'SPEAKER_00', 'sentence': 'Hello there', 'start_time': 0.25, 'end_time': 2.95}
     # uploaded the audio bytes and submitted with speaker_labels
     paths = [p for p, _ in fake.posted]
     assert paths == ['/v2/upload', '/v2/transcript']

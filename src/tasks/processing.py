@@ -1724,6 +1724,14 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                             else:
                                 current_app.logger.warning("Could not extract speaker samples from first chunk")
 
+                        # The speaker samples above are keyed by the labels of
+                        # the service, which the next chunks are sent. The merge
+                        # numbers the speakers of each chunk after those of the
+                        # chunks before it, so the labels are brought to
+                        # SPEAKER_NN here, chunk by chunk.
+                        if use_diarization and hasattr(response, 'normalize_speaker_labels'):
+                            response.normalize_speaker_labels()
+
                         # Store chunk result
                         chunk_result = {
                             'index': chunk['index'],
@@ -2245,7 +2253,10 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
 
                         # Store the result
                         if response.segments and response.has_diarization():
-                            # Store as JSON with segments (diarized format)
+                            # Store as JSON with segments (diarized format).
+                            # The labels are normalized to SPEAKER_NN in the
+                            # response itself, so the embeddings stored below
+                            # carry the same keys as the segments.
                             recording.transcription = response.to_storage_format()
                             current_app.logger.info(f"Transcription completed with {len(response.segments)} segments and {len(response.speakers or [])} speakers")
                         else:

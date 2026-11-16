@@ -28,7 +28,7 @@ TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize
 
 - [ ] Logs show "Auto-detected OpenAI Transcribe"
 - [ ] `/api/system/info` shows `connector: "openai_transcribe"`
-- [ ] Transcription works with speaker labels (A, B, C...)
+- [ ] Transcription works with speaker labels (SPEAKER_00, SPEAKER_01...)
 
 ### Test 1.2: ASR Endpoint Auto-Detection
 **Config:**
@@ -82,7 +82,7 @@ ASR_BASE_URL=http://whisperx-asr:9000  # Should be ignored
 
 **Expected:**
 
-- [ ] Transcription shows speaker labels (A, B, C...)
+- [ ] Transcription shows speaker labels (SPEAKER_00, SPEAKER_01...)
 - [ ] Speaker identification button appears in UI
 - [ ] Bubble view toggle available
 - [ ] Can rename speakers
@@ -131,7 +131,7 @@ TRANSCRIPTION_MODEL=voxtral-mini-latest
 
 **Expected:**
 
-- [ ] Transcription shows speaker labels (speaker_0, speaker_1...)
+- [ ] Transcription shows speaker labels (SPEAKER_00, SPEAKER_01...)
 - [ ] Speaker identification button appears in UI
 - [ ] Bubble view toggle available
 - [ ] Can rename speakers
