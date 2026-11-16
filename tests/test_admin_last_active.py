@@ -603,6 +603,6 @@ def test_the_default_order_and_an_unknown_sort_are_by_id(accounts):
         _user(accounts, 'second')
         client = _client_for(admin)
 
-        for query in ('per_page=1000', 'per_page=1000&sort=email', 'per_page=1000&sort=&order='):
+        for query in ('per_page=1000', 'per_page=1000&sort=password', 'per_page=1000&sort=&order='):
             ids = [row['id'] for row in _listed_users(client, query)]
             assert ids == sorted(ids), query

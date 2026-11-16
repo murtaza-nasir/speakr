@@ -114,28 +114,96 @@ def group_management():
 
 
 
-def _user_list_order():
-    """ORDER BY of the user list, from ?sort= and ?order=.
+def _text_order(column):
+    """Order by a text column without regard to case, the same on SQLite and PostgreSQL."""
+    def build(descending, _scope):
+        lowered = db.func.lower(column)
+        return (lowered.desc() if descending else lowered.asc(),), None
+    return build
 
-    sort=username orders by name without regard to case. sort=last_active
-    orders by the time of the last use and is honoured for site admins only,
-    who are the only ones given that time; accounts that were never used come
-    first in ascending order (least recently used first) and last in
-    descending order. Anything else is the order by id. The id closes every
-    order, so the pages are stable.
+
+def _flag_order(column):
+    """Order by a boolean column; a NULL counts as off, as it is displayed."""
+    def build(descending, _scope):
+        flag = db.case((column.is_(True), 1), else_=0)
+        return (flag.desc() if descending else flag.asc(),), None
+    return build
+
+
+def _id_order(_descending, _scope):
+    # The id closes every order, in the requested direction; nothing precedes it here.
+    return (), None
+
+
+def _last_active_order(descending, _scope):
+    # A CASE, not NULLS FIRST/LAST: the same order on SQLite and PostgreSQL.
+    # Accounts that were never used come first in ascending order (least
+    # recently used first) and last in descending order.
+    never = db.case((User.last_seen_at.is_(None), 0), else_=1)
+    if descending:
+        return (never.desc(), User.last_seen_at.desc()), None
+    return (never.asc(), User.last_seen_at.asc()), None
+
+
+def _recording_total_order(aggregate, live_audio_only=False):
+    """Order by a total over the recordings of each user.
+
+    The totals are read from one grouped subquery, joined to the user list
+    with a LEFT JOIN so that a user without recordings has the total 0. The
+    expressions are those of the displayed numbers, so the order and the
+    display agree. For a group admin the subquery is limited to the users in
+    scope.
+    """
+    def build(descending, scope):
+        totals = db.session.query(
+            Recording.user_id.label('user_id'), aggregate.label('total'))
+        if live_audio_only:
+            totals = totals.filter(Recording.audio_deleted_at.is_(None))
+        if scope is not None:
+            totals = totals.filter(Recording.user_id.in_(scope))
+        totals = totals.group_by(Recording.user_id).subquery('user_recording_totals')
+        total = db.func.coalesce(totals.c.total, 0)
+        return (total.desc() if descending else total.asc(),), totals
+    return build
+
+
+# The sort keys of GET /admin/users. Each value builds the leading ORDER BY
+# expressions and, for the totals, the subquery to join.
+USER_LIST_SORTS = {
+    'id': _id_order,
+    'username': _text_order(User.username),
+    'email': _text_order(User.email),
+    'is_admin': _flag_order(User.is_admin),
+    'can_share_publicly': _flag_order(User.can_share_publicly),
+    'recordings_count': _recording_total_order(db.func.count(Recording.id)),
+    'storage_used': _recording_total_order(db.func.sum(Recording.file_size), live_audio_only=True),
+    'last_active': _last_active_order,
+}
+# Keys honoured for site admins only, who are the only ones given the value.
+USER_LIST_SITE_ADMIN_SORTS = frozenset({'last_active'})
+
+
+def _user_list_sort(scope=None):
+    """The sort of the user list, from ?sort= and ?order=.
+
+    Returns (key, order, order_by, joined): the applied key and direction,
+    the ORDER BY expressions and the subquery to LEFT JOIN on its user_id, or
+    None. An unknown key, and a key reserved for site admins when requested by
+    a group admin, give the order by id. Ties are broken by ascending id, so
+    that pages are stable. ``scope`` holds the user ids visible to a group
+    admin, None for a site admin.
     """
     descending = (request.args.get('order') or '').lower() == 'desc'
-    sort = (request.args.get('sort') or '').lower()
-    if sort == 'username':
-        column = db.func.lower(User.username)
-        return (column.desc() if descending else column.asc(), User.id.asc())
-    if sort == 'last_active' and current_user.is_admin:
-        # A CASE, not NULLS FIRST/LAST: the same order on SQLite and PostgreSQL.
-        never = db.case((User.last_seen_at.is_(None), 0), else_=1)
-        if descending:
-            return (never.desc(), User.last_seen_at.desc(), User.id.asc())
-        return (never.asc(), User.last_seen_at.asc(), User.id.asc())
-    return (User.id.desc() if descending else User.id.asc(),)
+    key = (request.args.get('sort') or '').lower()
+    if key not in USER_LIST_SORTS or (
+            key in USER_LIST_SITE_ADMIN_SORTS and not current_user.is_admin):
+        key = 'id'
+    leading, joined = USER_LIST_SORTS[key](descending, scope)
+    if key == 'id':
+        closing = User.id.desc() if descending else User.id.asc()
+    else:
+        closing = User.id.asc()
+    return key, 'desc' if descending else 'asc', leading + (closing,), joined
 
 
 @admin_bp.route('/admin/users', methods=['GET'])
@@ -150,6 +218,7 @@ def admin_get_users():
     if not current_user.is_admin and not is_team_admin:
         return jsonify(api_error('unauthorized')), 403
 
+    member_ids = None
     if current_user.is_admin:
         base_query = User.query
     else:
@@ -210,7 +279,13 @@ def admin_get_users():
     if page < 1:
         page = 1
 
-    users = (base_query.order_by(*_user_list_order())
+    # The totals are joined for the order only, and only when a total is the
+    # sort key; the count above and the other orders read the user table alone.
+    sort_key, sort_order, order_by, joined = _user_list_sort(member_ids)
+    page_query = base_query
+    if joined is not None:
+        page_query = page_query.outerjoin(joined, joined.c.user_id == User.id)
+    users = (page_query.order_by(*order_by)
              .offset((page - 1) * per_page).limit(per_page).all())
 
     user_data = []
@@ -299,7 +374,11 @@ def admin_get_users():
             'total_pages': total_pages,
             'has_next': has_next,
             'has_prev': has_prev
-        }
+        },
+        # The sort that was applied, which differs from the requested one for
+        # an unknown key and for a key reserved for site admins.
+        'sort': sort_key,
+        'order': sort_order,
     })
 
 
