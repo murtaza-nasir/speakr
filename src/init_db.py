@@ -1505,6 +1505,16 @@ def _run_migrations(app, engine):
             db.session.rollback()
             app.logger.warning(f"Diarization label cleanup skipped, retried next start: {e}")
 
+        # The rows of share_audit_log become share.internal.* rows of the
+        # audit log. The old table is left as it is for one release.
+        try:
+            from src.services.audit_import import copy_share_audit_log
+            run_once(engine, '0009_copy_share_audit_log_to_audit_event',
+                     lambda eng: copy_share_audit_log(eng, logger=app.logger), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Copy of share_audit_log skipped, retried next start: {e}")
+
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled

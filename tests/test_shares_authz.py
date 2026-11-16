@@ -792,10 +792,20 @@ def _share_flags(share_id):
 
 
 def _modified_logs(share_id):
-    from src.models import ShareAuditLog
+    """The changes of a share in the audit log, as old and new flags."""
+    from src.models import AuditEvent
     with _db():
-        return [log.permissions_granted for log in
-                ShareAuditLog.query.filter_by(share_id=share_id, action='modified').all()]
+        share = db.session.get(InternalShare, share_id)
+        # The id of a deleted share is given out again on SQLite: only the
+        # rows of this share's recording and recipient are its own.
+        if share is None:
+            return []
+        return [{'old': {'can_edit': row.details['old_can_edit'], 'can_reshare': row.details['old_can_reshare']},
+                 'new': {'can_edit': row.details['can_edit'], 'can_reshare': row.details['can_reshare']}}
+                for row in AuditEvent.query.filter_by(
+                    event='share.internal.changed', recording_id=share.recording_id,
+                    target_user_id=share.shared_with_user_id).order_by(AuditEvent.id)
+                if row.details.get('share_id') == share_id and row.created_at >= share.created_at]
 
 
 def _patch_share(user_id, share_id, body):
@@ -1136,7 +1146,7 @@ def _rows(rec):
 
 @pytest.mark.usefixtures('search_level_everyone')
 def test_share_internal_user_ids_batch():
-    from src.models import ShareAuditLog
+    from src.models import AuditEvent
     with _db():
         owner = _setup_user("pb_owner")
         a = _setup_user("pb_a")
@@ -1153,7 +1163,8 @@ def test_share_internal_user_ids_batch():
         assert _rows(rec) == {a: (True, False, owner, "manual"), b: (True, False, owner, "manual")}
         with _db():
             assert {s.user_id for s in SharedRecordingState.query.filter_by(recording_id=rec, is_inbox=True)} == {a, b}
-            assert ShareAuditLog.query.filter_by(recording_id=rec, action="created").count() == 2
+            assert {row.target_user_id for row in AuditEvent.query.filter_by(
+                event="share.internal.created", recording_id=rec, actor_user_id=owner)} >= {a, b}
         with _internal_enabled():
             listed = _client_for(owner).get(f"/api/recordings/{rec}/shares-internal").get_json()["shares"]
         assert {s["user_id"] for s in listed} == {owner, a, b}

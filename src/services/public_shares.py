@@ -53,6 +53,18 @@ def active_share_or_404(public_id):
     return share
 
 
+def _audit(event, share):
+    """The audit row of a public link, in the transaction of the change. The
+    id and the flags; never the public_id, which is the access secret."""
+    from src.services import audit
+    details = {'share_id': share.id}
+    if event != 'share.public.revoked':
+        details.update(share_summary=bool(share.share_summary), share_notes=bool(share.share_notes),
+                       expires=share.expires_at is not None)
+    audit.record_in_tx(event, recording_id=share.recording_id, recording_owner_id=share.user_id,
+                       details=details)
+
+
 def get_or_create(recording, user, share_summary, share_notes, force_new=False,
                   update_existing=False, expires_in_days=None):
     """Returns (share, created, flags_differ). Commits."""
@@ -66,6 +78,7 @@ def get_or_create(recording, user, share_summary, share_notes, force_new=False,
         if differ and update_existing:
             existing.share_summary = share_summary
             existing.share_notes = share_notes
+            _audit('share.public.changed', existing)
             db.session.commit()
             differ = False
         return existing, False, differ
@@ -75,6 +88,8 @@ def get_or_create(recording, user, share_summary, share_notes, force_new=False,
     if expires_in_days:
         share.expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
     db.session.add(share)
+    db.session.flush()
+    _audit('share.public.created', share)
     db.session.commit()
     _emit('recording.share.created', share)
     return share, True, False
@@ -83,6 +98,7 @@ def get_or_create(recording, user, share_summary, share_notes, force_new=False,
 def revoke(share):
     data = _data(share)
     user_id = share.user_id
+    _audit('share.public.revoked', share)
     db.session.delete(share)
     db.session.commit()
     try:

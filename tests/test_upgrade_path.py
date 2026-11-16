@@ -538,3 +538,61 @@ class TestIssue379:
             'SELECT COUNT(*) FROM "user" WHERE password IS NULL'
         ).fetchone()[0] == 1
         con.close()
+
+
+def test_share_audit_log_rows_are_copied_to_the_audit_log(tmp_path):
+    """The rows of the former share_audit_log table arrive in audit_event with
+    their values (ledger id 0009), the old table keeps its rows and columns,
+    and a second start copies nothing twice."""
+    db_path = str(tmp_path / "shares.db")
+    with open(os.path.join(FIXTURE_DIR, "v0.10.10-alpha.sql")) as fh:
+        schema_sql = fh.read()
+    con = sqlite3.connect(db_path)
+    con.executescript(schema_sql)
+    old_columns = [row[1] for row in con.execute('PRAGMA table_info("share_audit_log")')]
+    for user_id, name in ((1, "owner"), (2, "reader")):
+        con.execute('INSERT INTO "user" (id, username, email, password) VALUES (?, ?, ?, ?)',
+                    (user_id, name, f"{name}@example.test", "x"))
+    con.execute('INSERT INTO recording (id, user_id, title, status, keep_audio_only) VALUES (5, 1, ?, ?, 0)',
+                ("kept", "COMPLETED"))
+    con.execute('INSERT INTO share_audit_log (id, action, recording_id, actor_id, target_user_id, '
+                'permissions_granted, timestamp, share_id, notes, ip_address) VALUES '
+                '(1, ?, 5, 1, 2, ?, ?, NULL, ?, ?)',
+                ("created", '{"can_edit": true, "can_reshare": false}', "2026-02-03 04:05:06.000000",
+                 "Shared by owner", "203.0.113.9"))
+    con.execute('INSERT INTO share_audit_log (id, action, recording_id, actor_id, target_user_id, '
+                'timestamp, share_id, notes) VALUES (2, ?, 5, 1, 2, ?, 9, ?)',
+                ("cascade_revoked", "2026-02-04 04:05:06.000000", "Cascaded from revoking user 3"))
+    con.commit()
+    con.close()
+
+    app = _fixture_app(db_path)
+    for _ in range(2):
+        with app.app_context():
+            initialize_database(app)
+
+    con = sqlite3.connect(db_path)
+    rows = con.execute(
+        'SELECT event, event_group, actor_kind, actor_user_id, target_user_id, recording_id, '
+        'recording_owner_id, ip, outcome, details, created_at, dedup_key FROM audit_event '
+        "WHERE event LIKE 'share.internal.%' ORDER BY id").fetchall()
+    kept = con.execute('SELECT id, action, notes FROM share_audit_log ORDER BY id').fetchall()
+    columns_after = [row[1] for row in con.execute('PRAGMA table_info("share_audit_log")')]
+    ledger = con.execute("SELECT COUNT(*) FROM schema_migrations WHERE migration_id LIKE '0009_%'").fetchone()[0]
+    con.close()
+
+    import json
+    assert [row[:9] for row in rows] == [
+        ("share.internal.created", "share", "session", 1, 2, 5, 1, "203.0.113.9", "success"),
+        ("share.internal.revoked", "share", "session", 1, 2, 5, 1, None, "success"),
+    ]
+    assert [json.loads(row[9]) for row in rows] == [
+        {"imported": True, "can_edit": True, "can_reshare": False},
+        {"imported": True, "share_id": 9, "cascade": True},
+    ]
+    assert [row[10][:19] for row in rows] == ["2026-02-03 04:05:06", "2026-02-04 04:05:06"]
+    assert [row[11] for row in rows] == ["share_audit_log:1", "share_audit_log:2"]
+    assert not any("Shared by owner" in str(value) for row in rows for value in row)
+    assert kept == [(1, "created", "Shared by owner"), (2, "cascade_revoked", "Cascaded from revoking user 3")]
+    assert columns_after == old_columns
+    assert ledger == 1

@@ -536,6 +536,13 @@ def admin_delete_user(user_id):
         (InternalShare.owner_id == user_id) | (InternalShare.shared_with_user_id == user_id)
     ).delete()
 
+    # Rows of the former share_audit_log table that name the account as the
+    # target of a share. Their foreign key has no ON DELETE, so on PostgreSQL
+    # one such row refused the deletion. The rows were copied to the audit
+    # log (ledger id 0009), where they remain.
+    from src.models import ShareAuditLog
+    ShareAuditLog.query.filter_by(target_user_id=user_id).delete(synchronize_session=False)
+
     # Groups the user created keep existing without a creator (#576)
     Group.query.filter_by(created_by=user_id).update({'created_by': None}, synchronize_session=False)
 

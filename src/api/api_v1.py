@@ -1802,6 +1802,7 @@ def delete_external_ref(recording_id, ref_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/share', methods=['POST'])
 @require_scope('share')
 @login_required
+@audit.emits('share.public.created')
 def create_public_share(recording_id):
     """Create or reuse a public link (mailr spec G10). Notes are not shared
     unless asked, and a reused link's flags change only with update_existing."""

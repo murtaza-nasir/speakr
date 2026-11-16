@@ -16,7 +16,8 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
 
 from src.database import db
-from src.models import Recording, Share, InternalShare, SharedRecordingState, User, TranscriptChunk, ShareAuditLog, Folder
+from src.models import Recording, Share, InternalShare, SharedRecordingState, User, TranscriptChunk, Folder
+from src.services import audit
 from src.utils import md_to_html
 from src.services.storage import get_storage_service
 from src.services.public_shares import active_share_or_404, link_is_https, public_url
@@ -109,11 +110,36 @@ def public_transcript(transcription_str):
 
 # --- Public Sharing Routes ---
 
+def _audit_public_link(event, share):
+    """An open or a play through a public link: one row per half hour, share
+    and visitor. The public_id is the access secret and is never recorded."""
+    audit.record(event, actor_kind='public_link', recording_id=share.recording_id,
+                 recording_owner_id=share.user_id, details={'share_id': share.id},
+                 dedup=audit.DEDUP_VIEW, dedup_extra=f's{share.id}')
+
+
+def _audit_internal_share(action, share, old=None, cascade=False):
+    """share.internal.created, .changed or .revoked, in the transaction of the
+    share. The caller commits."""
+    recording = db.session.get(Recording, share.recording_id)
+    details = {'share_id': share.id}
+    if action != 'revoked':
+        details.update(can_edit=bool(share.can_edit), can_reshare=bool(share.can_reshare))
+    if old is not None:
+        details.update(old_can_edit=bool(old.get('can_edit')), old_can_reshare=bool(old.get('can_reshare')))
+    if cascade:
+        details['cascade'] = True
+    audit.record_in_tx(f'share.internal.{action}', recording_id=share.recording_id,
+                       recording_owner_id=recording.user_id if recording is not None else None,
+                       target_user_id=share.shared_with_user_id, details=details)
+
+
 @shares_bp.route('/share/<string:public_id>', methods=['GET'])
 def view_shared_recording(public_id):
     """View a publicly shared recording."""
     share = active_share_or_404(public_id)
     recording = share.recording
+    _audit_public_link('share.public.opened', share)
 
     # Create a limited dictionary for the public view. templates/share.html
     # embeds it as JSON for static/js/share-page.js: nothing may be added here
@@ -157,10 +183,12 @@ def get_shared_audio(public_id):
             is_public=True,
         )
         if delivery.mode == 'redirect_url':
+            _audit_public_link('share.public.media.played', share)
             return redirect(delivery.url, code=302)
         if not delivery.local_path or not os.path.exists(delivery.local_path):
             current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
             return jsonify(api_error('audio_file_missing')), 404
+        _audit_public_link('share.public.media.played', share)
         return sandbox_media_response(send_file(delivery.local_path, mimetype=serve_mime, conditional=True))
     except HTTPException:
         # Let first_or_404() (and any other HTTP error) keep its real status —
@@ -201,6 +229,7 @@ def get_existing_share(recording_id):
 
 @shares_bp.route('/api/recording/<int:recording_id>/share', methods=['POST'])
 @login_required
+@audit.emits('share.public.created', 'share.public.changed')
 def create_share(recording_id):
     """Create a public share link for a recording."""
     # Check if public sharing is globally enabled
@@ -373,6 +402,11 @@ def update_share(share_id):
     if 'share_notes' in data:
         share.share_notes = data['share_notes']
 
+    audit.record_in_tx('share.public.changed', recording_id=share.recording_id,
+                       recording_owner_id=share.user_id,
+                       details={'share_id': share.id, 'share_summary': bool(share.share_summary),
+                                'share_notes': bool(share.share_notes),
+                                'expires': share.expires_at is not None})
     db.session.commit()
     return jsonify({'success': True, 'share': share.to_dict()})
 
@@ -518,8 +552,6 @@ def _share_with_many(recording_id, data):
     if not is_valid:
         return jsonify(api_error(error_code)), 403
 
-    actor_permissions = InternalShare.get_user_max_permissions(recording, current_user)
-
     from src.services import user_lookup
     named = {identifier: user_lookup.find_user_exactly(identifier) for identifier in identifiers}
     named_ids = {user.id for user in named.values() if user is not None}
@@ -565,27 +597,14 @@ def _share_with_many(recording_id, data):
 
     if created:
         try:
+            db.session.flush()
+            for share in created:
+                _audit_internal_share('created', share)
             db.session.commit()
         except IntegrityError:
             # Another request shared with one of these people in the meantime
             db.session.rollback()
             return jsonify(api_error('already_shared')), 409
-
-        try:
-            for share in created:
-                ShareAuditLog.log_share_created(
-                    recording_id=recording_id,
-                    actor_id=current_user.id,
-                    target_user_id=share.shared_with_user_id,
-                    permissions=dict(flags),
-                    actor_permissions=actor_permissions,
-                    notes=f"Shared by {'owner' if recording.user_id == current_user.id else 'delegated user'}",
-                    ip_address=request.remote_addr
-                )
-            db.session.commit()
-        except Exception as audit_error:
-            db.session.rollback()
-            current_app.logger.error(f"Failed to log share creation: {audit_error}")
 
     shares = {share.shared_with_user_id: share.to_dict() for share in created}
     for row in results:
@@ -596,6 +615,7 @@ def _share_with_many(recording_id, data):
 
 @shares_bp.route('/api/recordings/<int:recording_id>/share-internal', methods=['POST'])
 @login_required
+@audit.emits('share.internal.created')
 def share_recording_internal(recording_id):
     """Share a recording with another user internally.
 
@@ -683,27 +703,10 @@ def share_recording_internal(recording_id):
         if not is_valid:
             return jsonify(api_error(error_code)), 403
 
-        # Get current user's permissions for audit log
-        actor_permissions = InternalShare.get_user_max_permissions(recording, current_user)
-
         share = _add_manual_share(recording_id, shared_with_user_id, can_edit, can_reshare)
+        db.session.flush()
+        _audit_internal_share('created', share)
         db.session.commit()
-
-        # AUDIT LOGGING: Log the share creation
-        try:
-            ShareAuditLog.log_share_created(
-                recording_id=recording_id,
-                actor_id=current_user.id,
-                target_user_id=shared_with_user_id,
-                permissions={'can_edit': can_edit, 'can_reshare': can_reshare},
-                actor_permissions=actor_permissions,
-                notes=f"Shared by {'owner' if recording.user_id == current_user.id else 'delegated user'}",
-                ip_address=request.remote_addr
-            )
-            db.session.commit()
-        except Exception as audit_error:
-            # Don't fail the share if audit logging fails
-            current_app.logger.error(f"Failed to log share creation: {audit_error}")
 
         return jsonify({
             'success': True,
@@ -820,15 +823,7 @@ def update_internal_share(share_id):
 
         share.can_edit = new['can_edit']
         share.can_reshare = new['can_reshare']
-        ShareAuditLog.log_share_modified(
-            share_id=share.id,
-            recording_id=share.recording_id,
-            actor_id=current_user.id,
-            target_user_id=share.shared_with_user_id,
-            old_permissions=old,
-            new_permissions=new,
-            ip_address=request.remote_addr
-        )
+        _audit_internal_share('changed', share, old=old)
         db.session.commit()
 
     entry = share.to_dict()
@@ -870,36 +865,12 @@ def revoke_internal_share(share_id):
 
             if not has_alternate:
                 # No alternate path - cascade revoke
-                # Audit log cascade revocation
-                try:
-                    ShareAuditLog.log_share_revoked(
-                        share_id=downstream.id,
-                        recording_id=recording_id,
-                        actor_id=current_user.id,
-                        target_user_id=downstream.shared_with_user_id,
-                        was_cascade=True,
-                        notes=f"Cascaded from revoking user {revoked_user_id}",
-                        ip_address=request.remote_addr
-                    )
-                except Exception as audit_error:
-                    current_app.logger.error(f"Failed to log cascade revocation: {audit_error}")
+                _audit_internal_share('revoked', downstream, cascade=True)
 
                 db.session.delete(downstream)
                 revoked_count += 1
 
-        # Audit log the primary revocation
-        try:
-            ShareAuditLog.log_share_revoked(
-                share_id=share.id,
-                recording_id=recording_id,
-                actor_id=current_user.id,
-                target_user_id=revoked_user_id,
-                was_cascade=False,
-                notes=f"Revoked by user {current_user.id}, cascaded to {revoked_count} downstream shares",
-                ip_address=request.remote_addr
-            )
-        except Exception as audit_error:
-            current_app.logger.error(f"Failed to log revocation: {audit_error}")
+        _audit_internal_share('revoked', share)
 
         # Delete the primary share
         db.session.delete(share)
