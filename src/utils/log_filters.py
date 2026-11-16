@@ -412,14 +412,59 @@ def loggable_error(error, *paths, recording_id=None):
     return loggable_text(error, *paths, recording_id=recording_id)
 
 
-class FileNamesOutOfTracebacks(logging.Formatter):
-    """A formatter with the file names taken out of a traceback.
+_TRACEBACK_HEADER = 'Traceback (most recent call last):'
 
-    The last line of a traceback is the text of the exception, and an error
+
+def loggable_traceback(text):
+    """A formatted traceback with the files taken out of the exception text.
+
+    The frames are code and stay as Python wrote them: the 'File "...", line
+    N, in f' lines, the source lines below them and the marker lines. All
+    other lines are exception text and are cleaned as in loggable_text: the
+    "ExcType: message" line with every further line of the message, also
+    after an empty line, and the same for each exception of a chain. The
+    output of an exception group is cleaned whole.
+    """
+    text = str(text)
+    if 'Exception Group Traceback' in text:
+        return loggable_text(text)
+    parts, message = [], []
+    in_frames = after_file = False
+
+    def flush():
+        if message:
+            parts.append(loggable_text('\n'.join(message)))
+            del message[:]
+
+    for line in text.split('\n'):
+        if line == _TRACEBACK_HEADER:
+            flush()
+            parts.append(line)
+            in_frames, after_file = True, False
+            continue
+        if in_frames:
+            if line.startswith('  File "'):
+                parts.append(line)
+                after_file = True
+                continue
+            if (after_file and line.startswith('    ')) or line.startswith('  [Previous line repeated '):
+                parts.append(line)
+                continue
+            in_frames = False
+        message.append(line)
+    flush()
+    return '\n'.join(parts)
+
+
+class FileNamesOutOfTracebacks(logging.Formatter):
+    """A formatter with the file names taken out of the exception text of a traceback.
+
+    The last lines of a traceback are the text of the exception, and an error
     of the operating system or of FFmpeg has the path of the file in it. A
     line logged with exc_info at INFO or above would put that path in the
-    default log. With the root logger at DEBUG the traceback is unchanged,
-    as names are logged at that level anyway.
+    default log. The frames of the traceback are unchanged. With the root
+    logger at DEBUG the whole traceback is unchanged, as names are logged at
+    that level anyway.
     """
 
     def formatException(self, ei):
@@ -427,6 +472,6 @@ class FileNamesOutOfTracebacks(logging.Formatter):
         if logging.getLogger().getEffectiveLevel() <= logging.DEBUG:
             return text
         try:
-            return loggable_text(text)
+            return loggable_traceback(text)
         except Exception:
             return f"<traceback of {getattr(ei[0], '__name__', 'an error')} withheld: it could not be cleaned>"

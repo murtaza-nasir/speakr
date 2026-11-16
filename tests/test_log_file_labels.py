@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.utils import log_filters
 from src.utils.log_filters import (FileNamesOutOfTracebacks, loggable_error, loggable_locator, loggable_path,
-                                   loggable_text, recording_scope)
+                                   loggable_text, loggable_traceback, recording_scope)
 
 UUID = "0123456789abcdef0123456789abcdef"
 SECRET = "label-test-secret-7f3a"
@@ -416,12 +416,120 @@ def test_a_traceback_has_no_file_name_above_debug():
         assert "Traceback (most recent call last)" in text and "FileNotFoundError: [Errno 2]" in text
         assert "<stored file 20261115101500.mp3 of recording 42>" in text
         assert os.path.basename(__file__) in text            # the source file of the frame stays
-        _no_name(text)
+        # The source line of the frame is code, here with the path as a literal; the exception text is cleaned.
+        assert '    open("/nonexistent-folder-of-this-test/2026/11/42/20261115101500_Jane_Doe_intake.mp3")' in text.split("\n")
+        _no_name(text.split("\n")[-1])
         # At DEBUG names are logged anyway: the traceback is as Python wrote it.
         root.setLevel(logging.DEBUG)
         assert "20261115101500_Jane_Doe_intake.mp3" in formatter.format(_record_with_traceback())
     finally:
         root.setLevel(level)
+
+
+def _open_stored(path):
+    raise FileNotFoundError(2, "No such file or directory", path)  # the literal 'config.json' is code
+
+
+def _formatted(run, level=logging.INFO):
+    formatter = FileNamesOutOfTracebacks("%(levelname)s - %(message)s")
+    root = logging.getLogger()
+    saved = root.level
+    try:
+        root.setLevel(level)
+        try:
+            run()
+        except Exception:
+            record = logging.LogRecord("test", logging.ERROR, __file__, 1, "Error processing a file", None, sys.exc_info())
+            return formatter.format(record)
+        raise AssertionError("run() did not raise")
+    finally:
+        root.setLevel(saved)
+
+
+def test_the_frames_of_a_traceback_are_unchanged():
+    """A quoted file name in a source line is code and stays; the stored path
+    in the exception text is replaced."""
+    text = _formatted(lambda: _open_stored(STORED))
+    lines = text.split("\n")
+    assert "    raise FileNotFoundError(2, \"No such file or directory\", path)  # the literal 'config.json' is code" in lines
+    assert any(line.startswith(f'  File "{__file__}", line ') and line.endswith(", in _open_stored") for line in lines)
+    assert lines[-1] == ("FileNotFoundError: [Errno 2] No such file or directory: "
+                         "'<stored file 20261115101500.mp3 of recording 42>'")
+    _no_name(text)
+    # The teeth of this test: cleaned as plain text, the source line loses its literal.
+    assert "'config.json'" not in loggable_text(text)
+
+
+def _chain_with_cause():
+    try:
+        _open_stored(STORED)
+    except OSError as error:
+        raise RuntimeError(f"cannot convert {WATCHED}: see 'notes.txt'") from error
+
+
+def _chain_while_handling():
+    try:
+        _open_stored(STORED)
+    except OSError:
+        raise RuntimeError(f"cleanup of '{WATCHED}' failed")  # not 'config.json'
+
+
+@pytest.mark.parametrize("run, separator, last", [
+    (_chain_with_cause, "The above exception was the direct cause of the following exception:",
+     "RuntimeError: cannot convert <file {d1}.m4a>: see '<file {d2}.txt>'"),
+    (_chain_while_handling, "During handling of the above exception, another exception occurred:",
+     "RuntimeError: cleanup of '<file {d1}.m4a>' failed"),
+])
+def test_both_messages_of_a_chained_traceback_are_cleaned(run, separator, last):
+    text = _formatted(run)
+    lines = text.split("\n")
+    assert lines.count("Traceback (most recent call last):") == 2 and separator in lines
+    assert ("FileNotFoundError: [Errno 2] No such file or directory: "
+            "'<stored file 20261115101500.mp3 of recording 42>'") in lines
+    assert lines[-1] == last.format(d1=_digest("Jane Doe intake.M4A"), d2=_digest("notes.txt"))
+    # Every frame is as Python wrote it, the source lines with their literals included.
+    assert sum(line.startswith(f'  File "{__file__}", line ') for line in lines) >= 4
+    assert any("'config.json'" in line and line.startswith("    ") for line in lines)
+    _no_name(text)
+    # At DEBUG the traceback is as Python wrote it.
+    assert STORED in _formatted(run, logging.DEBUG) and WATCHED in _formatted(run, logging.DEBUG)
+
+
+def test_every_line_of_a_message_of_several_lines_is_cleaned():
+    def run():
+        raise RuntimeError(f"ffmpeg failed:\n  File \"{STORED}\", line 1\n    {STORED}: Invalid data\n\n"
+                           f"after an empty line: {WATCHED}: No such file or directory\n"
+                           f"Traceback (most recent call last):\n  {STAGED}\n    {STAGED}")
+    text = _formatted(run)
+    _no_name(text)
+    assert text.count("<stored file 20261115101500.mp3 of recording 42>") == 2
+    assert f"after an empty line: <file {_digest('Jane Doe intake.M4A')}.m4a>: No such file or directory" in text
+    # A line that only looks like a traceback header inside the message starts no frames.
+    assert text.count("<stored file 20261115101500_0123456789ab.mp3>") == 2
+
+
+def test_traceback_text_of_other_shapes():
+    # No traceback at all, and an empty text.
+    assert loggable_traceback(f"RuntimeError: cannot open {STORED}") == \
+        "RuntimeError: cannot open <stored file 20261115101500.mp3 of recording 42>"
+    assert loggable_traceback("") == ""
+    # Repeated frames of a recursion stay.
+    repeated = ('Traceback (most recent call last):\n  File "/app/src/x.py", line 3, in f\n    f(\'a.json\')\n'
+                '  [Previous line repeated 996 more times]\nRecursionError: maximum recursion depth exceeded')
+    assert loggable_traceback(repeated) == repeated
+    # An exception group is cleaned whole.
+    group = ("  + Exception Group Traceback (most recent call last):\n  |   File \"/app/src/x.py\", line 3, in f\n"
+             f"  | ExceptionGroup: two errors (2 sub-exceptions)\n  +-+---------------- 1 ----------------\n"
+             f"    | FileNotFoundError: [Errno 2] No such file or directory: '{STORED}'\n    +------------------------------------")
+    cleaned = loggable_traceback(group)
+    assert "<stored file 20261115101500.mp3 of recording 42>" in cleaned and '"/app/src/x.py"' in cleaned
+    _no_name(cleaned)
+    # A megabyte of frames and message.
+    big = "Traceback (most recent call last):\n" + '  File "/app/src/x.py", line 3, in f\n    f()\n' * 12000 \
+        + f"RuntimeError: {STORED}: bad\n" * 6000
+    started = time.perf_counter()
+    cleaned = loggable_traceback(big)
+    assert time.perf_counter() - started < 10 and "Jane" not in cleaned
 
 
 def test_the_application_log_uses_the_formatter():
