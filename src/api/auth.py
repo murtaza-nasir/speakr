@@ -859,6 +859,10 @@ def account():
         elif 'preferences_form' in request.form:
             current_user.show_timestamps_simple_view = 'show_timestamps_simple_view' in request.form
             current_user.editor_autosave = 'editor_autosave' in request.form
+            # Keyboard shortcuts: only when the form rendered the checkbox, so a
+            # form without it cannot turn them off.
+            if 'keyboard_shortcuts_shown' in request.form:
+                current_user.keyboard_shortcuts = 'keyboard_shortcuts' in request.form
             # Auto-translation: only when the section rendered, and only if
             # the administrator allows it globally. The account page hides the
             # checkbox otherwise, so an absent field must not clear a value the

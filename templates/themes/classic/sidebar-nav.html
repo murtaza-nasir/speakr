@@ -80,7 +80,7 @@
                     <div>
                         <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.filters')"></label>
                         <div class="relative">
-                            <input v-model="filterTextQuery"
+                            <input v-model="filterTextQuery" data-shortcut-search
                                    type="text"
                                    :placeholder="t('sidebar.searchRecordings')"
                                    class="w-full px-3 py-1.5 pl-8 pr-8 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">

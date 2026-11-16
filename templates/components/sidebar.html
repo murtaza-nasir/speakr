@@ -231,7 +231,7 @@
 </transition>
 
 <!-- Bulk Folder Assignment Modal -->
-<div v-if="showBulkFolderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" @click.self="showBulkFolderModal = false">
+<div v-if="showBulkFolderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" data-shortcut-scope="dialog" @click.self="showBulkFolderModal = false">
     <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
         <div class="p-4 border-b border-[var(--border-primary)]">
             <div class="flex items-center justify-between">

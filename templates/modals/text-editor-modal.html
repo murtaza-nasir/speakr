@@ -1,5 +1,5 @@
 <!-- Simple Transcription Editor Modal (design system v1) -->
-<div v-if="showTextEditorModal" @click.self="closeTextEditorModal" class="modal-overlay">
+<div v-if="showTextEditorModal" @click.self="closeTextEditorModal" class="modal-overlay" data-shortcut-scope="editor">
     <div class="modal-panel modal-panel--lg">
         <div class="modal-header">
             <h3 class="modal-title" v-text="t('modal.editTranscription')"></h3>

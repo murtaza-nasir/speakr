@@ -368,6 +368,7 @@ Returns the authenticated user's profile, preferences, and group memberships. Us
     "auto_summarization": true,
     "show_timestamps_simple_view": false,
     "editor_autosave": true,
+    "keyboard_shortcuts": true,
     "auto_translation": false,
     "diarize": true
   },

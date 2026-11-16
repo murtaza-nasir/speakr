@@ -84,7 +84,7 @@
                     <div>
                         <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.filters')"></label>
                         <div class="relative">
-                            <input v-model="filterTextQuery"
+                            <input v-model="filterTextQuery" data-shortcut-search
                                    type="text"
                                    :placeholder="t('sidebar.searchRecordings')"
                                    class="sb-input w-full pl-8 pr-8">

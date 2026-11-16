@@ -5812,6 +5812,13 @@ select:disabled {
     position: relative;
 }
 
+/* The row the keyboard acts on (j and k, composables/shortcuts.js), while it
+   is not the open recording. */
+.recording-row[data-kbd-cursor] {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
+}
+
 /* Chat timestamp chips: the recording chat cites moments as bracketed
    transcript timestamps; they render as clickable pills (same visual
    language as Inquire citation chips) that seek the in-view player. */

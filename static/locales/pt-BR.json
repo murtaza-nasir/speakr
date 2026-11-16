@@ -2376,6 +2376,9 @@
     "autoProcessFailed": "{{filename}} não pôde ser processado após várias tentativas e foi renomeado para {{failed_name}} na pasta monitorada. Renomeie-o de volta para tentar novamente."
   },
   "preferences": {
+    "keyboard": "Teclado",
+    "keyboardShortcuts": "Atalhos de teclado",
+    "keyboardShortcutsHelp": "Teclas simples para a lista de gravações, a gravação aberta e o player. Em um computador, a tecla ? mostra a lista de teclas. Ativado por padrão.",
     "autoTranslation": "Traduzir automaticamente novas gravações",
     "autoTranslationDisabled": "Desativado pelo administrador.",
     "autoTranslationHelp": "Traduz cada nova gravação para o seu idioma de saída assim que ela é transcrita. Quando desativado (padrão), use Gerar tradução. As traduções contam para o seu orçamento mensal de tokens.",
@@ -4147,5 +4150,65 @@
     "localCopiesMessageOne": "Este navegador guarda 1 gravação ou envio que não chegou ao servidor. Ele é excluído deste navegador ao sair.",
     "localCopiesMessage": "Este navegador guarda {{count}} gravações ou envios que não chegaram ao servidor. Eles são excluídos deste navegador ao sair.",
     "deleteAndSignOut": "Excluir e sair"
+  },
+  "shortcuts": {
+    "title": "Atalhos de teclado",
+    "then": "depois",
+    "or": "ou",
+    "settingHint": "Os atalhos de teclado são ativados e desativados em Conta, Preferências.",
+    "keys": {
+      "space": "Espaço"
+    },
+    "groups": {
+      "general": "Geral",
+      "navigation": "Ir para",
+      "list": "Gravações",
+      "recording": "Gravação aberta",
+      "player": "Player",
+      "assistant": "Assistente",
+      "editor": "Editor de segmentos",
+      "video": "Vídeo em tela cheia"
+    },
+    "showHelp": "Mostrar os atalhos de teclado",
+    "close": "Fechar o diálogo, menu ou painel da frente",
+    "search": "Pesquisar gravações",
+    "newRecording": "Nova gravação",
+    "toggleQueue": "Mostrar ou ocultar a fila de processamento",
+    "toggleDarkMode": "Alternar entre modo claro e escuro",
+    "goRecordings": "Gravações",
+    "goAssistant": "Perguntar a {{name}}",
+    "goSettings": "Configurações da conta",
+    "goAdmin": "Administração",
+    "moveInList": "Gravação seguinte ou anterior",
+    "openRecording": "Abrir a gravação selecionada",
+    "star": "Marcar com estrela ou remover a estrela",
+    "inbox": "Mover para a caixa de entrada ou marcar como lida",
+    "archive": "Arquivar ou desarquivar",
+    "delete": "Excluir",
+    "selectAll": "Selecionar tudo, no modo de seleção",
+    "tab": {
+      "summary": "Mostrar o resumo",
+      "notes": "Mostrar as notas",
+      "stats": "Mostrar as estatísticas dos falantes",
+      "events": "Mostrar os eventos"
+    },
+    "toggleView": "Alternar entre visualização simples e em balões",
+    "copyTranscript": "Copiar a transcrição",
+    "copyTab": "Copiar o resumo ou as notas",
+    "editTranscript": "Editar a transcrição",
+    "editTab": "Editar o resumo ou as notas",
+    "openChat": "Abrir o chat com {{name}}",
+    "findInTranscript": "Localizar em uma transcrição longa",
+    "playPause": "Reproduzir ou pausar",
+    "skip5": "Voltar ou avançar 5 segundos",
+    "skip15": "Voltar ou avançar 15 segundos",
+    "speed": "Reprodução mais lenta ou mais rápida",
+    "editorHelp": "Mostrar as teclas do editor de segmentos",
+    "editorSave": "Salvar",
+    "editorFind": "Localizar e substituir",
+    "videoSkip": "Voltar ou avançar 10 segundos",
+    "videoVolume": "Aumentar ou diminuir o volume",
+    "videoLeave": "Sair da tela cheia",
+    "focusQuestion": "Escrever uma pergunta para {{name}}"
   }
 }

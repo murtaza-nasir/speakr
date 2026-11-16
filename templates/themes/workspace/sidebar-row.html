@@ -2,6 +2,8 @@
                             signal; tag and folder colours are dots (names in the tooltip and the rail). -#}
                         <div v-for="recording in group.items"
                              :key="recording.id"
+                             :data-recording-id="recording.id"
+                             :data-kbd-cursor="keyboardCursorId === recording.id && selectedRecording?.id !== recording.id ? '' : null"
                              @mousedown="$event.shiftKey && $event.preventDefault()"
                              @click="handleRecordingClick(recording, $event, visibleRecordingIds) || selectRecording(recording)"
                              :class="[

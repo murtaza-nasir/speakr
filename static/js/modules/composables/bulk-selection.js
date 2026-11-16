@@ -96,8 +96,9 @@ export function useBulkSelection({
     const handleSelectionKeyboard = (event) => {
         if (!selectionMode.value) return;
 
-        // Escape to exit selection mode
-        if (event.key === 'Escape') {
+        // Escape to exit selection mode, unless the key already closed
+        // something above the list (utils/keyboard-shortcuts.js)
+        if (event.key === 'Escape' && !event.defaultPrevented) {
             exitSelectionMode();
             event.preventDefault();
         }

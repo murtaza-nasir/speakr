@@ -118,6 +118,10 @@ class User(db.Model, UserMixin):
     # UI/display preferences
     show_timestamps_simple_view = db.Column(db.Boolean, default=False)
     editor_autosave = db.Column(db.Boolean, default=False)
+    # Keyboard shortcuts in the web app (docs/user-guide/keyboard-shortcuts.md).
+    # On unless the user turns them off; NULL (an account from before the
+    # column) means on.
+    keyboard_shortcuts = db.Column(db.Boolean, default=True)
     # Speaker-count entry mode in transcription UIs: 'range' (min/max)
     # or 'single' (one count, stored as min == max). Null means 'range' (#362).
     speaker_count_mode = db.Column(db.String(10), nullable=True)

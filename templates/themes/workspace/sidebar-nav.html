@@ -113,7 +113,7 @@
             <div class="ws-list__top">
                 <div class="ws-search">
                     <i class="fas fa-search ws-search__icon"></i>
-                    <input v-model="filterTextQuery" type="text"
+                    <input v-model="filterTextQuery" data-shortcut-search type="text"
                            :placeholder="t('sidebar.searchRecordings')"
                            :aria-label="t('sidebar.searchRecordings')">
                     <button v-if="filterTextQuery" type="button" class="ws-search__clear"
