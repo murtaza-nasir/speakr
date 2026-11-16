@@ -341,6 +341,10 @@ def test_the_tab_in_every_theme_light_and_dark(admin, theme):
     assert response.ok, f"could not save the theme {theme}: HTTP {response.status}"
     try:
         for mode in ("light", "dark"):
+            # The mode saved with the account wins over the browser's own; an earlier test file
+            # may have saved one, so both are set
+            response = admin.api("POST", "/api/user/preferences", {"dark_mode": mode == "dark"})
+            assert response.ok, f"could not save the {mode} mode: HTTP {response.status}"
             page.evaluate("(dark) => localStorage.setItem('darkMode', dark)", "true" if mode == "dark" else "false")
             admin.open_admin()
             assert page.locator("html").get_attribute("data-ui-theme") == theme
