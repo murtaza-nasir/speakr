@@ -85,7 +85,7 @@ Short messages about the result of an action are shown at the bottom center of t
 | Information | Blue | 3 seconds |
 | Success | Green | 3 seconds |
 | Warning | Amber | At least 8 seconds |
-| Error | Red | Until it is closed; at least 8 seconds for a minor failure |
+| Error | Red | Until it is closed |
 
 The colors of the four types are the same in every theme and color scheme. On a message that is closed automatically, the remaining time is shown as a line along its bottom edge. The time is paused while the pointer or the keyboard focus is on the message. A message is closed with its close button or with Esc. When the same message is issued again while it is shown, a count such as "×2" is added and its time starts again. An action that belongs to a message, such as **Undo**, is offered as a button in the message.
 

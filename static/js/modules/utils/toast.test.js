@@ -107,10 +107,11 @@ describe('toast rules', () => {
         expect(toastRole(undefined)).toBe('status');
     });
 
-    it('gives an error read from its icon the time of a warning', () => {
-        expect(toastDuration('error', DEFAULT_DURATION, true)).toBe(WARNING_MIN_DURATION);
-        expect(toastDuration('error', 12000, true)).toBe(12000);
-        expect(toastDuration('success', 3000, true)).toBe(3000);
+    it('keeps an error read from its icon until it is closed, like any error', () => {
+        const { kind } = resolveType(undefined, 'fa-exclamation-circle');
+        expect(toastDuration(kind, DEFAULT_DURATION)).toBe(0);
+        expect(toastDuration(kind, 12000)).toBe(12000);
+        expect(toastDuration(resolveType(undefined, 'fa-check').kind, 3000)).toBe(3000);
     });
 
     it('uses a type that was passed and reads a missing one from the icon', () => {
@@ -271,11 +272,11 @@ describe('showToast', () => {
         showToast('Saved', 'success');
         expect(container.children.map(t => t.dataset.toastType)).toEqual(['error', 'success']);
         expect(container.children[0].getAttribute('role')).toBe('alert');
-        // Not closed by hand like an error that was asked for, but not gone in three seconds either
+        // It stays until it is closed, like an error that was asked for
         vi.advanceTimersByTime(3500);
         expect(container.children.map(t => t.dataset.toastType)).toEqual(['error']);
-        vi.advanceTimersByTime(WARNING_MIN_DURATION);
-        expect(container.children).toHaveLength(0);
+        vi.advanceTimersByTime(WARNING_MIN_DURATION * 4);
+        expect(container.children.map(t => t.dataset.toastType)).toEqual(['error']);
     });
 
     it('makes the action named in the message a button that runs it', () => {
