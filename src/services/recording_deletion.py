@@ -12,7 +12,8 @@ from flask import current_app
 from src.database import db
 
 
-def delete_recording_completely(recording, storage=None, strict_media=False, reason='deleted'):
+def delete_recording_completely(recording, storage=None, strict_media=False, reason='deleted',
+                                audit_reason=None):
     """Delete the media, the rows that reference the recording, and the recording.
 
     Emits the recording.deleted webhook and marks the export as deleted.
@@ -25,6 +26,10 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
     delete leaves a stray file instead of an undeletable recording.
     reason: the tombstone reason for the changes feed, 'deleted' or
     'retention'.
+
+    audit_reason: the reason code of the recording.deleted audit row (user,
+    retention, account_deleted, ownerless, upload_canceled, merged). Default:
+    retention for a retention deletion, else user.
     """
     from src.models.processing_job import ProcessingJob
     from src.models.speaker_snippet import SpeakerSnippet
@@ -76,6 +81,11 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
     if snippets or jobs:
         current_app.logger.info(f"Deleted {snippets} speaker snippets and {jobs} processing jobs for recording {recording_id}")
 
+    # The one audit point of every deletion of a recording: web, bulk, API,
+    # retention, account deletion. In the transaction of the deletion.
+    from src.services import audit
+    audit.record_in_tx('recording.deleted', recording_id=recording_id, recording_owner_id=recording.user_id,
+                       details={'reason': audit_reason or ('retention' if reason == 'retention' else 'user')})
     db.session.info['tombstone_reason'] = reason
     try:
         db.session.delete(recording)  # cascades to chunks, shares, tags

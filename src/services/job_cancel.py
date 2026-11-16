@@ -217,6 +217,15 @@ def _cancel_remote(view):
 
 # --- the request side -----------------------------------------------------------
 
+def _audit_cancel(view, recording):
+    """recording.job.canceled, in the transaction of the cancel. The kind is
+    the job type, a name from the code."""
+    from src.services import audit
+    audit.record_in_tx('recording.job.canceled', recording_id=view.recording_id,
+                       recording_owner_id=recording.user_id if recording is not None else None,
+                       details={'kind': view.job_type})
+
+
 def cancel_job(job_id):
     """Cancel a waiting or running job. Returns one of:
 
@@ -254,6 +263,7 @@ def cancel_job(job_id):
             recording = db.session.get(Recording, view.recording_id)
             outcome = settle_recording(recording, view, ran=False) if recording else 'unchanged'
             _cancel_dependents(view)
+            _audit_cancel(view, recording)
             db.session.commit()
             # A job put back in the queue by a retry or a restart may hold
             # an ASR service job of its earlier attempt.
@@ -263,6 +273,7 @@ def cancel_job(job_id):
 
         if job_control.request_cancel(job_id):
             _cancel_dependents(view)
+            _audit_cancel(view, db.session.get(Recording, view.recording_id))
             db.session.commit()
             # The service stops working on the audio now, not at the
             # worker's next poll. The mark is committed first: the worker

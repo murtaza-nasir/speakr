@@ -15,6 +15,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.services.calendar import generate_ics_content
+from src.services import audit
 from src.utils.localization import api_error
 
 # Create blueprint
@@ -58,8 +59,15 @@ def get_recording_events(recording_id):
         return jsonify({'error': str(e)}), 500
 
 
+def _recording_of_event(event_id):
+    """The recording an event belongs to, for the audit row of its download."""
+    event = db.session.get(Event, event_id)
+    return event.recording if event is not None else None
+
+
 @events_bp.route('/api/event/<int:event_id>/ics', methods=['GET'])
 @login_required
+@audit.access('recording.downloaded', details={'part': 'event', 'format': 'ics'}, recording_of=lambda event_id: _recording_of_event(event_id))
 def download_event_ics(event_id):
     """Generate and download an ICS file for a single event."""
     try:
@@ -85,6 +93,7 @@ def download_event_ics(event_id):
 
 @events_bp.route('/api/recording/<int:recording_id>/events/ics', methods=['GET'])
 @login_required
+@audit.access('recording.downloaded', details={'part': 'events', 'format': 'ics'})
 def download_all_events_ics(recording_id):
     """Generate and download an ICS file containing all events from a recording."""
     try:

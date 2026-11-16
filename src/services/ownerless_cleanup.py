@@ -144,7 +144,8 @@ def sweep_ownerless_recordings(now=None, storage=None):
                 continue
             # strict_media: a file that cannot be deleted keeps the row, so
             # the next run retries instead of leaving an untracked file.
-            delete_recording_completely(recording, storage=storage, strict_media=True)
+            delete_recording_completely(recording, storage=storage, strict_media=True,
+                                        audit_reason='ownerless')
             stats['deleted'] += 1
             current_app.logger.info(
                 f"Ownerless cleanup: deleted recording {rid}, without an owner since {_iso(marked_at[rid])}")

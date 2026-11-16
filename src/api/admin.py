@@ -23,7 +23,7 @@ from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chun
 from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
 from src.services.storage_quota import default_quota_mb
-from src.services import login_lock
+from src.services import audit, login_lock
 from src.auth.permissions import CREATE_GROUPS, set_user_grant, user_has_grant
 from src.config.startup import get_file_monitor_functions
 
@@ -353,6 +353,11 @@ def admin_add_user():
     apply_new_user_defaults(new_user)
 
     db.session.add(new_user)
+    db.session.flush()
+    # The username is stored here and at the deletion of the account, and on
+    # no other row, so that a row can be attributed after the account is gone.
+    audit.record_in_tx('admin.user.created', target_user_id=new_user.id,
+                       details={'username': new_user.username, 'is_admin': bool(new_user.is_admin)})
     db.session.commit()
 
     return jsonify({
@@ -389,7 +394,13 @@ def admin_update_user(user_id):
     data = request.json
     if not data:
         return jsonify(api_error('no_data_provided')), 400
-    
+
+    audited_fields = ('username', 'email', 'can_share_publicly', 'monthly_token_budget',
+                      'monthly_transcription_budget', 'storage_quota_mb')
+    before = {name: getattr(user, name) for name in audited_fields}
+    before['create_groups_granted'] = user_has_grant(CREATE_GROUPS, user.id)
+    was_admin = bool(user.is_admin)
+
     # Update user fields
     if 'username' in data and data['username'] != user.username:
         if not 2 <= len(str(data['username']).strip()) <= 20:
@@ -456,6 +467,20 @@ def admin_update_user(user_id):
         except (TypeError, ValueError):
             return jsonify(api_error('invalid_storage_quota')), 400
 
+    # The names of the fields that changed, never their values.
+    changed = [name for name in audited_fields if getattr(user, name) != before[name]]
+    if 'create_groups_granted' in data and bool(data['create_groups_granted']) != before['create_groups_granted']:
+        changed.append('create_groups_granted')
+    if changed:
+        audit.record_in_tx('admin.user.changed', target_user_id=user.id, details={'fields': sorted(changed)})
+    if 'password' in data and data['password']:
+        audit.record_in_tx('admin.user.password_set', target_user_id=user.id,
+                           details={'self': user.id == current_user.id})
+    if data.get('unlock_login') is True:
+        audit.record_in_tx('admin.user.unlocked', target_user_id=user.id)
+    if bool(user.is_admin) != was_admin:
+        audit.record_in_tx('admin.user.role_changed', target_user_id=user.id,
+                           details={'old': was_admin, 'new': bool(user.is_admin)})
     db.session.commit()
     if user.id == current_user.id and data.get('password'):
         # An administrator who sets their own password stays signed in here
@@ -526,7 +551,7 @@ def admin_delete_user(user_id):
     storage = get_storage_service()
     recordings = list(user.recordings)  # the helper commits after each one
     for recording in recordings:
-        delete_recording_completely(recording, storage=storage)
+        delete_recording_completely(recording, storage=storage, audit_reason='account_deleted')
     if recordings:
         current_app.logger.info(f"Deleted {len(recordings)} recordings of user {user_id}")
 
@@ -536,9 +561,18 @@ def admin_delete_user(user_id):
         (InternalShare.owner_id == user_id) | (InternalShare.shared_with_user_id == user_id)
     ).delete()
 
+    # Rows of the former share_audit_log table that name the account as the
+    # target of a share. Their foreign key has no ON DELETE, so on PostgreSQL
+    # one such row refused the deletion. The rows were copied to the audit
+    # log (ledger id 0009), where they remain.
+    from src.models import ShareAuditLog
+    ShareAuditLog.query.filter_by(target_user_id=user_id).delete(synchronize_session=False)
+
     # Groups the user created keep existing without a creator (#576)
     Group.query.filter_by(created_by=user_id).update({'created_by': None}, synchronize_session=False)
 
+    audit.record_in_tx('admin.user.deleted', target_user_id=user_id,
+                       details={'username': user.username, 'recordings_deleted': len(recordings)})
     # Delete user (cascade will handle remaining related data including chunks/embeddings)
     db.session.delete(user)
     db.session.commit()
@@ -576,6 +610,8 @@ def admin_toggle_admin(user_id):
 
     # Toggle admin status
     user.is_admin = not user.is_admin
+    audit.record_in_tx('admin.user.role_changed', target_user_id=user.id,
+                       details={'old': not user.is_admin, 'new': bool(user.is_admin)})
     db.session.commit()
 
     return jsonify({'success': True, 'is_admin': user.is_admin})
@@ -590,6 +626,176 @@ def _quota_mb(value):
     if value < 0:
         raise ValueError('storage_quota_mb must be positive')
     return value
+
+
+# --- Audit log ---------------------------------------------------------------
+#
+# Read-only. Site admins only: a session or a full API token of an admin.
+# A scoped token does not reach these routes (they carry no scope mark).
+# Nothing here updates or deletes a row of audit_event.
+
+AUDIT_LOG_NOTICE_SETTING = 'audit_log_notice_dismissed'
+
+
+def _audit_datetime(value):
+    """A date or an ISO 8601 date-time as naive UTC."""
+    from src.utils.dates import to_utc_naive
+    value = value.strip()
+    if len(value) == 10:
+        return datetime.strptime(value, '%Y-%m-%d')
+    return to_utc_naive(datetime.fromisoformat(value.replace('Z', '+00:00')))
+
+
+def _audit_filters():
+    """(filters, names of the filters in use) from the query string.
+
+    Raises ValueError with an API error code for a value that cannot be read.
+    """
+    args = request.args
+    filters, used = {}, []
+    for name, key in (('from', 'date_from'), ('to', 'date_to')):
+        raw = (args.get(name) or '').strip()
+        if raw:
+            try:
+                filters[key] = _audit_datetime(raw)
+            except (ValueError, TypeError):
+                raise ValueError('invalid_filter_date')
+            used.append(name)
+    user = (args.get('user') or '').strip()
+    if user:
+        if user.isdigit():
+            filters['user_id'] = int(user)
+        else:
+            row = User.query.filter(db.func.lower(User.username) == user.lower()).first()
+            # An unknown name matches nothing.
+            filters['user_id'] = row.id if row is not None else -1
+        used.append('user')
+    recording = (args.get('recording_id') or '').strip()
+    if recording:
+        if not recording.isdigit():
+            raise ValueError('invalid_audit_filter')
+        filters['recording_id'] = int(recording)
+        used.append('recording_id')
+    for name, key, allowed in (('group', 'event_group', audit.EVENT_GROUPS),
+                               ('event', 'event', audit.EVENTS),
+                               ('outcome', 'outcome', audit.OUTCOMES),
+                               ('actor_kind', 'actor_kind', audit.ACTOR_KINDS)):
+        raw = (args.get(name) or '').strip()
+        if raw:
+            if raw not in allowed:
+                raise ValueError('invalid_audit_filter')
+            filters[key] = raw
+            used.append(name)
+    return filters, used
+
+
+def _csv_cell(value):
+    """A text cell that a spreadsheet would read as a formula (a user agent
+    that starts with =, +, - or @) gets a leading apostrophe."""
+    if isinstance(value, str) and value[:1] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + value
+    return value
+
+
+def _audit_usernames(rows):
+    """id -> username for the accounts named in the rows that still exist."""
+    ids = set()
+    for row in rows:
+        ids.update(v for v in (row['actor_user_id'], row['target_user_id'], row['recording_owner_id'])
+                   if v is not None)
+    if not ids:
+        return {}
+    return {str(user_id): name for user_id, name in
+            db.session.query(User.id, User.username).filter(User.id.in_(ids))}
+
+
+@admin_bp.route('/admin/audit-log', methods=['GET'])
+@login_required
+def admin_audit_log():
+    """One page of the audit log, newest first.
+
+    Query: from, to (a date or an ISO 8601 date-time, UTC), user (id or
+    username; actor or target), group, event, recording_id, outcome,
+    actor_kind, before_id or after_id, limit (1 to 500, default 50).
+    """
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    try:
+        filters, used = _audit_filters()
+        before_id = request.args.get('before_id', type=int)
+        after_id = request.args.get('after_id', type=int)
+        limit = int(request.args.get('limit', 50))
+    except ValueError as error:
+        code = str(error) if str(error) in ('invalid_filter_date', 'invalid_audit_filter') else 'invalid_limit'
+        return jsonify(api_error(code)), 400
+    if not 1 <= limit <= 500:
+        return jsonify(api_error('invalid_limit')), 400
+
+    rows, has_older, has_newer = audit.page(filters, before_id=before_id, after_id=after_id, limit=limit)
+    # Reading the log is an event of the log: once per half hour and admin.
+    audit.record('audit.viewed', details={'filters': used}, dedup=audit.DEDUP_VIEW)
+    return jsonify({
+        'events': rows,
+        'users': _audit_usernames(rows),
+        'has_older': has_older,
+        'has_newer': has_newer,
+        'enabled': audit.is_enabled(),
+        'retention_days': audit.retention_days(),
+        'store_ip': audit.ip_mode(),
+        'notice': not SystemSetting.get_setting(AUDIT_LOG_NOTICE_SETTING, False),
+    })
+
+
+@admin_bp.route('/admin/audit-log/export', methods=['GET'])
+@login_required
+def admin_audit_log_export():
+    """The filtered result as a file, oldest first: format=csv or format=jsonl.
+
+    The rows are the rows of the table, unchanged. The response is streamed.
+    """
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    export_format = (request.args.get('format') or 'csv').strip().lower()
+    if export_format not in ('csv', 'jsonl'):
+        return jsonify(api_error('unknown_format', format=export_format[:20])), 400
+    try:
+        filters, used = _audit_filters()
+    except ValueError as error:
+        return jsonify(api_error(str(error))), 400
+
+    import csv
+    import io
+    from flask import stream_with_context
+
+    def lines():
+        count = 0
+        if export_format == 'csv':
+            buffer = io.StringIO()
+            writer = csv.writer(buffer)
+            writer.writerow(audit.COLUMNS)
+            for row in audit.stream(filters):
+                writer.writerow([
+                    '' if row[name] is None else
+                    json.dumps(row[name], sort_keys=True) if name == 'details' else _csv_cell(row[name])
+                    for name in audit.COLUMNS])
+                count += 1
+                if buffer.tell() > 32768:
+                    yield buffer.getvalue()
+                    buffer.seek(0)
+                    buffer.truncate(0)
+            yield buffer.getvalue()
+        else:
+            for row in audit.stream(filters):
+                count += 1
+                yield json.dumps(row, sort_keys=True) + '\n'
+        audit.record('audit.exported', details={'filters': used, 'count': count, 'format': export_format})
+
+    stamp = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
+    response = Response(stream_with_context(lines()),
+                        mimetype='text/csv' if export_format == 'csv' else 'application/x-ndjson')
+    response.headers['Content-Disposition'] = f'attachment; filename="audit-log-{stamp}.{export_format}"'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @admin_bp.route('/admin/stats', methods=['GET'])
@@ -999,6 +1205,7 @@ def admin_set_llm_temperatures():
         parsed[kind] = value
     for kind, value in parsed.items():
         key = setting_key(kind)
+        audit.setting_changed(key, None, None)
         if value is None:
             SystemSetting.query.filter_by(key=key).delete()
         else:
@@ -1059,8 +1266,12 @@ def admin_update_setting():
     # An empty value for a setting that falls back to .env clears the saved
     # value, so the .env value applies again (#567).
     from src.utils.system_settings import ENV_BACKED_SETTINGS
+    # The stored value before the change, for the audit row.
+    existing_row = SystemSetting.query.filter_by(key=key).first()
+    old_value = existing_row.value if existing_row is not None else None
     if key in ENV_BACKED_SETTINGS and (value is None or (isinstance(value, str) and not value.strip())):
         try:
+            audit.setting_changed(key, old_value, None)
             setting = SystemSetting.set_setting(key, None, description, ENV_BACKED_SETTINGS[key][2])
             return jsonify(setting.to_dict())
         except Exception as e:
@@ -1131,6 +1342,7 @@ def admin_update_setting():
         setting_type = 'string'
 
     try:
+        audit.setting_changed(key, old_value, value)
         setting = SystemSetting.set_setting(key, value, description, setting_type)
 
         # Recompute the Werkzeug ceiling whenever either upload limit
@@ -1169,6 +1381,11 @@ def run_auto_deletion():
 
     try:
         stats = process_auto_deletion()
+        if isinstance(stats, dict) and 'checked' in stats:
+            audit.record_in_tx('admin.retention.run', details={
+                name: int(stats.get(name) or 0)
+                for name in ('checked', 'deleted_audio_only', 'deleted_full', 'errors')})
+            db.session.commit()
         return jsonify(stats)
     except Exception as e:
         current_app.logger.error(f"Error running auto-deletion: {e}")
@@ -1618,6 +1835,8 @@ def admin_save_visible_models():
                     'label': str(opt.get('label') or opt['value']).strip(),
                 })
 
+        audit.setting_changed('transcription_models_visible_json', None, None)
+        audit.setting_changed('transcription_default_model', None, None)
         SystemSetting.set_setting(
             key='transcription_models_visible_json',
             value=_json.dumps(normalised),

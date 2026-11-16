@@ -1191,6 +1191,8 @@ client, chunking_service, version = initialize_config(app)
 init_auth_extensions(bcrypt, csrf, limiter)
 init_tokens_helpers(bcrypt, csrf, limiter)
 init_shares_helpers(has_recording_access, limiter)
+from src.services import audit as _audit_log
+_audit_log.init_access_check(has_recording_access)
 init_recordings_helpers(has_recording_access=has_recording_access, editable_recording_ids=editable_recording_ids, get_user_recording_status=get_user_recording_status, set_user_recording_status=set_user_recording_status, enrich_recording_dict_with_user_status=enrich_recording_dict_with_user_status, bcrypt=bcrypt, csrf=csrf, limiter=limiter, chunking_service=chunking_service)
 init_tags_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
 init_folders_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)

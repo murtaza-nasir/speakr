@@ -31,7 +31,7 @@ from .export_template import ExportTemplate
 from .initial_prompt_template import InitialPromptTemplate
 from .inquire import InquireSession
 from .system import SystemSetting
-from .audit import ShareAuditLog
+from .audit import AuditEvent, ShareAuditLog
 from .push_subscription import PushSubscription
 from .notification import (
     Notification,
@@ -72,6 +72,7 @@ __all__ = [
     'InternalShare',
     'SharedRecordingState',
     'ShareAuditLog',
+    'AuditEvent',
     # Organization models
     'Group',
     'GroupMembership',

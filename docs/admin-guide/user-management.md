@@ -101,6 +101,8 @@ In the **Last active** column, the time since the last use of each account is sh
 
 A request from a signed-in browser session or with an API token is counted as use. Requests that are sent on a timer from an open tab are not counted: the notification count, the status of the job queue and of recordings in processing, the renewal of the CSRF token, and the files of the interface. An account with a tab left open is therefore not shown as active. Only the time of the last request is stored, updated at most once every five minutes per account, so the time shown can be up to five minutes behind. No history of requests is kept. The column is visible to site administrators only.
 
+The **View activity** button in the actions of a row opens the [Audit log](audit-log.md) tab with the events of that account: its sign-ins, the recordings it opened, changed, shared or deleted, and the administrative actions that concern it.
+
 Storage consumption tells another important story. Users with disproportionately high storage might be uploading very long recordings, keeping everything indefinitely, or possibly misusing the system. You can adjust [file size limits](system-settings.md#maximum-file-size) and review [chunking settings](../troubleshooting.md#files-over-25mb-fail-with-openai) if needed. This information helps you have informed conversations about resource usage and establish appropriate policies.
 
 Patterns often emerge when you regularly review this data. You might notice seasonal variations in academic settings, project-based spikes in corporate environments, or gradual growth that signals the need for infrastructure expansion.

@@ -192,6 +192,7 @@ nav:
     - WhisperX Setup: admin-guide/whisperx-setup.md
     - Retention: admin-guide/retention.md
     - Privacy and Regulated Data: admin-guide/privacy.md
+    - Audit Log: admin-guide/audit-log.md
     - File Storage: admin-guide/storage.md
     - Migration Guide: admin-guide/migration-guide.md
 

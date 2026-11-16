@@ -10,6 +10,7 @@ import re
 from datetime import date, datetime, timedelta
 from src.services.llm_settings import get_temperature
 from src.services.job_queue import job_queue
+from src.services import audit
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, send_file, Response, current_app, make_response
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -119,6 +120,7 @@ def init_recordings_helpers(**kwargs):
 
 @recordings_bp.route('/recording/<int:recording_id>/download/transcript')
 @login_required
+@audit.access('recording.downloaded', details=lambda: {'part': 'transcript', 'format': audit.code(request.args.get('format'), ('txt', 'md'), 'txt')})
 def download_transcript_with_template(recording_id):
     """Download transcript with custom template formatting."""
     try:
@@ -216,6 +218,7 @@ def download_transcript_with_template(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/download/summary')
 @login_required
+@audit.access('recording.downloaded', details=lambda: {'part': 'summary', 'format': audit.code(request.args.get('format'), ('md',), 'docx')})
 def download_summary_word(recording_id):
     """Download recording summary as a Word document, or as Markdown with ?format=md (#584)."""
     try:
@@ -269,6 +272,7 @@ def download_summary_word(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/download/chat', methods=['POST'])
 @login_required
+@audit.access('recording.downloaded', details={'part': 'chat', 'format': 'docx'})
 def download_chat_word(recording_id):
     """Download chat conversation as a Word document."""
     try:
@@ -325,6 +329,7 @@ def download_chat_word(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/download/notes')
 @login_required
+@audit.access('recording.downloaded', details=lambda: {'part': 'notes', 'format': audit.code(request.args.get('format'), ('md',), 'docx')})
 def download_notes_word(recording_id):
     """Download recording notes as a Word document."""
     try:
@@ -409,6 +414,8 @@ def export_existing_recordings():
                 current_app.logger.error(f"Bulk export failed for recording {rid}: {e}")
                 failed += 1
 
+        # The number of recordings written to the export folder, nothing else.
+        audit.record('recording.exported', details={'count': exported})
         return jsonify({
             'exported': exported,
             'failed': failed,
@@ -512,6 +519,7 @@ def merge_recordings_endpoint():
 
 @recordings_bp.route('/recording/<int:recording_id>/generate_summary', methods=['POST'])
 @login_required
+@audit.emits('recording.reprocessed')
 def generate_summary_endpoint(recording_id):
     """Generate summary for a recording that doesn't have one.
 
@@ -572,6 +580,7 @@ def generate_summary_endpoint(recording_id):
             job_params['custom_prompt'] = custom_prompt
             job_params['custom_prompt_append'] = custom_prompt_append
 
+        audit.record_in_tx('recording.reprocessed', recording=recording, details={'kind': 'summary'})
         job_queue.enqueue(
             user_id=current_user.id,
             recording_id=recording.id,
@@ -593,6 +602,7 @@ def generate_summary_endpoint(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/update_speakers', methods=['POST'])
 @login_required
+@audit.emits('recording.edited')
 def update_speakers(recording_id):
     """Updates speaker labels in a transcription with provided names."""
     try:
@@ -634,6 +644,7 @@ def update_speakers(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/update_transcript', methods=['POST'])
 @login_required
+@audit.emits('recording.edited')
 def update_transcript(recording_id):
     """Updates the complete transcript data including text edits and speaker changes."""
     try:
@@ -674,6 +685,7 @@ def update_transcript(recording_id):
         update_voice_profiles(recording, label_to_name, current_user, seconds_by_key,
                               shown_as=labels_typed_as_names(speaker_map))
 
+        audit.edited(recording, ['transcript', 'speakers' if speaker_map else None])
         db.session.commit()
 
         # The transcript text changed — rebuild Inquire chunks so semantic
@@ -762,6 +774,7 @@ def auto_identify_speakers(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/reprocess_transcription', methods=['POST'])
 @login_required
+@audit.emits('recording.reprocessed')
 def reprocess_transcription(recording_id):
     """Reprocess transcription for a given recording."""
     try:
@@ -815,6 +828,7 @@ def reprocess_transcription(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/reprocess_summary', methods=['POST'])
 @login_required
+@audit.emits('recording.reprocessed')
 def reprocess_summary(recording_id):
     """Reprocess summary for a given recording (requires existing transcription)."""
     try:
@@ -909,6 +923,7 @@ def save_summary_prompt_route(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/regenerate_title', methods=['POST'])
 @login_required
+@audit.emits('recording.reprocessed')
 def regenerate_title(recording_id):
     """Regenerate the AI title for a recording based on its existing transcription."""
     try:
@@ -939,6 +954,7 @@ def regenerate_title(recording_id):
 
         recording.title = new_title
         recording.title_source = 'auto'
+        audit.record_in_tx('recording.reprocessed', recording=recording, details={'kind': 'title'})
         db.session.commit()
         # Keep the exported file in step with the new title, as /save does.
         try:
@@ -1713,6 +1729,9 @@ def save_metadata():
             from src.services.recording_state import set_user_archived
             set_user_archived(recording, current_user, data.get('is_archived'))
 
+        # The notes of a recipient are personal notes, not an edit of the recording.
+        audit.edited(recording, [f for f in edit_fields if requires_edit and f in data]
+                     + (['notes'] if 'notes' in data and recording.user_id == current_user.id else []))
         db.session.commit()
 
         # Re-export the recording if auto-export is enabled and editable fields were changed
@@ -1732,6 +1751,7 @@ def save_metadata():
 
 @recordings_bp.route('/recording/<int:recording_id>/update_transcription', methods=['POST'])
 @login_required
+@audit.emits('recording.edited')
 def update_transcription(recording_id):
     """Updates the transcription content for a recording."""
     try:
@@ -1759,6 +1779,8 @@ def update_transcription(recording_id):
         # Optional: If the transcription changes, we might want to indicate that the summary is outdated.
         # For now, we'll just save the transcript. A "regenerate summary" button could be a good follow-up.
 
+        audit.edited(recording, ['transcript' if new_transcription is not None else None,
+                                 'translation' if new_translation is not None else None])
         db.session.commit()
         current_app.logger.info(f"Transcription for recording {recording_id} was updated.")
 
@@ -1781,6 +1803,7 @@ from src.utils.language import canonical_translation_language as _canonical_tran
 
 @recordings_bp.route('/recording/<int:recording_id>/translate_transcription', methods=['POST'])
 @login_required
+@audit.emits('recording.reprocessed')
 def translate_transcription(recording_id):
     """Queue a translation of a recording's transcription."""
     try:
@@ -1860,6 +1883,7 @@ def translate_transcription(recording_id):
         if target_language:
             job_params['target_language'] = target_language
 
+        audit.record_in_tx('recording.reprocessed', recording=recording, details={'kind': 'translation'})
         job_id = job_queue.enqueue(
             user_id=current_user.id,
             recording_id=recording.id,
@@ -1945,6 +1969,7 @@ def toggle_archive(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/delete_audio', methods=['POST'])
 @login_required
+@audit.emits('recording.audio.deleted')
 def delete_recording_audio(recording_id):
     """Delete a recording's media file and keep the transcript, summary and notes.
 
@@ -2197,6 +2222,25 @@ def cancel_upload_route():
 @login_required
 @incognito_route
 def upload_incognito():
+    """The incognito upload, and the one audit row of an incognito request.
+
+    The row (incognito.used) holds the account, the time and the outcome.
+    Nothing about the file or its content is recorded, and incognito chat and
+    summary requests are not recorded at all.
+    """
+    from src.services import audit
+    try:
+        response = current_app.make_response(_upload_incognito_request())
+    except Exception:
+        audit.record('incognito.used', outcome='failed')
+        raise
+    status = response.status_code
+    audit.record('incognito.used',
+                 outcome='success' if status < 400 else 'denied' if status == 403 else 'failed')
+    return response
+
+
+def _upload_incognito_request():
     """
     Process audio in incognito mode - no database storage.
     Returns transcript/summary directly in response.
@@ -2578,6 +2622,7 @@ def generate_incognito_summary_endpoint():
 
 @recordings_bp.route('/recording/<int:recording_id>', methods=['DELETE'])
 @login_required
+@audit.emits('recording.deleted')
 def delete_recording(recording_id):
     try:
         recording = db.session.get(Recording, recording_id)
@@ -2678,6 +2723,7 @@ def _owner_username_for_recipient(owner):
 
 @recordings_bp.route('/api/recordings/<int:recording_id>', methods=['GET'])
 @login_required
+@audit.access('recording.viewed', dedup=audit.DEDUP_VIEW)
 def get_recording_detail(recording_id):
     """Get full details for a specific recording including markdown HTML."""
     try:
@@ -3190,6 +3236,7 @@ def get_audio_peaks(recording_id):
 
 @recordings_bp.route('/audio/<int:recording_id>')
 @login_required
+@audit.access(audit.media_event, also=audit.MEDIA_EVENTS)
 def get_audio(recording_id):
     """Serve audio file for a recording.
 
@@ -3912,6 +3959,7 @@ def bulk_toggle():
 
 @recordings_bp.route('/api/recordings/<int:recording_id>/toggle_deletion_exempt', methods=['POST'])
 @login_required
+@audit.emits('recording.edited')
 def toggle_deletion_exempt(recording_id):
     """Toggle the deletion_exempt flag for a recording."""
     try:
@@ -3925,6 +3973,7 @@ def toggle_deletion_exempt(recording_id):
 
         # Toggle the flag
         recording.deletion_exempt = not recording.deletion_exempt
+        audit.edited(recording, ['deletion_exempt'])
         db.session.commit()
 
         return jsonify({

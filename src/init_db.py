@@ -1316,6 +1316,17 @@ def _run_migrations(app, engine):
                 SystemSetting.set_setting(key=_key, value=MODE_ADMINS, description=_desc, setting_type='string')
                 app.logger.info(f"Initialized {_key} setting")
 
+        # The one-time notice on the Audit log tab of the admin page: shown
+        # until an admin dismisses it.
+        if not SystemSetting.query.filter_by(key='audit_log_notice_dismissed').first():
+            SystemSetting.set_setting(
+                key='audit_log_notice_dismissed',
+                value='false',
+                description='Whether the notice on the Audit log tab was dismissed. The notice states what is recorded and for how long.',
+                setting_type='boolean'
+            )
+            app.logger.info("Initialized audit_log_notice_dismissed setting")
+
         # Settings that can be changed in System Settings and fall back to
         # .env. The rows have no value, so the .env value applies until an
         # admin saves one (#567).
@@ -1506,6 +1517,16 @@ def _run_migrations(app, engine):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"Diarization label cleanup skipped, retried next start: {e}")
+
+        # The rows of share_audit_log become share.internal.* rows of the
+        # audit log. The old table is left as it is for one release.
+        try:
+            from src.services.audit_import import copy_share_audit_log
+            run_once(engine, '0009_copy_share_audit_log_to_audit_event',
+                     lambda eng: copy_share_audit_log(eng, logger=app.logger), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Copy of share_audit_log skipped, retried next start: {e}")
 
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)

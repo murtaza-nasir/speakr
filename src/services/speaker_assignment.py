@@ -68,6 +68,8 @@ def apply_speaker_names(recording, user, speaker_map, regenerate_summary=False):
     embeddings_updated, snippets_created = update_voice_profiles(
         recording, label_to_name, user, seconds_by_key,
         shown_as=labels_typed_as_names(speaker_map) if is_json else None) or (0, 0)
+    from src.services import audit
+    audit.edited(recording, ['speakers'])
     db.session.commit()
 
     # The transcript text changed: rebuild the Inquire chunks (background).

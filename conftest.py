@@ -141,6 +141,14 @@ def _initialize_test_database():
 
     yield
 
+    # Audit events still queued are written before the file goes away, so the
+    # writer thread does not report a missing table at the end of the run.
+    try:
+        from src.services import audit
+        audit.flush(timeout=5)
+    except Exception:
+        pass
+
     # Best-effort cleanup of the temp DB file after the session.
     for path in (_TEST_DB_PATH, _TEST_DB_PATH + "-wal", _TEST_DB_PATH + "-shm"):
         try:

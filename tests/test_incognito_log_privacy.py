@@ -254,6 +254,9 @@ def _database():
     from sqlalchemy import select
     with app.app_context():
         db.session.rollback()
+        # Audit rows are written by a thread; the snapshot waits for them.
+        from src.services import audit
+        audit.flush()
         snapshot = {}
         for table in db.metadata.tables.values():
             columns = [c for c in table.columns if (table.name, c.name) != ('user', 'last_seen_at')]
@@ -266,7 +269,39 @@ USAGE_TABLES = ("token_usage", "transcription_usage")
 
 
 def _without_usage(database):
-    return {name: rows for name, rows in database.items() if name not in USAGE_TABLES}
+    # audit_event is compared separately (_assert_audit_rows).
+    return {name: rows for name, rows in database.items()
+            if name not in USAGE_TABLES and name != 'audit_event'}
+
+
+def _assert_audit_rows(before, after, user_id, more=()):
+    """An incognito request adds audit rows of one kind only: incognito.used,
+    with the account, the time and the outcome and nothing else."""
+    from src.models import AuditEvent
+    known = set(before['audit_event'])
+    assert known <= set(after['audit_event'])
+    with app.app_context():
+        new = [row for row in AuditEvent.query.order_by(AuditEvent.id)
+               if not any(entry.startswith(f'({row.id},') for entry in known)]
+        for row in new:
+            assert row.event == 'incognito.used', row.event
+            assert row.actor_user_id is not None and user_id in (None, row.actor_user_id)
+            assert row.outcome in ('success', 'denied', 'failed')
+            assert (row.recording_id, row.recording_owner_id, row.target_user_id, row.group_id,
+                    row.details, row.ip, row.user_agent, row.actor_token_id) == (None,) * 8
+    text = "\n".join(sorted(set(after['audit_event']) - known))
+    for marker in list(MARKERS) + list(more):
+        assert marker not in text, f"{marker!r} reached audit_event"
+    return new
+
+
+def _assert_only_the_audit_row(before, outcome):
+    """The database is as before, except for one incognito.used row."""
+    after = _database()
+    assert {k: v for k, v in after.items() if k != 'audit_event'} == \
+        {k: v for k, v in before.items() if k != 'audit_event'}
+    new = _assert_audit_rows(before, after, None)
+    assert [row.outcome for row in new] == [outcome]
 
 
 def _usage(user_id):
@@ -281,10 +316,13 @@ def _usage(user_id):
     return tokens, audio
 
 
-def _assert_only_usage_rows_changed(before, user_id, more=()):
-    """Nothing but usage rows of this user changed, and those hold no content."""
+def _assert_only_usage_rows_changed(before, user_id, more=(), audit_rows=0):
+    """Nothing but usage rows of this user changed, and those hold no content.
+
+    audit_rows: 1 for an upload (its incognito.used row), 0 for chat and summary."""
     after = _database()
     assert _without_usage(after) == _without_usage(before)
+    assert len(_assert_audit_rows(before, after, user_id, more)) == audit_rows
     with app.app_context():
         columns = {name: [c.name for c in db.metadata.tables[name].columns] for name in USAGE_TABLES}
         for name in USAGE_TABLES:
@@ -393,7 +431,7 @@ def test_upload_logs_metadata_only_and_stores_nothing(client, user_id, log, temp
     assert "src.services.llm" in withheld
     assert any(name.startswith(("openai", "httpx", "httpcore")) for name in withheld)
 
-    _assert_only_usage_rows_changed(before, user_id, more=(FILENAME,))
+    _assert_only_usage_rows_changed(before, user_id, more=(FILENAME,), audit_rows=1)
     tokens, audio = _usage(user_id)
     # One title call and one summary call of the fake (10 + 5 tokens each).
     assert tokens == {"title_generation": (10, 5, 15, 1, "fake-model"),
@@ -413,7 +451,7 @@ def test_chunked_upload_logs_metadata_only(client, user_id, log, temp_folder):
     assert asr.requests.count(("POST", "/asr")) == 2
     assert "quokka-transcript-marker" in r.get_json()["transcription"]
     _assert_no_content(log)
-    _assert_only_usage_rows_changed(before, user_id)
+    _assert_only_usage_rows_changed(before, user_id, audit_rows=1)
     tokens, audio = _usage(user_id)
     assert set(tokens) == {"title_generation"} and audio["asr_endpoint"][1] == 1
     assert list(temp_folder.iterdir()) == []
@@ -436,7 +474,7 @@ def test_failing_transcription_service_is_logged_as_class_and_status(client, log
         assert "ProviderError provider=asr_endpoint status=500" in failed[0]
     else:
         assert asr.deleted == ["job0001"]
-    assert _database() == before
+    _assert_only_the_audit_row(before, 'failed')
     assert list(temp_folder.iterdir()) == []
 
 
@@ -564,7 +602,7 @@ def test_upload_is_refused_over_the_transcription_budget_before_anything_is_sent
     body = r.get_json()
     assert body["budget_exceeded"] is True and body["incognito"] is True and body["error"]
     assert ("POST", "/asr") not in asr.requests and fake_llm.bodies == []
-    assert _database() == before
+    _assert_only_the_audit_row(before, 'denied')
     assert list(temp_folder.iterdir()) == []
     text = _everything(log)
     for marker in MARKERS:

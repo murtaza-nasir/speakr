@@ -125,7 +125,8 @@ def scheduled_deletion_due():
 
 
 def run_daily_maintenance(app):
-    """The work of one daily run: retention auto-deletion, then the ownerless cleanup.
+    """The work of one daily run: retention auto-deletion, the ownerless
+    cleanup, then the pruning of the audit log.
 
     Auto-deletion deletes only when it is enabled. The cleanup of recordings
     without an owner (#572) is integrity, not retention, and runs every
@@ -148,6 +149,18 @@ def run_daily_maintenance(app):
     with app.app_context():
         from src.services.ownerless_cleanup import run_ownerless_cleanup
         run_ownerless_cleanup()
+
+    # Audit log rows past audit_log_retention_days. Here and not in the hourly
+    # cleanup loop, because that loop can be turned off and this thread
+    # always starts.
+    try:
+        with app.app_context():
+            from src.services.audit import prune_audit_events
+            pruned = prune_audit_events()
+            if pruned:
+                app.logger.info(f"Pruned {pruned} audit log row(s)")
+    except Exception as e:
+        app.logger.error(f"Error while pruning the audit log: {type(e).__name__}")
 
 
 def initialize_auto_deletion_scheduler(app):

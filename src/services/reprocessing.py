@@ -64,6 +64,8 @@ def queue_transcription_reprocess(recording, user, overrides=None):
     recording.summary = None
     recording.status = 'QUEUED'
     Event.query.filter_by(recording_id=recording.id).delete()
+    from src.services import audit
+    audit.record_in_tx('recording.reprocessed', recording=recording, details={'kind': 'transcription'})
     db.session.commit()
 
     try:
@@ -161,6 +163,8 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
 
     recording.summary = None
     Event.query.filter_by(recording_id=recording.id).delete()
+    from src.services import audit
+    audit.record_in_tx('recording.reprocessed', recording=recording, details={'kind': 'summary'})
     db.session.commit()
 
     params = {

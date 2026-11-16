@@ -69,7 +69,9 @@ def _increment(user_id, key, now):
 
 
 def record_failure(user_id, key, max_attempts, minutes):
-    """Count one wrong password; lock the account for this address at the maximum."""
+    """Count one wrong password; lock the account for this address at the maximum.
+
+    Returns True when this failure set the lock."""
     now = datetime.utcnow()
     db.session.query(LoginFailure).filter(
         LoginFailure.updated_at < now - STALE_AFTER,
@@ -94,6 +96,9 @@ def record_failure(user_id, key, max_attempts, minutes):
     db.session.commit()
     if locked:
         logger.warning("Password sign-in locked for user id %s from %s for %d minutes", user_id, key, minutes)
+        from src.services import audit
+        audit.record('auth.login.locked', target_user_id=user_id, details={'minutes': minutes})
+    return bool(locked)
 
 
 def clear_failures(user_id, key=None):

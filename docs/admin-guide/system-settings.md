@@ -200,6 +200,16 @@ The settings in this section were added for deployments with regulated data. The
 | `webhook_omit_titles` | `WEBHOOK_OMIT_TITLES` | `false` | `true`: the recording title and the original file name are left out of webhook payloads. |
 | `auto_export_delete_with_recording` | `AUTO_EXPORT_DELETE_WITH_RECORDING` | `false` | `true`: the automatically exported file is deleted together with its recording. |
 | `incognito_temp_max_age_hours` | `INCOGNITO_TEMP_MAX_AGE_HOURS` | `6` | Hours after the last write at which a leftover temporary file of an incognito request is removed. |
+| `audit_log_enabled` | `AUDIT_LOG_ENABLED` | `true` | `false`: no event is recorded in the audit log, except changes of the audit log settings and the reading, export and pruning of the log. |
+| `audit_log_retention_days` | `AUDIT_LOG_RETENTION_DAYS` | `365` | Days after which a row of the audit log is removed. `0`: the rows are kept without limit. |
+| `audit_log_store_ip` | `AUDIT_LOG_STORE_IP` | `full` | `full`, `truncated` (the `/24` network of an IPv4 address, the `/48` network of an IPv6 address) or `off`. |
+| `audit_log_record_views` | `AUDIT_LOG_RECORD_VIEWS` | `true` | `false`: opening and playing a recording is not recorded. Downloads, exports, reads through API v1 and public link events are still recorded. |
+
+### Audit log
+
+Sign-ins, access to recordings, changes, shares and administrative actions are recorded in the audit log, which is on by default. The four `audit_log_*` settings above determine whether events are recorded, for how long the rows are kept, and whether the client address is stored. A change of one of these settings is itself recorded, also while the log is off. The events, the Audit log tab and the export are described in [Audit log](audit-log.md).
+
+The setting `audit_log_notice_dismissed` holds whether the notice on the Audit log tab was dismissed. It has no other effect.
 
 ### Session idle timeout
 
@@ -266,6 +276,10 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | `allow_registration` | `ALLOW_REGISTRATION` |
 | `api_query_tokens_enabled` | `API_QUERY_TOKENS_ENABLED` |
 | `asr_async_jobs` | `ASR_ASYNC_JOBS` |
+| `audit_log_enabled` | `AUDIT_LOG_ENABLED` |
+| `audit_log_record_views` | `AUDIT_LOG_RECORD_VIEWS` |
+| `audit_log_retention_days` | `AUDIT_LOG_RETENTION_DAYS` |
+| `audit_log_store_ip` | `AUDIT_LOG_STORE_IP` |
 | `auto_export_delete_with_recording` | `AUTO_EXPORT_DELETE_WITH_RECORDING` |
 | `default_audio_player_position` | `DEFAULT_AUDIO_PLAYER_POSITION` |
 | `default_color_scheme` | `DEFAULT_COLOR_SCHEME` |

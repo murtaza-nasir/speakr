@@ -494,6 +494,15 @@ def test_migrate_recordings_dispatch(admin_client):
 
 def test_inquire_process_recordings_dispatch(admin_client):
     """Re-embed endpoint dispatches to the (mocked) chunker, never real work."""
+    # The suite shares one database, and other test files leave finished
+    # recordings without chunks in it. The route processes exactly those, so
+    # the expected number is counted here instead of assumed to be zero.
+    from src.models import Recording, TranscriptChunk
+    with app.app_context():
+        with_chunks = db.session.query(TranscriptChunk.recording_id).distinct()
+        eligible = Recording.query.filter(
+            Recording.status == 'COMPLETED', Recording.transcription.isnot(None),
+            Recording.transcription != '', ~Recording.id.in_(with_chunks)).count()
     with patch('src.api.admin.process_recording_chunks',
                return_value=True) as m:
         resp = admin_client.post('/admin/inquire/process-recordings',
@@ -501,9 +510,9 @@ def test_inquire_process_recordings_dispatch(admin_client):
     assert resp.status_code == 200
     body = resp.get_json()
     assert body.get('success') is True
-    assert 'processed' in body
-    # No eligible recordings in the empty test DB -> chunker not actually run.
-    assert m.call_count == 0
+    assert body['processed'] == eligible
+    # Only the mock ran, once per recording without chunks (none in an empty database).
+    assert m.call_count == eligible
 
 
 def test_inquire_status_ok(admin_client):
