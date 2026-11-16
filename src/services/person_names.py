@@ -1,6 +1,6 @@
 """Matching people's names: case and accents ignored, whole name parts, and
 spelling variants of transliterated names (Mohammad, Mohammed, Muhammad and
-Mohamed are one name). Used by the find_people tool (inquire_agent) and by
+Mohamed are one name). Used by the find_people tool (inquire_tools) and by
 the recording chat's participants line (recording_chat).
 
 Deterministic and dependency-free. A variant key is built from a folded name
