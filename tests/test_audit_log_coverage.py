@@ -1,5 +1,7 @@
 """Every route that names a recording is audited, or is listed here as not
-audited with the reason.
+audited with the reason. The same holds for the routes on which an
+administrator reaches recordings of other users without an id in the address
+(ADMIN_AUDITED, ADMIN_NOT_AUDITED).
 
 A new route with ``recording_id`` in its address fails this test until it is
 given an audit event (``audit.access`` for a read, ``audit.emits`` beside the
@@ -166,6 +168,108 @@ def test_audited_routes_carry_their_events():
 
 def test_every_reason_is_stated():
     assert all(isinstance(reason, str) and len(reason) > 8 for reason in NOT_AUDITED.values())
+
+
+# --- Routes on which an administrator reaches recordings of other users ---------
+#
+# The tables above cover the routes that name one recording in their address.
+# An administrator also reaches recordings through routes that name none: a
+# run over every recording, a list of ids in the body, a job id. Every view
+# that an administrator enters with more rights than a user (its address is
+# under /admin, or its body tests is_admin) and that reads or acts on
+# recordings is audited, or is listed here with the reason. A view that
+# returns a title, a file name or content of a recording of another user
+# to an administrator has no place in ADMIN_NOT_AUDITED.
+
+ADMIN_AUDITED = {
+    'admin.run_auto_deletion': {'admin.retention.run'},
+    'admin.admin_process_recordings_for_inquire': {'admin.inquire.processed'},
+    'admin.migrate_existing_recordings_api': {'admin.inquire.processed'},
+    'admin.admin_delete_user': {'admin.user.deleted', 'recording.deleted'},
+    'recordings.bulk_delete_recordings': {'recording.deleted'},
+    'api_v1.batch_delete_recordings': {'recording.deleted'},
+    'recordings.delete_job': {'recording.job.canceled'},
+}
+
+ADMIN_NOT_AUDITED = {
+    'admin.admin_get_users': 'number and size of the recordings per account, no id or title',
+    'admin.admin_update_user': 'number and size of the recordings of the account (admin.user.changed is recorded)',
+    'admin.admin_get_stats': 'counts and sizes of the instance and per account, no id or title',
+    'admin.admin_get_stats_overview': 'counts per day and account; the five latest failed recordings by id, '
+                                      'account, time and stored error text, no title or file name',
+    'admin.get_auto_deletion_stats': 'counts of the retention rules, no id or title',
+    'admin.admin_inquire_status': 'counts of the search index, no id or title',
+    'api_v1.get_stats': 'counts; with scope=all the totals of the instance, no id or title',
+    'recordings.get_recordings_paginated': 'the own list; is_admin only sets can_delete on own recordings',
+}
+
+_RECORDING_DATA = re.compile(r'\bRecording\b|TranscriptChunk|ProcessingJob|\.recordings\b|process_recording_chunks|'
+                             r'process_auto_deletion|delete_recording_completely|build_overview')
+_ADMIN_GATE = re.compile(r'is_admin|admin_required')
+# A title, a file name or text of a recording, read from a row.
+_RECORDING_CONTENT = re.compile(
+    r'\b(recording|rec|r)\.(title|original_filename|transcription|summary|notes|participants|audio_path)\b')
+
+
+def _admin_recording_routes():
+    """endpoint -> (audit marks, source) of the views described above."""
+    import inspect
+    found = {}
+    for rule in app.url_map.iter_rules():
+        if 'recording_id' in rule.arguments:
+            continue                      # covered by AUDITED and NOT_AUDITED
+        view = app.view_functions[rule.endpoint]
+        try:
+            source = inspect.getsource(inspect.unwrap(view))
+        except (OSError, TypeError):
+            continue
+        if not ('/admin' in rule.rule or _ADMIN_GATE.search(source)):
+            continue
+        if _RECORDING_DATA.search(source):
+            found[rule.endpoint] = (_marks(view), source)
+    return found
+
+
+def test_every_admin_route_that_reaches_recordings_is_audited_or_listed():
+    routes = _admin_recording_routes()
+    unknown = sorted(name for name in routes if name not in ADMIN_AUDITED and name not in ADMIN_NOT_AUDITED)
+    assert not unknown, f"admin routes that reach recordings and are neither audited nor listed: {unknown}"
+    both = sorted(set(ADMIN_AUDITED) & set(ADMIN_NOT_AUDITED))
+    assert not both, f"listed twice: {both}"
+    gone = sorted((set(ADMIN_AUDITED) | set(ADMIN_NOT_AUDITED)) - set(routes))
+    assert not gone, f"listed routes that the scan no longer finds: {gone}"
+    wrong = {name: (sorted(routes[name][0]), sorted(events)) for name, events in ADMIN_AUDITED.items()
+             if routes[name][0] != set(events)}
+    assert not wrong, f"audit marks differ from the table (actual, expected): {wrong}"
+    marked = sorted(name for name in ADMIN_NOT_AUDITED if routes[name][0])
+    assert not marked, f"listed as not audited but marked: {marked}"
+    assert all(isinstance(reason, str) and len(reason) > 8 for reason in ADMIN_NOT_AUDITED.values())
+
+
+def test_no_view_under_admin_reads_a_title_a_file_name_or_content():
+    """A view under /admin is answered from counts and ids. The two requests
+    that returned titles of recordings of other users (the preview of
+    automatic deletion, and the failed recordings of the Ask Ambrose
+    processing) did so through recording.title, and the list of the latest
+    failed recordings on the statistics page through r.title."""
+    import inspect
+    reading = []
+    for rule in app.url_map.iter_rules():
+        if not rule.endpoint.startswith('admin.'):
+            continue
+        source = inspect.getsource(inspect.unwrap(app.view_functions[rule.endpoint]))
+        if _RECORDING_CONTENT.search(source):
+            reading.append(rule.endpoint)
+    # The statistics of the admin page are built in a service.
+    import src.services.admin_stats as admin_stats
+    if _RECORDING_CONTENT.search(inspect.getsource(admin_stats)):
+        reading.append('src.services.admin_stats')
+    # The older Ask Ambrose route tests `recording.transcription` for presence and returns counts.
+    assert sorted(set(reading)) == ['admin.migrate_existing_recordings_api'], sorted(set(reading))
+
+
+def test_the_auto_deletion_preview_is_gone():
+    assert not [rule.rule for rule in app.url_map.iter_rules() if 'auto-deletion/preview' in rule.rule]
 
 
 def test_public_link_routes_record_their_events():

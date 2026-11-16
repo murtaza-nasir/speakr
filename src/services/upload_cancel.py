@@ -111,6 +111,8 @@ def discard_unannounced_recording(recording, storage):
             logger.warning(f"Could not delete the media of canceled upload {recording_id}: {type(e).__name__}")
     recording = db.session.get(Recording, recording_id)
     if recording is not None:
+        from src.services.recording_deletion import forget_recording_sessions
+        forget_recording_sessions(recording_id)
         db.session.delete(recording)
         db.session.commit()
     logger.info(f"Upload canceled: recording {recording_id} discarded before its first job")

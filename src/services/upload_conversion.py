@@ -16,6 +16,7 @@ from flask import current_app
 
 from src.database import db
 from src.models import Recording
+from src.utils.log_filters import loggable_error
 from src.utils.ffmpeg_utils import (AUDIO_DECODE_FAILED_MESSAGE, FFmpegError, FFmpegNotFoundError,
                                     FFmpegTimeoutError)
 
@@ -151,7 +152,7 @@ def convert_uploaded_recording(recording_id, params):
         try:
             storage.delete(old_locator)
         except Exception as e:
-            current_app.logger.warning(f"Could not delete the original upload of recording {recording_id}: {e}")
+            current_app.logger.warning(f"Could not delete the original upload of recording {recording_id}: {loggable_error(e, old_locator)}")
     if result.was_converted or result.was_compressed:
         current_app.logger.info(
             f"Converted recording {recording_id}: {result.original_codec} -> {result.final_codec}, "

@@ -148,6 +148,8 @@ def test_finalize_upload_ingests_the_reassembled_original_bytes():
         session = db.session.get(RecordingSession, session_id)
         assert session.status == "finalized"
         assert session.finalized_recording_id == recording.id
+        # The file name is on the recording; the ended session no longer holds it.
+        assert session.upload_filename is None
         assert not os.path.isdir(os.path.join(upload_folder, "_sessions", session_id))
 
         _cleanup(recording, user)
@@ -238,6 +240,7 @@ def test_a_failed_finalize_upload_reclaims_the_slices_it_cannot_use():
 
         assert response.status_code == 500
         assert db.session.get(RecordingSession, session_id).status == "failed"
+        assert db.session.get(RecordingSession, session_id).upload_filename is None
         assert not os.path.isdir(os.path.join(upload_folder, "_sessions", session_id))
 
         _cleanup(user)
@@ -326,6 +329,7 @@ def test_cleanup_expires_an_abandoned_sliced_upload_instead_of_assembling_it():
 
         db.session.expire_all()
         assert db.session.get(RecordingSession, session_id).status == "expired"
+        assert db.session.get(RecordingSession, session_id).upload_filename is None
         assert not os.path.isdir(os.path.join(upload_folder, "_sessions", session_id))
         assert Recording.query.filter_by(user_id=user.id).count() == 0
 

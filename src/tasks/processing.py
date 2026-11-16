@@ -53,7 +53,7 @@ from src.config.app_config import (
 )
 from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
 from src.services.transcription_tracking import transcription_tracker
-from src.utils.log_filters import loggable_error, loggable_path
+from src.utils.log_filters import loggable_error, loggable_locator, loggable_path
 from src.services import job_control
 
 # Configuration for internal sharing
@@ -1660,7 +1660,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                 while retry_count < max_retries and not success:
                     try:
                         retry_suffix = f" (retry {retry_count + 1}/{max_retries})" if retry_count > 0 else ""
-                        current_app.logger.info(f"Processing chunk {i+1}/{len(chunks)}: {chunk['filename']} ({chunk['size_mb']:.1f}MB){retry_suffix}")
+                        current_app.logger.info(f"Processing chunk {i+1}/{len(chunks)}: {loggable_path(chunk['filename'])} ({chunk['size_mb']:.1f}MB){retry_suffix}")
 
                         # Transcribe chunk using connector
                         with open(chunk['path'], 'rb') as chunk_file:
@@ -2040,14 +2040,14 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             except Exception as duration_err:
                                 current_app.logger.warning(f"Could not determine extracted audio duration for recording {recording.id}: {duration_err}")
                             db.session.commit()
-                            current_app.logger.info(f"Audio extracted and stored: {stored_audio.locator}")
+                            current_app.logger.info(f"Audio extracted and stored: {loggable_locator(stored_audio.locator)}")
 
                             # Best-effort cleanup of previous stored source (e.g. original video)
                             if old_audio_locator and old_audio_locator != stored_audio.locator:
                                 try:
                                     storage.delete(old_audio_locator, missing_ok=True)
                                 except Exception as cleanup_err:
-                                    current_app.logger.warning(f"Failed to delete original source after audio extraction: {cleanup_err}")
+                                    current_app.logger.warning(f"Failed to delete original source after audio extraction: {loggable_error(cleanup_err, old_audio_locator)}")
                         except Exception:
                             # Do NOT persist temporary extracted path in DB. Keep previous locator and continue
                             # processing with the local extracted file for this job only.

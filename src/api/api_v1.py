@@ -3986,6 +3986,7 @@ def batch_update_recordings():
 @api_v1_bp.route('/recordings/batch', methods=['DELETE'])
 @require_scope('delete')
 @login_required
+@audit.emits('recording.deleted')
 def batch_delete_recordings():
     """Batch delete multiple recordings."""
     data = request.get_json()

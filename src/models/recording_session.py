@@ -49,6 +49,9 @@ RECORDING_SESSION_STATUSES = (
     'failed',        # stitch or ingestion hit a permanent error
 )
 
+# The statuses after which no request and no job works on the session.
+RECORDING_SESSION_ENDED = ('finalized', 'aborted', 'expired', 'failed')
+
 RECORDING_SESSION_KINDS = (
     'recorder',        # in-app recorder streaming MediaRecorder timeslices
     'sliced_upload',   # byte slices of a file the user already has on disk
@@ -107,7 +110,11 @@ class RecordingSession(db.Model):
 
     # Optional user-supplied finalize metadata (notes, tags, folder, ASR
     # options, prompt variables). Stored as JSON text so the stitch worker
-    # can read it without an additional table.
+    # can read it without an additional table. It holds text of the user, and
+    # so does upload_filename: both are cleared when the session ends
+    # (finalized, aborted, expired, or a failed sliced upload) and when its
+    # recording is deleted. A recorder session whose stitch failed keeps the
+    # metadata for the retry of the job, until its recording is deleted.
     finalize_metadata = db.Column(db.Text, nullable=True)
 
     # Optional error message when status == 'failed'.

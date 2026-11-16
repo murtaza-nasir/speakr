@@ -18,7 +18,7 @@ from src.utils import *
 from src.utils.localization import translate, api_error
 from src.utils.search import contains_pattern, LIKE_ESCAPE
 from src.services.retention import (is_recording_exempt_from_deletion, get_retention_days_for_recording,
-                                    process_auto_deletion, retention_tags)
+                                    process_auto_deletion)
 from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chunks
 from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
@@ -26,6 +26,7 @@ from src.services.storage_quota import default_quota_mb
 from src.services import audit, login_lock
 from src.auth.permissions import CREATE_GROUPS, set_user_grant, user_has_grant
 from src.config.startup import get_file_monitor_functions
+from src.utils.error_text import describe_error
 
 # Create blueprint
 admin_bp = Blueprint('admin', __name__)
@@ -524,6 +525,7 @@ def admin_update_user(user_id):
 
 @admin_bp.route('/admin/users/<int:user_id>', methods=['DELETE'])
 @login_required
+@audit.emits('admin.user.deleted', 'recording.deleted')
 def admin_delete_user(user_id):
     # Check if user is admin
     if not current_user.is_admin:
@@ -1374,6 +1376,7 @@ def admin_update_setting():
 
 @admin_bp.route('/admin/auto-deletion/run', methods=['POST'])
 @login_required
+@audit.emits('admin.retention.run')
 def run_auto_deletion():
     """Admin endpoint to manually trigger auto-deletion process."""
     if not current_user.is_admin:
@@ -1458,81 +1461,9 @@ def get_auto_deletion_stats():
 
 
 
-@admin_bp.route('/admin/auto-deletion/preview', methods=['GET'])
-@login_required
-def preview_auto_deletion():
-    """Preview what would be deleted without actually deleting (dry-run)."""
-    if not current_user.is_admin:
-        return jsonify(api_error('admin_required')), 403
-
-    try:
-        if not _self.ENABLE_AUTO_DELETION:
-            return jsonify(api_error('auto_deletion_disabled')), 400
-
-        # Check ALL completed recordings (per-recording retention)
-        all_recordings = Recording.query.filter(
-            Recording.status == 'COMPLETED'
-        ).all()
-
-        preview_data = {
-            'total_checked': len(all_recordings),
-            'would_delete': [],
-            'would_exempt': [],
-            'no_retention': [],
-            'deletion_mode': _self.DELETION_MODE,
-            'global_retention_days': _self.GLOBAL_RETENTION_DAYS,
-            'supports_per_recording_retention': True
-        }
-
-        current_time = datetime.utcnow()
-
-        for recording in all_recordings:
-            rec_data = {
-                'id': recording.id,
-                'title': recording.title,
-                'created_at': recording.created_at.isoformat(),
-                'age_days': (current_time - recording.created_at).days,
-                'tags': [tag.name for tag in retention_tags(recording)]
-            }
-
-            # Check if exempt from deletion entirely
-            if is_recording_exempt_from_deletion(recording):
-                rec_data['exempt_reason'] = []
-                if recording.deletion_exempt:
-                    rec_data['exempt_reason'].append('manually_exempted')
-                for tag in retention_tags(recording):
-                    if tag.protect_from_deletion:
-                        rec_data['exempt_reason'].append(f'tag:{tag.name}')
-                preview_data['would_exempt'].append(rec_data)
-                continue
-
-            # Get the effective retention period for this recording
-            retention_days = get_retention_days_for_recording(recording)
-
-            if not retention_days:
-                rec_data['reason'] = 'no_retention_policy'
-                preview_data['no_retention'].append(rec_data)
-                continue
-
-            rec_data['retention_days'] = retention_days
-
-            # Calculate cutoff for this specific recording
-            cutoff_date = current_time - timedelta(days=retention_days)
-
-            # Check if past retention period
-            if recording.created_at < cutoff_date:
-                rec_data['days_past_retention'] = (current_time - cutoff_date).days
-                preview_data['would_delete'].append(rec_data)
-
-        return jsonify(preview_data)
-    except Exception as e:
-        current_app.logger.error(f"Error previewing auto-deletion: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-
 @admin_bp.route('/api/admin/migrate_recordings', methods=['POST'])
 @login_required
+@audit.emits('admin.inquire.processed')
 def migrate_existing_recordings_api():
     """API endpoint to migrate existing recordings for inquire mode (admin only)."""
     if not current_user.is_admin:
@@ -1575,7 +1506,12 @@ def migrate_existing_recordings_api():
                 errors += 1
         
         remaining = max(0, len(recordings_needing_processing) - batch_size)
-        
+
+        audit.record_in_tx('admin.inquire.processed', details={
+            'processed': processed, 'failed': errors,
+            'total': len(recordings_needing_processing), 'force': False})
+        db.session.commit()
+
         return jsonify({
             'success': True,
             'message': translate('server.apiMessage.inquireProcessedRemaining',
@@ -1872,6 +1808,7 @@ def admin_save_visible_models():
 
 @admin_bp.route('/admin/inquire/process-recordings', methods=['POST'])
 @login_required
+@audit.emits('admin.inquire.processed')
 def admin_process_recordings_for_inquire():
     """Process recordings for inquire mode (chunk and embed them).
 
@@ -1965,7 +1902,8 @@ def admin_process_recordings_for_inquire():
                     f"Admin API: Failed to process recording {recording.id} "
                     f"({attempt_label}): {exc}"
                 )
-                return False, str(exc)
+                # The kind of the error only: its text can quote the transcript.
+                return False, describe_error(exc)
             if ok:
                 current_app.logger.info(
                     f"Admin API: {'Re-embedded' if force else 'Processed chunks for'} "
@@ -2008,13 +1946,17 @@ def admin_process_recordings_for_inquire():
 
         # Anything still in retry_queue after the last pass is recorded as failed.
         for recording, err in retry_queue:
+            # Ids and the kind of the error. The recordings belong to other
+            # users, so no title is returned to the administrator.
             failed.append({
                 'id': recording.id,
-                'title': recording.title,
                 'reason': err or 'Processing returned false',
                 'attempts': retry_passes + 1,
             })
 
+        audit.record_in_tx('admin.inquire.processed', details={
+            'processed': processed, 'failed': len(failed),
+            'total': total_to_process, 'force': force})
         db.session.commit()
 
         # On a successful force re-embed, refresh the stored identifier so the

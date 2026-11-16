@@ -396,6 +396,10 @@ def test_stitch_preserves_a_real_user_title():
         rec = db.session.get(Recording, recording_id)
         assert rec.title == "Q3 Planning Sync"
         assert is_placeholder_title(rec.title, rec.original_filename) is False
+        # The typed title is on the recording; the finalized session no longer holds it.
+        db.session.refresh(session)
+        assert (session.status, session.finalize_metadata) == ("finalized", None)
+        assert metadata.get("title") == "Q3 Planning Sync"
 
         os.remove(audio_path)
         db.session.delete(db.session.get(RecordingSession, session.id))

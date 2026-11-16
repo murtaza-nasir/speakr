@@ -24,6 +24,7 @@ from sqlalchemy.exc import OperationalError
 from src.database import db
 from src.models import Recording, RecordingTag
 from src.models.upload_join import UploadJoinPart
+from src.utils.log_filters import loggable_error, loggable_locator
 
 MAX_JOIN_PARTS = 20
 PART_TTL_HOURS = 24
@@ -98,7 +99,7 @@ def store_part(owner, join, filepath, *, original_filename, file_size, mime_type
         try:
             storage.delete(previous_locator, missing_ok=True)
         except Exception as e:
-            current_app.logger.warning(f"Could not delete replaced join part media {previous_locator}: {e}")
+            current_app.logger.warning(f"Could not delete replaced join part media {loggable_locator(previous_locator)}: {loggable_error(e, previous_locator)}")
     return part
 
 
@@ -199,7 +200,7 @@ def _delete_media(storage, part):
         try:
             storage.delete(part.audio_path, missing_ok=True)
         except Exception as e:
-            current_app.logger.warning(f"Could not delete join part media {part.audio_path}: {e}")
+            current_app.logger.warning(f"Could not delete join part media {loggable_locator(part.audio_path)}: {loggable_error(e, part.audio_path)}")
             return False
         part.audio_path = None
     return True

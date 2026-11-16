@@ -117,6 +117,7 @@ EVENTS = {
     'admin.user.deleted': ('admin', frozenset({'username', 'recordings_deleted'})),
     'admin.setting.changed': ('admin', frozenset({'key', 'old', 'new'})),
     'admin.retention.run': ('admin', frozenset({'checked', 'deleted_audio_only', 'deleted_full', 'errors'})),
+    'admin.inquire.processed': ('admin', frozenset({'processed', 'failed', 'total', 'force'})),
     'group.created': ('admin', _NONE),
     'group.changed': ('admin', frozenset({'fields'})),
     'group.deleted': ('admin', _NONE),

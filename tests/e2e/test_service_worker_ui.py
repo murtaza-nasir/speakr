@@ -14,9 +14,10 @@ what that changes for a person, in headless Chromium:
   offline" page of the worker, not the recording, and the app comes back
   when the network does;
 - static files are answered without a network, API requests are not;
-- sign-out clears Cache Storage, sessionStorage and the IndexedDB stores
-  with recordings, after a question when the browser holds copies that did
-  not reach the server;
+- sign-out clears Cache Storage, sessionStorage, the IndexedDB stores with
+  recordings and the localStorage entry of unfinished uploads in slices,
+  after a question when the browser holds copies that did not reach the
+  server;
 - a browser that still has the registration of an earlier release at
   /static/, and its cache with a page and an API response in it, ends with
   one worker at scope / and without that cache;
@@ -368,6 +369,8 @@ LOCAL_STATE = """async () => {
         uploads: await count('SpeakrFailedUploads', 'failedUploads'),
         recordings: await count('SpeakrRecordings', 'activeRecording'),
         session: Object.keys(sessionStorage),
+        sliced: localStorage.getItem('speakr.slicedUploads'),
+        scheme: localStorage.getItem('e2eKeptPreference'),
         mark: /(?:^|; )speakr_signed_out=/.test(document.cookie),
     };
 }"""
@@ -385,9 +388,16 @@ def test_sign_out_empties_cache_storage(context, signed_in):
         const cache = await caches.open(name);
         await cache.put('/static/sentinel-of-the-signed-in-user.js?v=1', new Response('x'));
         await (await caches.open('another-cache')).put('/static/other', new Response('y'));
-        sessionStorage.setItem('speakr_incognito_recording', JSON.stringify({ title: 'private' }));
+        sessionStorage.setItem('speakr_incognito_recording', JSON.stringify({
+            title: 'private', original_filename: 'Jane Doe intake.mp3', file_size: 123 }));
         sessionStorage.setItem('speakr_chat_threads:1', '[]');
+        // An upload in slices that ended before the sign-out (past its 24 hours:
+        // no question is asked for it), and a preference of the interface.
+        localStorage.setItem('speakr.slicedUploads', JSON.stringify({
+            'Jane Doe intake.mp4|900000000|1700000000000': { sessionId: 'gone', sliceBytes: 1, savedAt: 1 } }));
+        localStorage.setItem('e2eKeptPreference', 'kept');
     }""", f"speakr-static-{version}")
+    assert page.evaluate("() => window.SpeakrServiceWorker.localCopies()") == 0
     before = page.evaluate(CACHED)
     assert len(before) > 10 and any("sentinel" in e["path"] for e in before)
 
@@ -404,6 +414,9 @@ def test_sign_out_empties_cache_storage(context, signed_in):
     assert not [e["path"] for e in after if not e["path"].startswith("/static/")]
     state = page.evaluate(LOCAL_STATE)
     assert state["session"] == [] and state["mark"] is False, state
+    # The file name of the upload in slices is gone; other localStorage entries stay.
+    assert state["sliced"] is None and state["scheme"] == "kept", state
+    page.evaluate("() => localStorage.removeItem('e2eKeptPreference')")
     # Empty where the app had created them, and none created by the clearing.
     assert state["uploads"] in (None, 0) and state["recordings"] in (None, 0), state
 
@@ -429,6 +442,10 @@ def test_sign_out_asks_before_copies_in_the_browser_are_deleted(context, signed_
     page.on("dialog", lambda d: (native.append(d.message), d.dismiss()))
     assert page.evaluate(SEED_LOCAL_COPIES)
     assert page.evaluate("() => window.SpeakrServiceWorker.localCopies()") == 2
+    # An upload in slices that did not finish is the third copy.
+    page.evaluate("""() => localStorage.setItem('speakr.slicedUploads', JSON.stringify({
+        'Jane Doe intake.mp4|900000000|1700000000000': { sessionId: 'open', sliceBytes: 1, savedAt: Date.now() } }))""")
+    assert page.evaluate("() => window.SpeakrServiceWorker.localCopies()") == 3
     stored = page.evaluate("() => { sessionStorage.setItem('probe', '1'); return sessionStorage.length; }")
 
     # Cancel: still signed in, nothing deleted.
@@ -437,7 +454,7 @@ def test_sign_out_asks_before_copies_in_the_browser_are_deleted(context, signed_
     dialog.wait_for(state="visible", timeout=5000)
     text = dialog.inner_text()
     assert en("signOut.localCopiesTitle") in text
-    assert en("signOut.localCopiesMessage").replace("{{count}}", "2") in text
+    assert en("signOut.localCopiesMessage").replace("{{count}}", "3") in text
     assert page.locator(f"{DIALOG} [data-app-dialog-confirm]").inner_text().strip() == en("signOut.deleteAndSignOut")
     page.locator(f"{DIALOG} [data-app-dialog-cancel]").click()
     dialog.wait_for(state="hidden", timeout=5000)
@@ -445,6 +462,7 @@ def test_sign_out_asks_before_copies_in_the_browser_are_deleted(context, signed_
     assert "/account" in page.url
     state = page.evaluate(LOCAL_STATE)
     assert (state["uploads"], state["recordings"], state["mark"]) == (1, 1, False), state
+    assert state["sliced"] and "Jane Doe intake.mp4" in state["sliced"], state
     assert "probe" in state["session"] and len(state["session"]) == stored, state
     assert page.request.get(f"{BASE}/api/recordings?per_page=1").ok
 
@@ -458,7 +476,8 @@ def test_sign_out_asks_before_copies_in_the_browser_are_deleted(context, signed_
     page.wait_for_load_state("load")
     assert page.evaluate("() => window.SpeakrServiceWorker.ready.then(() => true)")
     state = page.evaluate(LOCAL_STATE)
-    assert state == {"uploads": 0, "recordings": 0, "session": [], "mark": False}, state
+    assert state == {"uploads": 0, "recordings": 0, "session": [], "sliced": None, "scheme": None,
+                     "mark": False}, state
     assert not native, f"a dialog of the browser appeared: {native}"
 
 

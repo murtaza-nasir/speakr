@@ -80,6 +80,37 @@ def loggable_path(path):
     return f"<file {extension}>" if extension else '<file>'
 
 
+_KEY_TIMESTAMP = _re.compile(r'^(\d{14})_')
+
+
+def loggable_locator(locator):
+    """The stored media of a recording for a log line at INFO or above.
+
+    A storage key is <prefix>/YYYY/MM/<recording id>/<timestamp>_<original
+    filename>, and recording.audio_path holds it as a locator (local://<key>,
+    s3://<bucket>/<key>) or, for an older row, as a path in the upload folder.
+    The directory part, the timestamp and the extension identify the object;
+    the name the user gave the file is left out. Not for a path whose
+    directories are named by a user or an operator (a watch folder):
+    loggable_path is for those.
+    """
+    if not locator:
+        return '<no file>'
+    text = str(locator).rstrip('/')
+    directory, slash, name = text.rpartition('/')
+    extension = _os.path.splitext(name)[1]
+    extension = extension.lower() if _EXTENSION.match(extension) else ''
+    stored = _STORED_NAME.match(name)
+    stamped = _KEY_TIMESTAMP.match(name)
+    if stored:
+        name = f"{stored.group(1)}_{stored.group(2)[:12]}{extension}"
+    elif stamped:
+        name = f"{stamped.group(1)}{extension}"
+    else:
+        name = f"*{extension}"
+    return f"<stored file {directory}{slash}{name}>"
+
+
 def loggable_error(error, *paths):
     """The text of a file or FFmpeg error with the given files named as in loggable_path.
 

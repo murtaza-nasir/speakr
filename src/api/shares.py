@@ -22,6 +22,7 @@ from src.utils import md_to_html
 from src.services.storage import get_storage_service
 from src.services.public_shares import active_share_or_404, link_is_https, public_url
 from src.utils.mime import served_media_mime, sandbox_media_response
+from src.utils.log_filters import loggable_locator
 from src.utils.localization import api_error, translate, request_language
 
 # Configuration from environment
@@ -186,7 +187,7 @@ def get_shared_audio(public_id):
             _audit_public_link('share.public.media.played', share)
             return redirect(delivery.url, code=302)
         if not delivery.local_path or not os.path.exists(delivery.local_path):
-            current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
+            current_app.logger.error(f"Audio file of recording {recording.id} missing from server: {loggable_locator(recording.audio_path)}")
             return jsonify(api_error('audio_file_missing')), 404
         _audit_public_link('share.public.media.played', share)
         return sandbox_media_response(send_file(delivery.local_path, mimetype=serve_mime, conditional=True))

@@ -34,6 +34,7 @@ from src.services.transcription_defaults import (
     resolve_transcription_model as _resolve_transcription_model,
 )
 from src.utils.dates import to_utc_naive
+from src.utils.log_filters import loggable_error, loggable_locator
 from src.utils.transcript_render import BASIC_TEMPLATE_FORMAT, parse_segments, render_segments
 from src.services.speaker import (
     update_speaker_usage, apply_speaker_map, participants_from_segments, update_voice_profiles,
@@ -3013,6 +3014,7 @@ def retry_failed_job(job_id):
 
 @recordings_bp.route('/api/recordings/jobs/<int:job_id>', methods=['DELETE'])
 @login_required
+@audit.emits('recording.job.canceled')
 def delete_job(job_id):
     """Cancel a waiting or running job, or remove a finished one from the list.
 
@@ -3078,9 +3080,13 @@ def delete_job(job_id):
                     try:
                         get_storage_service().delete(recording.audio_path, missing_ok=True)
                     except Exception as e:
-                        current_app.logger.error(f"Error deleting audio file: {e}")
+                        current_app.logger.error(f"Error deleting audio file of recording {recording.id}: "
+                                                 f"{loggable_error(e, recording.audio_path)}")
                 # Delete ALL processing jobs for this recording first
                 ProcessingJob.query.filter_by(recording_id=recording.id).delete()
+                # The session of a failed browser recording holds its title and notes.
+                from src.services.recording_deletion import forget_recording_sessions
+                forget_recording_sessions(recording.id)
                 db.session.delete(recording)
             else:
                 db.session.delete(job)
@@ -3273,7 +3279,7 @@ def get_audio(recording_id):
             return redirect(delivery.url, code=302)
 
         if not delivery.local_path or not os.path.exists(delivery.local_path):
-            current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
+            current_app.logger.error(f"Audio file of recording {recording.id} missing from server: {loggable_locator(recording.audio_path)}")
             return jsonify(api_error('audio_file_missing')), 404
 
         if download:
@@ -3651,6 +3657,7 @@ def reorder_recording_tags(recording_id):
 
 @recordings_bp.route('/api/recordings/bulk', methods=['DELETE'])
 @login_required
+@audit.emits('recording.deleted')
 def bulk_delete_recordings():
     """Delete multiple recordings at once."""
     try:

@@ -10,6 +10,7 @@ from src.database import db
 from src.models import Recording, RecordingTag, Tag
 from src.services.storage import get_storage_service
 from src.utils.localization import api_error
+from src.utils.log_filters import loggable_locator
 
 
 
@@ -235,7 +236,7 @@ def remove_recording_audio(recording, reason='user'):
     deleted = False
     if recording.audio_path and storage.exists(recording.audio_path):
         storage.delete(recording.audio_path, missing_ok=True)
-        current_app.logger.info(f"Removed audio file for recording {recording.id}: {recording.audio_path}")
+        current_app.logger.info(f"Removed audio file for recording {recording.id}: {loggable_locator(recording.audio_path)}")
         deleted = True
     from src.services.waveform_peaks import remove_peaks
     remove_peaks(current_app.config.get('UPLOAD_FOLDER') or '', recording.id)

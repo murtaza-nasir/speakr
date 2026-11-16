@@ -124,6 +124,29 @@ def _remove_orphaned_speaker_rows(engine, app):
                         f"and {samples} orphaned voice sample(s)")
 
 
+def _clear_ended_session_text(engine, app):
+    """Clear the text of the user in recording sessions that have ended.
+
+    finalize_metadata holds the title and notes typed when a browser
+    recording was finished, upload_filename the file name of an upload in
+    slices. Both stayed in the row after the session ended and after its
+    recording was deleted. Cleared here: sessions that are finalized, aborted
+    or expired, failed uploads in slices, and failed sessions whose recording
+    no longer exists. A failed recorder session whose recording exists keeps
+    its metadata, which a retry of the stitch job reads. One statement, and
+    a second run finds nothing to change.
+    """
+    with engine.begin() as conn:
+        cleared = conn.execute(text(
+            "UPDATE recording_session SET finalize_metadata = NULL, upload_filename = NULL "
+            "WHERE (finalize_metadata IS NOT NULL OR upload_filename IS NOT NULL) "
+            "AND (status IN ('finalized', 'aborted', 'expired') "
+            "OR (status = 'failed' AND (kind = 'sliced_upload' OR finalized_recording_id IS NULL "
+            "OR finalized_recording_id NOT IN (SELECT id FROM recording))))")).rowcount
+    if cleared:
+        app.logger.info(f"Cleared the title, notes or file name in {cleared} ended recording session(s)")
+
+
 def _clear_stale_session_links(engine, app):
     """Clear recording-session links to recordings that no longer exist.
 
@@ -1527,6 +1550,15 @@ def _run_migrations(app, engine):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"Copy of share_audit_log skipped, retried next start: {e}")
+
+        # Ended recording sessions kept the title and notes typed at the end
+        # of a recording, or the file name of an upload in slices.
+        try:
+            run_once(engine, '0010_clear_ended_session_text',
+                     lambda eng: _clear_ended_session_text(eng, app), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Recording-session text cleanup skipped, retried next start: {e}")
 
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)

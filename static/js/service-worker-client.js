@@ -12,13 +12,16 @@
  *
  * Sign-out:
  *   1. Before the sign-out form is sent: when this browser holds a recording
- *      that was not finished or uploads that failed (IndexedDB), the person
- *      is asked, since those copies are deleted at sign-out. Cancel keeps
+ *      that was not finished or uploads that failed (IndexedDB), or an
+ *      upload in slices that did not finish (localStorage), the person is
+ *      asked, since those copies are deleted at sign-out. Cancel keeps
  *      them and the session.
  *   2. The server answers the sign-out with the cookie speakr_signed_out.
  *      The page that follows (the sign-in page) then clears sessionStorage,
- *      the IndexedDB stores SpeakrRecordings and SpeakrFailedUploads, and
- *      every Cache Storage entry, and tells the worker. Doing this after
+ *      the IndexedDB stores SpeakrRecordings and SpeakrFailedUploads, the
+ *      localStorage entry of unfinished uploads in slices (file name, size
+ *      and modification time), and every Cache Storage entry, and tells
+ *      the worker. Doing this after
  *      the server's answer means that a sign-out the person cancels (the
  *      browser's question about a recording in progress) deletes nothing.
  *
@@ -30,6 +33,12 @@
     const SIGNED_OUT_COOKIE = 'speakr_signed_out';
     // The stores that hold user data: [database, object store].
     const USER_STORES = [['SpeakrRecordings', 'activeRecording'], ['SpeakrFailedUploads', 'failedUploads']];
+    // The localStorage entry of uploads in slices that did not finish: per
+    // upload the file name, size and modification time with the id of its
+    // session, kept for 24 hours so that the upload can be resumed
+    // (RESUME_KEY and RESUME_TTL_MS in modules/db/sliced-file-upload.js).
+    const SLICED_UPLOADS_KEY = 'speakr.slicedUploads';
+    const SLICED_UPLOADS_TTL_MS = 24 * 60 * 60 * 1000;
 
     const script = root.document && root.document.currentScript;
     let version = '';
@@ -106,19 +115,31 @@
         });
     }
 
+    /** How many uploads in slices this browser could still resume. */
+    function unfinishedSlicedUploads() {
+        try {
+            const entries = JSON.parse(root.localStorage.getItem(SLICED_UPLOADS_KEY) || '{}');
+            return Object.values(entries).filter((entry) => (
+                entry && entry.sessionId && Date.now() - (entry.savedAt || 0) < SLICED_UPLOADS_TTL_MS)).length;
+        } catch (e) {
+            return 0;
+        }
+    }
+
     /**
      * How many recordings this browser holds that did not reach the server:
-     * a recording that was not finished (kept for recovery) and the files of
-     * failed uploads.
+     * a recording that was not finished (kept for recovery), the files of
+     * failed uploads, and uploads in slices that did not finish.
      */
     async function localCopies() {
-        if (!root.indexedDB) return 0;
+        const sliced = unfinishedSlicedUploads();
+        if (!root.indexedDB) return sliced;
         const [session, failed] = await Promise.all([
             withStore('SpeakrRecordings', 'activeRecording', 'readonly', (store) => store.get('current')),
             withStore('SpeakrFailedUploads', 'failedUploads', 'readonly', (store) => store.count()),
         ]);
         const unfinished = session && Array.isArray(session.chunks) && session.chunks.length > 0 ? 1 : 0;
-        return unfinished + (Number(failed) || 0);
+        return unfinished + (Number(failed) || 0) + sliced;
     }
 
     function clearDatabases() {
@@ -156,6 +177,9 @@
     /** Remove what the signed-out account left in this browser. */
     async function clearAfterSignOut() {
         try { root.sessionStorage.clear(); } catch (e) { /* unavailable */ }
+        // Of localStorage only the entry that names files of the account;
+        // preferences of the interface stay.
+        try { root.localStorage.removeItem(SLICED_UPLOADS_KEY); } catch (e) { /* unavailable */ }
         const results = await Promise.allSettled([clearDatabases(), tellWorker()]);
         // After the worker, so that nothing it was storing is left behind.
         await clearCaches().catch(() => {});

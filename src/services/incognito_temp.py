@@ -76,6 +76,18 @@ def dir_for_temp_files(filepath):
     return os.path.dirname(os.path.abspath(filepath)) if inside(filepath) else None
 
 
+def dir_for_stream(stream):
+    """dir_for_temp_files for an open file, as a transcription connector receives it.
+
+    A connector that writes the audio to a temporary file of its own passes
+    the result as ``dir``: the copy of an incognito file is then written into
+    the folder of its request and is removed with it, also after a crash.
+    None for a stream without a path (a BytesIO) and for every other file.
+    """
+    name = getattr(stream, 'name', None)
+    return dir_for_temp_files(name) if isinstance(name, str) and name else None
+
+
 def max_age_seconds():
     from src.utils.system_settings import ENV_BACKED_SETTINGS, env_fallback
     env_var, default = ENV_BACKED_SETTINGS['incognito_temp_max_age_hours'][:2]

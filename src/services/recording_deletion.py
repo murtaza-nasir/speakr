@@ -10,6 +10,7 @@ Retention sent no recording.deleted webhook and left the export in place.
 from flask import current_app
 
 from src.database import db
+from src.utils.log_filters import loggable_error, loggable_locator
 
 
 def delete_recording_completely(recording, storage=None, strict_media=False, reason='deleted',
@@ -45,11 +46,12 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
     if recording.audio_path:
         try:
             storage.delete(recording.audio_path, missing_ok=True)
-            current_app.logger.info(f"Deleted media for recording {recording_id}: {recording.audio_path}")
+            current_app.logger.info(f"Deleted media for recording {recording_id}: {loggable_locator(recording.audio_path)}")
         except Exception as e:
             if strict_media:
                 raise
-            current_app.logger.error(f"Error deleting media {recording.audio_path}: {e}")
+            current_app.logger.error(f"Error deleting media of recording {recording_id} "
+                                     f"{loggable_locator(recording.audio_path)}: {loggable_error(e, recording.audio_path)}")
 
     from src.services.waveform_peaks import remove_peaks
     remove_peaks(current_app.config.get('UPLOAD_FOLDER') or '', recording_id)
@@ -59,12 +61,7 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
     from src.models import SpeakerVoiceSample
     SpeakerVoiceSample.query.filter_by(recording_id=recording_id).update({'recording_id': None})
 
-    # Recording sessions keep their row but lose the link, as ON DELETE SET
-    # NULL does on PostgreSQL. SQLite reuses the highest id, so a stale link
-    # could otherwise point at a later recording of another user (#505).
-    from src.models import RecordingSession
-    RecordingSession.query.filter_by(finalized_recording_id=recording_id).update(
-        {'finalized_recording_id': None}, synchronize_session=False)
+    forget_recording_sessions(recording_id)
 
     # A transcription still running on the WhisperX ASR service is cancelled
     # there, and a finished one has its stored transcript removed.
@@ -106,6 +103,26 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
         mark_export_as_deleted(recording_id)
     except Exception as e:
         current_app.logger.warning(f"Marking export as deleted failed for recording {recording_id}: {e}")
+
+
+def forget_recording_sessions(recording_id):
+    """Remove what the recording sessions of a deleted recording hold.
+
+    The session of a recording made in the browser or uploaded in slices
+    holds text of the user: the title and notes typed at the end of the
+    recording, or the file name of the upload. A session that has ended is
+    deleted with its recording. One still at work (its chunks are on disk and
+    a stitch job may be reading them) keeps its row without that text and
+    without the link; the hourly cleanup expires it and removes its folder.
+    SQLite reuses the highest id, so a link left behind could point at a
+    later recording of another user (#505). The caller commits.
+    """
+    from src.models import RecordingSession
+    from src.models.recording_session import RECORDING_SESSION_ENDED
+    sessions = RecordingSession.query.filter_by(finalized_recording_id=recording_id)
+    sessions.filter(RecordingSession.status.in_(RECORDING_SESSION_ENDED)).delete(synchronize_session=False)
+    sessions.update({'finalized_recording_id': None, 'finalize_metadata': None, 'upload_filename': None},
+                    synchronize_session=False)
 
 
 def cleanup_orphaned_speakers_quietly():
