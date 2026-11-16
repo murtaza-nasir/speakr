@@ -40,6 +40,10 @@ The panel of the queue is opened with a click on the indicator, and it is opened
 | Desk theme | In the status bar | At the foot of the list, or above the status bar while the list is collapsed |
 | Phone | A strip above the player, and at the foot of the recording list | A sheet from the bottom edge |
 
+On a phone, the queue is opened as a sheet:
+
+![Processing queue on a phone](../assets/images/screenshots/mobile-processing-queue.png){: style="max-width: 320px" }
+
 The rows are grouped in this order: **Active**, **Waiting**, **Failed**, **Recently finished**. The following is given for each row:
 
 - **Stage**: Uploading, Converting, Transcribing, Titling, Summarizing or Translating. For a waiting file, the place in its queue is given, for example "Queued #2 for transcription". A step reported by the transcription service is added after the stage, for example "Transcribing · aligning".
@@ -73,6 +77,8 @@ An upload can be canceled while the file is sent. The request is aborted and not
 ### Notifications
 
 Short messages about the result of an action are shown at the bottom center of the reading area, above the player. On a phone they are shown at the full width above the queue strip, the player and the tab bar, and under the top bar while a sheet is open.
+
+![Notifications](../assets/images/screenshots/notifications.png)
 
 | Type | Color | Shown for |
 |---|---|---|
