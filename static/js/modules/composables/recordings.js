@@ -6,6 +6,7 @@
 import * as IncognitoStorage from '../db/incognito-storage.js';
 import { matchTagsByLabelName } from '../utils/label-links.js';
 import { confirmDialog } from '../utils/dialogs.js';
+import { realSpeakers } from '../utils/speaker-labels.js';
 
 // Guarded: the module can run before i18n.js has loaded.
 const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
@@ -211,7 +212,8 @@ export function useRecordings(state, utils, reprocessComposable) {
         try {
             const response = await fetch('/speakers');
             if (response.ok) {
-                availableSpeakers.value = await response.json();
+                // The Speakers filter lists people: never a diarization label.
+                availableSpeakers.value = realSpeakers(await response.json());
             } else {
                 availableSpeakers.value = [];
             }

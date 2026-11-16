@@ -3,6 +3,8 @@
  * picker options, voice-match suggestions and keyboard checks.
  */
 
+import { isGenericSpeakerLabel } from '../utils/speaker-labels.js';
+
 const PLACEHOLDER = /^SPEAKER_\d+$/i;
 
 /** True for a diarization label (SPEAKER_00), which stands for an unnamed speaker. */
@@ -70,7 +72,9 @@ const lower = (s) => String(s || '').trim().toLowerCase();
  * Options of the speaker picker, in order: the speakers of this recording
  * (the first nine carry their number key), the user's saved speakers (those
  * matched by voice first, best match first), then the typed name when it is
- * a new one.
+ * a new one. A saved speaker or voice match whose name is a diarization
+ * label (SPEAKER_00, "Speaker 1") is never offered: such a label is not a
+ * person. The speakers of the recording are listed as they are.
  *
  * recording: [name]; saved: [{ id, name }]; voice: [{ speaker_id, name, similarity }].
  */
@@ -85,14 +89,14 @@ export function buildSpeakerOptions({ recording = [], saved = [], voice = [], qu
         if (fits(name)) options.push({ kind: 'recording', name, key: i < 9 ? i + 1 : null });
     });
 
-    const byVoice = [...voice].filter((v) => v && v.name).sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+    const byVoice = [...voice].filter((v) => v && v.name && !isGenericSpeakerLabel(v.name)).sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
     for (const match of byVoice) {
         if (taken.has(lower(match.name))) continue;
         taken.add(lower(match.name));
         if (fits(match.name)) options.push({ kind: 'voice', name: match.name, id: match.speaker_id, similarity: match.similarity });
     }
     for (const speaker of saved) {
-        if (!speaker || !speaker.name || taken.has(lower(speaker.name))) continue;
+        if (!speaker || !speaker.name || isGenericSpeakerLabel(speaker.name) || taken.has(lower(speaker.name))) continue;
         taken.add(lower(speaker.name));
         if (fits(speaker.name)) options.push({ kind: 'saved', name: speaker.name, id: speaker.id });
     }

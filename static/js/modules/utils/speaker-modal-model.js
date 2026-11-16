@@ -6,6 +6,8 @@
  * reactive state and calls these.
  */
 
+import { isGenericSpeakerLabel } from './speaker-labels.js';
+
 /** Minimum speaking time for a speaker to count as a main participant. */
 export const MINOR_SPEAKER_SECONDS = 30;
 
@@ -139,7 +141,8 @@ const norm = (s) => (s || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
  * takenNames: names already given to OTHER labels in this modal; they sink
  *   below the rest (assigning one is a deliberate merge, so they stay offered).
  *
- * Voice matches come first, duplicates are dropped ignoring case.
+ * Voice matches come first, duplicates are dropped ignoring case. A name
+ * that is a diarization label (SPEAKER_00, "Speaker 1") is never offered.
  */
 export function buildNameOptions({ voice = [], saved = [], query = '', takenNames = [], limit = 8 }) {
     const q = norm(query);
@@ -148,7 +151,7 @@ export function buildNameOptions({ voice = [], saved = [], query = '', takenName
     const out = [];
     const push = (opt) => {
         const key = norm(opt.name);
-        if (!key || seen.has(key)) return;
+        if (!key || seen.has(key) || isGenericSpeakerLabel(opt.name)) return;
         if (q && !key.includes(q)) return;
         seen.add(key);
         out.push({ ...opt, taken: taken.has(key) });

@@ -6,6 +6,7 @@
 import { savedColorScheme } from '../utils/theme-defaults.js';
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 import { confirmDialog } from '../utils/dialogs.js';
+import { realSpeakers } from '../utils/speaker-labels.js';
 
 /**
  * Decide whether the sidebar should start collapsed.
@@ -2130,7 +2131,7 @@ export function useUI(state, utils, processedTranscription) {
             const response = await fetch('/speakers');
             if (response.ok) {
                 const speakers = await response.json();
-                state.allParticipants.value = speakers.map(s => s.name).sort();
+                state.allParticipants.value = realSpeakers(speakers).map(s => s.name).sort();
             }
         } catch (e) {
             console.error('Failed to fetch speakers:', e);

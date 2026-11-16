@@ -224,3 +224,21 @@ describe('selection', () => {
         expect(nextSelection(ids, new Set([10]), 10, 9).selected.has(10)).toBe(true);
     });
 });
+
+describe('buildSpeakerOptions and diarization labels', () => {
+    it('never offers a saved speaker or a voice match whose name is a label', () => {
+        const options = buildSpeakerOptions({
+            recording: ['SPEAKER_00', 'Dana Lee'],
+            saved: [{ id: 1, name: 'SPEAKER_01' }, { id: 2, name: 'Speaker 1' }, { id: 3, name: 'Kim' }, { id: 4, name: 'Unknown Speaker' }],
+            voice: [{ speaker_id: 5, name: 'SPEAKER_02', similarity: 99 }, { speaker_id: 6, name: 'Robin', similarity: 80 }],
+        });
+        expect(options.map((o) => [o.kind, o.name])).toEqual([
+            ['recording', 'SPEAKER_00'], ['recording', 'Dana Lee'], ['voice', 'Robin'], ['saved', 'Kim'],
+        ]);
+    });
+
+    it('still lets a label be typed: the recording keeps it as an unnamed speaker', () => {
+        const options = buildSpeakerOptions({ recording: ['Dana Lee'], saved: [{ id: 1, name: 'Speaker 1' }], query: 'Speaker 1' });
+        expect(options).toEqual([{ kind: 'new', name: 'Speaker 1' }]);
+    });
+});
