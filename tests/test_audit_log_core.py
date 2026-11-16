@@ -226,7 +226,7 @@ def test_two_workers_give_one_row_and_the_next_bucket_a_second(monkeypatch):
     with app.app_context():
         start = _max_id()
         base = (int(time.time()) // audit.DEDUP_VIEW) * audit.DEDUP_VIEW + 10
-        monkeypatch.setattr(audit.time, 'time', lambda: base)
+        monkeypatch.setattr(audit, '_epoch', lambda: base)
         fields = dict(recording_id=424243, actor_kind='session', actor_user_id=78, dedup=audit.DEDUP_VIEW)
         audit.record('recording.viewed', **fields)
         audit.flush()
@@ -236,7 +236,7 @@ def test_two_workers_give_one_row_and_the_next_bucket_a_second(monkeypatch):
         audit.flush()
         assert len(_rows_after(start, 'recording.viewed')) == 1
         # 10:29 and 10:31: the buckets are fixed.
-        monkeypatch.setattr(audit.time, 'time', lambda: base + audit.DEDUP_VIEW)
+        monkeypatch.setattr(audit, '_epoch', lambda: base + audit.DEDUP_VIEW)
         audit.record('recording.viewed', **fields)
         audit.flush()
         assert len(_rows_after(start, 'recording.viewed')) == 2

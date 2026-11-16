@@ -628,6 +628,176 @@ def _quota_mb(value):
     return value
 
 
+# --- Audit log ---------------------------------------------------------------
+#
+# Read-only. Site admins only: a session or a full API token of an admin.
+# A scoped token does not reach these routes (they carry no scope mark).
+# Nothing here updates or deletes a row of audit_event.
+
+AUDIT_LOG_NOTICE_SETTING = 'audit_log_notice_dismissed'
+
+
+def _audit_datetime(value):
+    """A date or an ISO 8601 date-time as naive UTC."""
+    from src.utils.dates import to_utc_naive
+    value = value.strip()
+    if len(value) == 10:
+        return datetime.strptime(value, '%Y-%m-%d')
+    return to_utc_naive(datetime.fromisoformat(value.replace('Z', '+00:00')))
+
+
+def _audit_filters():
+    """(filters, names of the filters in use) from the query string.
+
+    Raises ValueError with an API error code for a value that cannot be read.
+    """
+    args = request.args
+    filters, used = {}, []
+    for name, key in (('from', 'date_from'), ('to', 'date_to')):
+        raw = (args.get(name) or '').strip()
+        if raw:
+            try:
+                filters[key] = _audit_datetime(raw)
+            except (ValueError, TypeError):
+                raise ValueError('invalid_filter_date')
+            used.append(name)
+    user = (args.get('user') or '').strip()
+    if user:
+        if user.isdigit():
+            filters['user_id'] = int(user)
+        else:
+            row = User.query.filter(db.func.lower(User.username) == user.lower()).first()
+            # An unknown name matches nothing.
+            filters['user_id'] = row.id if row is not None else -1
+        used.append('user')
+    recording = (args.get('recording_id') or '').strip()
+    if recording:
+        if not recording.isdigit():
+            raise ValueError('invalid_audit_filter')
+        filters['recording_id'] = int(recording)
+        used.append('recording_id')
+    for name, key, allowed in (('group', 'event_group', audit.EVENT_GROUPS),
+                               ('event', 'event', audit.EVENTS),
+                               ('outcome', 'outcome', audit.OUTCOMES),
+                               ('actor_kind', 'actor_kind', audit.ACTOR_KINDS)):
+        raw = (args.get(name) or '').strip()
+        if raw:
+            if raw not in allowed:
+                raise ValueError('invalid_audit_filter')
+            filters[key] = raw
+            used.append(name)
+    return filters, used
+
+
+def _csv_cell(value):
+    """A text cell that a spreadsheet would read as a formula (a user agent
+    that starts with =, +, - or @) gets a leading apostrophe."""
+    if isinstance(value, str) and value[:1] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + value
+    return value
+
+
+def _audit_usernames(rows):
+    """id -> username for the accounts named in the rows that still exist."""
+    ids = set()
+    for row in rows:
+        ids.update(v for v in (row['actor_user_id'], row['target_user_id'], row['recording_owner_id'])
+                   if v is not None)
+    if not ids:
+        return {}
+    return {str(user_id): name for user_id, name in
+            db.session.query(User.id, User.username).filter(User.id.in_(ids))}
+
+
+@admin_bp.route('/admin/audit-log', methods=['GET'])
+@login_required
+def admin_audit_log():
+    """One page of the audit log, newest first.
+
+    Query: from, to (a date or an ISO 8601 date-time, UTC), user (id or
+    username; actor or target), group, event, recording_id, outcome,
+    actor_kind, before_id or after_id, limit (1 to 500, default 50).
+    """
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    try:
+        filters, used = _audit_filters()
+        before_id = request.args.get('before_id', type=int)
+        after_id = request.args.get('after_id', type=int)
+        limit = int(request.args.get('limit', 50))
+    except ValueError as error:
+        code = str(error) if str(error) in ('invalid_filter_date', 'invalid_audit_filter') else 'invalid_limit'
+        return jsonify(api_error(code)), 400
+    if not 1 <= limit <= 500:
+        return jsonify(api_error('invalid_limit')), 400
+
+    rows, has_older, has_newer = audit.page(filters, before_id=before_id, after_id=after_id, limit=limit)
+    # Reading the log is an event of the log: once per half hour and admin.
+    audit.record('audit.viewed', details={'filters': used}, dedup=audit.DEDUP_VIEW)
+    return jsonify({
+        'events': rows,
+        'users': _audit_usernames(rows),
+        'has_older': has_older,
+        'has_newer': has_newer,
+        'enabled': audit.is_enabled(),
+        'retention_days': audit.retention_days(),
+        'store_ip': audit.ip_mode(),
+        'notice': not SystemSetting.get_setting(AUDIT_LOG_NOTICE_SETTING, False),
+    })
+
+
+@admin_bp.route('/admin/audit-log/export', methods=['GET'])
+@login_required
+def admin_audit_log_export():
+    """The filtered result as a file, oldest first: format=csv or format=jsonl.
+
+    The rows are the rows of the table, unchanged. The response is streamed.
+    """
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    export_format = (request.args.get('format') or 'csv').strip().lower()
+    if export_format not in ('csv', 'jsonl'):
+        return jsonify(api_error('unknown_format', format=export_format[:20])), 400
+    try:
+        filters, used = _audit_filters()
+    except ValueError as error:
+        return jsonify(api_error(str(error))), 400
+
+    import csv
+    import io
+    from flask import stream_with_context
+
+    def lines():
+        count = 0
+        if export_format == 'csv':
+            buffer = io.StringIO()
+            writer = csv.writer(buffer)
+            writer.writerow(audit.COLUMNS)
+            for row in audit.stream(filters):
+                writer.writerow([
+                    '' if row[name] is None else
+                    json.dumps(row[name], sort_keys=True) if name == 'details' else _csv_cell(row[name])
+                    for name in audit.COLUMNS])
+                count += 1
+                if buffer.tell() > 32768:
+                    yield buffer.getvalue()
+                    buffer.seek(0)
+                    buffer.truncate(0)
+            yield buffer.getvalue()
+        else:
+            for row in audit.stream(filters):
+                count += 1
+                yield json.dumps(row, sort_keys=True) + '\n'
+        audit.record('audit.exported', details={'filters': used, 'count': count, 'format': export_format})
+
+    stamp = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
+    response = Response(stream_with_context(lines()),
+                        mimetype='text/csv' if export_format == 'csv' else 'application/x-ndjson')
+    response.headers['Content-Disposition'] = f'attachment; filename="audit-log-{stamp}.{export_format}"'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @admin_bp.route('/admin/stats', methods=['GET'])
 @login_required
 def admin_get_stats():

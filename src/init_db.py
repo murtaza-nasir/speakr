@@ -1314,6 +1314,17 @@ def _run_migrations(app, engine):
                 SystemSetting.set_setting(key=_key, value=MODE_ADMINS, description=_desc, setting_type='string')
                 app.logger.info(f"Initialized {_key} setting")
 
+        # The one-time notice on the Audit log tab of the admin page: shown
+        # until an admin dismisses it.
+        if not SystemSetting.query.filter_by(key='audit_log_notice_dismissed').first():
+            SystemSetting.set_setting(
+                key='audit_log_notice_dismissed',
+                value='false',
+                description='Whether the notice on the Audit log tab was dismissed. The notice states what is recorded and for how long.',
+                setting_type='boolean'
+            )
+            app.logger.info("Initialized audit_log_notice_dismissed setting")
+
         # Settings that can be changed in System Settings and fall back to
         # .env. The rows have no value, so the .env value applies until an
         # admin saves one (#567).

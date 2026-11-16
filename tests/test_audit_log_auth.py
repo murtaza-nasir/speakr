@@ -112,7 +112,7 @@ def test_the_lock_is_recorded_once_and_later_attempts_are_refused_as_locked(crea
         assert len(locked) == 1
         assert locked[0].target_user_id == user.id and locked[0].details == {'minutes': 7}
         audit.reset_memory()
-        with mock.patch.object(audit.time, 'time', return_value=audit.time.time() + 120):
+        with mock.patch.object(audit, '_epoch', return_value=audit.time.time() + 120):
             _post_login(client, user.email, PASSWORD)
         reasons = [r.details['reason'] for r in rows_after(start, 'auth.login.failed')]
         assert reasons == ['bad_password', 'locked']

@@ -172,3 +172,12 @@ The worker's decision for each kind of request is unit-tested in `static/js/sw.t
 SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
   pytest tests/e2e/test_i18n_payload_ui.py -q --noconftest -rs
 ```
+
+## Audit log browser test
+
+`test_audit_log_ui.py` covers the Audit log tab of the admin page: the table with the newest events first, a row opened to its details, the filters (group of events, result, kind of access, recording id, dates), paging with Older and Newer, the two export links with the filters of the page, "View activity" on a row of the user list, the notice that is shown until an administrator dismisses it, and the tab in each of the six UI themes, light and dark, with the contrast of a row measured. The events it reads are made by the test through the app: the sign-in of the admin, one refused sign-in from a second browser context, and 55 setting changes for a second page. The setting of the notice is restored afterwards. It runs with the same gate and instance as the smoke test, in the same `browser-smoke` job:
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
+  pytest tests/e2e/test_audit_log_ui.py -q --noconftest -rs
+```

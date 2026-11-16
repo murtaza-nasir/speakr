@@ -152,6 +152,7 @@ DEDUP_ONCE = 10 ** 11
 # integers and enumerations. For every other key only the name is stored.
 SETTING_VALUE_KEYS = frozenset({
     'audit_log_enabled', 'audit_log_retention_days', 'audit_log_store_ip', 'audit_log_record_views',
+    'audit_log_notice_dismissed',
     'allow_registration', 'users_can_delete', 'enable_public_sharing', 'enable_internal_sharing',
     'show_usernames_in_ui', 'user_search_scope', 'enable_incognito_mode', 'incognito_mode_default',
     'incognito_temp_max_age_hours', 'enable_auto_deletion', 'global_retention_days', 'deletion_mode',
@@ -323,6 +324,11 @@ def _visitor_hash(with_agent=True):
     return hmac.new(secret, material, hashlib.sha256).hexdigest()[:12]
 
 
+def _epoch():
+    """The time the de-duplication buckets are counted from (tests replace it)."""
+    return time.time()
+
+
 def _dedup_key(event, parts, window, now_epoch):
     bucket = int(now_epoch // window)
     key = ':'.join([event] + [str(p) for p in parts if p is not None] + [str(bucket)])
@@ -390,7 +396,7 @@ def _build(event, *, recording=None, recording_id=None, recording_owner_id=None,
         parts = [who, f'r{recording_id}' if recording_id is not None else None,
                  f'x{target_user_id}' if target_user_id is not None else None,
                  outcome if outcome != 'success' else None, dedup_extra]
-        dedup_key = _dedup_key(event, parts, dedup, time.time())
+        dedup_key = _dedup_key(event, parts, dedup, _epoch())
 
     return {
         'created_at': now,
@@ -413,7 +419,7 @@ def _build(event, *, recording=None, recording_id=None, recording_owner_id=None,
 
 def _seen_recently(dedup_key, window):
     """True when this process already recorded the key in its time bucket."""
-    now = time.time()
+    now = _epoch()
     with _seen_lock:
         expires = _seen.get(dedup_key)
         if expires is not None and expires > now:
