@@ -68,6 +68,7 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 - **REST API v1** with a Swagger UI, for automation tools (n8n, Zapier, Make) and dashboards.
 - **Signed webhooks** - HMAC-signed, SSRF-guarded, retrying outbound notifications on recording lifecycle events.
 - **Usage budgets** for LLM tokens and transcription minutes, per user.
+- **Audit log** for site admins - sign-ins, access to recordings, changes, shares and admin actions, with filters and export.
 
 Speakr is also an installable Progressive Web App - mobile-first, with a phone share-target - and ships light/dark themes, an incognito mode, a configurable Help Center link for your own documentation, and a UI translated into seven languages.
 

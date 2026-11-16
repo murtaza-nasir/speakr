@@ -209,6 +209,14 @@ Export recordings in multiple formats for different purposes. Generate Word docu
 
 Track all your shared recordings from a central location. See what's been shared, when, and with what permissions. Modify share settings without generating new links, or instantly revoke access when shares are no longer appropriate. View shared recordings alongside your own content with clear visual indicators showing ownership and group affiliation.
 
+### Audit Log
+
+Sign-ins, access to recordings, changes, shares and administrative actions are listed in the Audit log tab for site admins, with filters and export as CSV or JSONL. Titles, file names and transcript text are not recorded. See the [audit log page](admin-guide/audit-log.md) and [Privacy and regulated data](admin-guide/privacy.md).
+
+### Keyboard Shortcuts
+
+On the desktop, the recording list, the open recording and the player can be used from the keyboard. The keys are listed with `?`. See [Keyboard shortcuts](user-guide/keyboard-shortcuts.md).
+
 ## API Access
 
 ### Personal Access Tokens

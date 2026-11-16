@@ -151,31 +151,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Interface** - Notifications in the interface theme, the recording header on tablets and portrait videos on phones.
     - **Fixes** - Shares after tag group changes, failure notices for empty and over-budget transcriptions, and `.weba` files in the watch folder.
 
-!!! info "Version 0.10.21-alpha - SSO access tokens, people in Ambrose, sharing and job fixes"
-    One column and four settings are added at startup; SSO access tokens are off until an admin turns them on. Read the Upgrading section of the release notes for the changes to webhooks and API v1.
-
-    - **Single sign-on** - SSO access tokens on the API, for Open WebUI and for apps that sync in the background.
-    - **Ambrose** - People are found by any of their names, and long Sources lists are folded.
-    - **Fixes** - Sharing and permissions (#586, #589, #591, #598 to #600), jobs and uploads (#587, #592, #594 to #597, #601), error pages from transcription services (#593), and cut-off summaries.
-
-!!! info "Version 0.10.20-alpha - Interface themes, Ambrose, nested folders"
-    Eight columns are added at startup, and recordings left without an owner by earlier versions are removed by a daily step. New accounts start with the Cards theme; read the Upgrading section of the release notes for the defaults and how to keep the previous ones.
-
-    - **Interface** - Six themes with every color scheme and dark mode, and a What's new list after each update.
-    - **Ambrose** - One assistant for the recording chat and Inquire, with cited answers and a chat per recording.
-    - **Folders and prompts** - Nested folders (PR #585) and the Regenerate summary dialog (#584).
-    - **Administration and sharing** - `.env` settings in System Settings (#567), group shares that follow the group (#570, #582), and fixes for #571, #572, #578, #579, #581 and #583.
-
-!!! info "Version 0.10.19-alpha - Transcript translation, faster uploads, fair queues"
-    Five columns and a unique index on active processing jobs are added at startup. Uploads are converted by convert jobs (`CONVERT_QUEUE_WORKERS`, default 2); read the release notes before going back to an earlier version.
-
-    - **Translation** - Transcripts can be translated on demand or automatically, with an optional separate translation model (PR #538).
-    - **Processing** - Uploads are answered before conversion, every user gets a turn in the queues, and Inquire indexing has its own worker (discussions #541 to #543).
-    - **Watch folder** - Watched files go through the upload pipeline without its size limits, and a file that cannot be processed is renamed to `<name>.failed` (PR #552).
-    - **Fixes** - Recordings made on iPhones (#495), `.local` email addresses (#551), seeking in long videos (#539), and #530 to #534.
-
 !!! note "Earlier releases"
-    Release notes for v0.10.18 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.21 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 
