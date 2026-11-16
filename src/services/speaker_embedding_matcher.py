@@ -314,7 +314,7 @@ def apply_speaker_names_to_transcription(recording, speaker_map):
         logger.warning(f"Auto-label: No speakers matched in segments")
         return False
 
-    logger.info(f"Auto-label: Applied names to {len(renamed_speakers)} speakers: {renamed_speakers}")
+    logger.info(f"Auto-label: Applied names to {len(renamed_speakers)} speakers")
 
     # Participants: real names only, never leftover SPEAKER_XX labels
     from src.services.speaker import participants_from_segments
