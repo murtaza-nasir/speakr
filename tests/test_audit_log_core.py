@@ -338,6 +338,34 @@ def test_inside_an_incognito_request_only_incognito_used_is_recorded():
         assert (row.actor_user_id, row.outcome, row.details, row.recording_id) == (5, 'success', None, None)
 
 
+def test_the_incognito_row_holds_no_address_and_no_user_agent():
+    """Account, time and outcome only, also with addresses stored in full."""
+    with app.app_context():
+        _set('audit_log_store_ip', 'full')
+    with app.test_request_context('/api/recordings/incognito', method='POST',
+                                  environ_base={'REMOTE_ADDR': '198.51.100.9'},
+                                  headers={'User-Agent': 'incognito-test-agent'}):
+        start = _max_id()
+        with incognito_context():
+            audit.record('incognito.used', actor_kind='session', actor_user_id=8100009, outcome='failed')
+            audit.record_in_tx('incognito.used', actor_kind='session', actor_user_id=8100009)
+        db.session.commit()
+        audit.flush()
+        rows = _rows_after(start, 'incognito.used')
+        assert len(rows) == 2
+        for row in rows:
+            data = row.to_dict()
+            assert data.pop('created_at') and data.pop('id')
+            assert {k: v for k, v in data.items() if v is not None} == {
+                'event': 'incognito.used', 'event_group': 'incognito', 'actor_kind': 'session',
+                'actor_user_id': 8100009, 'outcome': row.outcome}
+        # Another event of the same request keeps both.
+        audit.record_in_tx('auth.logout', actor_kind='session', actor_user_id=8100009)
+        db.session.commit()
+        other = _rows_after(start, 'auth.logout')[0]
+        assert other.ip == '198.51.100.9' and other.user_agent == 'incognito-test-agent'
+
+
 def test_the_fallback_line_is_not_withheld_inside_an_incognito_request(monkeypatch, caplog):
     from src.utils import incognito_logging
     incognito_logging.install()

@@ -288,7 +288,7 @@ def _assert_audit_rows(before, after, user_id, more=()):
             assert row.actor_user_id is not None and user_id in (None, row.actor_user_id)
             assert row.outcome in ('success', 'denied', 'failed')
             assert (row.recording_id, row.recording_owner_id, row.target_user_id, row.group_id,
-                    row.details) == (None, None, None, None, None)
+                    row.details, row.ip, row.user_agent, row.actor_token_id) == (None,) * 8
     text = "\n".join(sorted(set(after['audit_event']) - known))
     for marker in list(MARKERS) + list(more):
         assert marker not in text, f"{marker!r} reached audit_event"

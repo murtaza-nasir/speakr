@@ -13,7 +13,7 @@ The content of a recording is never part of the log. The data that is stored, an
 | `event`, `event_group` | Name of the event (see [Events](#events)) and its group |
 | `actor_kind` | `session` (browser), `api_token`, `sso_token`, `public_link`, `system` (a scheduled job) or `anonymous` (no account, for example a refused sign-in) |
 | `actor_user_id`, `actor_token_id` | Account and API token of the request, by id |
-| `ip`, `user_agent` | Client address, subject to `audit_log_store_ip`, and the first 160 characters of the user agent |
+| `ip`, `user_agent` | Client address, subject to `audit_log_store_ip`, and the first 160 characters of the user agent. Both are empty for `incognito.used`. |
 | `recording_id`, `recording_owner_id` | Recording and its owner at the time of the event |
 | `target_user_id`, `group_id` | Account or group that the event concerns |
 | `outcome` | `success`, `denied` or `failed` |
@@ -108,7 +108,7 @@ Rows with `imported` in the details were copied from the table `share_audit_log`
 |---|---|---|
 | `incognito.used` | An incognito upload was processed | None |
 
-One row is written for an incognito upload, with the account, the time and the outcome. Nothing about the file, its size, its duration or its content is stored. Incognito chat and summary requests are not recorded.
+One row is written for an incognito upload, with the account, the time and the outcome. The client address, the user agent and the id of an API token are not stored in this row, whatever the value of `audit_log_store_ip`. Nothing about the file, its size, its duration or its content is stored. Incognito chat and summary requests are not recorded.
 
 ## Events that are not recorded
 

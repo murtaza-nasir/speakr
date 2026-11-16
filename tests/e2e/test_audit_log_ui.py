@@ -205,7 +205,9 @@ def test_the_notice_names_what_is_recorded(admin):
 
 def test_a_row_opens_to_its_details(admin):
     page = admin.page
-    first = page.locator(ROWS).first
+    # A setting change of the fixture; a sign-in written a moment later by
+    # the background writer can be the newest row.
+    first = page.locator(ROWS, has_text="admin.setting.changed").first
     assert first.get_attribute("aria-expanded") == "false"
     first.click()
     details = page.locator(f"{TAB} [data-audit-details]")

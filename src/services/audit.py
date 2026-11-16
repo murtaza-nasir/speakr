@@ -136,6 +136,9 @@ EVENT_GROUPS = ('auth', 'access', 'change', 'share', 'admin', 'incognito', 'audi
 ACTOR_KINDS = ('session', 'api_token', 'sso_token', 'public_link', 'system', 'anonymous')
 OUTCOMES = ('success', 'denied', 'failed')
 
+# Events whose row never holds the client address, the user agent or a token id.
+NO_CLIENT_EVENTS = frozenset({'incognito.used'})
+
 # Dropped while audit_log_record_views is off.
 VIEW_EVENTS = frozenset({'recording.viewed', 'recording.media.played'})
 
@@ -394,10 +397,15 @@ def _build(event, *, recording=None, recording_id=None, recording_owner_id=None,
         recording_stamp = stamp(getattr(recording, 'created_at', None))
 
     ip = user_agent = None
-    if in_request and actor_kind != 'system':
+    # An incognito upload is recorded as account, time and outcome only:
+    # no address and no user agent, whatever audit_log_store_ip says.
+    if in_request and actor_kind != 'system' and event not in NO_CLIENT_EVENTS:
         ip = stored_ip(request.remote_addr)
         agent = request.headers.get('User-Agent')
         user_agent = agent[:MAX_USER_AGENT_CHARS] if agent else None
+
+    if event in NO_CLIENT_EVENTS:
+        actor_token_id = None
 
     now = created_at or datetime.utcnow()
     dedup_key = None
