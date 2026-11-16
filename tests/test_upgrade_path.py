@@ -596,3 +596,61 @@ def test_share_audit_log_rows_are_copied_to_the_audit_log(tmp_path):
     assert kept == [(1, "created", "Shared by owner"), (2, "cascade_revoked", "Cascaded from revoking user 3")]
     assert columns_after == old_columns
     assert ledger == 1
+
+
+@pytest.mark.parametrize("fixture", ["v0.10.3-alpha.sql", "v0.10.10-alpha.sql"])
+def test_ended_recording_sessions_lose_their_text_and_nothing_else(tmp_path, fixture):
+    """The title and notes typed at the end of a browser recording, and the
+    file name of an upload in slices, are cleared in ended sessions (ledger
+    id 0010). The rows, their other values and a session in progress stay.
+    v0.10.3 has no kind and no upload_filename column yet: both are added
+    before the cleanup reads them."""
+    db_path = str(tmp_path / "sessions.db")
+    with open(os.path.join(FIXTURE_DIR, fixture)) as fh:
+        schema_sql = fh.read()
+    con = sqlite3.connect(db_path)
+    con.executescript(schema_sql)
+    has_upload = "upload_filename" in [row[1] for row in con.execute('PRAGMA table_info("recording_session")')]
+    con.execute('INSERT INTO "user" (id, username, email, password) VALUES (1, ?, ?, ?)',
+                ("owner", "owner@example.test", "x"))
+    con.execute("INSERT INTO recording (id, user_id, title, status, keep_audio_only) VALUES (5, 1, 'kept', 'COMPLETED', 0)")
+    typed = '{"title": "typed title", "notes": "typed notes"}'
+    sessions = [("s-finalized", "finalized", 5), ("s-deleted", "finalized", None), ("s-expired", "expired", None),
+                ("s-failed-kept", "failed", 5), ("s-failed-gone", "failed", 99), ("s-recording", "recording", None)]
+    for sid, status, rec_id in sessions:
+        if has_upload:
+            con.execute('INSERT INTO recording_session (id, user_id, mime_type, kind, upload_filename, status, '
+                        'chunk_count, bytes_received, finalized_recording_id, finalize_metadata, error_message, '
+                        "created_at, last_seen_at) VALUES (?, 1, 'audio/webm', 'recorder', 'talk.mp4', ?, 3, 77, ?, "
+                        "?, 'kept error', '2026-02-03 04:05:06.000000', '2026-02-03 05:05:06.000000')",
+                        (sid, status, rec_id, typed))
+        else:
+            con.execute('INSERT INTO recording_session (id, user_id, mime_type, status, chunk_count, '
+                        'bytes_received, finalized_recording_id, finalize_metadata, error_message, created_at, '
+                        "last_seen_at) VALUES (?, 1, 'audio/webm', ?, 3, 77, ?, ?, 'kept error', "
+                        "'2026-02-03 04:05:06.000000', '2026-02-03 05:05:06.000000')", (sid, status, rec_id, typed))
+    con.commit()
+    con.close()
+
+    app = _fixture_app(db_path)
+    for _ in range(2):
+        with app.app_context():
+            initialize_database(app)
+
+    con = sqlite3.connect(db_path)
+    rows = {row[0]: row[1:] for row in con.execute(
+        'SELECT id, finalize_metadata, upload_filename, status, chunk_count, bytes_received, error_message, '
+        'created_at, mime_type, kind FROM recording_session')}
+    ledger = con.execute("SELECT COUNT(*) FROM schema_migrations WHERE migration_id LIKE '0010_%'").fetchone()[0]
+    recording = con.execute("SELECT title, status FROM recording WHERE id = 5").fetchone()
+    con.close()
+
+    assert ledger == 1
+    assert recording == ("kept", "COMPLETED")
+    assert set(rows) == {sid for sid, _status, _rec in sessions}
+    name = "talk.mp4" if has_upload else None
+    kept = {"s-failed-kept": (typed, name), "s-recording": (typed, name)}
+    for sid, status, _rec in sessions:
+        assert rows[sid][:2] == kept.get(sid, (None, None)), sid
+        assert rows[sid][2:8] == (status, 3, 77, "kept error", "2026-02-03 04:05:06.000000", "audio/webm"), sid
+        assert rows[sid][8] == "recorder", sid

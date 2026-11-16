@@ -3084,6 +3084,9 @@ def delete_job(job_id):
                                                  f"{loggable_error(e, recording.audio_path)}")
                 # Delete ALL processing jobs for this recording first
                 ProcessingJob.query.filter_by(recording_id=recording.id).delete()
+                # The session of a failed browser recording holds its title and notes.
+                from src.services.recording_deletion import forget_recording_sessions
+                forget_recording_sessions(recording.id)
                 db.session.delete(recording)
             else:
                 db.session.delete(job)

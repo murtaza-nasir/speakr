@@ -23,7 +23,7 @@ All text is kept in the application database (SQLite by default, PostgreSQL as a
 | Job parameters (including hotwords and initial prompt) and error text of a job | `processing_job` |
 | Public links, with the address part of each link, and internal shares | `share`, `internal_share` |
 | Personal notes of a user on a recording shared with that user, with the inbox, star and archive state | `shared_recording_state` |
-| Sessions of recordings made in the browser and of uploads in slices: the file name of the upload, the title and notes entered when the recording was finished, and error text. These rows are not removed (see [Deletion and retention](#deletion-and-retention)). | `recording_session` |
+| Sessions of recordings made in the browser and of uploads in slices. While a session is in progress: the file name of the upload, or the title, notes and options entered when the recording was finished. Afterwards: ids, sizes, times, the status and error text, without the file name, the title and the notes (see [Recording sessions](#recording-sessions)). | `recording_session` |
 | Parts of an upload that is joined into one recording, with the original file name, for one day. Ids of uploads named by the browser, for one day. | `upload_join_part`, `client_upload` |
 | References of a recording to other systems: reference, address and label | `recording_external_ref` |
 | Tags and folders with their names, prompts, default hotwords and default initial prompts. Groups, memberships and permissions. | `tag`, `folder`, `recording_tags`, `group`, `group_membership`, `permission_grant` |
@@ -87,13 +87,12 @@ With `PRESERVE_TEMP_AUDIO=true`, a debug copy of each converted file is kept in 
 
 ### Deletion and retention
 
-When a recording is deleted, by its owner, through the API or by a retention rule, the following is removed: the media file, the waveform data, the transcript passages and embeddings, the calendar events, the public links and internal shares, the personal notes of other users on the recording, the tag assignments, the speaker quotes, the processing jobs, the rows of the recording in the old table `share_audit_log`, and a job still held by a WhisperX transcription service.
+When a recording is deleted, by its owner, through the API or by a retention rule, the following is removed: the media file, the waveform data, the transcript passages and embeddings, the calendar events, the public links and internal shares, the personal notes of other users on the recording, the tag assignments, the speaker quotes, the processing jobs, the session of a recording that was made in the browser or uploaded in slices, the rows of the recording in the old table `share_audit_log`, and a job still held by a WhisperX transcription service.
 
 The following remains after the deletion of a recording:
 
 - A tombstone row with the recording id, the user id, the time and the reason, for the changes feed of the API. Tombstones are removed after `RECORDING_TOMBSTONE_DAYS` (default 90).
 - The rows in `webhook_delivery` of every event sent for the recording. The title is part of each payload, and the original file name is part of the `recording.created` payload. A `recording.deleted` event with the title is queued for every subscribed webhook. Delivery rows are removed `webhook_delivery_retention_days` days after their creation (default 30; with 0 they are kept without limit). With `webhook_omit_titles=true` (default `false`), the title and the original file name are left out of every payload.
-- The row in `recording_session` of a recording that was made in the browser or uploaded in slices. The row holds the title and the notes entered when the recording was finished, or the file name of the upload. It is removed only together with the account.
 - Speaker profiles and voice embeddings learned from the recording, until the speaker is deleted. A speaker profile without any recording is removed by the cleanup of orphaned speakers.
 - The exported file, when automatic export is enabled. By default the file is renamed with the `[deleted]_` prefix and its content is kept. With `auto_export_delete_with_recording=true` (default `false`), the file is deleted together with the recording. Files renamed before the setting was turned on are not removed afterwards.
 - The usage counts in `token_usage` and `transcription_usage`. These rows hold numbers per user and day, without a recording id.
@@ -102,6 +101,18 @@ The following remains after the deletion of a recording:
 - The media file itself, in the case of a storage error during a deletion by a user. The error is logged with the id of the recording and the storage path without the original file name.
 
 With the option to delete only the audio, the media file and the waveform data are removed. Transcript, summary, notes, tags and shares remain.
+
+### Recording sessions
+
+A recording made in the browser, and a large upload sent in slices, pass through a row in `recording_session`. The row holds text of the user only while it is needed:
+
+- The file name of an upload in slices is cleared when the upload is finalized, when it fails, when it is canceled, and when an abandoned session is expired by the hourly cleanup.
+- The title, notes and options entered at the end of a browser recording are cleared when the audio has been assembled, when the session is canceled, and when it is expired. After a failed assembly they are kept for the repeat of the job, until the recording is deleted.
+- When a recording is deleted, the row of its session is deleted with it. A session whose audio is still being assembled at that moment keeps its row, without the text and without the link to the recording, until it is expired by the hourly cleanup.
+
+A session that has ended without a deletion of its recording keeps its row with ids, sizes, times, the status and error text. These rows are removed together with the account.
+
+In earlier releases the text stayed in the row after the end of the session and after the deletion of the recording. At the first start after the upgrade, it is cleared once in every session that is finalized, canceled or expired, in every failed upload in slices, and in every failed session whose recording no longer exists (migration `0010_clear_ended_session_text`). No row is deleted by this step, and the log line holds a count only.
 
 Tombstones, webhook delivery rows, abandoned recording sessions and leftover files of incognito requests are removed by one hourly cleanup. With `RECORDING_SESSION_CLEANUP_INTERVAL_SECONDS=0` that cleanup is off, and none of the four is removed. Audit log rows are removed by a separate daily run.
 
@@ -270,7 +281,7 @@ The budget checks of an ordinary request apply. For a user over the monthly toke
 - **The audit log can be changed in the database.** No row is changed or deleted through a route of the application, but the table is not protected against a person with access to the database. A copy on another system is made with the export.
 - **No encryption at rest in the application.** Database content, media files, webhook signing secrets and exported files are stored as plain data.
 - **Content in the browser.** Audio of an ordinary recording in progress and files of failed ordinary uploads are kept in IndexedDB, and chat threads in `sessionStorage`, as listed under [Browser storage](#browser-storage). They are removed at sign-out, but not when a session ends through an idle timeout or when the browser is closed without a sign-out. The content of `localStorage`, with the id of the last selected recording and the file name of an unfinished upload in slices, is kept.
-- **Titles, notes and file names after deletion.** They are kept in the webhook delivery rows for `webhook_delivery_retention_days`, unless `webhook_omit_titles` is on, and in the `recording_session` row of a recording that was made in the browser or uploaded in slices, without a time limit.
+- **Titles and file names after deletion.** They are kept in the webhook delivery rows for `webhook_delivery_retention_days`, unless `webhook_omit_titles` is on.
 - **Exported files after deletion.** They are kept under a `[deleted]_` name unless `auto_export_delete_with_recording` is on.
 - **System error text in the default log.** Errors of the operating system, the database and FFmpeg are logged with their text, as described under [Logs](#logs).
 - **Short repetitions in error text shown to the user.** See [Error text shown to the user](#error-text-shown-to-the-user).

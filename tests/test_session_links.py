@@ -3,8 +3,9 @@
 SQLite does not apply ON DELETE SET NULL, and it reuses the highest id. A
 session left pointing at a deleted recording could therefore point at a later
 recording of another user, and the stalled-session watchdog would stitch into
-it. Deleting a recording now clears the link, the watchdog and the stitch
-worker check ownership, and a one-time migration clears old links.
+it. Deleting a recording now deletes its ended session and clears the link
+of one still at work, the watchdog and the stitch worker check ownership, and
+a one-time migration clears old links.
 """
 
 import os
@@ -62,22 +63,23 @@ def _stale_link(session, missing_id):
     db.session.expire_all()
 
 
-def test_deleting_a_recording_clears_its_session_link_only():
+def test_deleting_a_recording_removes_its_session_only():
     from src.services.recording_deletion import delete_recording_completely
     with app.app_context():
         user = _user("link_del")
         doomed, kept = _recording(user, "COMPLETED"), _recording(user, "COMPLETED")
         s_doomed = _session(user, "finalized", doomed.id)
         s_kept = _session(user, "finalized", kept.id)
-        doomed_id = doomed.id
+        doomed_id, s_doomed_id = doomed.id, s_doomed.id
 
         with patch("src.services.storage.get_storage_service", return_value=MagicMock()):
             delete_recording_completely(doomed)
         db.session.expire_all()
 
         assert db.session.get(Recording, doomed_id) is None
-        assert db.session.get(RecordingSession, s_doomed.id).finalized_recording_id is None
-        assert db.session.get(RecordingSession, s_doomed.id).status == "finalized"
+        # The session has ended, so its row goes with the recording
+        # (tests/test_session_text_cleanup.py has the session still at work).
+        assert db.session.get(RecordingSession, s_doomed_id) is None
         assert db.session.get(RecordingSession, s_kept.id).finalized_recording_id == kept.id
 
 

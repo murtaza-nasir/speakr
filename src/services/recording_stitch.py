@@ -409,6 +409,9 @@ def stitch_recording_session(session_id: str) -> Tuple[int, str, dict]:
     session.status = 'finalized'
     session.finalized_at = datetime.utcnow()
     session.last_seen_at = datetime.utcnow()
+    # The title and notes are on the recording now, and the rest was parsed
+    # into `metadata` above: nothing reads the stored copy again.
+    session.finalize_metadata = None
     db.session.commit()
 
     # Remove the session directory now that we have the stitched output.

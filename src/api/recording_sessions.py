@@ -791,6 +791,10 @@ def finalize_sliced_upload(session_id):
         session.finalized_at = datetime.utcnow()
         session.finalized_recording_id = body.get('id')
         session.last_seen_at = datetime.utcnow()
+        # The file name is on the recording now. A retry of this request is
+        # answered from the recording, and the resume check of the browser
+        # reads kind, size and status only.
+        session.upload_filename = None
         db.session.commit()
         _remove_session_dir(session_id)
     else:
@@ -842,6 +846,7 @@ def _fail_sliced_upload(session, message):
     session.status = 'failed'
     session.error_message = message
     session.last_seen_at = datetime.utcnow()
+    session.upload_filename = None
     db.session.commit()
     _remove_session_dir(session.id)
 
@@ -869,6 +874,8 @@ def abort_session(session_id):
 
     session.status = 'aborted'
     session.last_seen_at = datetime.utcnow()
+    session.upload_filename = None
+    session.finalize_metadata = None
     db.session.commit()
 
     # Best-effort directory cleanup; if the dir is already gone or the FS
@@ -969,7 +976,8 @@ def cleanup_expired_sessions(app=None):
                         RecordingSession.id == s.id,
                         RecordingSession.status == s.status,
                         RecordingSession.last_seen_at < cutoff,
-                    ).update({'status': 'expired'}, synchronize_session=False)
+                    ).update({'status': 'expired', 'upload_filename': None, 'finalize_metadata': None},
+                             synchronize_session=False)
                     db.session.commit()
                     if not claimed:
                         continue
