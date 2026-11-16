@@ -1,5 +1,8 @@
 # Push Notifications Setup Guide
 
+!!! warning "Not active"
+    Push notifications are not part of the current release. No push message is sent by the server, and the functions of the web interface described below (`static/js/config/push-config.js`, `subscribeToPushNotifications` and the push handlers of the service worker) were removed when the service worker received the scope `/`. This page is kept as a record of the earlier design.
+
 This guide explains how to complete the push notification setup for Speakr.
 
 ## Overview

@@ -4107,5 +4107,11 @@
     "uploaded": "hochgeladen {{date}}",
     "uploadedLabel": "Hochgeladen",
     "uploadedOn": "Hochgeladen {{date}}"
+  },
+  "signOut": {
+    "localCopiesTitle": "Kopien in diesem Browser löschen?",
+    "localCopiesMessageOne": "In diesem Browser liegt 1 Aufnahme oder Upload, der den Server nicht erreicht hat. Beim Abmelden wird er aus diesem Browser gelöscht.",
+    "localCopiesMessage": "In diesem Browser liegen {{count}} Aufnahmen oder Uploads, die den Server nicht erreicht haben. Beim Abmelden werden sie aus diesem Browser gelöscht.",
+    "deleteAndSignOut": "Löschen und abmelden"
   }
 }

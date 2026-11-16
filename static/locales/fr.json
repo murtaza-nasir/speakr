@@ -4107,5 +4107,11 @@
     "uploaded": "importé {{date}}",
     "uploadedLabel": "Importé",
     "uploadedOn": "Importé {{date}}"
+  },
+  "signOut": {
+    "localCopiesTitle": "Supprimer les copies de ce navigateur ?",
+    "localCopiesMessageOne": "Ce navigateur contient 1 enregistrement ou envoi qui n'est pas arrivé au serveur. Il est supprimé de ce navigateur à la déconnexion.",
+    "localCopiesMessage": "Ce navigateur contient {{count}} enregistrements ou envois qui ne sont pas arrivés au serveur. Ils sont supprimés de ce navigateur à la déconnexion.",
+    "deleteAndSignOut": "Supprimer et se déconnecter"
   }
 }

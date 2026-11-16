@@ -1,17 +1,20 @@
 /**
  * PWA Features Composable
- * Handles install prompt, push notifications, badging, and other PWA APIs
+ * Handles the install prompt, badging and the media session.
+ *
+ * Push notifications, system notifications and background sync are not part
+ * of it. The functions for them were never called by the interface and,
+ * while the service worker controlled no page, could not have worked; they
+ * were removed when the worker got the scope / (static/sw.js), so that no
+ * permission question and no push subscription can come from here. The
+ * server sends no push messages.
  */
-
-import { isPushEnabled, getPublicKey, urlBase64ToUint8Array } from '../../config/push-config.js';
 
 export function usePWA(state, utils) {
     const {
         deferredInstallPrompt,
         showInstallButton,
         isPWAInstalled,
-        notificationPermission,
-        pushSubscription,
         appBadgeCount
     } = state;
 
@@ -80,203 +83,6 @@ export function usePWA(state, utils) {
         isPWAInstalled.value = true;
         showInstallButton.value = false;
         showToast(t('pwa.installed'), 'success');
-    };
-
-    // --- Push Notifications ---
-
-    /**
-     * Request notification permission
-     */
-    const requestNotificationPermission = async () => {
-        if (!('Notification' in window)) {
-            console.warn('[PWA] This browser does not support notifications');
-            return false;
-        }
-
-        try {
-            const permission = await Notification.requestPermission();
-            notificationPermission.value = permission;
-            console.log(`[PWA] Notification permission: ${permission}`);
-
-            if (permission === 'granted') {
-                showToast(t('pwa.notificationsEnabled'), 'success');
-                return true;
-            } else if (permission === 'denied') {
-                showToast(t('pwa.notificationPermissionDenied'), 'error');
-                return false;
-            }
-        } catch (error) {
-            console.error('[PWA] Error requesting notification permission:', error);
-            return false;
-        }
-    };
-
-    /**
-     * Subscribe to push notifications
-     */
-    const subscribeToPushNotifications = async () => {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            console.warn('[PWA] Push notifications not supported');
-            showToast(t('pwa.pushNotSupported'), 'warning');
-            return null;
-        }
-
-        // Check if push is enabled on server
-        const enabled = await isPushEnabled();
-        if (!enabled) {
-            console.warn('[PWA] Push notifications not configured on server');
-            showToast(t('pwa.pushUnavailableServer'), 'warning');
-            return null;
-        }
-
-        // Get public key from server
-        const publicKey = await getPublicKey();
-        if (!publicKey) {
-            console.error('[PWA] Failed to get VAPID public key from server');
-            showToast(t('pwa.pushConfigureFailed'), 'error');
-            return null;
-        }
-
-        try {
-            const registration = await navigator.serviceWorker.ready;
-
-            // Check if already subscribed
-            let subscription = await registration.pushManager.getSubscription();
-
-            if (!subscription) {
-                // Subscribe to push notifications
-                console.log('[PWA] Creating new push subscription...');
-
-                const applicationServerKey = urlBase64ToUint8Array(publicKey);
-
-                subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: applicationServerKey
-                });
-
-                // Send subscription to server
-                const success = await sendSubscriptionToServer(subscription);
-
-                if (success) {
-                    pushSubscription.value = subscription;
-                    showToast(t('pwa.pushEnabled'), 'success');
-                    console.log('[PWA] Push subscription successful:', subscription);
-                } else {
-                    console.warn('[PWA] Failed to save subscription on server');
-                    showToast(t('pwa.pushEnableFailed'), 'error');
-                    return null;
-                }
-            } else {
-                pushSubscription.value = subscription;
-                console.log('[PWA] Already subscribed to push notifications');
-            }
-
-            return subscription;
-        } catch (error) {
-            console.error('[PWA] Failed to subscribe to push notifications:', error);
-
-            if (error.name === 'NotAllowedError') {
-                showToast(t('pwa.pushPermissionDenied'), 'error');
-            } else {
-                showToast(t('pwa.pushEnableFailed'), 'error');
-            }
-
-            return null;
-        }
-    };
-
-    /**
-     * Send subscription to server for storage
-     */
-    const sendSubscriptionToServer = async (subscription) => {
-        try {
-            const response = await fetch('/api/push/subscribe', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(subscription),
-                credentials: 'same-origin'
-            });
-
-            if (!response.ok) {
-                console.error('[PWA] Server rejected push subscription:', response.status);
-                return false;
-            }
-
-            const data = await response.json();
-            console.log('[PWA] Subscription saved on server:', data);
-            return true;
-        } catch (error) {
-            console.error('[PWA] Failed to send subscription to server:', error);
-            return false;
-        }
-    };
-
-    /**
-     * Unsubscribe from push notifications
-     */
-    const unsubscribeFromPushNotifications = async () => {
-        if (!pushSubscription.value) {
-            console.log('[PWA] No active push subscription to unsubscribe');
-            return true;
-        }
-
-        try {
-            // Unsubscribe on client
-            await pushSubscription.value.unsubscribe();
-
-            // Remove from server
-            await fetch('/api/push/unsubscribe', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(pushSubscription.value),
-                credentials: 'same-origin'
-            });
-
-            pushSubscription.value = null;
-            showToast(t('pwa.pushDisabled'), 'info');
-            console.log('[PWA] Unsubscribed from push notifications');
-            return true;
-        } catch (error) {
-            console.error('[PWA] Failed to unsubscribe from push notifications:', error);
-            showToast(t('pwa.pushDisableFailed'), 'error');
-            return false;
-        }
-    };
-
-    /**
-     * Show a local notification
-     */
-    const showNotification = async (title, options = {}) => {
-        if (!('Notification' in window)) {
-            console.warn('[PWA] Notifications not supported');
-            return;
-        }
-
-        if (Notification.permission !== 'granted') {
-            const granted = await requestNotificationPermission();
-            if (!granted) return;
-        }
-
-        try {
-            const registration = await navigator.serviceWorker.ready;
-
-            const defaultOptions = {
-                icon: '/static/img/icon-192x192.png',
-                badge: '/static/img/icon-192x192.png',
-                vibrate: [200, 100, 200],
-                tag: 'speakr-notification',
-                renotify: true,
-                ...options
-            };
-
-            await registration.showNotification(title, defaultOptions);
-        } catch (error) {
-            console.error('[PWA] Error showing notification:', error);
-        }
     };
 
     // --- Badging API ---
@@ -436,28 +242,6 @@ export function usePWA(state, utils) {
         }
     };
 
-    // --- Background Sync ---
-
-    /**
-     * Register background sync for upload retry
-     */
-    const registerBackgroundSync = async (tag = 'sync-uploads') => {
-        if (!('serviceWorker' in navigator) || !('sync' in ServiceWorkerRegistration.prototype)) {
-            console.log('[PWA] Background sync not supported');
-            return false;
-        }
-
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            await registration.sync.register(tag);
-            console.log(`[PWA] Background sync registered: ${tag}`);
-            return true;
-        } catch (error) {
-            console.error('[PWA] Failed to register background sync:', error);
-            return false;
-        }
-    };
-
     /**
      * Initialize PWA features
      */
@@ -470,11 +254,6 @@ export function usePWA(state, utils) {
 
         // Listen for appinstalled event
         window.addEventListener('appinstalled', handleAppInstalled);
-
-        // Check notification permission status
-        if ('Notification' in window) {
-            notificationPermission.value = Notification.permission;
-        }
 
         console.log('[PWA] PWA features initialized');
     };
@@ -492,12 +271,6 @@ export function usePWA(state, utils) {
         promptInstall,
         checkIfInstalled,
 
-        // Notifications
-        requestNotificationPermission,
-        subscribeToPushNotifications,
-        unsubscribeFromPushNotifications,
-        showNotification,
-
         // Badging
         setAppBadge,
         clearAppBadge,
@@ -508,9 +281,6 @@ export function usePWA(state, utils) {
         updateMediaSessionPosition,
         updateMediaSessionPlaybackState,
         clearMediaSession,
-
-        // Background sync
-        registerBackgroundSync,
 
         // Initialization
         initPWA,

@@ -192,7 +192,7 @@ Clear your browser cache if the interface gradually becomes slower over time. Sp
 
 If the interface shows blank panels or raw translation keys (console messages like `Translation not found for key: ...`) right after upgrading the Docker image, your browser is serving cached assets from the previous version against the new pages. Clear the site data for your Speakr domain (in Chrome: DevTools → Application → Storage → Clear site data), or unregister the service worker and hard refresh.
 
-From v0.10.3-alpha onward this heals itself: each release installs a service worker with its own cache namespace, static assets are revalidated on load, and translation files are always fetched fresh, so an image upgrade can no longer strand a stale app shell. Upgrades from versions before v0.10.3-alpha may still need the one-time manual clear described above.
+From v0.10.3-alpha onward this heals itself: each release installs a service worker with its own cache, the address of every script, stylesheet and translation file carries the release, and pages are never stored, so an image upgrade can no longer strand a stale app shell. Upgrades from versions before v0.10.3-alpha may still need the one-time manual clear described above.
 
 ### App Unresponsive While Media Plays or Chats Stream
 

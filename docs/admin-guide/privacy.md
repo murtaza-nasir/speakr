@@ -136,7 +136,7 @@ At startup, one warning per service is written to the log when an `http://` addr
 
 Scripts, styles and fonts of the web interface are downloaded once, with checksums, when the Docker image is built, and are served by the instance. At runtime nothing is loaded from a third party, and scripts, styles, fonts and connections are limited to the origin of the instance through the default `Content-Security-Policy` header.
 
-Push subscriptions of browsers can be stored, but no push message is sent by the code of this release.
+Push subscriptions of browsers can be stored through the API, but no push message is sent by the code of this release, and no push subscription is created and no notification permission is requested by the web interface.
 
 ## Browser storage
 
@@ -144,12 +144,29 @@ Push subscriptions of browsers can be stored, but no push message is sent by the
 |---|---|---|
 | Session cookie, and a remember cookie after "Remember me" | Signed session data, with the time of the last request when an idle timeout is set | The session cookie ends with the browser session, or after `session_idle_timeout_minutes` without a request when that setting is above 0. The remember cookie lasts `REMEMBER_COOKIE_DAYS` (default 30) and is not accepted while an idle timeout is set. |
 | `localStorage` | Interface preferences, the id of the last selected recording, and the defaults of the upload dialog | Until cleared in the browser |
-| `sessionStorage` | Chat threads of the open recordings, and the result of an incognito recording | Until the tab is closed |
-| IndexedDB `SpeakrRecordings` | Audio chunks and notes of an ordinary recording in progress, for recovery after a crash. Nothing of an incognito recording is written. | Until the recording is uploaded or discarded |
-| IndexedDB `SpeakrFailedUploads` | The file of an ordinary upload that failed, for a later retry. An incognito upload is never stored. | Until the retry succeeds or the entry is removed |
-| Cache Storage of the service worker (`Speakr-cache-<version>`) | The application files under `/static/`. In this release the service worker is registered for `/static/` only, so pages and the responses of `/api/` requests are not cached. | Until the cache is replaced with the next release, or until the site data is cleared |
+| `sessionStorage` | Chat threads of the open recordings, and the result of an incognito recording | Until the tab is closed, or until sign-out |
+| IndexedDB `SpeakrRecordings` | Audio chunks and notes of an ordinary recording in progress, for recovery after a crash. Nothing of an incognito recording is written. | Until the recording is uploaded or discarded, or until sign-out |
+| IndexedDB `SpeakrFailedUploads` | The file of an ordinary upload that failed, for a later retry. An incognito upload is never stored. | Until the retry succeeds or the entry is removed, or until sign-out |
+| Cache Storage of the service worker (`speakr-static-<version>`) | The application files under `/static/` only: scripts, styles, fonts, images and translation files. No page, no response of `/api/`, `/audio/`, `/recording/`, `/share/` or `/admin`, and nothing of an incognito request is stored. | Until the next release is opened, until sign-out, or until the site data is cleared |
+| Cookie `speakr_signed_out` | The value `1`, without user data. It is set by the server in the answer to a sign-out and is removed by the sign-in page once the browser has been cleared. | Seconds; at most the browser session |
 
-On a shared computer, site data must be cleared after use, or a separate browser profile must be used for each person.
+### Service worker
+
+The service worker is registered on the signed-in pages with the scope `/`. It is not registered for a visitor who is not signed in, such as the reader of a public link. A secure context is required by browsers: `https`, or `http` on `localhost` or `127.0.0.1`. Over plain `http` on another address no service worker exists, and the interface is used without it.
+
+- Application files under `/static/` are kept in Cache Storage. A file of the current release is taken from there first.
+- A page is always requested from the server. When the server cannot be reached, a fixed page with the text "You are offline" is shown. It is part of the worker file and contains no user data. Pages are never stored, because they contain user data and CSRF tokens.
+- Every other request is passed to the server untouched: all requests under `/api/`, `/audio/`, `/recording/`, `/share/` and `/admin`, sign-in and sign-out, uploads, every request that is not a `GET`, media requests, and requests to another origin.
+- When a new release is opened, the cache of the release before it is deleted. A cache left by an earlier release (`Speakr-cache-<version>`) and its registration for `/static/` are removed at the first visit after the upgrade.
+- Push messages, system notifications and background sync are not implemented.
+
+### Sign-out
+
+At sign-out, the following is removed from the browser: every entry in Cache Storage, the whole `sessionStorage` of the tab, and the content of the IndexedDB stores `SpeakrRecordings` and `SpeakrFailedUploads`. The removal is carried out on the sign-in page that follows the sign-out, so nothing is removed when a sign-out is canceled.
+
+When the browser holds a recording that was not finished or uploads that failed, a question is shown before the sign-out, because these copies exist nowhere else. With **Cancel**, the copies and the session are kept.
+
+Not removed at sign-out: the interface preferences in `localStorage`, and the `sessionStorage` of other open tabs of the same browser. The end of a session through an idle timeout is not a sign-out, and nothing is removed from the browser then. On a shared computer, every person must sign out after use and close the other tabs, or a separate browser profile must be used for each person.
 
 ## Incognito mode
 
@@ -208,13 +225,13 @@ Limits of incognito mode:
 14. Leave `ENABLE_AUTO_EXPORT`, `ENABLE_AUTO_PROCESSING` and `PRESERVE_TEMP_AUDIO` unset unless their folders are covered by the same protection. With automatic export in use, set `auto_export_delete_with_recording=true`.
 15. Apply the retention and the encryption of the live system to its backups. Recordings deleted later are still present in an older backup.
 16. Keep a list of the people with access to the host, the Docker daemon, the database and the backups. Each of them can read all recordings.
-17. Instruct users on shared computers to clear site data, or give each user a separate browser profile.
+17. Instruct users on shared computers to sign out after use and to close the other tabs, or give each user a separate browser profile. What is removed at sign-out is listed under [Sign-out](#sign-out).
 
 ## Known limits
 
 - **No access audit log.** No record is kept of who viewed, played, downloaded or exported a recording, of sign-ins and failed sign-ins, or of actions by administrators. The only records are the share audit table for internal shares (its rows are deleted together with the recording), the time of last use of each API token, and the temporary counters of failed sign-ins. An access record required by a regulation must come from the reverse proxy or another system.
 - **No encryption at rest in the application.** Database content, media files, webhook signing secrets and exported files are stored as plain data.
-- **Content in the browser.** Audio of an ordinary recording in progress and files of failed ordinary uploads are kept in IndexedDB, and chat threads in `sessionStorage`, as listed under [Browser storage](#browser-storage). They are not removed at sign-out.
+- **Content in the browser.** Audio of an ordinary recording in progress and files of failed ordinary uploads are kept in IndexedDB, and chat threads in `sessionStorage`, as listed under [Browser storage](#browser-storage). They are removed at sign-out, but not when a session ends through an idle timeout or when the browser is closed without a sign-out. Interface preferences in `localStorage`, among them the id of the last selected recording, are kept.
 - **Titles and file names after deletion.** They are kept in the webhook delivery rows for `webhook_delivery_retention_days` (default 30), unless `webhook_omit_titles` is on.
 - **Exported files after deletion.** They are kept under a `[deleted]_` name unless `auto_export_delete_with_recording` is on.
 - **System error text in the default log.** Errors of the operating system, the database and FFmpeg are logged with their text, as described under [Logs](#logs).

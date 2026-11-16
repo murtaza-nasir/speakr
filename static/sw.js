@@ -1,643 +1,315 @@
-// The registration URL carries the app version as ?v=<version> (see
-// app.modular.js). Deriving the cache name from it gives every release its
-// own cache namespace, so the activate handler below clears the previous
-// release's app shell instead of serving it forever (issue #357).
-const VERSION_PARAM = new URLSearchParams(self.location.search).get('v');
-const APP_VERSION = VERSION_PARAM || 'v5';
-const CACHE_NAME = `Speakr-cache-${APP_VERSION}`;
-const ASSETS_TO_CACHE = [
-  '/',
-  '/static/offline.html',
-  '/static/manifest.json',
-  '/static/css/styles.css',
-  '/static/css/tailwind.css',
-  '/static/js/app.modular.js',
-  '/static/js/i18n.js',
-  '/static/js/app-dialog.js',
-  '/static/js/csrf-refresh.js',
-  '/static/img/icon-192x192.png',
-  '/static/img/icon-512x512.png',
-  '/static/img/favicon.ico',
-  // Local vendor assets (no external CDN dependencies)
-  '/static/vendor/js/vue.global.js',
-  '/static/vendor/js/marked.min.js',
-  '/static/vendor/js/easymde.min.js',
-  '/static/vendor/css/fontawesome.min.css',
-  '/static/vendor/css/easymde.min.css'
+// Speakr service worker.
+//
+// It is served at /sw.js (src/app.py) and registered with scope / by
+// static/js/service-worker-client.js, as /sw.js?v=<app version>.
+//
+// What it does, and nothing else:
+//
+//   - Files under /static/ are kept in Cache Storage. A request with this
+//     release's ?v= is answered from the cache first; any other static
+//     request goes to the network and the cached copy is used only when
+//     the network fails.
+//   - A navigation (a page) always goes to the network. When the network
+//     fails, a fixed "You are offline" page is answered. It is part of this
+//     file and holds no user data; it loads the requested page again once
+//     the server answers. No page is ever stored: pages embed user
+//     data and CSRF tokens.
+//   - Everything else is left to the browser, as if no worker existed:
+//     /api/, /audio/, /recording/, /share/, /admin, sign-in and sign-out,
+//     uploads, every request that is not a GET, every cross-origin request,
+//     media and Range requests. Nothing of these reaches Cache Storage, so a
+//     later user of the same browser cannot be shown an earlier user's lists,
+//     transcripts or summaries, and nothing of an incognito request is kept.
+//   - At sign-out every cache is deleted (the SIGN_OUT message of
+//     service-worker-client.js, and the POST /logout request itself).
+//
+// No push, notification, background sync or message feature is implemented:
+// the server sends no push messages, and failed uploads are retried by the
+// page (composables/upload.js).
+//
+// routeRequest() and mayStore() are pure and are tested by
+// static/js/sw.test.js, which also runs the handlers against a fake Cache
+// Storage.
+
+const VERSION = new URLSearchParams(self.location.search).get('v') || '';
+const CACHE_PREFIX = 'speakr-static-';
+const CACHE_NAME = `${CACHE_PREFIX}${VERSION || 'unversioned'}`;
+
+// Never stored and never answered from a cache, whatever a later rule says.
+const PRIVATE_PREFIXES = [
+  '/api/', '/audio/', '/recording/', '/recordings/', '/share/', '/admin', '/upload',
+  '/speakers', '/auth/', '/login', '/logout', '/register', '/sso/', '/account',
+  '/forgot-password', '/reset-password', '/verify-email', '/resend-verification',
+  '/change_password', '/inquire', '/chat', '/search', '/status', '/tags', '/folders',
+  '/tokens', '/share-target', '/group-management',
 ];
 
-// The templates link every script and stylesheet as <path>?v=<app version>,
-// so the URL of an entry asset changes with each release. A worker from an
-// earlier release looks its cache up by full URL, misses, and fetches the
-// asset from the network: new HTML can never be paired with the entry script
-// or stylesheet of the release before it. The app shell is precached under
-// the same versioned URLs so that an offline start finds it.
-const versionedUrl = (path) => (
-  VERSION_PARAM && /\.(js|css)$/.test(path)
-    ? `${path}?v=${encodeURIComponent(VERSION_PARAM)}`
-    : path
-);
-const PRECACHE_URLS = ASSETS_TO_CACHE.map(versionedUrl);
+// Files and streams: a navigation to one of these (a download link) is left
+// to the browser as well, without the offline page. /recordings/<id> is a
+// page (the app with that recording open) and is not in this list.
+const DOWNLOAD_PREFIXES = ['/api/', '/audio/', '/recording/', '/upload', '/speakers/', '/share/audio/'];
 
-// True when a request belongs to the release this worker was installed for:
-// it carries this worker's ?v=, or none at all.
-const isThisRelease = (url) => {
-  const v = url.searchParams.get('v');
-  return v === null || v === VERSION_PARAM;
-};
+// Static files that must always come from the network: the manifest is read
+// again by the browser to register share targets and shortcuts, and the
+// worker file itself is fetched by the browser's update check.
+const STATIC_NETWORK_ONLY = ['/static/manifest.json', '/static/sw.js'];
 
-// Function to update shortcuts (structure from your example)
-// The actual `lists` data would need to be sent from your client-side app.js
-const updateShortcuts = async (lists) => {
-  if (!self.registration || !('shortcuts' in self.registration)) {
-    console.log('Shortcuts API not supported or registration not available.');
-    return;
-  }
+const startsWithAny = (path, prefixes) => prefixes.some((prefix) => path.startsWith(prefix));
 
+const isPrivatePath = (path) => !path.startsWith('/static/') && startsWithAny(path, PRIVATE_PREFIXES);
+
+/**
+ * What the worker does with a request.
+ *
+ * @param {{method: string, url: string, mode?: string, destination?: string, range?: boolean}} request
+ * @param {string} origin - the worker's origin
+ * @param {string} version - the worker's release ('' when unknown)
+ * @returns {'bypass'|'navigate'|'static-cache-first'|'static-network-first'|'static-network-only'}
+ *   bypass: not handled, the browser does what it does without a worker;
+ *   navigate: network only, the offline page when the network fails;
+ *   static-cache-first: this release's file, from the cache when it is there;
+ *   static-network-first: a static file without ?v=, cached copy only offline;
+ *   static-network-only: a static file of another release, never stored.
+ */
+function routeRequest(request, origin, version) {
+  if (!request || request.method !== 'GET') return 'bypass';
+  let url;
   try {
-    let shortcuts = [
-      {
-        name: "New Recording",
-        short_name: "New",
-        description: "Upload or record new audio",
-        url: "/#upload", // Or your direct upload page route
-        icons: [{ src: "/static/img/icon-192x192.png", sizes: "192x192" }]
-      },
-      {
-        name: "View Gallery",
-        short_name: "Gallery",
-        description: "Access your recordings gallery",
-        url: "/#gallery", // Or your direct gallery page route
-        icons: [{ src: "/static/img/icon-192x192.png", sizes: "192x192" }]
-      }
-    ];
-
-    // Example: If you had dynamic lists to add as shortcuts
-    if (Array.isArray(lists) && lists.length > 0) {
-      const dynamicShortcuts = lists.slice(0, 2).map(list => { // Max 2 dynamic, total 4
-        if (list && list.id && list.title) {
-          return {
-            name: list.title,
-            short_name: list.title.length > 10 ? list.title.substring(0, 9) + '…' : list.title,
-            description: `View ${list.title}`,
-            url: `/list/${list.id}`, // Example dynamic URL
-            icons: [{ src: "/static/img/icon-192x192.png", sizes: "192x192" }]
-          };
-        }
-        return null;
-      }).filter(Boolean);
-      shortcuts = [...shortcuts, ...dynamicShortcuts];
-    }
-
-    await self.registration.shortcuts.set(shortcuts);
-    console.log('PWA shortcuts updated successfully:', shortcuts);
-  } catch (error) {
-    console.error('Error updating PWA shortcuts:', error);
+    url = new URL(request.url);
+  } catch (e) {
+    return 'bypass';
   }
-};
-
-
-// Cache first strategy: Respond from cache if available, otherwise fetch from network and cache.
-const cacheFirst = async (request) => {
-  const responseFromCache = await caches.match(request);
-  if (responseFromCache) {
-    return responseFromCache;
+  if (url.origin !== origin) return 'bypass';
+  if (request.range || request.destination === 'audio' || request.destination === 'video'
+      || request.destination === 'track') {
+    return 'bypass';
   }
+  const path = url.pathname;
+  if (path.startsWith('/static/')) {
+    if (STATIC_NETWORK_ONLY.includes(path)) return 'bypass';
+    const v = url.searchParams.get('v');
+    if (v === null) return 'static-network-first';
+    return version && v === version ? 'static-cache-first' : 'static-network-only';
+  }
+  if (request.mode === 'navigate') {
+    return startsWithAny(path, DOWNLOAD_PREFIXES) ? 'bypass' : 'navigate';
+  }
+  return 'bypass';
+}
+
+/**
+ * Whether a response may be put into Cache Storage. Only static routes store
+ * anything; this is the second lock on the same door.
+ *
+ * Browsers remove Set-Cookie from every response a worker can read, so the
+ * stored copy never holds a cookie; the header is still checked for the
+ * environments that expose it.
+ *
+ * @param {string} route - the result of routeRequest()
+ * @param {string} url - the request URL
+ * @param {{status: number, type?: string, cacheControl?: string, vary?: string, setCookie?: boolean}} response
+ */
+function mayStore(route, url, response) {
+  if (route !== 'static-cache-first' && route !== 'static-network-first') return false;
+  let path;
   try {
-    const responseFromNetwork = await fetch(request);
-    // Check if the response is valid before caching
-    if (responseFromNetwork && responseFromNetwork.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, responseFromNetwork.clone());
-    }
-    return responseFromNetwork;
-  } catch (error) {
-    console.error('CacheFirst: Network request failed for:', request.url, error);
-    // For assets, returning a generic error or specific offline asset might be better than network error.
-    // However, if it's a critical asset not found, this indicates an issue.
-    return new Response('Network error trying to fetch asset.', {
-      status: 408,
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    path = new URL(url).pathname;
+  } catch (e) {
+    return false;
+  }
+  if (!path.startsWith('/static/') || isPrivatePath(path)) return false;
+  if (!response || response.status !== 200) return false;
+  if (response.type && response.type !== 'basic') return false;
+  if (response.setCookie) return false;
+  if (/\b(no-store|private)\b/i.test(response.cacheControl || '')) return false;
+  if ((response.vary || '').trim() === '*') return false;
+  return true;
+}
+
+// A worker from a release before this one was registered at /static/sw.js,
+// with scope /static/, where it controlled no page. The browser's update
+// check gives such a registration this file. It then removes itself and
+// touches nothing; the page removes it as well (service-worker-client.js).
+const isLeftoverScope = (scope) => {
+  try {
+    return new URL(scope).pathname !== '/';
+  } catch (e) {
+    return false;
+  }
+};
+const LEFTOVER = isLeftoverScope(self.registration ? self.registration.scope : `${self.location.origin}/`);
+
+const OFFLINE_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Offline - Speakr</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background: #f0f2f5; color: #1c1e21; display: flex; justify-content: center; align-items: center;
+         min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; text-align: center; }
+  main { background: #fff; padding: 40px; border-radius: 8px; max-width: 28rem;
+         box-shadow: 0 2px 4px rgba(0,0,0,.1), 0 8px 16px rgba(0,0,0,.1); }
+  h1 { font-size: 24px; margin: 0 0 10px; }
+  p { font-size: 16px; color: #606770; margin: 0 0 20px; }
+  button { font: inherit; padding: 8px 20px; border-radius: 6px; border: 1px solid #8a8d91;
+           background: transparent; color: inherit; cursor: pointer; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1c1e21; color: #e4e6eb; }
+    main { background: #242526; }
+    p { color: #b0b3b8; }
+  }
+</style>
+</head>
+<body>
+<main id="speakr-offline">
+  <h1>You are offline</h1>
+  <p>Speakr cannot be reached. This page is loaded again when the connection is back.</p>
+  <button type="button" onclick="location.reload()">Try again</button>
+</main>
+<script>
+// The page is loaded again once the server answers: asked when the browser
+// reports a connection, and every five seconds while the tab is visible (the
+// server may have been the part that was away). The question is a HEAD
+// request, which the worker leaves to the browser; any answer counts.
+(function () {
+  var asking = false;
+  function ask() {
+    if (asking) return;
+    asking = true;
+    fetch('/static/manifest.json', { method: 'HEAD', cache: 'no-store' })
+      .then(function () { location.reload(); })
+      .catch(function () { asking = false; });
+  }
+  window.addEventListener('online', ask);
+  setInterval(function () { if (document.visibilityState === 'visible') ask(); }, 5000);
+})();
+</script>
+</body>
+</html>`;
+
+const offlineResponse = () => new Response(OFFLINE_HTML, {
+  status: 503,
+  statusText: 'Offline',
+  headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+});
+
+const responseFacts = (response) => ({
+  status: response.status,
+  type: response.type,
+  cacheControl: response.headers.get('Cache-Control') || '',
+  vary: response.headers.get('Vary') || '',
+  setCookie: response.headers.has('Set-Cookie'),
+});
+
+// Static responses carry "Vary: Cookie" when the session was read; the file
+// is the same for everyone, so Vary is ignored on lookup.
+const MATCH = { ignoreVary: true };
+
+const store = async (route, request, response) => {
+  if (!mayStore(route, request.url, responseFacts(response))) return;
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, response);
+  } catch (e) {
+    // A full disk or a private window: the file is simply not kept.
   }
 };
 
-// Stale-while-revalidate strategy: Respond from cache immediately if available,
-// then update the cache with a fresh response from the network.
-const staleWhileRevalidate = async (request) => {
+const cacheFirst = async (event, route) => {
   const cache = await caches.open(CACHE_NAME);
-  const cachedResponsePromise = cache.match(request);
-  const networkResponsePromise = fetch(request).then(networkResponse => {
-    if (networkResponse && networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  }).catch(error => {
-    console.error('StaleWhileRevalidate: Network request failed for:', request.url, error);
-    // If network fails, we still might have a cached response.
-    // If not, this error will propagate.
-    return new Response('API request failed and no cache available.', {
-        status: 503, // Service Unavailable
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Service temporarily unavailable. Please try again later.' })
-    });
-  });
-
-  return (await cachedResponsePromise) || networkResponsePromise;
+  const cached = await cache.match(event.request, MATCH);
+  if (cached) return cached;
+  const response = await fetch(event.request);
+  event.waitUntil(store(route, event.request, response.clone()));
+  return response;
 };
 
-// App shell strategy for the assets in ASSETS_TO_CACHE. A request for this
-// release is answered from the cache (exact URL first, then the same path
-// with any query string) and refreshed in the background. A request that
-// carries another release's ?v= always goes to the network and is not stored;
-// the cached copy of the same path is used only when the network fails.
-const appShellAsset = async (request) => {
-  const cache = await caches.open(CACHE_NAME);
-  const sameRelease = isThisRelease(new URL(request.url));
-  const cached = sameRelease
-    ? (await cache.match(request)) || (await cache.match(request, { ignoreSearch: true }))
-    : undefined;
-  const network = fetch(request).then((networkResponse) => {
-    if (sameRelease && networkResponse && networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  });
-  if (cached) {
-    network.catch((error) => {
-      console.warn('AppShell: background refresh failed for:', request.url, error);
-    });
-    return cached;
-  }
+const networkFirst = async (event, route) => {
   try {
-    return await network;
+    const response = await fetch(event.request);
+    event.waitUntil(store(route, event.request, response.clone()));
+    return response;
   } catch (error) {
-    console.error('AppShell: network request failed for:', request.url, error);
-    const fallback = await cache.match(request, { ignoreSearch: true });
-    return fallback || new Response('Network error and no cache available.', {
-      status: 503,
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(event.request, MATCH);
+    if (cached) return cached;
+    throw error;
   }
 };
 
-// Network first strategy: Try to fetch from network first.
-// If network fails, fall back to cache. If cache also fails, serve offline page for navigation.
-const networkFirst = async (request) => {
+const navigate = async (event) => {
   try {
-    const networkResponse = await fetch(request);
-    if (networkResponse && networkResponse.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
+    return await fetch(event.request);
   } catch (error) {
-    console.warn('NetworkFirst: Network request failed for:', request.url, error);
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    // For navigation requests, fall back to the offline page if both network and cache fail.
-    if (request.mode === 'navigate') {
-      const offlinePage = await caches.match('/static/offline.html');
-      if (offlinePage) return offlinePage;
-    }
-    // For other types of requests, or if offline page isn't cached, re-throw or return error.
-    return new Response('Network error and no cache available.', {
-      status: 408,
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    return offlineResponse();
   }
 };
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Activate new service worker immediately
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('Service Worker: Caching app shell');
-      return cache.addAll(PRECACHE_URLS.map(url => new Request(url, { cache: 'reload' }))) // Force reload from network for app shell
-        .catch(error => {
-          console.error('Failed to cache app shell during install:', error);
-          // You might want to log which specific asset failed
-          PRECACHE_URLS.forEach(url => {
-            cache.add(new Request(url, { cache: 'reload' })).catch(err => console.warn(`Failed to cache: ${url}`, err));
-          });
-        });
-    })
-  );
+const deleteCaches = async (keep) => {
+  const names = await caches.keys();
+  await Promise.all(names.filter((name) => name !== keep).map((name) => caches.delete(name)));
+};
+
+self.addEventListener('install', () => {
+  // Nothing is fetched at install. The new worker takes over at once: static
+  // URLs carry the release, so a page of the release before is not answered
+  // with this release's files, nor the other way round.
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => {
-            console.log('Service Worker: Deleting old cache', name);
-            return caches.delete(name);
-          })
-      );
-    }).then(async () => {
-      // Purge any media responses cached by previous service worker versions
-      // within the SAME cache namespace (#374): a cached 200 for /audio/<id>
-      // would be served to the media element's Range requests and stall
-      // playback persistently for that user.
-      try {
-        const cache = await caches.open(CACHE_NAME);
-        const keys = await cache.keys();
-        await Promise.all(keys.map((req) => {
-          const p = new URL(req.url).pathname;
-          if (p.startsWith('/audio/') || p.startsWith('/share/audio/') || p.startsWith('/speakers/snippet-audio/')) {
-            return cache.delete(req);
-          }
-          return Promise.resolve();
-        }));
-      } catch (e) {
-        console.warn('Service Worker: media cache purge failed:', e);
-      }
-      console.log('Service Worker: Activated and old caches cleared.');
-      return self.clients.claim(); // Take control of all open clients
-    })
-  );
+  if (LEFTOVER) {
+    event.waitUntil(self.registration.unregister());
+    return;
+  }
+  // Every cache of another release, and the caches of the workers before
+  // this one (Speakr-cache-*), are deleted.
+  event.waitUntil(deleteCaches(CACHE_NAME).then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', (event) => {
+  if (LEFTOVER) return;
   const request = event.request;
-  const url = new URL(request.url);
 
-  // Skip non-GET requests from caching strategies (they should pass through)
-  if (request.method !== 'GET') {
-    // event.respondWith(fetch(request)); // Let non-GET requests pass through to the network
-    return; // Or simply return to let the browser handle it
-  }
-
-  // Media streams must bypass the service worker entirely (#374). The media
-  // element manages its own Range requests; proxying them through the Cache
-  // API breaks playback: cache.put() rejects 206 responses, a cached 200
-  // served to a Range request wedges the media pipeline, and the inner
-  // fetch() ignores the element's aborts, leaking held-open connections.
-  // Returning without respondWith lets the browser handle these natively.
-  if (request.headers.has('range') ||
-      request.destination === 'audio' ||
-      request.destination === 'video' ||
-      url.pathname.startsWith('/audio/') ||
-      url.pathname.startsWith('/share/audio/') ||
-      url.pathname.startsWith('/speakers/snippet-audio/')) {
-    return;
-  }
-
-  // Serve API calls from /api/ with stale-while-revalidate
-  // (excluding auth-related endpoints)
-  if (url.pathname.startsWith('/api/')) {
-    if (url.pathname.includes('/login') || url.pathname.includes('/logout') || url.pathname.includes('/auth')) {
-      // For auth, always go to network, don't cache
-      event.respondWith(fetch(request));
-      return;
-    }
-    event.respondWith(staleWhileRevalidate(request));
-    return;
-  }
-  
-  // Handle navigation requests (HTML pages) with network-first, then cache, then offline page.
-  if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  // The web app manifest must NEVER be served stale. Android/Chrome re-reads
-  // it to (re)register the PWA's share_target (and file_handlers, shortcuts,
-  // etc). Cache-first pins whatever manifest was cached at first install —
-  // e.g. one from before share_target existed — so the Android share sheet
-  // never gains "Speakr" as a target no matter how many times the manifest
-  // is updated server-side. Serve it network-first: fresh from the network,
-  // falling back to cache only when offline.
-  if (url.pathname === '/static/manifest.json') {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  // For static assets listed in ASSETS_TO_CACHE, use stale-while-revalidate:
-  // the cached copy keeps loads fast (and works offline), while the
-  // background refetch means a stale shell self-heals on the next load
-  // instead of being pinned until the service worker itself changes.
-  // Assets are listed by path; the ?v= of the request decides whether the
-  // cached copy may answer it (see appShellAsset).
-  const requestPath = url.origin === self.origin ? url.pathname : request.url;
-  if (ASSETS_TO_CACHE.includes(requestPath)) {
-    event.respondWith(appShellAsset(request));
-    return;
-  }
-
-  // Default strategy for other GET requests: try cache, then network.
-  // This is a good general fallback for other static assets not explicitly listed
-  // or for assets from other origins if not handled by ASSETS_TO_CACHE.
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(request).then(networkResponse => {
-        // Optionally cache other successful GET responses here if desired
-        // if (networkResponse && networkResponse.ok) {
-        //   const cache = await caches.open(CACHE_NAME);
-        //   cache.put(request, networkResponse.clone());
-        // }
-        return networkResponse;
-      }).catch(() => {
-        // If network fails for a non-navigation, non-API, non-explicitly-cached asset
-        // there isn't much we can do other than return an error or nothing.
-        // For simplicity, let the browser handle the error.
-      });
-    })
-  );
-});
-
-// Listen for messages from the client (e.g., to update shortcuts)
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'UPDATE_SHORTCUTS') {
-    console.log('Service Worker: Received UPDATE_SHORTCUTS message:', event.data.lists);
-    // updateShortcuts(event.data.lists); // Call if you implement dynamic shortcuts based on client data
-  }
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
-// Background sync for failed uploads
-self.addEventListener('sync', (event) => {
-  console.log('[Service Worker] Background sync triggered:', event.tag);
-
-  if (event.tag === 'sync-uploads') {
-    event.waitUntil(syncFailedUploads());
-  }
-});
-
-// IndexedDB helper for failed uploads
-async function openFailedUploadsDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('SpeakrFailedUploads', 1);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains('failedUploads')) {
-        const objectStore = db.createObjectStore('failedUploads', { keyPath: 'id', autoIncrement: true });
-        objectStore.createIndex('timestamp', 'timestamp', { unique: false });
-        objectStore.createIndex('clientId', 'clientId', { unique: false });
-      }
-    };
-  });
-}
-
-// Get all failed uploads from IndexedDB
-async function getFailedUploads(db) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['failedUploads'], 'readonly');
-    const objectStore = transaction.objectStore('failedUploads');
-    const request = objectStore.getAll();
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Delete a failed upload after successful retry
-async function deleteFailedUpload(db, id) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['failedUploads'], 'readwrite');
-    const objectStore = transaction.objectStore('failedUploads');
-    const request = objectStore.delete(id);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Update retry count for a failed upload
-async function updateRetryCount(db, id, retryCount, error) {
-  return new Promise(async (resolve, reject) => {
+  // Sign-out: the caches are deleted when the request leaves the browser,
+  // also when the page that follows never runs its part.
+  if (request.method === 'POST') {
     try {
-      const transaction = db.transaction(['failedUploads'], 'readwrite');
-      const objectStore = transaction.objectStore('failedUploads');
-      const getRequest = objectStore.get(id);
-
-      getRequest.onsuccess = () => {
-        const upload = getRequest.result;
-        if (!upload) {
-          reject(new Error('Upload not found'));
-          return;
-        }
-
-        upload.retryCount = retryCount;
-        upload.lastRetry = Date.now();
-        if (error) {
-          upload.lastError = error;
-        }
-
-        const putRequest = objectStore.put(upload);
-        putRequest.onsuccess = () => resolve();
-        putRequest.onerror = () => reject(putRequest.error);
-      };
-
-      getRequest.onerror = () => reject(getRequest.error);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-// Retry uploading a failed upload
-async function retryUpload(upload) {
-  const formData = new FormData();
-
-  // Reconstruct File from ArrayBuffer
-  const file = new File([upload.fileData], upload.fileName, { type: upload.mimeType });
-  formData.append('file', file);
-
-  if (upload.notes) {
-    formData.append('notes', upload.notes);
-  }
-
-  if (upload.tags && upload.tags.length > 0) {
-    upload.tags.forEach(tag => {
-      formData.append('tags[]', JSON.stringify(tag));
-    });
-  }
-
-  if (upload.asrOptions) {
-    if (upload.asrOptions.language) {
-      formData.append('asr_language', upload.asrOptions.language);
-    }
-    if (upload.asrOptions.min_speakers) {
-      formData.append('asr_min_speakers', upload.asrOptions.min_speakers);
-    }
-    if (upload.asrOptions.max_speakers) {
-      formData.append('asr_max_speakers', upload.asrOptions.max_speakers);
-    }
-  }
-
-  // Get CSRF token from cookies
-  const csrfToken = getCookie('csrf_access_token');
-  const headers = csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {};
-
-  const response = await fetch('/upload', {
-    method: 'POST',
-    headers: headers,
-    body: formData,
-    credentials: 'same-origin'
-  });
-
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
-
-// Get cookie value
-function getCookie(name) {
-  const value = `; ${self.cookies || ''}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return null;
-}
-
-// Sync failed uploads from IndexedDB
-async function syncFailedUploads() {
-  console.log('[Service Worker] Syncing failed uploads');
-
-  try {
-    const db = await openFailedUploadsDB();
-    const failedUploads = await getFailedUploads(db);
-
-    if (failedUploads.length === 0) {
-      console.log('[Service Worker] No failed uploads to retry');
-      return Promise.resolve();
-    }
-
-    console.log(`[Service Worker] Found ${failedUploads.length} failed uploads to retry`);
-
-    // Notify that sync started
-    await self.registration.showNotification('Speakr Upload Sync', {
-      body: `Retrying ${failedUploads.length} failed upload(s)...`,
-      icon: '/static/img/icon-192x192.png',
-      badge: '/static/img/icon-192x192.png',
-      tag: 'upload-sync',
-      requireInteraction: false
-    });
-
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const upload of failedUploads) {
-      try {
-        // Limit retries to 3 attempts
-        if (upload.retryCount >= 3) {
-          console.log(`[Service Worker] Upload ${upload.id} exceeded retry limit (${upload.retryCount})`);
-          failCount++;
-          continue;
-        }
-
-        console.log(`[Service Worker] Retrying upload ${upload.id} (attempt ${upload.retryCount + 1})`);
-
-        await retryUpload(upload);
-
-        // Success - delete from IndexedDB
-        await deleteFailedUpload(db, upload.id);
-        successCount++;
-
-        console.log(`[Service Worker] Successfully retried upload ${upload.id}`);
-      } catch (error) {
-        // Update retry count
-        await updateRetryCount(db, upload.id, upload.retryCount + 1, error.message);
-        failCount++;
-
-        console.error(`[Service Worker] Failed to retry upload ${upload.id}:`, error);
+      const url = new URL(request.url);
+      if (url.origin === self.location.origin && url.pathname === '/logout') {
+        event.waitUntil(deleteCaches(null));
       }
-    }
-
-    // Show final notification
-    await self.registration.showNotification('Speakr Upload Sync Complete', {
-      body: `${successCount} succeeded, ${failCount} failed`,
-      icon: '/static/img/icon-192x192.png',
-      badge: '/static/img/icon-192x192.png',
-      tag: 'upload-sync-complete',
-      requireInteraction: false
-    });
-
-    return Promise.resolve();
-  } catch (error) {
-    console.error('[Service Worker] Failed to sync uploads:', error);
-
-    await self.registration.showNotification('Speakr Upload Sync Failed', {
-      body: 'Could not sync failed uploads. Will retry later.',
-      icon: '/static/img/icon-192x192.png',
-      badge: '/static/img/icon-192x192.png',
-      tag: 'upload-sync-error',
-      requireInteraction: false
-    });
-
-    return Promise.reject(error);
+    } catch (e) { /* not a URL the worker handles */ }
+    return;
   }
-}
 
-// Push notification handler
-self.addEventListener('push', (event) => {
-  console.log('[Service Worker] Push notification received');
+  // A request the browser may answer from its own cache only (developer
+  // tools) cannot be fetched by a worker.
+  if (request.cache === 'only-if-cached' && request.mode !== 'same-origin') return;
 
-  const options = {
-    icon: '/static/img/icon-192x192.png',
-    badge: '/static/img/icon-192x192.png',
-    vibrate: [200, 100, 200],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    }
-  };
+  const route = routeRequest({
+    method: request.method,
+    url: request.url,
+    mode: request.mode,
+    destination: request.destination,
+    range: request.headers.has('range'),
+  }, self.location.origin, VERSION);
 
-  if (event.data) {
-    const data = event.data.json();
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Speakr Notification', {
-        body: data.body || 'You have a new notification',
-        ...options,
-        data: data
-      })
-    );
-  } else {
-    event.waitUntil(
-      self.registration.showNotification('Speakr Notification', {
-        body: 'You have a new notification',
-        ...options
-      })
-    );
-  }
+  if (route === 'navigate') event.respondWith(navigate(event));
+  else if (route === 'static-cache-first') event.respondWith(cacheFirst(event, route));
+  else if (route === 'static-network-first') event.respondWith(networkFirst(event, route));
+  // bypass and static-network-only: no respondWith, the browser fetches it.
 });
 
-// Notification click handler
-self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] Notification clicked:', event.notification.tag);
-  event.notification.close();
-
-  // Handle different notification types
-  const urlToOpen = event.notification.data?.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        // Check if there's already a window open
-        for (const client of clientList) {
-          if (client.url === urlToOpen && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        // If no window is open, open a new one
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
-      })
-  );
+self.addEventListener('message', (event) => {
+  if (LEFTOVER || !event.data || event.data.type !== 'SIGN_OUT') return;
+  // The worker keeps nothing in memory besides the constants above; the
+  // caches are all it holds.
+  const done = deleteCaches(null).then(() => {
+    if (event.ports && event.ports[0]) event.ports[0].postMessage({ type: 'SIGNED_OUT' });
+  });
+  if (event.waitUntil) event.waitUntil(done);
 });

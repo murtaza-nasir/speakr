@@ -4107,5 +4107,11 @@
     "uploaded": "subida {{date}}",
     "uploadedLabel": "Subida",
     "uploadedOn": "Subida {{date}}"
+  },
+  "signOut": {
+    "localCopiesTitle": "¿Eliminar las copias de este navegador?",
+    "localCopiesMessageOne": "Este navegador guarda 1 grabación o subida que no llegó al servidor. Se elimina de este navegador al cerrar sesión.",
+    "localCopiesMessage": "Este navegador guarda {{count}} grabaciones o subidas que no llegaron al servidor. Se eliminan de este navegador al cerrar sesión.",
+    "deleteAndSignOut": "Eliminar y cerrar sesión"
   }
 }

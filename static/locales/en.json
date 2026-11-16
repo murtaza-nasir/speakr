@@ -4107,5 +4107,11 @@
     "uploaded": "uploaded {{date}}",
     "uploadedLabel": "Uploaded",
     "uploadedOn": "Uploaded {{date}}"
+  },
+  "signOut": {
+    "localCopiesTitle": "Delete the copies in this browser?",
+    "localCopiesMessageOne": "This browser holds 1 recording or upload that did not reach the server. It is deleted from this browser at sign-out.",
+    "localCopiesMessage": "This browser holds {{count}} recordings or uploads that did not reach the server. They are deleted from this browser at sign-out.",
+    "deleteAndSignOut": "Delete and sign out"
   }
 }

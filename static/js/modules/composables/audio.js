@@ -1132,14 +1132,6 @@ export function useAudio(state, utils) {
             // Start visualizers
             drawVisualizers();
 
-            // Notify service worker
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({
-                    type: 'RECORDING_STATE',
-                    isRecording: true
-                });
-            }
-
         } catch (error) {
             console.error('Recording error:', error);
             setGlobalError((utils.t && utils.t('errors.startRecordingFailed', { error: error.message })) || `Failed to start recording: ${error.message}`);
@@ -1246,15 +1238,6 @@ export function useAudio(state, utils) {
 
             // Hide recording notification
             await hideRecordingNotification();
-
-            // Notify service worker
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({
-                    type: 'RECORDING_STATE',
-                    isRecording: false,
-                    duration: recordingTime.value
-                });
-            }
         }
     };
 

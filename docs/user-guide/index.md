@@ -15,7 +15,7 @@ Welcome to the Speakr User Guide! This documentation will help you master every 
   <div class="guide-card">
     <div class="card-icon">📱</div>
     <h3>Progressive Web App</h3>
-    <p>Install as a PWA for offline access and wake lock support during recording.</p>
+    <p>Install as a PWA for an app on the home screen and wake lock support during recording.</p>
     <a href="pwa" class="card-link">Learn About PWA →</a>
   </div>
 

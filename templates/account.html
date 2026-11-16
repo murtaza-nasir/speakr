@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css', v=app_version) }}">
     {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js', v=app_version) }}"></script>
+    <!-- Service worker registration, and what is removed from the browser at sign-out -->
+    <script src="{{ url_for('static', filename='js/service-worker-client.js', v=app_version) }}" data-register></script>
     <!-- The app's own confirm, message and input dialogs (window.confirmDialog, alertDialog, promptDialog) -->
     <script src="{{ url_for('static', filename='js/app-dialog.js', v=app_version) }}"></script>
     <script src="{{ url_for('static', filename='js/asr-languages.js', v=app_version) }}"></script>
@@ -159,13 +161,13 @@
                     const key = el.getAttribute('data-i18n');
                     const paramsAttr = el.getAttribute('data-i18n-params');
                     const params = paramsAttr ? JSON.parse(paramsAttr) : {};
-                    el.textContent = t(key, params);
+                    el.textContent = t(key, params) || el.textContent; // empty while English is fetched (i18n.js)
                 });
 
                 // Update all elements with data-i18n-placeholder attribute
                 document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                     const key = el.getAttribute('data-i18n-placeholder');
-                    el.placeholder = t(key);
+                    el.placeholder = t(key) || el.placeholder;
                 });
 
                 applyI18nAttributes();
@@ -192,13 +194,13 @@
                 const key = el.getAttribute('data-i18n');
                 const paramsAttr = el.getAttribute('data-i18n-params');
                 const params = paramsAttr ? JSON.parse(paramsAttr) : {};
-                el.textContent = t(key, params);
+                el.textContent = t(key, params) || el.textContent; // empty while English is fetched (i18n.js)
             });
 
             // Update all elements with data-i18n-placeholder attribute
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.getAttribute('data-i18n-placeholder');
-                el.placeholder = t(key);
+                el.placeholder = t(key) || el.placeholder;
             });
 
             applyI18nAttributes();
