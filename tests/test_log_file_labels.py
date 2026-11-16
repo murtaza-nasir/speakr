@@ -21,7 +21,8 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.utils import log_filters
-from src.utils.log_filters import loggable_error, loggable_locator, loggable_path, loggable_text, recording_scope
+from src.utils.log_filters import (FileNamesOutOfTracebacks, loggable_error, loggable_locator, loggable_path,
+                                   loggable_text, recording_scope)
 
 UUID = "0123456789abcdef0123456789abcdef"
 SECRET = "label-test-secret-7f3a"
@@ -394,3 +395,36 @@ def test_a_megabyte_of_error_text_is_cleaned_without_backtracking(shape):
     # About a second at most on the development host; the limit leaves room for a loaded CI runner.
     assert elapsed < 10, f"{elapsed:.1f}s for a megabyte of {shape!r}"
     assert "Jane" not in cleaned
+
+
+# --- tracebacks ---------------------------------------------------------------
+
+def _record_with_traceback(level=logging.ERROR):
+    try:
+        open("/nonexistent-folder-of-this-test/2026/11/42/20261115101500_Jane_Doe_intake.mp3")
+    except OSError:
+        return logging.LogRecord("test", level, __file__, 1, "Error processing a file", None, sys.exc_info())
+
+
+def test_a_traceback_has_no_file_name_above_debug():
+    formatter = FileNamesOutOfTracebacks("%(levelname)s - %(message)s")
+    root = logging.getLogger()
+    level = root.level
+    try:
+        root.setLevel(logging.INFO)
+        text = formatter.format(_record_with_traceback())
+        assert "Traceback (most recent call last)" in text and "FileNotFoundError: [Errno 2]" in text
+        assert "<stored file 20261115101500.mp3 of recording 42>" in text
+        assert os.path.basename(__file__) in text            # the source file of the frame stays
+        _no_name(text)
+        # At DEBUG names are logged anyway: the traceback is as Python wrote it.
+        root.setLevel(logging.DEBUG)
+        assert "20261115101500_Jane_Doe_intake.mp3" in formatter.format(_record_with_traceback())
+    finally:
+        root.setLevel(level)
+
+
+def test_the_application_log_uses_the_formatter():
+    import src.app  # noqa: F401  (configures the root logger at import)
+    import inspect
+    assert "formatter = _LogFormatter(" in inspect.getsource(src.app)

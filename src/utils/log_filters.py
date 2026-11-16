@@ -410,3 +410,23 @@ def loggable_error(error, *paths, recording_id=None):
     text, and the path of a stored upload ends in the original filename.
     """
     return loggable_text(error, *paths, recording_id=recording_id)
+
+
+class FileNamesOutOfTracebacks(logging.Formatter):
+    """A formatter with the file names taken out of a traceback.
+
+    The last line of a traceback is the text of the exception, and an error
+    of the operating system or of FFmpeg has the path of the file in it. A
+    line logged with exc_info at INFO or above would put that path in the
+    default log. With the root logger at DEBUG the traceback is unchanged,
+    as names are logged at that level anyway.
+    """
+
+    def formatException(self, ei):
+        text = super().formatException(ei)
+        if logging.getLogger().getEffectiveLevel() <= logging.DEBUG:
+            return text
+        try:
+            return loggable_text(text)
+        except Exception:
+            return f"<traceback of {getattr(ei[0], '__name__', 'an error')} withheld: it could not be cleaned>"

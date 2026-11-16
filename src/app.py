@@ -149,7 +149,9 @@ else:
 log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
 handler = logging.StreamHandler(sys.stdout)
 handler.setLevel(log_level)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# File names are taken out of tracebacks above DEBUG (#620).
+from src.utils.log_filters import FileNamesOutOfTracebacks as _LogFormatter
+formatter = _LogFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 
 # Get the root logger and clear any existing handlers to avoid duplicates
