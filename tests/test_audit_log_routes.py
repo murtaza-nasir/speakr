@@ -2,12 +2,15 @@
 
 GET /admin/audit-log (filters, keyset paging) and GET /admin/audit-log/export
 (CSV and JSON lines, the rows of the table unchanged). Site admins only: a
-group admin, an ordinary account and a scoped token are refused.
+group admin, an ordinary account and a scoped token are refused. Events
+queued in the process are written before either route reads the table, and
+an export ends at the highest matching id of its start.
 """
 
 import csv
 import io
 import json
+import time
 from datetime import datetime, timedelta
 
 import pytest
@@ -265,3 +268,150 @@ def test_the_tab_is_in_the_admin_page_for_site_admins_only(created):
     assert 'data-audit-log' in page and "activeTab = 'audit'" in page
     assert 'v-if="!isTeamAdminOnly" data-audit-log' in page
     assert 'data-audit-view-activity' in page
+
+
+# --- Queued events, and the export as a snapshot -----------------------------
+
+@pytest.fixture
+def paused_writer():
+    """The background writer waits until it is woken: a queued event stays in
+    the queue until audit.flush is called.
+
+    The interval is read at the start of every wait, and an empty queue ends
+    audit.flush before the writer is woken, so the writer is woken here and
+    the test goes on once the wake-up was taken. Afterwards the interval is
+    put back and the writer is woken out of the long wait.
+    """
+    interval = audit.FLUSH_INTERVAL_SECONDS
+    audit.FLUSH_INTERVAL_SECONDS = 3600
+    try:
+        audit._ensure_writer()
+        audit._wake.set()
+        deadline = time.monotonic() + 10
+        while audit._wake.is_set() or not audit._idle.is_set():
+            assert time.monotonic() < deadline, 'the audit writer did not take the wake-up'
+            time.sleep(0.005)
+        yield
+    finally:
+        audit.FLUSH_INTERVAL_SECONDS = interval
+        audit._wake.set()
+
+
+def _queued(event, **fields):
+    """Queue one event and check that it is in the queue, not in the table."""
+    size = audit._queue.qsize()
+    assert audit.record(event, **fields) is True
+    assert audit._queue.qsize() == size + 1
+    time.sleep(0.05)
+    assert audit._queue.qsize() == size + 1
+
+
+def test_page_includes_an_event_that_is_still_queued(created, paused_writer):
+    admin = make_user(created, prefix='adm', is_admin=True)
+    user = make_user(created)
+    client = client_for(admin)
+    # The id of a deleted account is given out again on SQLite, so only the
+    # rows written from here on are compared.
+    start = max_id()
+    _queued('auth.login.succeeded', actor_kind='session', actor_user_id=user.id)
+    assert max_id() == start
+
+    resp = _get(client, f'user={user.id}')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert [(row['event'], row['actor_user_id']) for row in data['events'] if row['id'] > start] == [
+        ('auth.login.succeeded', user.id)]
+    assert 'pending' not in data
+
+
+def test_page_answers_with_the_written_rows_when_the_queue_is_not_written(created, monkeypatch):
+    admin = make_user(created, prefix='adm', is_admin=True)
+    target = make_user(created, prefix='tgt')
+    rec = REC + 4
+    base, ids = _seed(admin, target, rec, count=5)
+    calls = []
+
+    def busy(timeout=10.0):
+        calls.append(timeout)
+        return False
+
+    monkeypatch.setattr(audit, 'flush', busy)
+    resp = _get(client_for(admin), f'recording_id={rec}')
+    assert resp.status_code == 200
+    assert [row['id'] for row in resp.get_json()['events']] == list(reversed(ids))
+    # One wait per request, and a short one.
+    assert calls == [0.25]
+
+
+@pytest.mark.parametrize('export_format', ['jsonl', 'csv'])
+def test_export_is_a_snapshot(created, monkeypatch, export_format):
+    admin = make_user(created, prefix='adm', is_admin=True)
+    target = make_user(created, prefix='tgt')
+    rec = REC + (5 if export_format == 'jsonl' else 6)
+    base, ids = _seed(admin, target, rec, count=3)
+    stream, later = audit.stream, []
+
+    def stream_with_a_write(filters, **kwargs):
+        # One row per chunk, so that the stream reads the table again after
+        # the row below was committed.
+        for row in stream(filters, **dict(kwargs, chunk=1)):
+            yield row
+            if not later:
+                added = audit.record_in_tx('recording.edited', recording_id=rec, recording_owner_id=admin.id,
+                                           actor_kind='session', actor_user_id=admin.id,
+                                           details={'fields': ['title']})
+                db.session.commit()
+                later.append(added.id)
+
+    monkeypatch.setattr(audit, 'stream', stream_with_a_write)
+    resp = client_for(admin).get(f'/admin/audit-log/export?format={export_format}&recording_id={rec}')
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    if export_format == 'jsonl':
+        exported = [json.loads(line)['id'] for line in body.splitlines()]
+    else:
+        exported = [int(line[0]) for line in list(csv.reader(io.StringIO(body)))[1:]]
+    assert len(later) == 1 and later[0] > ids[-1]
+    assert exported == ids
+    # The row exists and matches the filter: the next export holds it.
+    monkeypatch.setattr(audit, 'stream', stream)
+    resp = client_for(admin).get(f'/admin/audit-log/export?format=jsonl&recording_id={rec}')
+    assert [json.loads(line)['id'] for line in resp.get_data(as_text=True).splitlines()] == ids + later
+
+
+@pytest.mark.parametrize('export_format', ['jsonl', 'csv'])
+def test_export_includes_an_event_queued_before_the_request(created, paused_writer, export_format):
+    admin = make_user(created, prefix='adm', is_admin=True)
+    target = make_user(created, prefix='tgt')
+    rec = REC + (7 if export_format == 'jsonl' else 8)
+    base, ids = _seed(admin, target, rec, count=2)
+    _queued('recording.viewed', recording_id=rec, recording_owner_id=admin.id,
+            actor_kind='session', actor_user_id=target.id)
+    start = max_id()
+    assert AuditEvent.query.filter_by(recording_id=rec).count() == 2
+
+    resp = client_for(admin).get(f'/admin/audit-log/export?format={export_format}&recording_id={rec}')
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    if export_format == 'jsonl':
+        exported = [(row['id'], row['event']) for row in map(json.loads, body.splitlines())]
+    else:
+        table = list(csv.reader(io.StringIO(body)))
+        exported = [(int(line[0]), line[table[0].index('event')]) for line in table[1:]]
+    assert [row[0] for row in exported[:2]] == ids
+    assert [row[1] for row in exported[2:]] == ['recording.viewed'] and exported[2][0] > start
+    # The event of the export itself is queued after the bound was taken.
+    assert [r.details['count'] for r in rows_after(start, 'audit.exported')] == [3]
+
+
+def test_event_written_with_the_action_is_listed_at_once(created):
+    admin = make_user(created, prefix='adm', is_admin=True)
+    rec = REC + 9
+    row = audit.record_in_tx('recording.edited', recording_id=rec, recording_owner_id=admin.id,
+                             actor_kind='session', actor_user_id=admin.id, details={'fields': ['title']})
+    db.session.commit()
+    client = client_for(admin)
+    data = _get(client, f'recording_id={rec}').get_json()
+    assert [r['id'] for r in data['events']] == [row.id]
+    resp = client.get(f'/admin/audit-log/export?format=jsonl&recording_id={rec}')
+    assert [json.loads(line)['id'] for line in resp.get_data(as_text=True).splitlines()] == [row.id]

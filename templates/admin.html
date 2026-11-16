@@ -1316,7 +1316,10 @@ Summarization Instructions:
                   <div class="tab-scroll">
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('auditLog.tab')}</h3>
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" @click="loadAuditLog('refresh')" :disabled="isLoadingAudit" class="btn btn--sm btn--ghost" data-audit-refresh>
+                                <i class="fas fa-sync-alt mr-2" :class="{ 'fa-spin': isLoadingAudit }"></i>${t('buttons.refresh')}
+                            </button>
                             <a :href="auditExportUrl('csv')" class="btn btn--sm btn--ghost" data-audit-export="csv">
                                 <i class="fas fa-download mr-2"></i>${t('auditLog.exportCsv')}
                             </a>
@@ -4547,6 +4550,10 @@ Summarization Instructions:
                     const rows = auditEvents.value;
                     if (direction === 'older' && rows.length) params.set('before_id', rows[rows.length - 1].id);
                     if (direction === 'newer' && rows.length) params.set('after_id', rows[0].id);
+                    // "Refresh" reads the page on screen again: the newest page
+                    // as it is now, an older page from its first row downward.
+                    const anchored = direction === 'refresh' && rows.length > 0 && auditHasNewer.value;
+                    if (anchored) params.set('before_id', Number(rows[0].id) + 1);
                     const request = ++auditRequest;
                     isLoadingAudit.value = true;
                     try {
@@ -4559,6 +4566,9 @@ Summarization Instructions:
                             auditHasNewer.value = false;
                             return;
                         }
+                        // The rows of the page are gone (retention): the newest page.
+                        if (anchored && (!data.events || !data.events.length)) return loadAuditLog();
+                        const openRow = auditOpenRow.value;
                         auditEvents.value = data.events || [];
                         auditUsers.value = data.users || {};
                         auditHasOlder.value = !!data.has_older;
@@ -4567,7 +4577,8 @@ Summarization Instructions:
                         auditEnabled.value = data.enabled !== false;
                         auditRetentionDays.value = data.retention_days;
                         auditStoreIp.value = data.store_ip;
-                        auditOpenRow.value = null;
+                        // A refresh keeps the open row when it is still on the page.
+                        auditOpenRow.value = direction === 'refresh' && auditEvents.value.some(row => row.id === openRow) ? openRow : null;
                         auditError.value = false;
                         auditLoaded.value = true;
                     } catch (error) {

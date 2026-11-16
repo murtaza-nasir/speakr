@@ -2,9 +2,10 @@
 
 The server tests (tests/test_audit_log_routes.py) cover the routes; this test
 covers the page: the tab and its table, the row that opens to its details,
-the filters (applied on the server), paging by "Older" and "Newer", the two
-export links, "View activity" on a user row, the notice that is shown until
-it is dismissed, and the tab in each of the six UI themes, light and dark.
+the filters (applied on the server), paging by "Older" and "Newer", the
+"Refresh" button, the two export links, "View activity" on a user row, the notice that is shown until
+it is dismissed, and the tab in each of the six UI themes, light and dark,
+at the width of a desktop and of a phone.
 
 The events it reads are made by the test itself through the app: the admin's
 own sign-in, one refused sign-in, and a series of setting changes. The steps
@@ -46,6 +47,10 @@ SHOTS = os.environ.get("SPEAKR_E2E_SHOTS")
 THEMES = ("default", "cards", "classic", "desk", "focus", "workspace")
 TAB = "[data-audit-log]"
 ROWS = f"{TAB} [data-audit-row]"
+REFRESH = f"{TAB} [data-audit-refresh]"
+PAGE_REQUEST = re.compile(r"/admin/audit-log\?")
+PHONE = {"width": 390, "height": 844}
+DESKTOP = {"width": 1400, "height": 900}
 NOTICE_SETTING = "audit_log_notice_dismissed"
 # Enough setting changes for a second page (the page holds 50 rows).
 CHANGES = 55
@@ -55,7 +60,7 @@ class Admin:
     """The seeded admin in one browser context."""
 
     def __init__(self, browser):
-        self.context = browser.new_context(viewport={"width": 1400, "height": 900}, locale="en-US",
+        self.context = browser.new_context(viewport=DESKTOP, locale="en-US",
                                            service_workers="block")
         self.page = self.context.new_page()
         self.problems = PageProblems(self.page, BASE)
@@ -120,6 +125,16 @@ class Admin:
         assert not leftovers, f"{path}: template text left in the page: {leftovers}"
         assert not self.problems.failed, f"{path}: failed requests: {self.problems.failed}"
         assert not self.problems.errors, f"{path}: JavaScript errors: {self.problems.errors}"
+
+    def turn(self, control):
+        """Click a control that reads a page; the ids of the rows of the answer."""
+        with self.page.expect_response(lambda r: PAGE_REQUEST.search(r.url)) as answered:
+            control.click()
+        response = answered.value
+        assert response.ok, f"HTTP {response.status} for {response.url}"
+        ids = [row["id"] for row in response.json()["events"]]
+        self.loaded()
+        return response.url, ids
 
     def no_sideways_scroll(self, step):
         wide = self.page.evaluate(
@@ -279,6 +294,60 @@ def test_older_and_newer_page_through_the_log(admin):
     admin.check("paging")
 
 
+def test_refresh_reads_the_page_on_screen_again(admin):
+    page = admin.page
+    refresh = page.locator(REFRESH)
+    older = page.locator(f"{TAB} [data-audit-older]")
+    newer = page.locator(f"{TAB} [data-audit-newer]")
+    assert refresh.inner_text().strip() == en("buttons.refresh")
+    assert refresh.locator("i.fa-sync-alt").count() == 1
+    admin.filter("group", "admin")
+
+    # The newest page: an event written since the last read is listed first.
+    url, first = admin.turn(refresh)
+    assert "group=admin" in url and "before_id" not in url and "after_id" not in url
+    admin.setting("help_center_label", "")
+    url, again = admin.turn(refresh)
+    assert len(again) == 50 and again[0] > first[0] and again[1:] == first[:-1]
+    assert newer.is_disabled()
+
+    # An older page stays the same page, whatever was written since.
+    _, second = admin.turn(older)
+    admin.setting("help_center_label", "")
+    url, same = admin.turn(refresh)
+    assert same == second and "group=admin" in url and f"before_id={second[0] + 1}" in url
+    assert newer.is_enabled() and len(admin.rows()) == len(second)
+
+    # While the answer is awaited the button is disabled, keeps its size,
+    # and the rows stay in the table.
+    table = page.locator(f"{TAB} [data-audit-table]")
+
+    def state():
+        return {"disabled": refresh.is_disabled(), "spins": refresh.locator("i.fa-spin").count(),
+                "button": refresh.bounding_box(), "table": table.bounding_box(), "rows": len(admin.rows())}
+
+    before, waiting = state(), []
+
+    def measure(route):
+        # The request is held here, so the page is in its loading state.
+        waiting.append(state())
+        route.continue_()
+
+    page.route(PAGE_REQUEST, measure)
+    try:
+        admin.turn(refresh)
+    finally:
+        page.unroute(PAGE_REQUEST)
+    assert before["disabled"] is False and before["spins"] == 0 and before["rows"] == len(second)
+    assert waiting == [dict(before, disabled=True, spins=1)]
+    assert state() == before
+
+    admin.turn(newer)
+    page.locator(f"{TAB} [data-audit-clear]").click()
+    admin.loaded()
+    admin.check("refresh")
+
+
 def test_export_links_carry_the_filters(admin):
     page = admin.page
     admin.filter("group", "admin")
@@ -384,6 +453,23 @@ def test_the_tab_in_every_theme_light_and_dark(admin, theme):
             admin.check(f"{theme} {mode}", utilities=False)
             admin.no_sideways_scroll(f"{theme} {mode}")
             admin.shot(f"audit-log-theme-{theme}-{mode}")
+            # At the width of a phone the buttons of the tab stay inside the page.
+            page.set_viewport_size(PHONE)
+            try:
+                admin.open_admin()
+                admin.open_tab()
+                edges = page.evaluate(
+                    """(selector) => [...document.querySelectorAll(selector)].map(el => {
+                        const box = el.getBoundingClientRect();
+                        return [Math.floor(box.left), Math.ceil(box.right)];
+                    })""", f"{REFRESH}, {TAB} [data-audit-export]")
+                assert len(edges) == 3, f"{theme} {mode}: {edges}"
+                assert all(left >= 0 and right <= PHONE["width"] for left, right in edges), f"{theme} {mode}: {edges}"
+                admin.no_sideways_scroll(f"{theme} {mode} phone")
+                admin.check(f"{theme} {mode} phone", utilities=False)
+                admin.shot(f"audit-log-theme-{theme}-{mode}-phone")
+            finally:
+                page.set_viewport_size(DESKTOP)
     finally:
         admin.api("POST", "/api/user/preferences", {"ui_theme": saved})
         page.evaluate("() => localStorage.removeItem('darkMode')")

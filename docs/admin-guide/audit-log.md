@@ -146,9 +146,10 @@ The client address is the address received by the application. Behind a reverse 
 The tab is shown to site administrators. Group administrators have no access to it.
 
 - **Table.** The newest events are listed first, in the order in which they were written. An event of a read or a sign-in is written up to a second after it happened, so two events of the same second can be listed in either order; the time of each event is exact. A row is opened with a click and then shows the details, the affected account, the owner of the recording and the user agent. A deleted account is shown as "Deleted user" with its id.
+- **Refresh.** With **Refresh**, the page on screen is read again with the same filters. Events queued in the server process that answers the request are written before the list is read, so the list is complete up to the moment of the request for that process.
 - **Filters.** From, To, User (a username or an id; events by that account and events that concern it), Events (a group of events), Recording ID, Result and Access by. Dates are days in the time zone of the browser.
 - **Paging.** The result is paged with **Older** and **Newer**, 50 rows at a time.
-- **Export.** With **Export CSV** and **Export JSONL**, the rows of the current filter are downloaded as a file, with the columns of the table unchanged. In the CSV file, a text cell that begins with `=`, `+`, `-` or `@` is preceded by an apostrophe, so that it is not read as a formula in a spreadsheet.
+- **Export.** With **Export CSV** and **Export JSONL**, the rows of the current filter are downloaded as a file, with the columns of the table unchanged. In the CSV file, a text cell that begins with `=`, `+`, `-` or `@` is preceded by an apostrophe, so that it is not read as a formula in a spreadsheet. An export is a snapshot: queued events of the serving process are written first, and the file ends at the highest matching event id at the start of the export. An event written during the download is in the next export.
 - **View activity.** With the button of this name in a row of the user list, the tab is opened with the User filter set to that account.
 
 Administrators have no page on which the content of a recording of another user is shown. The events of one recording are found with the Recording ID filter.
@@ -182,6 +183,8 @@ A copy kept on another host is the protection against a later change of the tabl
 ## Failures
 
 Events of reads and sign-ins are written by a background writer, about once per second, so that a page is never delayed by the log. Events of changes, shares and administrative actions are written in the same database transaction as the action: such a row exists exactly when the action took effect.
+
+Each worker process of the server has its own queue. Before the list or an export is read, only the queue of the process that answers the request is written. An event of a read or a sign-in queued in another worker process can therefore arrive up to about a second later, and is listed after a refresh.
 
 A batch that cannot be written is tried again after 1, 5, 15 and 60 seconds. After that, every event of the batch is written to the application log as one line that begins with `AUDIT-FALLBACK`, at the level `ERROR`, and an `audit.write_failed` row with the number of events is added with the next batch that is written. An event for which the queue of the writer is full is written to the application log in the same way. The line holds the same values as the row, including the client address when addresses are stored. These lines should be kept by the collector of the container log.
 

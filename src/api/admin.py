@@ -716,6 +716,9 @@ def _quota_mb(value):
 # Nothing here updates or deletes a row of audit_event.
 
 AUDIT_LOG_NOTICE_SETTING = 'audit_log_notice_dismissed'
+# The longest wait for the writer of this process before a read of the table.
+AUDIT_PAGE_FLUSH_SECONDS = 0.25
+AUDIT_EXPORT_FLUSH_SECONDS = 1.0
 
 
 def _audit_datetime(value):
@@ -798,6 +801,8 @@ def admin_audit_log():
     Query: from, to (a date or an ISO 8601 date-time, UTC), user (id or
     username; actor or target), group, event, recording_id, outcome,
     actor_kind, before_id or after_id, limit (1 to 500, default 50).
+
+    Events queued in this process are written before the table is read.
     """
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
@@ -812,6 +817,9 @@ def admin_audit_log():
     if not 1 <= limit <= 500:
         return jsonify(api_error('invalid_limit')), 400
 
+    # The wait ends with the timeout when the writer is busy; the page then
+    # holds the rows written so far.
+    audit.flush(timeout=AUDIT_PAGE_FLUSH_SECONDS)
     rows, has_older, has_newer = audit.page(filters, before_id=before_id, after_id=after_id, limit=limit)
     # Reading the log is an event of the log: once per half hour and admin.
     audit.record('audit.viewed', details={'filters': used}, dedup=audit.DEDUP_VIEW)
@@ -833,6 +841,8 @@ def admin_audit_log_export():
     """The filtered result as a file, oldest first: format=csv or format=jsonl.
 
     The rows are the rows of the table, unchanged. The response is streamed.
+    The file is a snapshot: events queued in this process are written first,
+    and rows above the highest matching id of that moment are left out.
     """
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
@@ -844,6 +854,11 @@ def admin_audit_log_export():
     except ValueError as error:
         return jsonify(api_error(str(error))), 400
 
+    # Before the response exists and in this order: an event written after
+    # the bound was taken would lie above it.
+    audit.flush(timeout=AUDIT_EXPORT_FLUSH_SECONDS)
+    until_id = audit.highest_id(filters) or 0
+
     import csv
     import io
     from flask import stream_with_context
@@ -854,7 +869,7 @@ def admin_audit_log_export():
             buffer = io.StringIO()
             writer = csv.writer(buffer)
             writer.writerow(audit.COLUMNS)
-            for row in audit.stream(filters):
+            for row in audit.stream(filters, max_id=until_id):
                 writer.writerow([
                     '' if row[name] is None else
                     json.dumps(row[name], sort_keys=True) if name == 'details' else _csv_cell(row[name])
@@ -866,7 +881,7 @@ def admin_audit_log_export():
                     buffer.truncate(0)
             yield buffer.getvalue()
         else:
-            for row in audit.stream(filters):
+            for row in audit.stream(filters, max_id=until_id):
                 count += 1
                 yield json.dumps(row, sort_keys=True) + '\n'
         audit.record('audit.exported', details={'filters': used, 'count': count, 'format': export_format})

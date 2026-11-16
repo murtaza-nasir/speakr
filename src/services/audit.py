@@ -56,7 +56,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-from sqlalchemy import create_engine, delete, select, text
+from sqlalchemy import create_engine, delete, func, select, text
 from sqlalchemy.pool import NullPool
 
 from src.database import db
@@ -677,8 +677,9 @@ def _flush_at_exit():
 def flush(timeout=10.0):
     """Wait until every queued event was written (or went to the fallback).
 
-    For tests, the export route and shutdown code. Returns True when the queue
-    is empty and the writer is idle.
+    For tests, the read routes of the admin page and shutdown code. Returns
+    True when the queue is empty and the writer is idle, False when the
+    timeout ended first. Only the queue of this process is covered.
     """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -795,13 +796,31 @@ def page(filters, before_id=None, after_id=None, limit=50):
     return [row_dict(r) for r in rows], has_older, has_newer
 
 
-def stream(filters, chunk=1000):
-    """Every row of the filtered result, oldest first, read in chunks by id."""
+def highest_id(filters):
+    """The highest id of the filtered result, or None when it has no row.
+
+    Built from filtered_query, so the bound of an export and its rows are
+    selected by one predicate.
+    """
     table = AuditEvent.__table__
+    return db.session.execute(
+        filtered_query(filters).with_only_columns(func.max(table.c.id))).scalar()
+
+
+def stream(filters, chunk=1000, max_id=None):
+    """Every row of the filtered result, oldest first, read in chunks by id.
+
+    With max_id, rows with a higher id are left out: the result is then the
+    same whatever is written while it is read.
+    """
+    table = AuditEvent.__table__
+    query = filtered_query(filters)
+    if max_id is not None:
+        query = query.where(table.c.id <= max_id)
     last_id = 0
     while True:
         rows = db.session.execute(
-            filtered_query(filters).where(table.c.id > last_id).order_by(table.c.id.asc()).limit(chunk)).all()
+            query.where(table.c.id > last_id).order_by(table.c.id.asc()).limit(chunk)).all()
         if not rows:
             return
         for row in rows:
