@@ -471,7 +471,7 @@ html.keyboard-open .ph-scroll--fill > .ph-details { display: none; }
 
 /* ---- 9. Sheets -------------------------------------------------------------- */
 
-/* Under the dialogs (z-index 50), over the list screen (45) and the queue (46) */
+/* Under the dialogs (z-index 50), over the list screen (45) */
 .ph-sheet-layer {
     position: fixed;
     inset: 0;
@@ -743,9 +743,6 @@ html body .ph-search input, html body .ph-search input:focus { background: none;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
-/* Above the processing queue's bar when that is shown (classes on <body>, set in app.modular.js) */
-body.queue-minimized .ph-fab { bottom: calc(76px + var(--ph-safe-b)); }
-body.queue-open .ph-fab { visibility: hidden; }
 
 /* ---- 11. Shared elements on phones ------------------------------------------ */
 
@@ -765,9 +762,6 @@ body.queue-open .ph-fab { visibility: hidden; }
     html body aside.sidebar.ph-list .sidebar-content-wrapper { width: 100%; overflow: hidden; border: 0; }
     /* Room at the end of the list for the New recording button */
     html body aside.sidebar.ph-list .sidebar-list { padding-bottom: calc(96px + var(--ph-safe-b)); }
-
-    /* The processing queue: over the list, under the sheets and the dialogs */
-    html body .progress-popup { z-index: 46; }
 
     /* Selection mode: the bulk actions as a bar at the bottom edge */
     html body .bulk-bar {

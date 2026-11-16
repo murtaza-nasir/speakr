@@ -1553,7 +1553,10 @@
     "updateSpeakerNamesFailed": "Não foi possível atualizar os nomes dos oradores",
     "updateSummaryFailed": "Não foi possível atualizar o resumo",
     "updateTranscriptFailed": "Não foi possível salvar a transcrição",
-    "updateTranscriptionFailed": "Não foi possível salvar a transcrição"
+    "updateTranscriptionFailed": "Não foi possível salvar a transcrição",
+    "canceledTitle": "Processamento cancelado",
+    "canceledMessage": "A transcrição desta gravação foi cancelada antes de terminar.",
+    "canceledGuidance": "Use Reprocessar para iniciar a transcrição novamente."
   },
   "eventExtraction": {
     "description": "Encontrar reuniões, compromissos e prazos mencionados nas gravações, como eventos de calendário que você pode baixar.",
@@ -2408,44 +2411,74 @@
   },
   "progressQueue": {
     "title": "Fila de processamento",
-    "clear": "Limpar",
-    "uploading": "{{count}} enviando",
-    "transcribing": "{{count}} transcrevendo",
-    "summarizing": "{{count}} resumindo",
-    "queued": "{{count}} na fila",
     "cancel": "Cancelar",
     "failed": "Falharam",
-    "completed": "Concluídos",
     "done": "Concluído",
     "empty": "A fila está vazia",
     "duplicateWarning": "Arquivo duplicado detectado",
     "retry": "Tentar novamente",
     "delete": "Excluir",
-    "uploadingShort": "enviando",
-    "transcribingShort": "transcrevendo",
-    "summarizingShort": "resumindo",
-    "queuedShort": "na fila",
-    "joiningShort": "unindo",
     "joining": "Unindo",
     "joiningMessage": "Unindo os arquivos de áudio…",
-    "convertingShort": "convertendo",
     "converting": "Convertendo",
-    "convertingMessage": "Convertendo o arquivo de áudio…",
-    "processingOnServer": "Processando…",
     "waitingForJoin": "Enviado, aguardando mais {{count}} arquivo para unir",
     "waitingForJoinPlural": "Enviado, aguardando mais {{count}} arquivos para unir",
-    "positionInQueue": "Nº {{position}} na fila",
-    "transcribingAudio": "Transcrevendo áudio…",
     "unknownFile": "Arquivo desconhecido",
     "uploadFailed": "Falha no envio",
-    "uploadingMessage": "Enviando…",
     "waiting": "Aguardando",
     "waitingForProcessing": "Enviado, aguardando processamento…",
     "waitingToUpload": "Aguardando envio…",
     "region": "Itens da fila de processamento",
     "translating": "Traduzindo",
-    "translatingShort": "traduzindo",
-    "translatingMessage": "Traduzindo a transcrição"
+    "count": {
+      "processing": "{{count}} em processamento",
+      "queued": "{{count}} na fila",
+      "failed": "{{count}} com falha",
+      "finished": "{{count}} concluídos",
+      "inQueue": "{{count}} na fila"
+    },
+    "groups": {
+      "active": "Ativos",
+      "waiting": "Aguardando",
+      "failed": "Falharam",
+      "done": "Concluídos há pouco"
+    },
+    "stage": {
+      "assembling": "Montando",
+      "titling": "Gerando título",
+      "indexing": "Indexando"
+    },
+    "queuedFor": {
+      "conversion": "Nº {{position}} na fila para conversão",
+      "transcription": "Nº {{position}} na fila para transcrição",
+      "summary": "Nº {{position}} na fila para resumo",
+      "translation": "Nº {{position}} na fila para tradução"
+    },
+    "detail": {
+      "waiting": "aguardando",
+      "preparing": "preparando",
+      "aligning": "alinhando",
+      "diarizing": "identificando falantes",
+      "onServer": "processando no servidor"
+    },
+    "canceling": "Cancelando…",
+    "partsOf": "{{done}} de {{total}}",
+    "elapsed": "Tempo desde o início desta etapa",
+    "justNow": "agora mesmo",
+    "minutesAgo": "há {{count}} min",
+    "hoursAgo": "há {{count}} h",
+    "clearFinished": "Remover concluídos",
+    "clearFailed": "Remover falhas",
+    "open": "Abrir gravação",
+    "remove": "Remover da lista",
+    "duplicate": "Arquivo duplicado",
+    "emptyHint": "Novos envios e reprocessamentos aparecem aqui.",
+    "cancelConfirm": {
+      "title": "Cancelar a transcrição?",
+      "message": "\"{{title}}\" ainda não tem transcrição. Após o cancelamento, a gravação é marcada como falha e o áudio é mantido.",
+      "confirm": "Cancelar transcrição",
+      "keep": "Continuar processando"
+    }
   },
   "promptVariables": {
     "hintReprocess": "Valores para os espaços reservados do prompt, salvos com a gravação. Os vazios ficam em branco. Até 8.000 caracteres cada, 32.000 no total.",
@@ -2839,8 +2872,7 @@
     "stuck": "Redefinir processamento travado",
     "summarizing": "Resumindo",
     "transcribing": "Transcrevendo",
-    "uploading": "Enviando",
-    "queuedTranslation": "Na fila (tradução)"
+    "uploading": "Enviando"
   },
   "summary": {
     "actionItems": "Itens de ação",
@@ -2973,7 +3005,6 @@
     "editTranscript": "Editar transcrição",
     "enterFullscreen": "Tela cheia",
     "exitFullscreen": "Sair da tela cheia",
-    "expand": "Expandir",
     "followPlayerDisabled": "Acompanhar a reprodução",
     "followPlayerEnabled": "Parar de acompanhar a reprodução",
     "fullscreenVideo": "Vídeo em tela cheia",

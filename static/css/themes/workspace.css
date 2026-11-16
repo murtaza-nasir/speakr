@@ -572,12 +572,12 @@ html[data-ui-theme="workspace"] .sidebar {
 }
 /* Two columns: the rail (spans every row) and the list column. The sidebar-nav
    slot supplies the rail, the search row, the filter panel and the list header;
-   the shared scroll region below them is the fourth row. */
+   the shared scroll region below them is the fourth row, the processing queue the fifth. */
 html[data-ui-theme="workspace"] .sidebar-content-wrapper {
     width: var(--sidebar-w);
     display: grid;
     grid-template-columns: var(--sidebar-nav-w) minmax(0, 1fr);
-    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
     overflow: hidden;
     background: var(--bg-secondary);
 }
@@ -587,6 +587,11 @@ html[data-ui-theme="workspace"] .sidebar-content-wrapper > .ws-filters { grid-co
 html[data-ui-theme="workspace"] .sidebar-content-wrapper > .ws-list__head { grid-column: 2; grid-row: 3; }
 html[data-ui-theme="workspace"] .sidebar-content-wrapper > .overflow-y-auto { grid-column: 2; grid-row: 4; min-height: 0; padding-bottom: 12px; }
 html[data-ui-theme="workspace"] .sidebar-content-wrapper > .overflow-y-auto > .space-y-2 > * + * { margin-top: 0; }
+/* The processing queue at the foot of the list column (static/css/queue.css). The row
+   of a grid has no height a percentage could refer to, so the open panel is capped
+   against the height of the window. */
+html[data-ui-theme="workspace"] .sidebar-content-wrapper > .queue-dock { grid-column: 2; grid-row: 5; min-width: 0; }
+html[data-ui-theme="workspace"] .sidebar-content-wrapper > .queue-dock.is-open { max-height: calc((var(--app-height, 100vh) - var(--app-header-height, 56px)) * 0.54); }
 
 /* Navigation rail */
 html[data-ui-theme="workspace"] .ws-nav { min-height: 0; overflow-y: auto; border-right: 1px solid var(--border-primary); background: var(--bg-primary); }
@@ -1240,8 +1245,6 @@ html[data-ui-theme="workspace"] .modal-close {
     color: var(--text-muted);
 }
 html[data-ui-theme="workspace"] .modal-close:hover { background: var(--ws-hover); color: var(--text-primary); }
-
-html[data-ui-theme="workspace"] .progress-popup__card { border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border: 1px solid var(--border-primary); }
 html[data-ui-theme="workspace"] .float-panel { border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border: 1px solid var(--border-primary); }
 
 /* Bulk and other modal buttons that carry raw Tailwind classes */
@@ -1565,25 +1568,6 @@ html[data-ui-theme="workspace"] .ws-input { min-height: 40px; font-size: 16px; }
 
 
 /* ---- Round 2 fixes -------------------------------------------------------- */
-
-/* Processing queue: bottom-left corner, away from the chat launcher and panel on the
-   right. With the sidebar collapsed (or the list in a drawer) it sits above the bottom
-   player (--detail-bottom-inset, primitives.css) and, collapsed, keeps its header in view
-   instead of sliding down over the player. */
-@media (min-width: 641px) {
-    html[data-ui-theme="workspace"] .progress-popup {
-        left: 16px;
-        right: auto;
-        bottom: 16px;
-        width: 340px;
-        max-height: 60vh;
-    }
-    html[data-ui-theme="workspace"] body.app-sidebar-closed.app-sidebar-closed .progress-popup {
-        bottom: calc(var(--detail-bottom-inset, 0px) + 16px);
-    }
-    html[data-ui-theme="workspace"] body.app-sidebar-closed.app-sidebar-closed .progress-popup.minimized { transform: none; }
-}
-html[data-ui-theme="workspace"] .progress-popup { border-radius: var(--radius-lg); }
 
 /* Right-pane tab strip: compact enough for four tabs plus four actions. */
 

@@ -15,7 +15,7 @@
  * and both modes follow.
  *
  * Sections: 1 tokens, 2 controls, 3 shell, 4 sidebar and rows, 5 recording
- * detail, 6 chat, 7 dialogs, 8 Inquire, 9 menus and processing queue,
+ * detail, 6 chat, 7 dialogs, 8 Inquire, 9 menus,
  * 10 sign-in pages, 11 phone.
  * ========================================================================= */
 
@@ -908,7 +908,7 @@ html[data-ui-theme="cards"] .chat-message.ai-message .prose h2,
 html[data-ui-theme="cards"] .chat-message.ai-message .prose h3 { font-weight: 700; }
 
 /* ============================================================================
- * 9. Menus, popup, toasts.
+ * 9. Menus.
  * ========================================================================= */
 /* data-header-reprocess-menu marks the wrapper around the button, not the panel: the panel is its
    [role="menu"] child (setting the width on the wrapper left a 240px hole in the header row) */
@@ -935,80 +935,6 @@ html[data-ui-theme="cards"] [data-user-menu-dropdown] i.fas { color: var(--c-tex
 html[data-ui-theme="cards"] [data-user-menu-dropdown] .border-t { border-color: var(--c-divider); margin: 4px 8px; }
 html[data-ui-theme="cards"] [data-header-reprocess-menu] [role="menuitem"] { border-radius: var(--c-r-sm); }
 html[data-ui-theme="cards"] [data-header-reprocess-menu] [role="menuitem"]:hover { background: var(--c-hover); }
-
-/* Processing queue. On desktop it sits at the bottom of the sidebar column
-   (the list is 356px wide), so it never covers the recording being read; the
-   card is tonal and its rows use the theme's status containers. */
-@media (min-width: 641px) {
-    html[data-ui-theme="cards"] .progress-popup { left: 16px; bottom: 16px; width: 324px; }
-}
-/* With the sidebar collapsed there is no sidebar column to sit in. The popup
-   stays bottom-left, away from the chat button and panel on the right, inset
-   past the main card's rounded edge and above the player bar (recording view,
-   --detail-bottom-inset from primitives.css). Collapsed it keeps its header in
-   view instead of sliding down over the player. */
-@media (min-width: 641px) {
-    html[data-ui-theme="cards"] body.app-sidebar-closed.app-sidebar-closed .progress-popup {
-        left: 32px;
-        right: auto;
-        bottom: calc(var(--detail-bottom-inset, 0px) + 16px);
-        width: 300px;
-    }
-    html[data-ui-theme="cards"] body.app-sidebar-closed.app-sidebar-closed .progress-popup.minimized { transform: none; }
-}
-html[data-ui-theme="cards"] .progress-popup__card {
-    background: var(--c-surface);
-    border: 1px solid var(--c-divider);
-    border-radius: var(--c-r-lg);
-    box-shadow: var(--c-e3);
-    backdrop-filter: none;
-}
-html[data-ui-theme="cards"] .progress-popup .progress-popup__header {
-    background: var(--c-primary-c);
-    background-image: none;
-    padding: 12px 16px;
-}
-html[data-ui-theme="cards"] .progress-popup .progress-popup__header i,
-html[data-ui-theme="cards"] .progress-popup .progress-popup__header span,
-html[data-ui-theme="cards"] .progress-popup .progress-popup__header button { color: var(--c-on-primary-c); }
-html[data-ui-theme="cards"] .progress-popup .progress-popup__header span.rounded-full { background: color-mix(in oklab, var(--c-primary) 22%, transparent); }
-html[data-ui-theme="cards"] .progress-popup__close:hover { background: var(--c-hover); }
-
-/* Queue rows keep their Tailwind hue classes (blue, purple, green, yellow,
-   amber, orange, red); each hue is mapped onto a tonal container pair here,
-   matching the status pills of the list: info, accent, ok, warning, danger. */
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-blue-500/10"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-blue-500/20"] { background: var(--c-info-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-purple-500/10"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-purple-500/20"] { background: var(--c-primary-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-green-500/10"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-green-500/20"] { background: var(--c-ok-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-yellow-500/10"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-yellow-500/20"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-amber-500/10"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-orange-500/10"] { background: var(--c-warn-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-red-500/10"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-red-500/20"] { background: var(--c-bad-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="text-blue-500"] { color: var(--c-on-info-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="text-purple-500"] { color: var(--c-on-primary-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="text-green-500"] { color: var(--c-on-ok-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="text-yellow-500"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="text-amber-500"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="text-orange-500"] { color: var(--c-on-warn-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="text-red-500"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="text-red-400"] { color: var(--c-on-bad-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="border-blue-500"] { border-color: var(--c-on-info-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="border-purple-500"] { border-color: var(--c-on-primary-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="border-green-500"] { border-color: var(--c-on-ok-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="border-yellow-500"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="border-amber-500"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="border-orange-500"] { border-color: var(--c-on-warn-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="border-red-500"] { border-color: var(--c-on-bad-c); }
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-blue-500"] { background: var(--c-primary); }
-html[data-ui-theme="cards"] .progress-popup__card [class*="border-l-2"],
-html[data-ui-theme="cards"] .progress-popup__card [class~="bg-[var(--bg-tertiary)]/30"] { border-radius: var(--c-r-sm); }
-
-html[data-ui-theme="cards"] #toastContainer > .toast-message { border-radius: var(--c-r-md); box-shadow: var(--c-e3); }
 
 /* ============================================================================
  * 10. Login and register: a single friendly card, real inputs, one pill button.
@@ -1096,9 +1022,6 @@ html[data-ui-theme="cards"] #rightMainColumn div:has(> table.w-full.text-sm) { o
 /* Sign-in / register button: a visible keyboard focus ring */
 html[data-ui-theme="cards"] body > .container > main input[type="submit"]:focus-visible,
 html[data-ui-theme="cards"] body > .container > main button[type="submit"]:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
-
-/* Processing queue header: the "1 transcribing, 3 queued" line at full strength */
-html[data-ui-theme="cards"] .progress-popup .progress-popup__summary { opacity: 1; }
 
 /* Header icon set (styles.css): Search, New and the account menu are 40px circles
    at every width where their labels are hidden (Search and New were 39x30 and

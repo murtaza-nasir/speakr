@@ -59,7 +59,7 @@ export function useAudio(state, utils) {
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
         selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, asrInitialPrompt, asrHotwords, asrTranscriptionModel, uploadQueue,
-        progressPopupMinimized, progressPopupClosed,
+        progressPopupMinimized,
         // Incognito mode
         enableIncognitoMode, incognitoMode, incognitoRecording, incognitoProcessing,
         processingMessage, processingProgress, selectedRecording
@@ -1415,7 +1415,6 @@ export function useAudio(state, utils) {
 
         // Start upload immediately
         progressPopupMinimized.value = false;
-        progressPopupClosed.value = false;
 
         if (startUploadQueue) {
             startUploadQueue();
@@ -1537,7 +1536,6 @@ export function useAudio(state, utils) {
         processingMessage.value = (utils.t && utils.t('incognito.processingInProgress')) || 'Processing recording in incognito mode...';
         processingProgress.value = 10;
         progressPopupMinimized.value = false;
-        progressPopupClosed.value = false;
 
         try {
             const formData = new FormData();

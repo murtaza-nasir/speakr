@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-    DEFAULT_DURATION, WARNING_MIN_DURATION, PausableTimer, countLabel,
-    showToast, toastDuration, toastKey, toastRole,
+    DEFAULT_DURATION, WARNING_MIN_DURATION, PausableTimer, bottomInset, countLabel,
+    resolveType, showToast, toastDuration, toastKey, toastRole, topUnderBar,
 } from './toast.js';
 
 // A minimal stand-in for the DOM pieces showToast touches (the suite runs in
@@ -18,7 +18,8 @@ class FakeElement {
         this.textContent = '';
         this.innerHTML = '';
         this.className = '';
-        this.style = { setProperty() {}, removeProperty() {} };
+        const props = {};
+        this.style = { props, setProperty(k, v) { props[k] = v; }, removeProperty(k) { delete props[k]; } };
         const self = this;
         this.classList = {
             add: (...c) => { self.className = [...new Set([...self.className.split(' ').filter(Boolean), ...c])].join(' '); },
@@ -42,6 +43,14 @@ class FakeElement {
         if (!event.stopped && this.parentNode && this.parentNode.dispatch) this.parentNode.dispatch(type, event);
     }
     click() { this.dispatch('click'); }
+    // The one query showToast makes: the action named in the message
+    querySelector(selector) {
+        if (selector !== '.toast__action') return null;
+        const match = /<span class="toast__action">(.*?)<\/span>/.exec(this.innerHTML);
+        if (!match) return null;
+        const self = this;
+        return { textContent: match[1], remove() { self.innerHTML = self.innerHTML.replace(match[0], '').trim(); } };
+    }
     find(cls) {
         for (const c of this.children) {
             if (c.classList.contains(cls)) return c;
@@ -96,6 +105,48 @@ describe('toast rules', () => {
         expect(toastRole('success')).toBe('status');
         expect(toastRole('info')).toBe('status');
         expect(toastRole(undefined)).toBe('status');
+    });
+
+    it('gives an error read from its icon the time of a warning', () => {
+        expect(toastDuration('error', DEFAULT_DURATION, true)).toBe(WARNING_MIN_DURATION);
+        expect(toastDuration('error', 12000, true)).toBe(12000);
+        expect(toastDuration('success', 3000, true)).toBe(3000);
+    });
+
+    it('uses a type that was passed and reads a missing one from the icon', () => {
+        expect(resolveType('info', 'fa-exclamation-circle')).toEqual({ kind: 'info', inferred: false });
+        expect(resolveType('bogus', 'fa-check')).toEqual({ kind: 'info', inferred: false });
+        expect(resolveType(undefined, 'fa-exclamation-circle')).toEqual({ kind: 'error', inferred: true });
+        expect(resolveType(undefined, 'fas fa-times-circle')).toEqual({ kind: 'error', inferred: true });
+        expect(resolveType(undefined, 'error')).toEqual({ kind: 'error', inferred: true });
+        expect(resolveType(undefined, 'fa-exclamation-triangle')).toEqual({ kind: 'warning', inferred: true });
+        expect(resolveType(undefined, 'warning')).toEqual({ kind: 'warning', inferred: true });
+        expect(resolveType(undefined, 'fa-check-circle')).toEqual({ kind: 'success', inferred: true });
+        expect(resolveType(undefined, 'fa-check')).toEqual({ kind: 'success', inferred: true });
+        expect(resolveType(undefined, 'success')).toEqual({ kind: 'success', inferred: true });
+        expect(resolveType(undefined, 'fa-calendar-check')).toEqual({ kind: 'info', inferred: false });
+        expect(resolveType(undefined, 'fa-list-check')).toEqual({ kind: 'info', inferred: false });
+        expect(resolveType(undefined, 'fa-palette')).toEqual({ kind: 'info', inferred: false });
+        expect(resolveType(undefined, undefined)).toEqual({ kind: 'info', inferred: false });
+    });
+
+    it('keeps the bottom of the reading area free', () => {
+        const rect = (top, left, right) => ({ top, left, right });
+        // A player across the area and a status bar under it
+        expect(bottomInset([rect(744, 320, 1280), rect(776, 0, 1280)], 800, 590, 1010)).toBe(56);
+        // Something beside the toasts does not move them
+        expect(bottomInset([rect(700, 0, 320)], 800, 590, 1010)).toBe(0);
+        // Something in the upper half is not at the bottom
+        expect(bottomInset([rect(60, 320, 1280)], 800, 590, 1010)).toBe(0);
+        expect(bottomInset([null, rect(900, 0, 100)], 800)).toBe(0);
+        expect(bottomInset([rect(676, 0, 390), rect(732, 0, 390), rect(788, 0, 390)], 844)).toBe(168);
+    });
+
+    it('starts under the top bar while a sheet is open, higher when the stack would reach the sheet', () => {
+        expect(topUnderBar(500, 60)).toBe(60);     // a short sheet: room under the top bar
+        expect(topUnderBar(101, 46)).toBe(47);     // a tall sheet: one toast ends just above it
+        expect(topUnderBar(101, 200)).toBe(8);     // a stack that cannot fit starts at the top edge
+        expect(topUnderBar(0, 46)).toBe(8);        // the menu, a sheet of the full height
     });
 
     it('keys on message and type', () => {
@@ -203,6 +254,74 @@ describe('showToast', () => {
         expect(container.children).toHaveLength(1);
         second.dispatch('focusout', { relatedTarget: null });
         vi.advanceTimersByTime(3200);
+        expect(container.children).toHaveLength(0);
+    });
+
+    it('shows the type in a badge with the glyph of the type, whatever icon was passed', () => {
+        showToast('Saved', 'fa-palette', 3000, 'success');
+        showToast('Failed', 'fa-palette', 3000, 'error');
+        showToast('Careful', 'fa-palette', 3000, 'warning');
+        showToast('Note', 'fa-palette');
+        const glyphs = container.children.map(t => t.find('toast__badge').children[0].className);
+        expect(glyphs).toEqual(['fas fa-check', 'fas fa-xmark', 'fas fa-exclamation', 'fas fa-info']);
+        expect(container.children.every(t => !t.className.includes('surface-raised'))).toBe(true);
+    });
+
+    it('reads the type of an old call from its icon', () => {
+        showToast('Could not save', 'fa-exclamation-circle');
+        showToast('Saved', 'success');
+        expect(container.children.map(t => t.dataset.toastType)).toEqual(['error', 'success']);
+        expect(container.children[0].getAttribute('role')).toBe('alert');
+        // Not closed by hand like an error that was asked for, but not gone in three seconds either
+        vi.advanceTimersByTime(3500);
+        expect(container.children.map(t => t.dataset.toastType)).toEqual(['error']);
+        vi.advanceTimersByTime(WARNING_MIN_DURATION);
+        expect(container.children).toHaveLength(0);
+    });
+
+    it('makes the action named in the message a button that runs it', () => {
+        const action = vi.fn();
+        showToast('Renamed <span class="toast__action">Undo</span>', 'fa-check-circle', 6000, 'info', action);
+        const toast = container.children[0];
+        const button = toast.find('toast__action');
+        expect(button.tagName).toBe('BUTTON');
+        expect(button.textContent).toBe('Undo');
+        expect(toast.find('toast__body').innerHTML).toBe('Renamed');
+        // The body is not a second button
+        expect(toast.find('toast__body').getAttribute('role')).toBeNull();
+        button.click();
+        expect(action).toHaveBeenCalledTimes(1);
+        vi.advanceTimersByTime(500);
+        expect(container.children).toHaveLength(0);
+    });
+
+    it('draws a countdown line on a toast that closes by itself, and none on one that stays', () => {
+        showToast('Saved', 'fa-check-circle', 3000, 'success');
+        showToast('Failed', 'fa-exclamation-circle', 3000, 'error');
+        const [saved, failed] = container.children;
+        expect(saved.find('toast__countdown').style.props['--toast-life']).toBe('3000ms');
+        expect(failed.find('toast__countdown')).toBeNull();
+    });
+
+    it('stops the countdown line with the timer and starts it again with a repeat', () => {
+        showToast('Saved', 'fa-check-circle', 3000, 'success');
+        const toast = container.children[0];
+        const line = toast.find('toast__countdown');
+        toast.dispatch('mouseenter');
+        expect(toast.className).toContain('toast-paused');
+        toast.dispatch('mouseleave');
+        expect(toast.className).not.toContain('toast-paused');
+        showToast('Saved', 'fa-check-circle', 3000, 'success');
+        expect(toast.find('toast__countdown')).not.toBe(line);
+        expect(toast.children.filter(c => c.className === 'toast__countdown')).toHaveLength(1);
+    });
+
+    it('shortens every duration with the test scale', () => {
+        globalThis.window.__speakrToastScale = 0.1;
+        showToast('Saved', 'fa-check-circle', 3000, 'success');
+        vi.advanceTimersByTime(250);
+        expect(container.children).toHaveLength(1);
+        vi.advanceTimersByTime(300);
         expect(container.children).toHaveLength(0);
     });
 

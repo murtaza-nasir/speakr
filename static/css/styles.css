@@ -473,11 +473,6 @@ main {
     padding-right: 6px; /* Space for scrollbar */
     min-height: 0; /* Added for robust flex scrolling */
 }
-/* z-index comes from the template's utility class (z-50; DOM-order ties
-   with sidebar/modals) — do not set one here, a higher value would let the
-   popup cover modal footers again. */
-.progress-popup { position: fixed; bottom: 1rem; left: 1rem; transition: all 0.3s ease-in-out; min-width: 300px; max-width: 400px; border-radius: 12px; overflow: hidden; }
-.progress-popup.minimized { transform: translateY(calc(100% - 45px)); }
 .progress-list-item { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; }
 .progress-list-item .truncate { 
     overflow: hidden; 
@@ -2659,116 +2654,209 @@ body {
     }
 }
 
+/* The raised layer: toasts and the processing queue (static/css/queue.css).
+ *
+ * A surface of its own, never a page color: nearly white in light mode,
+ * lighter than every page surface in dark mode. It is mixed from the tokens
+ * every UI theme and color scheme defines, so no theme has to style it; a
+ * theme gives the shape through its radius tokens.
+ *
+ * The type colors are fixed: blue info, green success, amber warning, red
+ * error, the same in every theme and color scheme. --type-*-fg is the color
+ * of text and icons of a type on the layer (4.5:1 or more in light and dark).
+ */
+:root {
+    --pop-bg: color-mix(in oklab, var(--bg-secondary) 15%, #ffffff);
+    --pop-line: color-mix(in oklab, var(--text-primary) 26%, var(--bg-secondary));
+    --pop-hairline: color-mix(in oklab, var(--text-primary) 13%, transparent);
+    --pop-hover: color-mix(in oklab, var(--text-primary) 8%, transparent);
+    --pop-track: color-mix(in oklab, var(--text-primary) 14%, transparent);
+    --pop-bar: var(--bg-button);
+    --pop-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05), 0 2px 6px rgba(15, 23, 42, 0.10), 0 14px 36px rgba(15, 23, 42, 0.24);
+    --pop-shadow-up: 0 -10px 24px -8px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(15, 23, 42, 0.08);
+    --pop-radius: var(--radius-lg, 12px);
+    --pop-radius-sm: var(--radius-md, 8px);
+    --pop-tint: 9%;
+
+    --type-info: #2563eb;
+    --type-success: #15803d;
+    --type-warning: #f59e0b;
+    --type-error: #dc2626;
+    --type-on: #ffffff;
+    --type-warning-on: #2a1800;
+    --type-info-fg: #1d4ed8;
+    --type-success-fg: #166534;
+    --type-warning-fg: #8a3c06;
+    --type-error-fg: #b91c1c;
+}
+.dark {
+    --pop-bg: color-mix(in oklab, var(--text-primary) 12%, var(--bg-secondary));
+    --pop-line: color-mix(in oklab, var(--text-primary) 34%, var(--bg-secondary));
+    --pop-bar: var(--text-accent);
+    --pop-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 4px 10px rgba(0, 0, 0, 0.45), 0 18px 44px rgba(0, 0, 0, 0.7);
+    --pop-shadow-up: 0 -12px 28px -8px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.5);
+    --pop-tint: 20%;
+
+    --type-info-fg: #a9c6ff;
+    --type-success-fg: #86e0ae;
+    --type-warning-fg: #fbd38d;
+    --type-error-fg: #ffb1b1;
+}
+
 /* Toasts (static/js/modules/utils/toast.js, templates/modals/toast-container.html).
  *
- * A toast is a .surface-raised card, so each UI theme's floating surface
- * (background, border, radius, shadow) applies; the type shows only in the
- * icon and a thin accent strip on the leading edge. The text is the theme's
- * primary text on that surface, which keeps AA contrast for every type.
- * Info takes the colour scheme's accent; the others take the semantic tokens,
- * which every theme and colour scheme defines for light and dark.
+ * A toast is a card on the raised layer with a border and a faint tint in
+ * the color of its type, a filled badge with the glyph of the type, the
+ * message in the primary text color, a bordered button for its action and,
+ * when it closes by itself, a line along the bottom edge that counts the
+ * time down and stops while the toast is held (hover or focus).
  *
- * Desktop: top right, below the page header. Phones: full width at the
- * bottom, above the player, tab bar and processing queue (toast.js measures
- * them into --toast-bottom). */
+ * Desktop: bottom center of the reading area, above the player or composer
+ * at its bottom edge. Phones (below 768px): full width above the queue strip,
+ * the player strip and the tab bar; under the top bar while a sheet is open
+ * (higher when the stack would reach the heading of the sheet).
+ * toast.js measures the place into --toast-center, --toast-bottom and --toast-top. */
 #toastContainer {
     position: fixed;
     z-index: 9999;
-    top: calc(var(--app-header-height, 56px) + 16px);
-    right: 16px;
+    left: var(--toast-center, 50%);
+    bottom: calc(var(--toast-bottom, 0px) + 18px);
+    transform: translateX(-50%);
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
     gap: 8px;
     width: min(420px, calc(100vw - 32px));
     pointer-events: none;
 }
 
 .toast-message {
-    --toast-accent: var(--text-accent);
+    --toast-type: var(--type-info);
+    --toast-fg: var(--type-info-fg);
+    --toast-glyph: var(--type-on);
     position: relative;
     display: flex;
     align-items: flex-start;
     gap: 10px;
     width: 100%;
-    min-height: 44px;
-    padding: 10px 6px 10px 16px;
+    min-height: 46px;
+    padding: 10px 6px 12px 10px;
     overflow: hidden;
     color: var(--text-primary);
+    background: color-mix(in oklab, var(--toast-type) var(--pop-tint), var(--pop-bg));
+    border: 1px solid color-mix(in oklab, var(--toast-type) 55%, var(--pop-bg));
+    border-radius: var(--pop-radius);
+    box-shadow: var(--pop-shadow);
     font-size: 14px;
     line-height: 1.45;
     overflow-wrap: anywhere;
-    cursor: pointer;
     pointer-events: auto;
     opacity: 0;
-    transform: translateY(-6px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transform: translateY(18px) scale(0.96);
+    transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.2, 0.9, 0.25, 1.15);
 }
 .toast-message.toast-show { opacity: 1; transform: none; }
-.toast-message::before {
-    content: '';
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: 0;
-    width: 4px;
-    background: var(--toast-accent);
-}
-.toast--success { --toast-accent: var(--text-success-strong); }
-.toast--warning { --toast-accent: var(--text-warn-strong); }
-.toast--error   { --toast-accent: var(--text-danger); }
+.toast-message.toast-leave { opacity: 0; transform: scale(0.97); transition: opacity 0.2s ease, transform 0.2s ease; }
+.toast-message.toast--action { cursor: pointer; }
+.toast--success { --toast-type: var(--type-success); --toast-fg: var(--type-success-fg); }
+.toast--warning { --toast-type: var(--type-warning); --toast-fg: var(--type-warning-fg); --toast-glyph: var(--type-warning-on); }
+.toast--error   { --toast-type: var(--type-error); --toast-fg: var(--type-error-fg); }
 
-.toast-message .toast__icon {
+.toast-message .toast__badge {
     flex: none;
-    width: 18px;
-    margin-top: 2px;
-    text-align: center;
-    color: var(--toast-accent);
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: min(var(--pop-radius-sm), 9px);
+    background: var(--toast-type);
+    color: var(--toast-glyph);
+    font-size: 13px;
+    line-height: 1;
 }
-.toast-message .toast__body { flex: 1; min-width: 0; padding-top: 1px; }
-.toast-message .toast__body:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; border-radius: 2px; }
+.toast-message .toast__body { flex: 1; min-width: 0; padding-top: 2px; }
+.toast-message .toast__body:focus-visible { outline: 2px solid var(--toast-fg); outline-offset: 2px; border-radius: 2px; }
 .toast-message .toast__count {
     flex: none;
-    align-self: center;
-    padding: 0 6px;
+    align-self: flex-start;
+    margin-top: 3px;
+    padding: 0 7px;
     border-radius: 999px;
-    background: var(--bg-tertiary);
+    background: color-mix(in oklab, var(--toast-type) 30%, var(--pop-bg));
     color: var(--text-primary);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 20px;
     font-variant-numeric: tabular-nums;
 }
+.toast-message .toast__action {
+    flex: none;
+    align-self: flex-start;
+    min-height: 28px;
+    padding: 2px 11px;
+    border: 1px solid color-mix(in oklab, var(--toast-fg) 60%, transparent);
+    border-radius: var(--pop-radius-sm);
+    background: transparent;
+    color: var(--toast-fg);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.toast-message .toast__action:hover { background: color-mix(in oklab, var(--toast-fg) 14%, transparent); }
 .toast-message .toast__close {
     flex: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    margin: -4px 0 -4px 2px;
+    width: 30px;
+    height: 30px;
+    margin: -2px 0;
     border: 0;
     border-radius: 999px;
     background: transparent;
-    color: var(--text-muted);
+    color: var(--text-primary);
     cursor: pointer;
 }
-.toast-message .toast__close:hover { background: var(--bg-tertiary); color: var(--text-primary); }
-.toast-message .toast__close:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 1px; }
+.toast-message .toast__close:hover { background: var(--pop-hover); }
+.toast-message .toast__action:focus-visible,
+.toast-message .toast__close:focus-visible { outline: 2px solid var(--toast-fg); outline-offset: 1px; }
+.toast-message .toast__countdown {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 3px;
+    background: color-mix(in oklab, var(--toast-fg) 22%, transparent);
+}
+.toast-message .toast__countdown > i {
+    display: block;
+    height: 100%;
+    background: var(--toast-fg);
+    transform-origin: left center;
+    animation: toast-countdown var(--toast-life, 3000ms) linear forwards;
+}
+[dir="rtl"] .toast-message .toast__countdown > i { transform-origin: right center; }
+.toast-message.toast-paused .toast__countdown > i { animation-play-state: paused; }
+@keyframes toast-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
-@media (max-width: 640px) {
+@media (max-width: 767px) {
     #toastContainer {
-        top: auto;
-        left: 12px;
-        right: 12px;
-        bottom: calc(var(--toast-bottom, 0px) + 12px + env(safe-area-inset-bottom, 0px));
+        left: max(12px, env(safe-area-inset-left, 0px));
+        right: max(12px, env(safe-area-inset-right, 0px));
+        bottom: calc(var(--toast-bottom, 0px) + 10px + env(safe-area-inset-bottom, 0px));
         width: auto;
-        align-items: stretch;
+        transform: none;
     }
-    .toast-message { transform: translateY(6px); }
+    /* A sheet covers the bottom of the screen: the toasts go under the top bar */
+    body.phone-sheet-open #toastContainer {
+        top: calc(var(--toast-top, 60px) + env(safe-area-inset-top, 0px));
+        bottom: auto;
+    }
+    body.phone-sheet-open .toast-message { transform: translateY(-14px) scale(0.96); }
+    body.phone-sheet-open .toast-message.toast-show { transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .toast-message { transition: none; transform: none; }
+    .toast-message, .toast-message.toast-leave { transition: opacity 0.01s; transform: none; }
+    body.phone-sheet-open .toast-message { transform: none; }
 }
 
 /* Horizontal resize divider between the transcript and summary columns.
@@ -3943,14 +4031,6 @@ html.asr-editor-long body .modal-overlay {
     cursor: pointer;
 }
 .asr-suggest__accept:hover { background: var(--bg-button-hover); }
-/* The action a toast offers (Undo); a click anywhere on the toast runs it */
-.toast-message .toast__action {
-    margin-left: 0.5rem;
-    font-weight: 600;
-    text-decoration: underline;
-    white-space: nowrap;
-}
-
 /* Popovers: speaker picker, times, segment menu, shortcuts. Teleported to
    <body>; the layer takes the click that closes them. */
 .asr-pop-layer {

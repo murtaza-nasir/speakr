@@ -615,14 +615,7 @@ html[data-ui-theme="focus"] body .focus-toggles > button span { display: inline 
 
 /* ---- Recording list ------------------------------------------------------ */
 html[data-ui-theme="focus"] body .sidebar .flex-1.overflow-y-auto { padding: 0 8px 16px; }
-/* The padding shorthand above would defeat the room primitives.css leaves at the end of the
-   list while the queue popup floats over it, so the same values are restated here. */
-@media (min-width: 641px) {
-    html[data-ui-theme="focus"] body.queue-open.queue-open .sidebar .flex-1.overflow-y-auto { padding-bottom: calc(min(16rem, 25vh) + 7rem); }
-    html[data-ui-theme="focus"] body.queue-minimized.queue-minimized .sidebar .flex-1.overflow-y-auto { padding-bottom: 5rem; }
-    /* The queue card fits inside the narrower sidebar column, off the main card's edge. */
-    html[data-ui-theme="focus"] body.app-sidebar-open.app-sidebar-open .progress-popup { width: calc(var(--f-sidebar-w) - 32px); }
-}
+
 html[data-ui-theme="focus"] body .recording-group-header {
     position: sticky;
     top: 0;
@@ -920,10 +913,6 @@ html[data-ui-theme="focus"] body .message.ai-message code { background: var(--f-
 html[data-ui-theme="focus"] body .chat-ts-chip { background: var(--f-surface-2); color: var(--f-text-2); border: 0; font-family: var(--f-font-mono); font-size: 0.8em; }
 html[data-ui-theme="focus"] body .floating-chat-input { border-radius: 18px; background: var(--f-surface-2); border-color: transparent; }
 
-/* progress popup: a small card at the foot of the sidebar, not a sheet */
-html[data-ui-theme="focus"] body .progress-popup__card,
-html[data-ui-theme="focus"] body .progress-popup .surface-raised { border-radius: 14px; box-shadow: var(--f-shadow-2); background: var(--f-surface); border: 1px solid var(--f-divider); }
-
 /* empty state */
 html[data-ui-theme="focus"] body .main-content .text-center h2,
 html[data-ui-theme="focus"] body .main-content .text-center h3 { font-family: var(--f-font-read); }
@@ -1152,7 +1141,6 @@ html[data-ui-theme="focus"] body .transcription-box .speaker-tablet { font-famil
     html[data-ui-theme="focus"] body .modal-body { padding-inline: 20px; }
     html[data-ui-theme="focus"] body .modal-overlay { padding: 0; align-items: flex-end; }
     html[data-ui-theme="focus"] body .modal-overlay .modal-panel { border-radius: 22px 22px 0 0; max-width: none; }
-    html[data-ui-theme="focus"] body .progress-popup__card { box-shadow: var(--f-shadow-2); }
     html[data-ui-theme="focus"] body main.flex-grow.flex.items-center > .max-w-md { padding: 28px 22px !important; border-radius: 20px; }
     html[data-ui-theme="focus"] body #inquire-app [class*="overflow-y-auto"].p-6 { padding-inline: 16px !important; }
     html[data-ui-theme="focus"] body .transcription-box { padding-inline: 0; }
@@ -1164,33 +1152,6 @@ html[data-ui-theme="focus"] body .transcription-box .speaker-text { grid-column:
     html[data-ui-theme="focus"] body header .btn--primary.header-action { width: 36px; min-height: 36px; padding: 0; }
     html[data-ui-theme="focus"] body header .header-action.btn--icon { width: 36px; min-height: 36px; }
 }
-
-/* ============================================================================
- * Processing queue popup (slot status-area, default markup): a quiet card.
- * The header gradient and the per-status tinted rows of the markup are
- * flattened; the status stays readable through the icon and the label.
- * ========================================================================= */
-html[data-ui-theme="focus"] body .progress-popup__header {
-    background: transparent;
-    background-image: none;
-    color: var(--f-text);
-    border-bottom: 1px solid var(--f-divider);
-    padding: 10px 14px;
-}
-html[data-ui-theme="focus"] body .progress-popup__header [class*="text-gray-800"] { color: var(--f-text); }
-html[data-ui-theme="focus"] body .progress-popup__header .progress-popup__summary { color: var(--f-text-3); opacity: 1; }
-html[data-ui-theme="focus"] body .progress-popup__header .rounded-full,
-html[data-ui-theme="focus"] body .progress-popup__clear { background: var(--f-surface-2); color: var(--f-text-2); }
-html[data-ui-theme="focus"] body .progress-popup__clear:hover { background: var(--f-surface-3); }
-html[data-ui-theme="focus"] body .progress-popup__card .p-2 { padding: 8px; }
-html[data-ui-theme="focus"] body .progress-popup__card [class*="border-l-2"] {
-    background: transparent;
-    border-left-width: 0;
-    border-radius: 8px;
-}
-html[data-ui-theme="focus"] body .progress-popup__card [class*="border-l-2"]:hover { background: var(--f-surface-2); }
-html[data-ui-theme="focus"] body .progress-popup__card [class*="/20"].rounded { background: var(--f-surface-2); color: var(--f-text-2); border-radius: 999px; padding-inline: 8px; }
-html[data-ui-theme="focus"] body .progress-popup__card [class*="uppercase"] { text-transform: none; letter-spacing: 0; font-size: 12px; }
 
 /* ============================================================================
  * Identify Speakers modal (templates/modals/speaker-modal.html): the same

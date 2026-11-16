@@ -68,6 +68,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css', v=app_version) }}">
     <!-- The phone layout of the recording page and the recording list (below 768px) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/phone.css', v=app_version) }}">
+    <!-- The processing queue: the indicator and the panel -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/queue.css', v=app_version) }}">
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/icon-16x16.png') }}">
@@ -141,7 +143,8 @@
              chrome. -->
         {% include 'components/upload-view.html' %}
 
-        <!-- Upload Progress Popup -->
+        <!-- The processing queue over the page (the indicator and the docked
+             panel are in the sidebar, the header and the phone layout) -->
         {% with ui_slot = 'status-area' %}{% include 'themes/slot.html' %}{% endwith %}
 
         <!-- Modals -->

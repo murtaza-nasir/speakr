@@ -1553,7 +1553,10 @@
     "updateSpeakerNamesFailed": "Impossible de mettre à jour les noms des orateurs",
     "updateSummaryFailed": "Impossible de mettre à jour le résumé",
     "updateTranscriptFailed": "Impossible d’enregistrer la transcription",
-    "updateTranscriptionFailed": "Impossible d’enregistrer la transcription"
+    "updateTranscriptionFailed": "Impossible d’enregistrer la transcription",
+    "canceledTitle": "Traitement annulé",
+    "canceledMessage": "La transcription de cet enregistrement a été annulée avant la fin.",
+    "canceledGuidance": "Utilisez Retraiter pour relancer la transcription."
   },
   "eventExtraction": {
     "description": "Repère les réunions, rendez-vous et échéances mentionnés dans les enregistrements, sous forme d'événements de calendrier téléchargeables.",
@@ -2408,44 +2411,74 @@
   },
   "progressQueue": {
     "title": "File de traitement",
-    "clear": "Effacer",
-    "uploading": "{{count}} en cours d'envoi",
-    "transcribing": "{{count}} en transcription",
-    "summarizing": "{{count}} en résumé",
-    "queued": "{{count}} en attente",
     "cancel": "Annuler",
     "failed": "Échecs",
-    "completed": "Terminés",
     "done": "Terminé",
     "empty": "La file d'attente est vide",
     "duplicateWarning": "Fichier en double détecté",
     "retry": "Réessayer",
     "delete": "Supprimer",
-    "uploadingShort": "en cours d'envoi",
-    "transcribingShort": "en transcription",
-    "summarizingShort": "en résumé",
-    "queuedShort": "en attente",
-    "joiningShort": "en assemblage",
     "joining": "Assemblage",
     "joiningMessage": "Assemblage des fichiers audio…",
-    "convertingShort": "en conversion",
     "converting": "Conversion",
-    "convertingMessage": "Conversion du fichier audio…",
-    "processingOnServer": "Traitement…",
     "waitingForJoin": "Téléversé, en attente de {{count}} autre fichier à assembler",
     "waitingForJoinPlural": "Téléversé, en attente de {{count}} autres fichiers à assembler",
-    "positionInQueue": "N° {{position}} dans la file",
-    "transcribingAudio": "Transcription de l’audio…",
     "unknownFile": "Fichier inconnu",
     "uploadFailed": "Échec de l’envoi",
-    "uploadingMessage": "Envoi en cours…",
     "waiting": "En attente",
     "waitingForProcessing": "Envoyé, en attente de traitement…",
     "waitingToUpload": "En attente d’envoi…",
     "region": "Éléments de la file de traitement",
     "translating": "Traduction",
-    "translatingShort": "en traduction",
-    "translatingMessage": "Traduction de la transcription"
+    "count": {
+      "processing": "{{count}} en cours",
+      "queued": "{{count}} en attente",
+      "failed": "{{count}} en échec",
+      "finished": "{{count}} terminés",
+      "inQueue": "{{count}} dans la file"
+    },
+    "groups": {
+      "active": "En cours",
+      "waiting": "En attente",
+      "failed": "Échecs",
+      "done": "Terminés récemment"
+    },
+    "stage": {
+      "assembling": "Assemblage",
+      "titling": "Titre",
+      "indexing": "Indexation"
+    },
+    "queuedFor": {
+      "conversion": "N° {{position}} en file pour la conversion",
+      "transcription": "N° {{position}} en file pour la transcription",
+      "summary": "N° {{position}} en file pour le résumé",
+      "translation": "N° {{position}} en file pour la traduction"
+    },
+    "detail": {
+      "waiting": "en attente",
+      "preparing": "préparation",
+      "aligning": "alignement",
+      "diarizing": "identification des locuteurs",
+      "onServer": "traitement sur le serveur"
+    },
+    "canceling": "Annulation…",
+    "partsOf": "{{done}} sur {{total}}",
+    "elapsed": "Temps écoulé depuis le début de cette étape",
+    "justNow": "à l'instant",
+    "minutesAgo": "il y a {{count}} min",
+    "hoursAgo": "il y a {{count}} h",
+    "clearFinished": "Retirer les terminés",
+    "clearFailed": "Retirer les échecs",
+    "open": "Ouvrir l'enregistrement",
+    "remove": "Retirer de la liste",
+    "duplicate": "Fichier en double",
+    "emptyHint": "Les nouveaux envois et les retraitements apparaissent ici.",
+    "cancelConfirm": {
+      "title": "Annuler la transcription ?",
+      "message": "« {{title}} » n'a pas encore de transcription. Après l'annulation, l'enregistrement est marqué en échec et l'audio est conservé.",
+      "confirm": "Annuler la transcription",
+      "keep": "Poursuivre le traitement"
+    }
   },
   "promptVariables": {
     "title": "Variables de l'invite",
@@ -2839,8 +2872,7 @@
     "stuck": "Réinitialiser le traitement bloqué",
     "summarizing": "Résumé",
     "transcribing": "Transcription",
-    "uploading": "Téléchargement",
-    "queuedTranslation": "En file d’attente (traduction)"
+    "uploading": "Téléchargement"
   },
   "summary": {
     "actionItems": "Actions à mener",
@@ -2973,7 +3005,6 @@
     "editTranscript": "Modifier la transcription",
     "enterFullscreen": "Plein écran",
     "exitFullscreen": "Quitter le plein écran",
-    "expand": "Développer",
     "followPlayerDisabled": "Suivre la lecture",
     "followPlayerEnabled": "Ne plus suivre la lecture",
     "fullscreenVideo": "Vidéo en plein écran",

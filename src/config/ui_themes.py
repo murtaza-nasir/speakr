@@ -52,7 +52,7 @@ SLOTS = (
     'transcript-turn',         # one speaker turn of the simple transcript (desktop)
     'transcript-turn-mobile',  # one speaker turn of the simple transcript (phones)
     'inquire-filters',         # the filter column of the Inquire page
-    'status-area',             # the processing queue popup of the main page
+    'status-area',             # the processing queue over the main page: float panel and phone sheet
 )
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -331,64 +331,6 @@ html[data-ui-theme="desk"] .desk-statusbar {
 }
 html[data-ui-theme="desk"] .desk-statusbar__item.is-accent { color: var(--on-primary-container); font-weight: 600; }
 html[data-ui-theme="desk"] .desk-statusbar__grow { flex: 1; }
-html[data-ui-theme="desk"] .desk-statusbar__queue {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 100%;
-    padding: 0 var(--sp-2);
-    background: transparent;
-    border: 0;
-    color: var(--text-2);
-    font: inherit;
-    cursor: pointer;
-}
-html[data-ui-theme="desk"] .desk-statusbar__queue:hover { background: var(--row-hover); color: var(--text-primary); }
-html[data-ui-theme="desk"] .desk-statusbar__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-light); }
-html[data-ui-theme="desk"] .desk-statusbar__queue.is-busy .desk-statusbar__dot { background: #d9890b; animation: pulseDot 1.4s ease-in-out infinite; }
-
-/* The queue opens as a flat panel above the status bar (collapsed: hidden,
-   the status bar's button opens it). It sits bottom-left, over the list column,
-   away from the chat launcher and panel on the right. With the sidebar collapsed
-   (or the list in a drawer) it sits above the bottom player instead
-   (--detail-bottom-inset, primitives.css). */
-@media (min-width: 641px) {
-    html[data-ui-theme="desk"] .progress-popup {
-        left: var(--sp-3);
-        right: auto;
-        bottom: calc(var(--status-h) + 6px);
-        width: 340px;
-        min-width: 0;
-        border-radius: var(--r-3);
-    }
-    html[data-ui-theme="desk"] body.app-sidebar-closed.app-sidebar-closed .progress-popup {
-        bottom: calc(var(--detail-bottom-inset, calc(var(--status-h) - 2px)) + 8px);
-    }
-    html[data-ui-theme="desk"] .progress-popup__card {
-        border-radius: var(--r-3);
-        border: 1px solid var(--line);
-        box-shadow: var(--shadow-lg);
-        background: var(--surface);
-        backdrop-filter: none;
-    }
-    html[data-ui-theme="desk"] .progress-popup__header {
-        background: var(--surface-dim);
-        border-bottom: 1px solid var(--divider);
-        padding: 4px var(--sp-3);
-    }
-}
-/* Collapsed, the queue hides behind the status bar button. The status bar is shown from
-   1024px only, so below that the collapsed header strip stays on screen to reopen it. */
-@media (min-width: 1024px) {
-    html[data-ui-theme="desk"] .progress-popup.minimized { display: none; }
-}
-html[data-ui-theme="desk"] .progress-popup__header * { color: var(--text-2); }
-html[data-ui-theme="desk"] .progress-popup,
-html[data-ui-theme="desk"] .progress-popup__card { max-height: 50vh; }
-@media (max-width: 640px) {
-    html[data-ui-theme="desk"] .progress-popup__card { border-radius: var(--r-3); border: 1px solid var(--line); box-shadow: var(--shadow-md); }
-    html[data-ui-theme="desk"] .progress-popup__header { background: var(--surface-dim); }
-}
 
 /* ---- Sidebar head ----------------------------------------------------------- */
 
@@ -966,9 +908,6 @@ html[data-ui-theme="desk"] .container > main > div.max-w-md label { font-size: v
 /* A failed recording's title is red; selected, it takes the selected-row colour
    (the Failed chip still says it), since red on the accent fill falls under 4.5:1. */
 html[data-ui-theme="desk"] .desk-row.is-failed .desk-row__title.is-selected { color: var(--on-primary-container); }
-
-/* Processing queue header: the summary line at full strength */
-html[data-ui-theme="desk"] .progress-popup__summary { opacity: 1; }
 
 /* ---- Round 4 QA fixes: hairlines where two regions meet --------------------- */
 

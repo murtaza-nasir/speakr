@@ -1,3 +1,4 @@
+{% from 'components/queue/_queue.html' import queue_indicator %}
 <!-- Single adaptive top header.
      In list view: shows Speakr logo + name.
      In recording-detail view: title + inline meta + recording action
@@ -95,6 +96,9 @@
     <!-- Right side: detail-view action icons (when applicable) +
          token budget + new recording + user menu -->
     <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        <!-- The processing queue while the recording list is collapsed
+             (the list carries the indicator at its foot otherwise) -->
+        <template v-if="queuePlace === 'float' && queuePopupShown && !queueStatusBar">{{ queue_indicator('pill') }}</template>
         {% with ui_slot = 'header-actions' %}{% include 'themes/slot.html' %}{% endwith %}
 
         {% include 'components/header-controls.html' %}

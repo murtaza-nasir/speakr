@@ -1553,7 +1553,10 @@
     "updateSpeakerNamesFailed": "Не удалось обновить имена спикеров",
     "updateSummaryFailed": "Не удалось обновить резюме",
     "updateTranscriptFailed": "Не удалось сохранить транскрипт",
-    "updateTranscriptionFailed": "Не удалось сохранить транскрипт"
+    "updateTranscriptionFailed": "Не удалось сохранить транскрипт",
+    "canceledTitle": "Обработка отменена",
+    "canceledMessage": "Транскрипция этой записи была отменена до завершения.",
+    "canceledGuidance": "Чтобы запустить транскрипцию снова, используйте повторную обработку."
   },
   "eventExtraction": {
     "description": "Находить встречи, назначения и дедлайны, упомянутые в записях, как календарные события, которые можно скачать.",
@@ -2408,44 +2411,74 @@
   },
   "progressQueue": {
     "title": "Очередь обработки",
-    "clear": "Очистить",
-    "uploading": "{{count}} загружается",
-    "transcribing": "{{count}} расшифровывается",
-    "summarizing": "{{count}} резюмируется",
-    "queued": "{{count}} в очереди",
     "cancel": "Отмена",
     "failed": "Ошибки",
-    "completed": "Завершено",
     "done": "Готово",
     "empty": "Очередь пуста",
     "duplicateWarning": "Обнаружен дубликат файла",
     "retry": "Повторить",
     "delete": "Удалить",
-    "uploadingShort": "загружается",
-    "transcribingShort": "расшифровывается",
-    "summarizingShort": "резюмируется",
-    "queuedShort": "в очереди",
-    "joiningShort": "объединяется",
     "joining": "Объединение",
     "joiningMessage": "Объединение аудиофайлов…",
-    "convertingShort": "конвертируется",
     "converting": "Конвертация",
-    "convertingMessage": "Конвертация аудиофайла…",
-    "processingOnServer": "Обработка…",
     "waitingForJoin": "Загружено, ожидание файлов для объединения: {{count}}",
     "waitingForJoinPlural": "Загружено, ожидание файлов для объединения: {{count}}",
-    "positionInQueue": "№ {{position}} в очереди",
-    "transcribingAudio": "Транскрибирование аудио…",
     "unknownFile": "Неизвестный файл",
     "uploadFailed": "Ошибка загрузки",
-    "uploadingMessage": "Загрузка…",
     "waiting": "Ожидание",
     "waitingForProcessing": "Загружено, ожидание обработки…",
     "waitingToUpload": "Ожидание загрузки…",
     "region": "Элементы очереди обработки",
     "translating": "Перевод",
-    "translatingShort": "перевод",
-    "translatingMessage": "Перевод расшифровки"
+    "count": {
+      "processing": "{{count}} в обработке",
+      "queued": "{{count}} в очереди",
+      "failed": "{{count}} с ошибкой",
+      "finished": "{{count}} готово",
+      "inQueue": "{{count}} в очереди"
+    },
+    "groups": {
+      "active": "В обработке",
+      "waiting": "Ожидают",
+      "failed": "Ошибки",
+      "done": "Недавно завершены"
+    },
+    "stage": {
+      "assembling": "Сборка",
+      "titling": "Заголовок",
+      "indexing": "Индексация"
+    },
+    "queuedFor": {
+      "conversion": "№ {{position}} в очереди на конвертацию",
+      "transcription": "№ {{position}} в очереди на транскрипцию",
+      "summary": "№ {{position}} в очереди на сводку",
+      "translation": "№ {{position}} в очереди на перевод"
+    },
+    "detail": {
+      "waiting": "ожидание",
+      "preparing": "подготовка",
+      "aligning": "выравнивание",
+      "diarizing": "определение говорящих",
+      "onServer": "обработка на сервере"
+    },
+    "canceling": "Отмена…",
+    "partsOf": "{{done}} из {{total}}",
+    "elapsed": "Время с начала этого шага",
+    "justNow": "только что",
+    "minutesAgo": "{{count}} мин назад",
+    "hoursAgo": "{{count}} ч назад",
+    "clearFinished": "Убрать завершённые",
+    "clearFailed": "Убрать ошибки",
+    "open": "Открыть запись",
+    "remove": "Убрать из списка",
+    "duplicate": "Дубликат файла",
+    "emptyHint": "Новые загрузки и повторные обработки появляются здесь.",
+    "cancelConfirm": {
+      "title": "Отменить транскрипцию?",
+      "message": "У записи «{{title}}» ещё нет транскрипта. После отмены запись будет отмечена как неудачная, аудио сохранится.",
+      "confirm": "Отменить транскрипцию",
+      "keep": "Продолжить обработку"
+    }
   },
   "promptVariables": {
     "title": "Переменные подсказки",
@@ -2839,8 +2872,7 @@
     "stuck": "Сбросить зависшую обработку",
     "summarizing": "Резюмирование",
     "transcribing": "Транскрибирование",
-    "uploading": "Загрузка",
-    "queuedTranslation": "В очереди (перевод)"
+    "uploading": "Загрузка"
   },
   "summary": {
     "actionItems": "Задачи к выполнению",
@@ -2973,7 +3005,6 @@
     "editTranscript": "Редактировать транскрипт",
     "enterFullscreen": "Полный экран",
     "exitFullscreen": "Выйти из полноэкранного режима",
-    "expand": "Развернуть",
     "followPlayerDisabled": "Следовать за воспроизведением",
     "followPlayerEnabled": "Не следовать за воспроизведением",
     "fullscreenVideo": "Видео в полноэкранном режиме",

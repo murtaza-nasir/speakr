@@ -917,14 +917,6 @@ html[data-ui-theme="classic"] .chat-ts-chip {
     font-variant-numeric: tabular-nums;
 }
 
-/* Progress popup: a floating toast-weight card, no longer a bar across the list */
-html[data-ui-theme="classic"] .progress-popup__card {
-    border: 0;
-    border-radius: 12px;
-    box-shadow: var(--shadow-3);
-    background: var(--surface);
-}
-
 /* ---- 8. Pages ------------------------------------------------------------ */
 
 /* Login: the inputs had no border or padding. Give them mailr's 40px field. */

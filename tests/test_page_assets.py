@@ -103,11 +103,16 @@ def test_compiled_stylesheet_has_the_template_classes():
 
 
 def test_the_transcription_error_card_takes_its_colours_from_the_notice_level():
-    """One level (danger) for every cause; no colour per error type."""
+    """One level (danger) for every cause of an error; no colour per error
+    type. A transcription canceled in the processing queue is no error: where
+    the stored card is read it gets the level info, the only other level."""
     card = open(os.path.join(ROOT, "templates", "components", "detail", "_transcription-error.html"),
                 encoding="utf-8").read()
-    assert "notice notice--danger" in card
+    assert """:class="'notice--' + (processedTranscription.error.level || 'danger')\"""" in card
     assert "error.type" not in card
+    app = open(os.path.join(ROOT, "static", "js", "app.modular.js"), encoding="utf-8").read()
+    assert re.findall(r"\blevel: '(\w+)'", app) == ["info"]
+    assert "if (data.y === 'canceled')" in app
     assert not re.search(r"(bg|text|border)-(red|amber|orange|yellow|blue|purple|pink|indigo|gray)-[0-9]", card)
     css = open(os.path.join(ROOT, "static", "css", "primitives.css"), encoding="utf-8").read()
     for level in ("danger", "warn", "info", "success"):
