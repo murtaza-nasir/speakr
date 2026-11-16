@@ -80,8 +80,9 @@ On a screen narrower than 768 px, the recording list and a recording are two sep
 - The details block under the top bar is scrolled away with the text. Its first line gives the meeting date, the upload date when the recording was uploaded on another day, the length and the file size. Participants, the folder, tags and **Info** follow. The block is folded with a tap on its first line.
 - **Info** opens a sheet with the full details: both dates with their times, the file name, the owner of a shared recording, processing times and the transcription hints. The meeting date and the participants are changed from this sheet.
 - **More** opens the **Actions** sheet, in which every action for the recording is listed with a label: inbox, star and archive, folder, tags, rename, regenerate title, identify speakers, edit transcript, bubble view, download transcript, translate, reprocess, regenerate summary, events, speaker stats, share, download audio and the two delete actions. An action that the user's rights or the state of the recording do not allow is left out.
-- Four tabs are always shown at the bottom: **Summary**, **Transcript**, **Notes** and the assistant. Events and speaker stats are opened as sheets, from the rows at the end of the summary or from **Actions**.
-- **Copy**, **Download** and **Edit** are found above the summary and above the notes.
+- Four tabs are always shown at the bottom: **Summary**, **Transcript**, **Notes** and the assistant. Events and speaker stats are opened as sheets, from **Actions** or from the two buttons at the right end of the row above the summary.
+- **Copy**, **Download** and **Edit** are found above the summary and above the notes. The buttons for events and speaker stats are in the same row of the **Summary** tab, in the same place with and without a summary.
+- An empty tab shows an icon, a title and one hint, at the same height in all four tabs.
 
 ![The transcript on a phone](../assets/images/screenshots/mobile-transcript.png)
 

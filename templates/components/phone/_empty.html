@@ -1,0 +1,24 @@
+{#- The empty state of a tab of the phone layout (static/css/phone.css, 5b).
+
+        {% from 'components/phone/_empty.html' import phone_empty %}
+        {{ phone_empty('notes', "t('help.clickToAddNotes')", "t('notes.markdownSupported')", icon='fa-sticky-note') }}
+        {% call phone_empty('summary', ..., attrs='v-else-if="..."') %} a button {% endcall %}
+
+    One layout for Summary, Transcript, Notes and the assistant: a mark, a
+    title and one short hint, at the same height under the details block in
+    every tab. `name` is written to data-phone-empty, `title` and `hint` are
+    Vue expressions, `icon` a Font Awesome class. `mark` is markup that takes
+    the place of the icon (the assistant's monogram). `attrs` are further
+    attributes of the block (its v-if). The caller block follows the hint. -#}
+{% macro phone_empty(name, title, hint=none, icon='fa-file-alt', mark=none, attrs='') -%}
+<div class="empty ph-empty" data-phone-empty="{{ name }}"{{ (' ' ~ attrs)|safe if attrs }}>
+    <div class="ph-empty__mark">
+        {%- if mark %}{{ mark }}{% else %}<div class="empty__icon"><i class="fas {{ icon }}" aria-hidden="true"></i></div>{% endif -%}
+    </div>
+    <div class="empty__title" v-text="{{ title }}"></div>
+    {%- if hint %}
+    <div class="empty__body" v-text="{{ hint }}"></div>
+    {%- endif %}
+    {%- if caller %}{{ caller() }}{% endif %}
+</div>
+{%- endmacro %}

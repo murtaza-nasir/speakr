@@ -15,7 +15,7 @@
  * rules on shared elements (the sidebar, the queue, the bulk bar) have one.
  *
  * Sections: 1 tokens, 2 bars and buttons, 3 recording shell, 4 details,
- * 5 panes, 6 transcript bar, 7 chat, 8 player strip and tabs, 9 sheets,
+ * 5 panes, 5b empty states, 6 transcript bar, 7 chat, 8 player strip and tabs, 9 sheets,
  * 10 list, 11 shared elements on phones.
  * ========================================================================= */
 
@@ -310,10 +310,31 @@ button.ph-chip::after { content: ""; position: absolute; inset: -10px -2px; }
 .ph-pane .prose-flush { font-family: var(--ph-font-read); }
 /* Copy, Download and Edit above a text */
 .ph-acts { display: flex; flex-wrap: wrap; align-items: center; margin: 0 -10px 2px; }
-/* Rows at the end of the summary */
-.ph-also { margin-top: 20px; border-top: 1px solid var(--ph-divider); }
-.ph-also .ph-row { padding-inline: 0; border-radius: 0; }
+/* Events and Speaker stats, at the end of the summary's row */
+.ph-acts__end { display: inline-flex; align-items: center; margin-inline-start: auto; }
+.ph-acts__end .ph-ib { color: var(--ph-link); }
 .ph-pane .markdown-editor-container { min-height: 0; }
+
+/* ---- 5b. Empty states ------------------------------------------------------
+ * One layout for the empty Summary, Transcript, Notes and assistant tabs
+ * (components/phone/_empty.html): the mark starts --ph-empty-top under the
+ * top of the tab, whatever the tab has above it. --ph-empty-lead is the
+ * height of that part: the row of Copy, Download and Edit, the transcript's
+ * pinned bar, the padding of the chat. A theme draws the mark, the title and
+ * the hint its own way (.empty__*); the sizes and the places are set here. */
+.ph-pane { --ph-empty-top: 98px; --ph-empty-lead: 50px; }
+.ph-pane--transcript { --ph-empty-lead: calc(var(--ph-tbar-h) + 10px); }
+.ph-chat { --ph-empty-lead: 0.75rem; }
+html body .ph-pane .ph-empty {
+    padding: calc(var(--ph-empty-top) - var(--ph-empty-lead)) 8px 24px;
+    gap: 0;
+}
+.ph-empty__mark { flex: none; width: 48px; height: 48px; display: grid; place-items: center; margin-bottom: 14px; }
+html body .ph-empty .empty__icon { width: 48px; height: 48px; font-size: 18px; }
+html body .ph-empty .assistant-avatar { --assistant-avatar-size: 48px; }
+html body .ph-empty .empty__title { font-size: 16px; line-height: 22px; }
+html body .ph-empty .empty__body { margin-top: 4px; max-width: 46ch; font-size: 13px; line-height: 18px; }
+.ph-empty__acts { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 18px; }
 
 /* ---- 6. The transcript's pinned bar ---------------------------------------- */
 

@@ -2890,7 +2890,8 @@
     "title": "Resumen",
     "customizePrompt": "Personalizar prompt",
     "editingSaveHint": "Editando. Guarda desde la barra de pestañas de arriba.",
-    "needsTranscription": "El resumen estará disponible cuando termine la transcripción."
+    "needsTranscription": "El resumen estará disponible cuando termine la transcripción.",
+    "emptyHint": "El resumen se genera a partir de la transcripción."
   },
   "tagManagement": {
     "asrDefaults": "Configuraciones ASR predeterminadas",
@@ -3102,7 +3103,8 @@
     "speaker": "Hablante {{number}}",
     "speakerLabels": "Etiquetas de hablante",
     "title": "Transcripción",
-    "unknownSpeaker": "Hablante desconocido"
+    "unknownSpeaker": "Hablante desconocido",
+    "emptyHint": "La transcripción se muestra aquí después del procesamiento."
   },
   "unifiedShareModal": {
     "noPublicLinks": "Aún no hay enlaces públicos",
@@ -4066,7 +4068,8 @@
     "scopeRecording": "Esta grabación",
     "scopeLibrary": "Todas las grabaciones",
     "sendHint": "Enviar (Enter). Para una línea nueva, pulse Ctrl+Enter.",
-    "jumpToLatest": "Ir a lo más reciente"
+    "jumpToLatest": "Ir a lo más reciente",
+    "recordingHint": "Las preguntas se responden a partir de esta grabación."
   },
   "regenerateSummary": {
     "title": "Regenerar resumen",

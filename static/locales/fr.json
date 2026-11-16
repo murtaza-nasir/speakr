@@ -2890,7 +2890,8 @@
     "title": "Résumé",
     "customizePrompt": "Personnaliser l'invite",
     "editingSaveHint": "Modification en cours. Enregistrez depuis la barre d'onglets ci-dessus.",
-    "needsTranscription": "Un résumé est disponible une fois la transcription terminée."
+    "needsTranscription": "Un résumé est disponible une fois la transcription terminée.",
+    "emptyHint": "Le résumé est généré à partir de la transcription."
   },
   "tagManagement": {
     "asrDefaults": "Paramètres ASR par défaut",
@@ -3102,7 +3103,8 @@
     "speaker": "Orateur {{number}}",
     "speakerLabels": "Étiquettes d'orateur",
     "title": "Transcription",
-    "unknownSpeaker": "Orateur inconnu"
+    "unknownSpeaker": "Orateur inconnu",
+    "emptyHint": "La transcription est affichée ici après le traitement."
   },
   "unifiedShareModal": {
     "noPublicLinks": "Aucun lien public pour le moment",
@@ -4066,7 +4068,8 @@
     "scopeRecording": "Cet enregistrement",
     "scopeLibrary": "Tous les enregistrements",
     "sendHint": "Envoyer (Entrée). Pour une nouvelle ligne, appuyez sur Ctrl+Entrée.",
-    "jumpToLatest": "Aller au plus récent"
+    "jumpToLatest": "Aller au plus récent",
+    "recordingHint": "Les réponses sont tirées de cet enregistrement."
   },
   "regenerateSummary": {
     "title": "Régénérer le résumé",

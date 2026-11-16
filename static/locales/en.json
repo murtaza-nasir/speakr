@@ -2890,7 +2890,8 @@
     "title": "Summary",
     "customizePrompt": "Customize prompt",
     "editingSaveHint": "Editing. Save from the tab bar above.",
-    "needsTranscription": "A summary is available once the transcript is finished."
+    "needsTranscription": "A summary is available once the transcript is finished.",
+    "emptyHint": "A summary is generated from the transcript."
   },
   "tagManagement": {
     "asrDefaults": "ASR defaults",
@@ -3102,7 +3103,8 @@
     "speaker": "Speaker {{number}}",
     "speakerLabels": "Speaker labels",
     "title": "Transcript",
-    "unknownSpeaker": "Unknown speaker"
+    "unknownSpeaker": "Unknown speaker",
+    "emptyHint": "The transcript is shown here after processing."
   },
   "unifiedShareModal": {
     "noPublicLinks": "No public share links yet",
@@ -4066,7 +4068,8 @@
     "scopeRecording": "This recording",
     "scopeLibrary": "All recordings",
     "sendHint": "Send (Enter). For a new line, press Ctrl+Enter.",
-    "jumpToLatest": "Jump to latest"
+    "jumpToLatest": "Jump to latest",
+    "recordingHint": "Questions are answered from this recording."
   },
   "regenerateSummary": {
     "title": "Regenerate summary",

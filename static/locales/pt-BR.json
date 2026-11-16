@@ -2890,7 +2890,8 @@
     "title": "Resumo",
     "customizePrompt": "Personalizar prompt",
     "editingSaveHint": "Editando. Salve pela barra de abas acima.",
-    "needsTranscription": "O resumo fica disponível quando a transcrição estiver concluída."
+    "needsTranscription": "O resumo fica disponível quando a transcrição estiver concluída.",
+    "emptyHint": "O resumo é gerado a partir da transcrição."
   },
   "tagManagement": {
     "asrDefaults": "Padrões de ASR",
@@ -3102,7 +3103,8 @@
     "speaker": "Orador {{number}}",
     "speakerLabels": "Rótulos de orador",
     "title": "Transcrição",
-    "unknownSpeaker": "Orador desconhecido"
+    "unknownSpeaker": "Orador desconhecido",
+    "emptyHint": "A transcrição é exibida aqui após o processamento."
   },
   "unifiedShareModal": {
     "noPublicLinks": "Ainda não há links públicos",
@@ -4066,7 +4068,8 @@
     "scopeRecording": "Esta gravação",
     "scopeLibrary": "Todas as gravações",
     "sendHint": "Enviar (Enter). Para uma nova linha, pressione Ctrl+Enter.",
-    "jumpToLatest": "Ir para o mais recente"
+    "jumpToLatest": "Ir para o mais recente",
+    "recordingHint": "As perguntas são respondidas com base nesta gravação."
   },
   "regenerateSummary": {
     "title": "Regenerar resumo",

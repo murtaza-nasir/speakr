@@ -5,6 +5,8 @@
      so this pane fills the screen under the details block. -->
 {% from 'components/assistant/chat.html' import assistant_chat with context %}
 {% from 'components/detail/recording-chat-footer.html' import recording_chat_footer %}
+{% from 'components/phone/_empty.html' import phone_empty %}
+{% set assistant_mark %}{% with avatar_size = 'lg' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}{% endset %}
 <div v-if="mobileTab === 'chat'" class="ph-pane ph-pane--fill ph-chat" data-phone-pane="chat">
     <div v-if="chatMessages && chatMessages.length > 0" class="ph-acts ph-chat__acts" data-phone-acts="chat">
         <span class="assistant-scope"><i class="fas fa-file-audio" aria-hidden="true"></i><span v-text="t('assistant.scopeRecording')"></span></span>
@@ -22,9 +24,6 @@
                            composer_attrs='data-phone-composer',
                            download_if='!selectedRecording.incognito',
                            footer=recording_chat_footer) %}
-        <div class="empty">
-            {% with avatar_size = 'lg' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
-            <span class="assistant-scope"><i class="fas fa-file-audio" aria-hidden="true"></i><span v-text="t('assistant.scopeRecording')"></span></span>
-        </div>
+        {{ phone_empty('chat', "t('assistant.ask', { name: assistantName })", "t('assistant.recordingHint')", mark=assistant_mark) }}
     {% endcall %}
 </div>

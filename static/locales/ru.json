@@ -2890,7 +2890,8 @@
     "title": "Резюме",
     "customizePrompt": "Настроить подсказку",
     "editingSaveHint": "Редактирование. Сохраните через панель вкладок выше.",
-    "needsTranscription": "Резюме будет доступно после завершения транскрипта."
+    "needsTranscription": "Резюме будет доступно после завершения транскрипта.",
+    "emptyHint": "Резюме создаётся на основе транскрипта."
   },
   "tagManagement": {
     "asrDefaults": "Настройки ASR по умолчанию",
@@ -3102,7 +3103,8 @@
     "speaker": "Спикер {{number}}",
     "speakerLabels": "Метки спикеров",
     "title": "Транскрипт",
-    "unknownSpeaker": "Неизвестный спикер"
+    "unknownSpeaker": "Неизвестный спикер",
+    "emptyHint": "Транскрипт будет показан здесь после обработки."
   },
   "unifiedShareModal": {
     "noPublicLinks": "Публичных ссылок пока нет",
@@ -4066,7 +4068,8 @@
     "scopeRecording": "Эта запись",
     "scopeLibrary": "Все записи",
     "sendHint": "Отправить (Enter). Для новой строки нажмите Ctrl+Enter.",
-    "jumpToLatest": "К последним сообщениям"
+    "jumpToLatest": "К последним сообщениям",
+    "recordingHint": "Ответы основаны на этой записи."
   },
   "regenerateSummary": {
     "title": "Пересоздать сводку",

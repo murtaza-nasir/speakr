@@ -9,6 +9,7 @@
      the page, so the list needs no scrolling area of its own.
      Bubble view, download, edit and translate are in Actions
      (components/phone/recording-sheets.html). -->
+{% from 'components/phone/_empty.html' import phone_empty %}
 <div v-if="mobileTab === 'transcript'" class="ph-pane ph-pane--transcript" :class="{ 'has-find': transcriptFind.open }" data-phone-pane="transcript">
     <div class="ph-tbar" data-phone-transcript-bar>
         <div class="ph-tbar__main">
@@ -64,10 +65,8 @@
         </div>
 
         <!-- No transcription state (only show if not processing and no transcription) -->
-        <div v-if="!selectedRecording.transcription && selectedRecording.status !== 'PROCESSING'" class="text-center py-8">
-            <i class="fas fa-file-text text-3xl text-[var(--text-muted)] mb-3"></i>
-            <p class="text-[var(--text-muted)]" v-text="t('transcription.noTranscription')"></p>
-        </div>
+        {{ phone_empty('transcript', "t('transcription.noTranscription')", "t('transcription.emptyHint')", icon='fa-align-left',
+                       attrs='v-if="!selectedRecording.transcription && selectedRecording.status !== \'PROCESSING\'"') }}
 
         <!-- Error Display (when transcription is an error message) -->
         <div v-if="processedTranscription.isError" class="error-display-container p-2">
@@ -76,42 +75,32 @@
 
         <!-- Translation in progress (mobile): same spinner state as the
              desktop panel and the summary tab. -->
-        <div v-if="viewingTranslation && translationJobActive" class="text-center py-8">
-            <div class="empty">
-                <div class="spinner spinner--lg"></div>
-                <div class="empty__title" v-text="translationProgressTitle"></div>
-                <div v-if="translationProgress !== null" class="mx-auto mt-3 w-48 max-w-full h-1 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden"
-                     role="progressbar" :aria-valuenow="translationProgress" aria-valuemin="0" aria-valuemax="100">
-                    <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-300" :style="{width: translationProgress + '%'}"></div>
-                </div>
+        <div v-if="viewingTranslation && translationJobActive" class="empty ph-empty" data-phone-empty="translation-busy">
+            <div class="ph-empty__mark"><div class="spinner spinner--lg"></div></div>
+            <div class="empty__title" v-text="translationProgressTitle"></div>
+            <div v-if="translationProgress !== null" class="mx-auto mt-3 w-48 max-w-full h-1 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden"
+                 role="progressbar" :aria-valuenow="translationProgress" aria-valuemin="0" aria-valuemax="100">
+                <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-300" :style="{width: translationProgress + '%'}"></div>
             </div>
         </div>
 
-        <!-- Empty translation state (mobile) -->
-        <div v-if="viewingTranslation && !translationJobActive && !(selectedRecording && selectedRecording.transcription_translation)" class="text-center py-8">
-            <i class="fas fa-language text-3xl text-[var(--text-muted)] mb-3"></i>
-            <p class="text-[var(--text-muted)] mb-4" v-text="t('translation.noTranslation')"></p>
-            <template v-if="selectedRecording && selectedRecording.incognito">
-                <div class="flex items-center justify-center gap-2" :title="t('tooltips.translateTranscriptIncognito')">
-                    <i class="fas fa-user-secret text-[var(--text-muted)]"></i>
-                    <span class="text-sm text-[var(--text-muted)]" v-text="t('translation.incognitoUnavailable')"></span>
-                </div>
-            </template>
-            <template v-else-if="selectedRecording && selectedRecording.can_edit !== false">
-                <div class="flex items-center justify-center gap-2">
-                    <button @click="generateTranslation()" :disabled="translationJobActive" class="btn btn--primary">
-                        <i class="fas fa-language mr-1"></i>
-                        <span v-text="t('translation.generate')" data-i18n="translation.generate"></span>
-                    </button>
-                    <button @click="openTranslationModal" class="btn btn--icon" :title="t('translation.preferences')">
-                        <i class="fas fa-sliders-h"></i>
-                    </button>
-                </div>
-            </template>
-            <template v-else>
-                <p class="text-sm text-[var(--text-muted)]" v-text="t('translation.noTranslation')"></p>
-            </template>
-        </div>
+        <!-- Empty translation state (mobile): the same layout as the other
+             empty states. Without a transcript, only the transcript's own
+             empty state is shown. -->
+        {% call phone_empty('translation', "t('translation.noTranslation')", icon='fa-language',
+                            attrs='v-if="viewingTranslation && !translationJobActive && selectedRecording.transcription && !selectedRecording.transcription_translation"') %}
+            <div v-if="selectedRecording.incognito" class="empty__body" :title="t('tooltips.translateTranscriptIncognito')"
+                 v-text="t('translation.incognitoUnavailable')"></div>
+            <div v-else-if="selectedRecording.can_edit !== false" class="ph-empty__acts">
+                <button @click="generateTranslation()" :disabled="translationJobActive" class="btn btn--primary">
+                    <i class="fas fa-language"></i>
+                    <span v-text="t('translation.generate')" data-i18n="translation.generate"></span>
+                </button>
+                <button @click="openTranslationModal" class="btn btn--ghost btn--icon" :title="t('translation.preferences')">
+                    <i class="fas fa-sliders-h"></i>
+                </button>
+            </div>
+        {% endcall %}
 
         <!-- Transcription content (show regardless of processing state if transcription exists) -->
         <div v-if="selectedRecording.transcription && !processedTranscription.isError && !(viewingTranslation && (translationJobActive || !(selectedRecording && selectedRecording.transcription_translation)))">
