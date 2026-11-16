@@ -448,7 +448,9 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                 
                 # If we found mentioned speakers not in results, automatically apply speaker filter
                 if mentioned_speakers and not data.get('filter_speakers'):  # Only if no speaker filter already applied
-                    app.logger.info(f"Auto-detected mentioned speakers not in results: {mentioned_speakers}")
+                    # Speakers are not named at INFO.
+                    app.logger.info(f"Auto-detected {len(mentioned_speakers)} mentioned speaker(s) not in results")
+                    app.logger.debug(f"Auto-detected mentioned speakers not in results: {mentioned_speakers}")
                     yield create_status_response('filtering', f'Detected mention of {", ".join(mentioned_speakers)}, applying speaker filter...')
                     
                     # Apply automatic speaker filter

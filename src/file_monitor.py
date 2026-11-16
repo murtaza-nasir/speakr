@@ -596,7 +596,9 @@ def _ensure_tag_folders_on_startup(app, watch_dir, mode):
                     try:
                         folder_path.mkdir(parents=True, exist_ok=True)
                     except OSError as e:
-                        app.logger.error(f"Could not create auto-process folder {folder_path}: {e}")
+                        # The folder is named by the user: the id of its tag at ERROR.
+                        app.logger.error(f"Could not create the auto-process folder of tag {tag.id}: {loggable_error(e, folder_path)}")
+                        app.logger.debug(f"Could not create auto-process folder {folder_path}: {e}")
 
             app.logger.info(f"Verified {len(tags)} auto-process tag folder(s)")
         except Exception as e:

@@ -828,8 +828,10 @@ def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_
         raise
 
     if selected_tags:
-        tag_names = [tag.name for tag in selected_tags]
-        current_app.logger.info(f"Added {len(selected_tags)} tags to recording {recording.id}: {', '.join(tag_names)}")
+        # Tags are named by id at INFO, by name at DEBUG.
+        tag_ids = ', '.join(str(tag.id) for tag in selected_tags)
+        current_app.logger.info(f"Added {len(selected_tags)} tags to recording {recording.id}: tag ids {tag_ids}")
+        current_app.logger.debug(f"Tags added to recording {recording.id}: {', '.join(tag.name for tag in selected_tags)}")
 
     current_app.logger.info(f"Initial recording record created with ID: {recording.id}")
     return StoredRecording(recording, None)

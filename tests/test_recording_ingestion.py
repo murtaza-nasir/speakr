@@ -853,7 +853,10 @@ def test_store_recording_adds_tags_in_order_and_the_folder(tagworld, staged):
                             user_title="Board meeting")
         rec_id = stored.recording.id
         shares.assert_called_once_with(stored.recording, folder)
-        assert info.call_args_list[1].args == (f"Added 2 tags to recording {rec_id}: own2, group",)
+        # Tags are named by id at INFO, in the order they were selected.
+        assert info.call_args_list[1].args == (
+            f"Added 2 tags to recording {rec_id}: tag ids {w.own_tag2}, {w.group_tag}",)
+        assert not any("own2" in str(call.args) for call in info.call_args_list)
     with app.app_context():
         rec = db.session.get(Recording, rec_id)
         assert rec.folder_id == w.own_folder
