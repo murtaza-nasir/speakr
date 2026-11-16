@@ -321,7 +321,12 @@ class App:
         try:
             self.page.locator("aside.sidebar").wait_for(state="attached", timeout=60000)
         except Exception as error:
-            raise AssertionError(f"the app did not load: {self.page.url} shows {self.page.inner_text('body')[:300]!r}") from error
+            raise AssertionError(f"the app did not load: {self.page.url} shows {self.page.inner_text('body')[:300]!r}; "
+                                 f"failed responses {self.problems.failed}, errors {self.problems.errors}; DIAG "
+                                 + str(self.page.evaluate("""() => ({ready: document.readyState, vue: typeof Vue, len: document.documentElement.outerHTML.length,
+                                     tail: document.documentElement.outerHTML.slice(-300),
+                                     scripts: [...document.scripts].map((x) => x.src.split('/').pop() || 'inline').slice(-8),
+                                     res: performance.getEntriesByType('resource').filter((r) => r.responseEnd === 0 || r.transferSize === 0 && r.decodedBodySize === 0).map((r) => r.name.split('/').pop()).slice(0, 12)})"""))) from error
         if recording is not None and self.phone:
             self.page.locator('[data-phone-bar="recording"]').wait_for(state="visible", timeout=60000)
             self.wait("() => { const el = document.querySelector('[data-phone-detail]'); return !!el && el.dataset.phoneRecord === 'full'; }", timeout=120000)
@@ -636,7 +641,8 @@ def test_an_old_call_gets_its_type_from_its_icon(desk):
     page.locator(TOAST).nth(3).wait_for(state="visible", timeout=WAIT)
     kinds = page.evaluate("() => [...document.querySelectorAll('#toastContainer .toast-message')].map((t) => [t.dataset.toastType, "
                           "t.getAttribute('role'), (t.querySelector('.toast__countdown') || { style: { getPropertyValue: () => null } }).style.getPropertyValue('--toast-life')])")
-    assert kinds == [["error", "alert", "8000ms"], ["success", "status", "3000ms"], ["success", "status", "3000ms"], ["info", "status", "3000ms"]]
+    # An error stays until it is closed, also when its type was read from the icon: it has no countdown
+    assert kinds == [["error", "alert", None], ["success", "status", "3000ms"], ["success", "status", "3000ms"], ["info", "status", "3000ms"]]
     desk.clear_toasts()
     desk.check("toast types from icons")
 

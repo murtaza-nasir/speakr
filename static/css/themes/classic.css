@@ -982,7 +982,8 @@ html[data-ui-theme="classic"] .rr-main > div:first-child h4 { flex: 0 1 auto !im
 html[data-ui-theme="classic"] .rr-main > div:first-child > div { margin-left: 0; }
 html[data-ui-theme="classic"] .recording-row.is-active { border-start-start-radius: 4px; border-end-start-radius: 4px; }
 @media (max-width: 1023px) {
-    html[data-ui-theme="classic"] .sidebar .recording-group-header { background: var(--surface); }
+    /* With a background the heading is a band of its own: the label sits in its middle */
+    html[data-ui-theme="classic"] .sidebar .recording-group-header { background: var(--surface); align-items: center; padding-block: 9px; }
 }
 
 /* Login, register and the other single-card pages */
