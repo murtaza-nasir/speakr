@@ -2482,3 +2482,77 @@ select option:hover {
    page. Where a variable is unset, the folder's own colour is used. */
 :root { --folder-mark-pale: #aab0ba; }
 html.dark { --folder-mark-pale: initial; --folder-mark-dark: #8a909a; }
+
+
+/* ---- Sortable column headers (admin user list) --------------------------
+   The header of a sortable column is a button in the <th>. The <th> of the
+   sorted column has aria-sort and an arrow in the accent colour. The other
+   headers show a neutral arrow on hover and on keyboard focus. A touch
+   screen has no hover, so the neutral arrow is shown there at all times.
+   The arrow is placed in the right padding of the button, which a negative
+   margin takes back from the padding of the <th>: the column is as wide as
+   its label, and nothing moves when an arrow appears. */
+.sort-header {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin: -0.25rem -1.125rem -0.25rem -0.375rem;
+    padding: 0.25rem 1.125rem 0.25rem 0.375rem;
+    border-radius: 4px;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.sort-header:hover,
+th[aria-sort] > .sort-header { color: var(--text-primary); }
+.sort-header:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 1px;
+}
+.sort-header__icon {
+    position: absolute;
+    right: 0.375rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    opacity: 0;
+    transition: opacity 0.12s linear;
+}
+@media (hover: none) {
+    .sort-header__icon { opacity: 0.4; }
+}
+.sort-header:hover .sort-header__icon,
+.sort-header:focus-visible .sort-header__icon { opacity: 0.55; }
+th[aria-sort] > .sort-header .sort-header__icon {
+    opacity: 1;
+    color: var(--text-accent);
+}
+
+/* The rows of the previous page stay in place while the next page is
+   requested. They are dimmed after a short delay, so a fast response does
+   not flicker. */
+.user-table .user-row { transition: opacity 0.15s linear; }
+.user-table[aria-busy="true"] .user-row {
+    opacity: 0.5;
+    transition-delay: 0.12s;
+}
+@media (prefers-reduced-motion: reduce) {
+    .sort-header__icon,
+    .user-table .user-row { transition: none; }
+}
+
+/* Below this width the user table is scrolled sideways; the sort is then
+   also offered above the table. */
+.user-sort-compact { display: none; }
+@media (max-width: 1023px) {
+    .user-sort-compact {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+}

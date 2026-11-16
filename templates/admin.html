@@ -243,74 +243,38 @@
                         </div>
                     </div>
                     
-                    <!-- Users Table -->
+                    <!-- Sort control for narrow widths, where the table is scrolled
+                         sideways and the header of the sorted column can be out of view -->
+                    <div class="user-sort-compact" data-user-sort-compact>
+                        <label for="userSortKey" class="text-sm text-[var(--text-muted)]">${t('adminDashboard.sortBy')}</label>
+                        <select id="userSortKey" :value="userSort.key" @change="setUserSortKey($event.target.value)" class="px-2 py-1 border border-[var(--border-secondary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option v-for="col in userSortColumns" :key="col.key" :value="col.key" v-text="col.label"></option>
+                        </select>
+                        <button type="button" @click="reverseUserSort" class="btn btn--sm btn--ghost" :title="t('adminDashboard.reverseSortOrder')" data-user-sort-direction>
+                            <i class="fas mr-1" aria-hidden="true" :class="userSort.order === 'asc' ? 'fa-arrow-up' : 'fa-arrow-down'"></i>
+                            <span>${ userSort.order === 'asc' ? t('adminDashboard.sortAscending') : t('adminDashboard.sortDescending') }</span>
+                        </button>
+                    </div>
+                    <p class="sr-only" role="status" v-text="userSortAnnouncement"></p>
+
+                    <!-- Users Table: sorted on the server, since the list is paged there.
+                         The rows of the previous page stay, dimmed, until the next page arrives. -->
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-[var(--border-primary)]">
+                        <table class="min-w-full divide-y divide-[var(--border-primary)] user-table" :aria-busy="isLoadingUsers ? 'true' : 'false'">
                             <thead class="bg-[var(--bg-tertiary)]">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
-                                        :aria-sort="adminUsersSort.key === 'id' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
-                                        <button type="button" @click="sortAdminUsersBy('id')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
-                                            <span>${t('adminDashboard.id')}</span>
-                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'id' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
-                                        </button>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
-                                        :aria-sort="userSort.key === 'username' ? (userSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
-                                        <button type="button" @click="sortUserListBy('username')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
-                                            <span>${t('adminDashboard.username')}</span>
-                                            <i class="fas text-[10px]" :class="userSort.key === 'username' ? (userSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
-                                        </button>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
-                                        :aria-sort="adminUsersSort.key === 'email' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
-                                        <button type="button" @click="sortAdminUsersBy('email')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
-                                            <span>${t('adminDashboard.email')}</span>
-                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'email' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
-                                        </button>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
-                                        :aria-sort="adminUsersSort.key === 'is_admin' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
-                                        <button type="button" @click="sortAdminUsersBy('is_admin')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
-                                            <span>${t('adminDashboard.admin')}</span>
-                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'is_admin' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
-                                        </button>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
-                                        :aria-sort="adminUsersSort.key === 'can_share_publicly' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
-                                        <button type="button" @click="sortAdminUsersBy('can_share_publicly')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
-                                            <span>${t('adminDashboard.publicShare')}</span>
-                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'can_share_publicly' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
-                                        </button>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
-                                        :aria-sort="adminUsersSort.key === 'recordings_count' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
-                                        <button type="button" @click="sortAdminUsersBy('recordings_count')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
-                                            <span>${t('adminDashboard.recordings')}</span>
-                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'recordings_count' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
-                                        </button>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
-                                        :aria-sort="adminUsersSort.key === 'storage_used' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
-                                        <button type="button" @click="sortAdminUsersBy('storage_used')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
-                                            <span>${t('adminDashboard.storageUsed')}</span>
-                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'storage_used' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
-                                        </button>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
-                                        :aria-sort="userSort.key === 'last_active' ? (userSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
-                                        <button type="button" @click="sortUserListBy('last_active')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
-                                            <span>${t('adminDashboard.lastActive')}</span>
-                                            <i class="fas text-[10px]" :class="userSort.key === 'last_active' ? (userSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
-                                        </button>
-                                    </th>
+                                    <th v-for="col in userSortColumns" :key="col.key" scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
+                                        :aria-sort="userSort.key === col.key ? (userSort.order === 'asc' ? 'ascending' : 'descending') : null">
+                                        <button type="button" class="sort-header" @click="sortUserListBy(col.key)" :data-sort-key="col.key">
+                                            <span v-text="col.label"></span>
+                                            <i class="fas sort-header__icon" aria-hidden="true" :class="userSort.key === col.key ? (userSort.order === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort'"></i>
                                         </button>
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-[var(--bg-secondary)] divide-y divide-[var(--border-primary)]">
-                                <tr v-for="user in sortedUsers" :key="user.id" class="hover:bg-[var(--bg-tertiary)]">
+                                <tr v-for="user in users" :key="user.id" class="user-row hover:bg-[var(--bg-tertiary)]">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ user.id }</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">${ user.username }<i v-if="user.login_locked" class="fas fa-lock ml-2 text-[var(--text-warning-strong)]" :title="t('adminDashboard.loginLocked')" :aria-label="t('adminDashboard.loginLocked')"></i></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ user.email }</td>
@@ -2317,9 +2281,6 @@ Summarization Instructions:
                 const isTeamAdminOnly = ref({% if is_group_admin_only %}true{% else %}false{% endif %});
                 const activeTab = ref({% if is_group_admin_only %}'teams'{% else %}'users'{% endif %});
                 const users = ref([]);
-                // User Management sorts only the loaded page; ID ascending is
-                // the listing's own order, so it stays the first-load default.
-                const adminUsersSort = ref({ key: 'id', dir: 1 });
                 const stats = ref({
                     total_users: 0,
                     total_recordings: 0,
@@ -2661,34 +2622,90 @@ Summarization Instructions:
                 // Computed properties
                 // Methods
                 let userSearchTimer = null;
-                // Order of the user list. The list is paged by the server, so
-                // the server sorts it; no key means the order by id. The first
-                // click on a column sorts ascending (for "Last active": never
-                // used first, then the least recently used), the next reverses.
-                const userSort = ref({ key: null, dir: 1 });
-                const sortUserListBy = (key) => {
-                    adminUsersSort.value = { key: null, dir: 1 };
-                    userSort.value = userSort.value.key === key
-                        ? { key, dir: -userSort.value.dir }
-                        : { key, dir: 1 };
+                // Sort of the user list. The list is paged and searched on the
+                // server, so every column is sorted there. A first click on a
+                // text column or on the ID gives ascending order (the ID
+                // ascending is the order of the list without a sort); a first
+                // click on a count, a permission or "Last active" gives the
+                // largest, the allowed or the most recent first. The next
+                // click on the same column reverses the order.
+                const USER_SORT_STORAGE_KEY = 'speakr.adminUserSort';
+                const USER_SORT_FIRST_ORDER = {
+                    id: 'asc', username: 'asc', email: 'asc',
+                    is_admin: 'desc', can_share_publicly: 'desc',
+                    recordings_count: 'desc', storage_used: 'desc', last_active: 'desc',
+                };
+                const DEFAULT_USER_SORT = { key: 'id', order: 'asc' };
+                const validUserSort = (value) => !!value
+                    && Object.prototype.hasOwnProperty.call(USER_SORT_FIRST_ORDER, value.key)
+                    && (value.order === 'asc' || value.order === 'desc');
+                // The sort is remembered in this browser. The page works the
+                // same without the storage (private window, blocked site data).
+                const readStoredUserSort = () => {
+                    try {
+                        const saved = JSON.parse(window.localStorage.getItem(USER_SORT_STORAGE_KEY) || 'null');
+                        if (validUserSort(saved)) return { key: saved.key, order: saved.order };
+                    } catch (e) { /* no storage, or a value that is not JSON */ }
+                    return { ...DEFAULT_USER_SORT };
+                };
+                const storeUserSort = (value) => {
+                    try {
+                        window.localStorage.setItem(USER_SORT_STORAGE_KEY, JSON.stringify(value));
+                    } catch (e) { /* no storage */ }
+                };
+                // userSort is what the headers show: the requested sort while
+                // a page is loading, then the sort reported in the response.
+                const userSort = ref(readStoredUserSort());
+                let appliedUserSort = { ...DEFAULT_USER_SORT };
+                let announceUserSort = false;
+                const userSortAnnouncement = ref('');
+                const userSortColumns = computed(() => [
+                    { key: 'id', label: _t('adminDashboard.id') },
+                    { key: 'username', label: _t('adminDashboard.username') },
+                    { key: 'email', label: _t('adminDashboard.email') },
+                    { key: 'is_admin', label: _t('adminDashboard.admin') },
+                    { key: 'can_share_publicly', label: _t('adminDashboard.publicShare') },
+                    { key: 'recordings_count', label: _t('adminDashboard.recordings') },
+                    { key: 'storage_used', label: _t('adminDashboard.storageUsed') },
+                    { key: 'last_active', label: _t('adminDashboard.lastActive') },
+                ]);
+                // A change of the sort starts at the first page; the search
+                // and the number of rows per page are kept.
+                const requestUserSort = (key, order) => {
+                    if (!validUserSort({ key, order })) return;
+                    userSort.value = { key, order };
+                    announceUserSort = true;
                     loadUsers(1);
                 };
+                const reversedUserOrder = () => (userSort.value.order === 'asc' ? 'desc' : 'asc');
+                const sortUserListBy = (key) => requestUserSort(
+                    key, userSort.value.key === key ? reversedUserOrder() : USER_SORT_FIRST_ORDER[key]);
+                const setUserSortKey = (key) => requestUserSort(key, USER_SORT_FIRST_ORDER[key]);
+                const reverseUserSort = () => requestUserSort(userSort.value.key, reversedUserOrder());
+                // Only the response to the latest request is shown: an earlier
+                // request is cancelled, and its response is dropped if it
+                // arrives all the same.
+                let userListRequest = 0;
+                let userListAbort = null;
                 const loadUsers = async (page) => {
                     const targetPage = (page === undefined || page === null) ? userPage.value : page;
+                    const requestId = ++userListRequest;
+                    if (userListAbort) userListAbort.abort();
+                    userListAbort = typeof AbortController === 'function' ? new AbortController() : null;
                     isLoadingUsers.value = true;
                     try {
                         const params = new URLSearchParams();
                         params.set('page', targetPage);
                         params.set('per_page', userPerPage.value);
                         if (userSearchQuery.value) params.set('search', userSearchQuery.value);
-                        if (userSort.value.key) {
-                            params.set('sort', userSort.value.key);
-                            params.set('order', userSort.value.dir > 0 ? 'asc' : 'desc');
-                        }
-                        const response = await fetch('/admin/users?' + params.toString());
+                        params.set('sort', userSort.value.key);
+                        params.set('order', userSort.value.order);
+                        const response = await fetch('/admin/users?' + params.toString(),
+                            userListAbort ? { signal: userListAbort.signal } : undefined);
                         if (!response.ok) throw new Error('Failed to load users');
 
                         const data = await response.json();
+                        if (requestId !== userListRequest) return;
                         users.value = data.users || [];
                         const p = data.pagination || {};
                         userPage.value = p.page != null ? p.page : targetPage;
@@ -2697,10 +2714,28 @@ Summarization Instructions:
                         userTotalPages.value = p.total_pages != null ? p.total_pages : 1;
                         userHasNext.value = !!p.has_next;
                         userHasPrev.value = !!p.has_prev;
+                        // The headers show the sort that was applied.
+                        const applied = { key: data.sort, order: data.order };
+                        if (validUserSort(applied)) {
+                            appliedUserSort = applied;
+                            userSort.value = { ...applied };
+                            storeUserSort(applied);
+                            if (announceUserSort) {
+                                const column = userSortColumns.value.find(col => col.key === applied.key);
+                                userSortAnnouncement.value = _t(
+                                    applied.order === 'asc' ? 'adminDashboard.sortedAscending' : 'adminDashboard.sortedDescending',
+                                    { column: column ? column.label : applied.key });
+                            }
+                        }
+                        announceUserSort = false;
                     } catch (error) {
+                        if (requestId !== userListRequest) return;
                         console.error('Error loading users:', error);
+                        // The rows on screen are still in the earlier order.
+                        userSort.value = { ...appliedUserSort };
+                        announceUserSort = false;
                     } finally {
-                        isLoadingUsers.value = false;
+                        if (requestId === userListRequest) isLoadingUsers.value = false;
                     }
                 };
 
@@ -2951,42 +2986,6 @@ Summarization Instructions:
                         if (x == null) return 1;
                         if (y == null) return -1;
                         return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir;
-                    });
-                });
-                // User Management columns. Keys are the fields of the
-                // /admin/users listing, so sorting needs no extra request.
-                const adminUserColumns = computed(() => [
-                    { key: 'id', label: _t('adminDashboard.id') },
-                    { key: 'username', label: _t('adminDashboard.username') },
-                    { key: 'email', label: _t('adminDashboard.email') },
-                    { key: 'is_admin', label: _t('adminDashboard.admin') },
-                    { key: 'can_share_publicly', label: _t('adminDashboard.publicShare') },
-                    { key: 'recordings_count', label: _t('adminDashboard.recordings') },
-                    { key: 'storage_used', label: _t('adminDashboard.storageUsed') },
-                ]);
-                const ADMIN_USER_TEXT_SORT_KEYS = ['username', 'email'];
-                // Text columns open ascending; counts and flags open with the
-                // largest or true value first. ID opens ascending to match the
-                // listing order, and re-selecting a column reverses its sort.
-                const sortAdminUsersBy = (key) => {
-                    userSort.value = { key: null, dir: 1 };
-                    adminUsersSort.value = adminUsersSort.value.key === key
-                        ? { key, dir: -adminUsersSort.value.dir }
-                        : { key, dir: (key === 'id' || ADMIN_USER_TEXT_SORT_KEYS.includes(key)) ? 1 : -1 };
-                };
-                const sortedUsers = computed(() => {
-                    const rows = [...users.value];
-                    const { key, dir } = adminUsersSort.value;
-                    if (!key) return rows;
-                    return rows.sort((a, b) => {
-                        const x = a[key], y = b[key];
-                        if (x == null && y == null) return 0;
-                        if (x == null) return 1;
-                        if (y == null) return -1;
-                        if (typeof x === 'string' && typeof y === 'string') {
-                            return x.localeCompare(y, window.i18n?.getIntlLocale?.() || undefined) * dir;
-                        }
-                        return (Number(x) - Number(y)) * dir;
                     });
                 });
                 // Storage used against a quota in MB, as a percentage (#413).
@@ -4681,7 +4680,6 @@ Summarization Instructions:
                     voiceEmbedding, voiceEmbeddingBusy, checkVoiceEmbedding, rebaselineVoiceEmbedding,
                     statsDays, overview, overviewLoading, overviewCards, statusRows,
                     userColumns, statsSort, sortUsersBy, sortedStatsUsers, budgetBarClass, storagePct, storagePctClass,
-                    adminUserColumns, adminUsersSort, sortAdminUsersBy, sortedUsers,
                     formatCompact, formatCost, formatModelCost, formatSeconds, formatDay,
                     settings,
                     displayedSettings,
@@ -4793,8 +4791,8 @@ Summarization Instructions:
                     updateSetting,
                     formatDate,
                     formatRelativeTime,
-                    userSort,
-                    sortUserListBy,
+                    userSort, userSortColumns, userSortAnnouncement,
+                    sortUserListBy, setUserSortKey, reverseUserSort,
                     parseInstant,
                     getSettingDescription,
                     permissionModes,

@@ -125,6 +125,21 @@ def test_settings_pages(browser_page, path):
     _check_common(page, problems, path)
 
 
+USER_SORT_STORAGE_KEY = "speakr.adminUserSort"
+# Sort key of each column of the User Management table, in the order of the
+# columns, with the direction of the first click.
+USER_SORT_COLUMNS = (
+    ("id", "id", "asc"),
+    ("username", "username", "asc"),
+    ("email", "email", "asc"),
+    ("admin", "is_admin", "desc"),
+    ("public share", "can_share_publicly", "desc"),
+    ("recordings", "recordings_count", "desc"),
+    ("storage used", "storage_used", "desc"),
+    ("last active", "last_active", "desc"),
+)
+
+
 def _admin_users_table(page):
     """The User Management table (the only one with a Public share column)."""
     table = page.locator("table").filter(
@@ -134,35 +149,39 @@ def _admin_users_table(page):
     return table
 
 
-def _admin_user_rows(table):
-    """Visible data rows as lists of cell text (the empty-state row is skipped)."""
-    rows = table.locator("tbody tr")
-    headers = table.locator("thead th")
-    out = []
-    for index in range(rows.count()):
-        cells = rows.nth(index).locator("td")
-        if cells.count() < headers.count():  # the empty-state or loading row
-            continue
-        out.append([cells.nth(i).inner_text().strip() for i in range(cells.count())])
-    return out
+def _admin_user_ids(table):
+    """The ids of the listed users, in the order of the rows."""
+    return [int(text) for text in table.locator("tbody tr.user-row td:first-child").all_inner_texts()]
 
 
-def _file_size_bytes(text):
-    """The primary size in a storage cell ("12.3 MB / 5 GB") in bytes."""
-    match = re.match(r"([\d.,]+)\s*(B|KB|MB|GB|TB)", text.split("/")[0].strip())
-    assert match, f"unparsable storage cell: {text!r}"
-    number = float(match.group(1).replace(",", ""))
-    return number * 1024 ** ("B KB MB GB TB".split().index(match.group(2)))
+def _is_user_list_request(response, **params):
+    """True for a response of GET /admin/users with these query parameters."""
+    if "/admin/users?" not in response.url or response.request.method != "GET":
+        return False
+    query = dict(pair.split("=", 1) for pair in response.url.split("?", 1)[1].split("&"))
+    return all(query.get(name) == str(value) for name, value in params.items())
 
 
-def _assert_sorted(page, values, ascending, column):
-    if column in ("username", "email"):
-        expected = page.evaluate(
-            "([vals, asc]) => [...vals].sort((a, b) => asc ? a.localeCompare(b) : b.localeCompare(a))",
-            [values, ascending])
-    else:
-        expected = sorted(values, reverse=not ascending)
-    assert values == expected, f"/admin: {column} not sorted {'ascending' if ascending else 'descending'}: {values}"
+def _forget_user_sort(page):
+    page.evaluate("key => { try { localStorage.removeItem(key); } catch (e) {} }", USER_SORT_STORAGE_KEY)
+
+
+def _expected_user_order(users, key, order):
+    """The ids of all users in the order of ``key``: equal values by id."""
+    def value(user):
+        if key == "last_active":
+            # Never used first in ascending order, last in descending order.
+            return (user["last_seen_at"] is not None, user["last_seen_at"] or "")
+        if key in ("username", "email"):
+            return user[key].lower()
+        if key in ("is_admin", "can_share_publicly"):
+            return bool(user[key])
+        return user[key]
+    if key == "id":
+        return sorted((user["id"] for user in users), reverse=(order == "desc"))
+    rows = sorted(users, key=lambda user: user["id"])
+    rows.sort(key=value, reverse=(order == "desc"))
+    return [user["id"] for user in rows]
 
 
 def test_admin_users_table_shows_last_active(browser_page):
@@ -222,95 +241,228 @@ def test_admin_users_table_shows_last_active(browser_page):
 
     assert check_rows(), "/admin: no user rows to check"
 
-    # Sorting: the first click asks the server for ascending order.
-    assert header.get_attribute("aria-sort") == "none"
+    # Sorting: the list is ordered by id at first, so the column has no
+    # aria-sort. The first click asks the server for the most recent first.
+    assert header.get_attribute("aria-sort") is None
     with page.expect_response(
-            lambda r: "/admin/users?" in r.url and "sort=last_active" in r.url) as sorted_response:
+            lambda r: _is_user_list_request(r, sort="last_active")) as sorted_response:
         header.locator("button").click()
-    assert "order=asc" in sorted_response.value.url, sorted_response.value.url
+    assert "order=desc" in sorted_response.value.url, sorted_response.value.url
     assert sorted_response.value.ok
     page.wait_for_function(
-        "el => el.getAttribute('aria-sort') === 'ascending'", arg=header.element_handle())
+        "el => el.getAttribute('aria-sort') === 'descending'", arg=header.element_handle())
     with page.expect_response(
-            lambda r: "/admin/users?" in r.url and "order=desc" in r.url):
+            lambda r: _is_user_list_request(r, sort="last_active", order="asc")):
         header.locator("button").click()
     page.wait_for_function(
-        "el => el.getAttribute('aria-sort') === 'descending'", arg=header.element_handle())
+        "el => el.getAttribute('aria-sort') === 'ascending'", arg=header.element_handle())
     assert check_rows(), "/admin: no user rows after sorting"
+    _forget_user_sort(page)
+    _check_common(page, problems, "/admin")
 
 
 def test_admin_users_table_sorting(browser_page):
-    """Every data column sorts the loaded page and reports its direction.
+    """Every data column of the User Management table is sorted on the server.
 
-    User Management paginates and searches on the server; the sort is a
-    client-side reorder of the rows already loaded, so this test reads the
-    rendered cells, clicks a header, and checks the same rows come back in
-    the expected order. The direction opens with text ascending and counts
-    or flags descending, and re-selecting the header reverses it.
+    The list is paged and searched on the server, so an order made from the
+    rows of one page would be wrong. Seventeen accounts are added, which is
+    more than one page of fifteen, with usernames in the reverse of the order
+    of their ids. For each column and both directions the ids of the rows of
+    all pages, read from the table, must be the order of all accounts. The
+    seeded recordings belong to the first admin, so that account moves to the
+    last page when the list is sorted by recordings in ascending order.
+
+    Also checked: the direction of the first click and its reverse, aria-sort
+    on the sorted column only, the first page after a change of the sort, the
+    sort with a search, the rows kept and marked busy while a page is loading,
+    a late response that is not shown, the sort kept after a reload, and the
+    sort control above the table at phone width.
     """
     page, problems = browser_page
     _open(page, problems, "/admin")
+    _forget_user_sort(page)
+    run = os.urandom(3).hex()
+    csrf = page.locator("meta[name=csrf-token]").get_attribute("content")
+    created = []
 
-    table = _admin_users_table(page)
-    headers = table.locator("thead th")
-    labels = [h.strip().lower() for h in headers.all_inner_texts()]
-    assert labels[-1] == "actions", f"/admin: unexpected last column: {labels}"
-    index = {label: i for i, label in enumerate(labels)}
-    expected_columns = ["id", "username", "email", "admin", "public share",
-                        "recordings", "storage used"]
-    assert labels[:len(expected_columns)] == expected_columns, (
-        f"/admin: unexpected User Management columns: {labels}")
+    def api(method, path, data=None):
+        return page.request.fetch(f"{BASE}{path}", method=method,
+                                  headers={"X-CSRFToken": csrf}, data=data)
 
-    actions_header = headers.nth(index["actions"])
-    assert actions_header.locator("button").count() == 0, (
-        "/admin: the Actions column should not be sortable")
+    try:
+        for number in range(17):
+            # Later ids have earlier names; some names begin with a capital.
+            letter = "zyxwvutsrqponmlkj"[number]
+            username = f"{letter.upper() if number % 3 == 0 else letter}sort{run}"
+            response = api("POST", "/admin/users", {
+                "username": username, "email": f"{number:02d}sort{run}@example.com",
+                "password": f"Sort-{os.urandom(9).hex()}", "is_admin": number % 5 == 0})
+            assert response.status == 201, f"user {username}: {response.status} {response.text()}"
+            created.append(response.json()["id"])
 
-    def column_values(column):
-        rows = _admin_user_rows(table)
-        assert rows, "/admin: no user rows to sort"
-        i = index[column]
-        if column == "id":
-            return [int(r[i]) for r in rows]
-        if column == "recordings":
-            return [int(r[i]) for r in rows]
-        if column == "storage used":
-            return [_file_size_bytes(r[i]) for r in rows]
-        if column == "admin":
-            return [r[i].lower() == "yes" for r in rows]
-        if column == "public share":
-            return [r[i].lower() == "allowed" for r in rows]
-        return [r[i] for r in rows]  # raw text; the browser collates it
+        _open(page, problems, "/admin")
+        everyone = api("GET", "/admin/users?per_page=1000").json()["users"]
+        assert len(everyone) > 15, "/admin: the accounts do not fill more than one page"
+        assert sum(1 for user in everyone if user["recordings_count"]) >= 1, (
+            "/admin: no account has a recording; the seed is missing")
 
-    def assert_direction(column, ascending):
-        actual = headers.nth(index[column]).get_attribute("aria-sort")
-        expected = "ascending" if ascending else "descending"
-        assert actual == expected, f"/admin: {column} aria-sort is {actual!r}, wanted {expected!r}"
-        for other in labels[:-1]:
-            if other != column:
-                assert headers.nth(index[other]).get_attribute("aria-sort") == "none", (
-                    f"/admin: {other} kept a sort indicator while {column} is sorted")
-        _assert_sorted(page, column_values(column), ascending, column)
+        table = _admin_users_table(page)
+        headers = table.locator("thead th")
+        labels = [h.strip().lower() for h in headers.all_inner_texts()]
+        assert labels == [label for label, _, _ in USER_SORT_COLUMNS] + ["actions"], (
+            f"/admin: unexpected User Management columns: {labels}")
+        index = {label: i for i, label in enumerate(labels)}
+        assert headers.nth(index["actions"]).locator("button").count() == 0, (
+            "/admin: the Actions column should not be sortable")
+        assert not page.locator("[data-user-sort-compact]").is_visible(), (
+            "/admin: the sort control for narrow widths is shown at 1400 px")
 
-    # First load keeps the listing order: ID ascending.
-    assert_direction("id", True)
+        def assert_marked(label, order):
+            """aria-sort is on this column only, and the table is not busy."""
+            page.wait_for_function(
+                "([el, want]) => el.getAttribute('aria-sort') === want",
+                arg=[headers.nth(index[label]).element_handle(),
+                     "ascending" if order == "asc" else "descending"])
+            for other in labels[:-1]:
+                if other != label:
+                    assert headers.nth(index[other]).get_attribute("aria-sort") is None, (
+                        f"/admin: {other} has aria-sort while {label} is sorted")
+            page.wait_for_function("el => el.getAttribute('aria-busy') === 'false'",
+                                   arg=table.element_handle())
 
-    for column, first_ascending in (
-        ("username", True),
-        ("email", True),
-        ("admin", False),
-        ("public share", False),
-        ("recordings", False),
-        ("storage used", False),
-        ("id", True),  # ID keeps its ascending default when selected again
-    ):
-        headers.nth(index[column]).locator("button").click()
-        page.wait_for_timeout(300)
-        assert_direction(column, first_ascending)
-        headers.nth(index[column]).locator("button").click()
-        page.wait_for_timeout(300)
-        assert_direction(column, not first_ascending)
+        def ids_of_all_pages(key, order):
+            """The ids of the first page (shown now) and of every next page."""
+            listed = _admin_user_ids(table)
+            assert len(listed) == 15, f"/admin: {len(listed)} rows on the first page"
+            next_page = page.locator("button[aria-label='Next page']")
+            page_number = 1
+            while next_page.is_enabled():
+                page_number += 1
+                with page.expect_response(lambda r: _is_user_list_request(
+                        r, page=page_number, sort=key, order=order)):
+                    next_page.click()
+                page.wait_for_function(
+                    "([el, first]) => el.getAttribute('aria-busy') === 'false'"
+                    " && el.querySelector('tbody tr.user-row td').innerText.trim() !== String(first)",
+                    arg=[table.element_handle(), listed[-15] if len(listed) >= 15 else -1])
+                listed.extend(_admin_user_ids(table))
+            return listed
 
-    _check_common(page, problems, "/admin")
+        # Without a stored sort the list is in the order of the ids.
+        assert_marked("id", "asc")
+        assert ids_of_all_pages("id", "asc") == _expected_user_order(everyone, "id", "asc")
+
+        for label, key, first_order in USER_SORT_COLUMNS[1:] + USER_SORT_COLUMNS[:1]:
+            for order in (first_order, "desc" if first_order == "asc" else "asc"):
+                # The change is requested from the server and starts at page 1,
+                # although the last page was open.
+                with page.expect_response(lambda r: _is_user_list_request(
+                        r, sort=key, order=order, page=1, per_page=15)) as response:
+                    headers.nth(index[label]).locator("button").click()
+                body = response.value.json()
+                assert (body["sort"], body["order"]) == (key, order)
+                assert_marked(label, order)
+                listed = ids_of_all_pages(key, order)
+                assert listed == _expected_user_order(everyone, key, order), (
+                    f"/admin: {key} {order} is not the order of all accounts: {listed}")
+
+        # Recordings ascending: the owner of the seeded recordings is on the
+        # last page, which an order of the first page alone could not show.
+        owner = max(everyone, key=lambda user: user["recordings_count"])["id"]
+        with page.expect_response(lambda r: _is_user_list_request(
+                r, sort="recordings_count", order="desc")):
+            headers.nth(index["recordings"]).locator("button").click()
+        assert_marked("recordings", "desc")
+        assert _admin_user_ids(table)[0] == owner
+        with page.expect_response(lambda r: _is_user_list_request(
+                r, sort="recordings_count", order="asc")):
+            headers.nth(index["recordings"]).locator("button").click()
+        assert_marked("recordings", "asc")
+        assert owner not in _admin_user_ids(table), (
+            "/admin: the account with recordings is on the first page of the ascending order")
+
+        # A search keeps the sort, and its result is in that order.
+        with page.expect_response(lambda r: _is_user_list_request(
+                r, sort="username", order="asc")):
+            headers.nth(index["username"]).locator("button").click()
+        assert_marked("username", "asc")
+        with page.expect_response(lambda r: _is_user_list_request(
+                r, search=f"sort{run}", sort="username", order="asc", page=1)):
+            page.get_by_placeholder("Search users").fill(f"sort{run}")
+        page.wait_for_function(
+            "([el, want]) => el.getAttribute('aria-busy') === 'false'"
+            " && el.querySelector('tbody tr.user-row td').innerText.trim() === String(want)",
+            arg=[table.element_handle(), created[-1]])
+        mine = [user for user in everyone if user["id"] in created]
+        found = ids_of_all_pages("username", "asc")
+        assert found == _expected_user_order(mine, "username", "asc")
+        assert found[0] == created[-1], (
+            "/admin: the name that is first in the alphabet belongs to the last id")
+
+        # While a page is loading the rows stay and the table is marked busy.
+        # The request for the order by email is held back; the order by id is
+        # requested meanwhile, and the held request, cancelled or answered
+        # late, does not change the table.
+        held = []
+        page.route("**/admin/users?*sort=email*", lambda route: held.append(route))
+        shown = _admin_user_ids(table)
+        assert shown, "/admin: no rows before the held request"
+        headers.nth(index["email"]).locator("button").click()
+        page.wait_for_function("el => el.getAttribute('aria-busy') === 'true'",
+                               arg=table.element_handle())
+        assert _admin_user_ids(table) == shown, "/admin: the rows were changed while loading"
+        assert headers.nth(index["email"]).get_attribute("aria-sort") == "ascending"
+        with page.expect_response(lambda r: _is_user_list_request(
+                r, sort="id", order="asc")):
+            headers.nth(index["id"]).locator("button").click()
+        assert_marked("id", "asc")
+        assert len(held) == 1, f"/admin: {len(held)} requests for the order by email"
+        try:
+            held[0].continue_()
+        except Exception:  # cancelled by the page when the newer request was made
+            pass
+        page.unroute("**/admin/users?*sort=email*")
+        page.wait_for_timeout(1000)
+        assert_marked("id", "asc")
+        assert _admin_user_ids(table) == _expected_user_order(mine, "id", "asc")[:15]
+        with page.expect_response(lambda r: _is_user_list_request(
+                r, sort="id", order="desc")):
+            headers.nth(index["id"]).locator("button").click()
+        assert_marked("id", "desc")
+
+        # The sort is kept for this browser: after a reload the first request
+        # asks for it and the header shows it.
+        with page.expect_response(lambda r: _is_user_list_request(r, sort="id", order="desc")):
+            page.reload()
+        table = _admin_users_table(page)
+        headers = table.locator("thead th")
+        assert_marked("id", "desc")
+
+        # At phone width the table is scrolled sideways; the sort is offered
+        # above it as a select with a button for the direction.
+        page.set_viewport_size({"width": 390, "height": 800})
+        compact = page.locator("[data-user-sort-compact]")
+        compact.wait_for(state="visible", timeout=5000)
+        assert compact.locator("select").input_value() == "id"
+        with page.expect_response(lambda r: _is_user_list_request(
+                r, sort="storage_used", order="desc", page=1)):
+            compact.locator("select").select_option("storage_used")
+        assert_marked("storage used", "desc")
+        with page.expect_response(lambda r: _is_user_list_request(
+                r, sort="storage_used", order="asc", page=1)):
+            compact.locator("[data-user-sort-direction]").click()
+        assert_marked("storage used", "asc")
+        assert "Ascending" in compact.locator("[data-user-sort-direction]").inner_text()
+        overflow = page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+        assert overflow <= 0, f"/admin: the page is {overflow} px wider than the phone screen"
+        page.set_viewport_size({"width": 1400, "height": 900})
+
+        _check_common(page, problems, "/admin")
+    finally:
+        page.set_viewport_size({"width": 1400, "height": 900})
+        _forget_user_sort(page)
+        for user_id in created:
+            api("DELETE", f"/admin/users/{user_id}")
 
 
 def test_inquire_page(browser_page):
