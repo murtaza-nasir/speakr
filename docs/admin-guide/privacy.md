@@ -125,14 +125,27 @@ All log output is written to the standard output of the container. No log file i
 | `LOG_LEVEL` | Content of the log |
 |---|---|
 | `ERROR`, `WARNING` | Failures, with ids. An error of a transcription service, an LLM provider or the embedding API is logged as its class, provider, HTTP status, error code and length, without its text. |
-| `INFO` (default) | In addition: ids, lengths, counts, durations, model names and service addresses. No transcript, summary, title, prompt, hotword or search query. Users, groups, tags, folders, speakers, naming templates and recordings are named by id. A file is named by its extension, and an upload in the staging folder by its timestamp and the first 12 characters of its random id. The stored media of a recording is named by the directory part of its storage path, the timestamp at the start of its name and the extension. |
+| `INFO` (default) | In addition: ids, lengths, counts, durations, model names and service addresses. No transcript, summary, title, prompt, hotword or search query. Users, groups, tags, folders, speakers, naming templates and recordings are named by id. A file is named by a label with an identifier, without its original file name; the labels are listed below the table. |
 | `DEBUG` | In addition: titles, summaries, prompts, model replies, search queries, hotwords, usernames, group, tag and speaker names, original file names, recipient addresses of sent email, and the full text and traceback of provider errors. |
 
 `DEBUG` is unsuitable for a deployment with regulated data, except for a short diagnosis on a test instance.
 
-The storage path of a recording ends with the original file name. In the log lines about the stored media of a recording, the path is written without that name, in the form `<stored file local://recordings/2026/11/42/20261115101500.mp3>`: the directory part with the id of the recording, the timestamp and the extension. This applies when the media of a recording is deleted, when the audio is removed by a retention rule, when the audio extracted from a video is stored, and in the `ERROR` and `WARNING` lines about a media file that is missing or cannot be deleted. A chunk of a long recording is named by its number, and a staging object of the FunASR connector by its folder and extension.
+The storage path of a recording ends with the original file name. At `INFO` and above, a file is named by one of the following labels. No label holds the original file name, and no label consists of the extension alone.
 
-Errors of the operating system, the database and FFmpeg are logged with their text at `WARNING` and `ERROR`. In the upload, conversion, probe, chunking, watch folder, export, storage deletion and FFmpeg code, a file named in such text is reduced to its extension or to the timestamp and id of the staged upload. In other code a file path can appear in an error line.
+| File | Label | Identifier |
+|---|---|---|
+| Upload in the staging folder | `<stored file 20261115101500_0123456789ab.mp3>` | Timestamp and the first 12 characters of the random id |
+| Stored media of a recording, named by its storage path | `<stored file local://recordings/2026/11/42/20261115101500.mp3>` | Directory part with the id of the recording, and the timestamp at the start of the name |
+| Stored media named by its local path, and the files derived from it (converted, compressed and extracted audio, chunks) | `<stored file 20261115101500.mp3 of recording 42>`, `<stored file 20261115101500.mp3 chunk 3 of recording 42>` | Timestamp, chunk number and id of the recording |
+| Converted file in the staging folder | `<stored file 20261115101500_0123456789ab.mp3>` or `<staged file 0123456789ab.mp3>` | Timestamp of the source file, where its name has one, and the first 12 characters of the random id |
+| Download copy of an S3 object | `<s3 copy ab12cd34.mp3 of recording 42>` | Random part of the temporary file name |
+| Any other file: an input of the watch folder, an export file, a temporary file | `<file 4f3a1c9b2d.m4a>` | Keyed digest of the file name |
+
+The keyed digest is the first 10 hexadecimal characters of an HMAC-SHA-256 of the file name. The key is derived from `SECRET_KEY`, so the same file name has the same label in every worker process and after a restart, and a guessed file name cannot be confirmed from a label without the key. After a change of `SECRET_KEY` the labels differ from the earlier ones.
+
+In the lines of a job of the queue, every label ends with the id of the recording. After an upload is stored, one line holds the staging label, the id of the recording and the label of the stored media: `Stored upload <stored file 20261115101500_0123456789ab.mp3> of recording 42 as <stored file local://recordings/2026/11/42/20261115101502.mp3>`. A staging object of the FunASR connector is named by its folder, the digest of its name and the extension.
+
+Errors of the operating system, the database and FFmpeg are logged with their text at `WARNING` and `ERROR`. In the upload, conversion, probe, chunking, watch folder, export, storage deletion and FFmpeg code, a file named in such text is replaced by its label. This covers storage paths and keys, names of staged and stored files, quoted paths, absolute paths that end in a file name with an extension, and paths below the upload, staging, watch and export folders. The same replacement is applied to the traceback of every error logged above `DEBUG`. A relative file name with spaces, written without quotes, is not recognized. In other code a file path can appear in the message of an error line.
 
 ### Error text shown to the user
 
