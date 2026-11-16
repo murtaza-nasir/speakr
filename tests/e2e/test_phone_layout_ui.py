@@ -443,9 +443,10 @@ def test_both_dates_and_one_date_on_the_same_day(phone):
     assert "10:02" in meeting, meeting
     assert page.locator("[data-phone-meeting-date]").get_attribute("title") == en("metadata.meetingDate")
     assert uploaded.startswith("uploaded Mar 5"), uploaded
-    # One line: the facts sit beside each other
+    # The facts sit beside each other; with a wider font the last ones go to a second line
     tops = page.locator(".ph-details__fact").evaluate_all("(els) => els.map((el) => Math.round(el.getBoundingClientRect().top))")
-    assert max(tops) - min(tops) <= 4, tops
+    assert tops == sorted(tops) and len({round(top / 4) for top in tops}) <= 2, tops
+    phone.no_sideways_scroll("the details with both dates")
     phone.shot("phone-layout-test-details")
 
     # The same day at another hour is still one date
@@ -1309,7 +1310,10 @@ def test_the_same_structure_in_every_theme(browser, phone, theme):
         covered = page.evaluate("""() => { const bar = document.querySelector('[data-phone-transcript-bar]').getBoundingClientRect();
             return [...document.querySelectorAll('.speaker-run > .speaker-tablet, .speaker-run > .speaker-tablet-group')]
                 .map((el) => el.getBoundingClientRect()).filter((r) => r.height > 0 && r.top < bar.bottom - 1 && r.bottom > bar.top + 1)
-                .filter((r) => { const hit = document.elementFromPoint(r.left + 3, Math.max(r.top, bar.top) + 3); return !!hit && !hit.closest('[data-phone-transcript-bar]'); }).length; }""")
+                .filter((r) => { // a point inside the part of the label that is under the bar, whatever its height
+                    const top = Math.max(r.top, bar.top), bottom = Math.min(r.bottom, bar.bottom);
+                    const hit = document.elementFromPoint(r.left + 3, top + Math.min(3, (bottom - top) / 2));
+                    return !!hit && !hit.closest('[data-phone-transcript-bar]'); }).length; }""")
         assert covered == 0, f"{theme}: a speaker label covers the pinned bar"
         session.no_sideways_scroll(f"{theme}: transcript")
         session.shot(f"phone-layout-test-theme-{theme}-transcript")

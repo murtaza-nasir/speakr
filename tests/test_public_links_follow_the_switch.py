@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
 from src.models import Recording, Share, SystemSetting, User
+from tests.audit_log_support import unfreeze_hot_settings
 
 app.config['WTF_CSRF_ENABLED'] = False
 app.config['TESTING'] = True
@@ -28,6 +29,7 @@ KEY = 'enable_public_sharing'
 
 @pytest.fixture
 def world():
+    unfreeze_hot_settings()
     with app.app_context():
         row = SystemSetting.query.filter_by(key=KEY).first()
         saved = (row.value, row.setting_type) if row else None

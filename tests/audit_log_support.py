@@ -129,3 +129,21 @@ def remove_users(created):
         GroupMembership.query.filter_by(user_id=user_id).delete()
         db.session.delete(user)
         db.session.commit()
+
+
+def unfreeze_hot_settings():
+    """Remove module attributes that shadow a hot-applied setting.
+
+    ENABLE_INTERNAL_SHARING, ENABLE_PUBLIC_SHARING and the like are read
+    through a module-level __getattr__ (apply_hot_settings), so a saved
+    setting applies at once. A test that sets such a name on the module and
+    restores it with setattr leaves an ordinary attribute behind, and the
+    saved setting is then ignored for the rest of the process. A test that
+    relies on the saved setting calls this first.
+    """
+    import sys
+    for module in list(sys.modules.values()):
+        names = getattr(module, "__dict__", {}).get("_SYSTEM_SETTING_MAP")
+        if isinstance(names, dict) and "__getattr__" in module.__dict__:
+            for name in names:
+                module.__dict__.pop(name, None)

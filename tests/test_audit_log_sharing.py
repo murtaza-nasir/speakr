@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import text
 
+from tests.audit_log_support import unfreeze_hot_settings  # noqa: E402
 from tests.audit_log_support import (  # noqa: E402
     anonymous_client, api_token, app, audit, bearer, client_for, db, make_recording, make_user,
     max_id, names, remove_users, reset_audit_settings, rows_after, set_setting,
@@ -36,6 +37,7 @@ def created():
         audit.flush()
         audit.reset_memory()
         users = []
+        unfreeze_hot_settings()
         set_setting('enable_internal_sharing', 'true')
         set_setting('enable_public_sharing', 'true')
         set_setting('user_search_scope', 'everyone')
