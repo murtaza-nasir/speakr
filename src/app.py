@@ -901,8 +901,9 @@ def handle_csrf_error(error):
         # sign anyone out.
         if request.endpoint == 'auth.logout' and same_origin:
             from flask_login import logout_user
+            from src.api.auth import signed_out_redirect
             logout_user()
-            return redirect(url_for('auth.login'))
+            return signed_out_redirect()
         # Any other form with an expired or missing token: back to the page
         # it was sent from, with a message, in place of a bare 400 page.
         if retryable and same_origin and request.referrer:
@@ -1313,6 +1314,21 @@ def add_security_headers(response):
 def robots_txt():
     """Serve robots.txt to instruct crawlers not to index the site."""
     return send_file(os.path.join(app.static_folder, 'robots.txt'), mimetype='text/plain')
+
+# --- Service worker -----------------------------------------------------------
+@app.route('/sw.js')
+def service_worker():
+    """Serve static/sw.js from the root, so that its scope is the whole app.
+
+    A worker's widest scope is the directory of its URL: served from
+    /static/sw.js it controlled no page. No Service-Worker-Allowed header is
+    needed for a file at the root. The browser's update check must see a new
+    release at once, so the file is revalidated on every request.
+    """
+    response = send_file(os.path.join(app.static_folder, 'sw.js'), mimetype='text/javascript', max_age=0)
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
+
 
 if __name__ == '__main__':
     import argparse

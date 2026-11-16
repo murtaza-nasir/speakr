@@ -4106,5 +4106,11 @@
     "uploaded": "上传于 {{date}}",
     "uploadedLabel": "上传时间",
     "uploadedOn": "上传于 {{date}}"
+  },
+  "signOut": {
+    "localCopiesTitle": "删除此浏览器中的副本？",
+    "localCopiesMessageOne": "此浏览器中保存着 1 个未到达服务器的录音或上传。退出登录时会将其从此浏览器中删除。",
+    "localCopiesMessage": "此浏览器中保存着 {{count}} 个未到达服务器的录音或上传。退出登录时会将其从此浏览器中删除。",
+    "deleteAndSignOut": "删除并退出登录"
   }
 }

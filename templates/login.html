@@ -54,6 +54,8 @@
          own stylesheets in the cascade. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css', v=app_version) }}">
     {% include 'includes/ui_theme.html' %}
+    <!-- What is removed from the browser after a sign-out (no service worker is registered here) -->
+    <script src="{{ url_for('static', filename='js/service-worker-client.js', v=app_version) }}"></script>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">

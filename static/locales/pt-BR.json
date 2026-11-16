@@ -4106,5 +4106,11 @@
     "uploaded": "enviada {{date}}",
     "uploadedLabel": "Enviada",
     "uploadedOn": "Enviada {{date}}"
+  },
+  "signOut": {
+    "localCopiesTitle": "Excluir as cópias deste navegador?",
+    "localCopiesMessageOne": "Este navegador guarda 1 gravação ou envio que não chegou ao servidor. Ele é excluído deste navegador ao sair.",
+    "localCopiesMessage": "Este navegador guarda {{count}} gravações ou envios que não chegaram ao servidor. Eles são excluídos deste navegador ao sair.",
+    "deleteAndSignOut": "Excluir e sair"
   }
 }

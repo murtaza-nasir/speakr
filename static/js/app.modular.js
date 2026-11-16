@@ -255,25 +255,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // CSRF Token Integration with Vue.js
     const csrfToken = ref(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
 
-    // Register Service Worker (non-blocking)
-    if ('serviceWorker' in navigator) {
-        // Version the registration URL so every release installs a fresh
-        // worker with its own cache namespace; otherwise a byte-identical
-        // sw.js keeps serving the previous release's cached app shell
-        // forever (issue #357).
-        const appVersion = document.querySelector('meta[name="app-version"]')?.getAttribute('content') || '';
-        const swUrl = appVersion ? `/static/sw.js?v=${encodeURIComponent(appVersion)}` : '/static/sw.js';
-        // Delay registration to not block page load
-        setTimeout(() => {
-            navigator.serviceWorker.register(swUrl)
-                .then(registration => {
-                    console.log('ServiceWorker registration successful with scope:', registration.scope);
-                })
-                .catch(error => {
-                    console.warn('ServiceWorker registration failed (non-critical):', error);
-                });
-        }, 1000);
-    }
+    // The service worker is registered by js/service-worker-client.js, which
+    // every signed-in page loads.
 
     // Escapes text placed into the help markup returned by helpCode/helpLink.
     const escapeHelpHtml = (text) => String(text)

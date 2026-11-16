@@ -88,9 +88,14 @@ def test_no_code_references_the_play_cdn_build():
             assert "tailwind.min.js" not in open(path, encoding="utf-8").read(), path
 
 
-def test_the_service_worker_caches_the_compiled_stylesheet():
+def test_the_service_worker_fetches_nothing_at_install():
+    """The worker has no list of files to fetch at install: static files are
+    cached as pages ask for them, under the URLs the templates link, and the
+    offline page is part of the worker file. No page is ever in a cache."""
     text = open(os.path.join(ROOT, "static", "sw.js"), encoding="utf-8").read()
-    assert "'/static/css/tailwind.css'" in text
+    assert "addAll" not in text and "cache.add(" not in text
+    assert "ASSETS_TO_CACHE" not in text and "offline.html" not in text
+    assert not os.path.exists(os.path.join(ROOT, "static", "offline.html"))
 
 
 def test_compiled_stylesheet_has_the_template_classes():
@@ -320,11 +325,49 @@ def test_other_pages_version_the_shared_assets(german_client, path):
         assert f'/static/{asset}{query}"' in html, (path, asset)
 
 
-def test_every_precached_script_and_stylesheet_is_versioned_by_the_worker():
-    """The worker precaches the same URLs the templates link."""
+def test_the_worker_answers_from_its_cache_only_for_its_own_release():
+    """A static URL is answered from the cache only when its ?v= is the
+    worker's own (static/js/sw.test.js tests the function); the templates
+    version every script and stylesheet (above), so the worker of one
+    release never answers the page of another with its copies."""
     text = open(os.path.join(ROOT, "static", "sw.js"), encoding="utf-8").read()
-    assert "cache.addAll(PRECACHE_URLS.map(" in text
-    assert "const PRECACHE_URLS = ASSETS_TO_CACHE.map(versionedUrl);" in text
+    assert "const VERSION = new URLSearchParams(self.location.search).get('v') || '';" in text
+    assert "return version && v === version ? 'static-cache-first' : 'static-network-only';" in text
+    assert "const CACHE_NAME = `${CACHE_PREFIX}${VERSION || 'unversioned'}`;" in text
+
+
+SERVICE_WORKER_CLIENT = "filename='js/service-worker-client.js', v=app_version) }}\""
+
+
+@pytest.mark.parametrize("page", ["index.html", "account.html", "admin.html", "group-admin.html", "inquire.html"])
+def test_signed_in_pages_register_the_service_worker(page):
+    text = _read(page)
+    assert text.count(SERVICE_WORKER_CLIENT + " data-register></script>") == 1, page
+
+
+def test_the_sign_in_page_clears_after_a_sign_out_without_registering_a_worker():
+    text = _read("login.html")
+    assert text.count(SERVICE_WORKER_CLIENT + "></script>") == 1
+    assert "data-register" not in text
+
+
+@pytest.mark.parametrize("page", ["share.html", "register.html"])
+def test_public_pages_do_not_load_the_service_worker_script(page):
+    assert "service-worker-client.js" not in _read(page)
+
+
+def test_only_the_client_script_registers_a_worker():
+    """One place registers, with scope /; nothing registers /static/sw.js."""
+    hits = []
+    for top in ("templates", os.path.join("static", "js")):
+        for d, _, fs in os.walk(os.path.join(ROOT, top)):
+            for f in fs:
+                if f.endswith((".html", ".js")) and not f.endswith(".test.js") and "vendor" not in d:
+                    text = open(os.path.join(d, f), encoding="utf-8").read()
+                    if "serviceWorker.register" in text or "sw.register(" in text:
+                        hits.append(f)
+                    assert "'/static/sw.js" not in text and "`/static/sw.js" not in text, f
+    assert hits == ["service-worker-client.js"]
 
 
 THEME_INCLUDE = "{% include 'includes/theme_bootstrap.html' %}"

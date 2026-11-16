@@ -558,13 +558,31 @@ def sso_unlink():
     return redirect(url_for('auth.account'))
 
 
+SIGNED_OUT_COOKIE = 'speakr_signed_out'
+
+
+def signed_out_redirect():
+    """The answer to a sign-out: the sign-in page, with a mark for its script.
+
+    The cookie speakr_signed_out tells static/js/service-worker-client.js on
+    the page that follows to clear what the account left in the browser
+    (sessionStorage, the IndexedDB stores with recordings, Cache Storage).
+    It holds no data, is readable by scripts on purpose, and is removed by
+    that script; without it, it ends with the browser session.
+    """
+    response = redirect(url_for('auth.login'))
+    response.set_cookie(SIGNED_OUT_COOKIE, '1', secure=request.is_secure, httponly=False,
+                        samesite='Lax', path='/')
+    return response
+
+
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     # POST-only so the global CSRF check applies: a cross-site GET (e.g.
     # <img src="/logout">) can no longer force-log-out a victim. The menu
     # "Sign out" controls are CSRF-token-carrying POST forms.
     logout_user()
-    return redirect(url_for('auth.login'))
+    return signed_out_redirect()
 
 
 # --- Email Verification Routes ---
