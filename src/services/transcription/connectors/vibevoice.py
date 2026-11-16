@@ -87,17 +87,23 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
         if not self.config.get('base_url'):
             raise ConfigurationError("base_url is required for VibeVoice connector")
 
-    def _get_audio_duration(self, audio_bytes: bytes, filename: str = None) -> Optional[float]:
-        """Get audio duration in seconds using ffprobe."""
+    def _get_audio_duration(self, audio_bytes: bytes, filename: str = None, temp_dir: str = None) -> Optional[float]:
+        """Get audio duration in seconds using ffprobe.
+
+        temp_dir: where the copy for ffprobe is written; the folder of the
+        request for an incognito file, the temporary folder of the system
+        otherwise. The copy is removed before the method returns.
+        """
         try:
             import subprocess, tempfile, os
             suffix = ''
             if filename:
                 _, suffix = os.path.splitext(filename)
-            with tempfile.NamedTemporaryFile(suffix=suffix or '.wav', delete=False) as tmp:
-                tmp.write(audio_bytes)
-                tmp_path = tmp.name
+            tmp_path = None
             try:
+                with tempfile.NamedTemporaryFile(suffix=suffix or '.wav', delete=False, dir=temp_dir) as tmp:
+                    tmp_path = tmp.name
+                    tmp.write(audio_bytes)
                 result = subprocess.run(
                     ['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
                      '-of', 'default=noprint_wrappers=1:nokey=1', tmp_path],
@@ -106,7 +112,8 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
                 if result.returncode == 0 and result.stdout.strip():
                     return float(result.stdout.strip())
             finally:
-                os.unlink(tmp_path)
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
         except Exception as e:
             logger.debug(f"Could not determine audio duration: {e}")
         return None
@@ -132,7 +139,9 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
                 mime = 'audio/wav'
 
             # Get audio duration for the prompt
-            duration = self._get_audio_duration(audio_bytes, request.filename)
+            from src.services.incognito_temp import dir_for_stream
+            duration = self._get_audio_duration(audio_bytes, request.filename,
+                                                temp_dir=dir_for_stream(request.audio_file))
 
             # Build the transcription prompt (per VibeVoice docs)
             if request.hotwords and duration:
@@ -242,16 +251,7 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
         transcriptions. When strict parsing fails, we recover by finding the last
         complete segment object and truncating there.
         """
-        # Dump raw response to temp file for debugging
-        try:
-            import tempfile, os
-            debug_path = os.path.join(tempfile.gettempdir(), 'vibevoice_last_response.json')
-            with open(debug_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            logger.debug(f"VibeVoice raw response saved to {debug_path}")
-        except Exception:
-            pass
-
+        # The reply is the transcript: it is parsed in memory and written nowhere.
         # Try strict parse first
         try:
             result = json.loads(content)

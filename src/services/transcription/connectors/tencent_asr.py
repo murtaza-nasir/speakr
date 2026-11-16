@@ -220,8 +220,11 @@ class TencentASRConnector(BaseTranscriptionConnector):
         except (AttributeError, OSError, io.UnsupportedOperation):
             pass
         storage = locator = None
-        # The original bytes are sent; nothing is transcoded.
-        with tempfile.TemporaryDirectory(prefix='speakr_tencent_') as directory:
+        # The original bytes are sent; nothing is transcoded. The copy of an
+        # incognito file is written into the folder of its request.
+        from src.services.incognito_temp import dir_for_stream
+        with tempfile.TemporaryDirectory(prefix='speakr_tencent_',
+                                         dir=dir_for_stream(request.audio_file)) as directory:
             path = Path(directory) / 'audio'
             size = 0
             with path.open('wb') as output:
