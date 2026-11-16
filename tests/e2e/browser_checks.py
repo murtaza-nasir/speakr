@@ -40,6 +40,10 @@ class PageProblems:
         page.on("request", self._request)
         page.on("response", self._response)
         page.on("pageerror", lambda exc: self.errors.append(f"uncaught: {exc}"))
+        # Requests that ended without an answer (a closed connection, for example). They are
+        # kept for the message of a step that fails; no check asserts on them.
+        self.unanswered = []
+        page.on("requestfailed", lambda request: self.unanswered.append(f"{request.method} {request.url[len(self.base):]}: {request.failure}"))
         page.on("console", self._console)
 
     def expect(self, status, path):
@@ -79,6 +83,7 @@ class PageProblems:
         self.play_cdn.clear()
         self.expected.clear()
         self.seen.clear()
+        self.unanswered.clear()
 
 
 def login(page, base, user, password):

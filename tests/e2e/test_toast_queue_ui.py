@@ -321,8 +321,8 @@ class App:
         try:
             self.page.locator("aside.sidebar").wait_for(state="attached", timeout=60000)
         except Exception as error:
-            raise AssertionError(f"the app did not load: {self.page.url} shows {self.page.inner_text('body')[:300]!r}; "
-                                 f"failed responses {self.problems.failed}, errors {self.problems.errors}; DIAG "
+            raise AssertionError(f"the app did not load: {self.page.url} shows {self.page.inner_text('body')[:60]!r}; "
+                                 f"failed responses {self.problems.failed}, errors {self.problems.errors}, unanswered {self.problems.unanswered[-12:]}; DIAG "
                                  + str(self.page.evaluate("""() => ({ready: document.readyState, vue: typeof Vue, len: document.documentElement.outerHTML.length,
                                      tail: document.documentElement.outerHTML.slice(-300),
                                      scripts: [...document.scripts].map((x) => x.src.split('/').pop() || 'inline').slice(-8),
