@@ -2197,6 +2197,25 @@ def cancel_upload_route():
 @login_required
 @incognito_route
 def upload_incognito():
+    """The incognito upload, and the one audit row of an incognito request.
+
+    The row (incognito.used) holds the account, the time and the outcome.
+    Nothing about the file or its content is recorded, and incognito chat and
+    summary requests are not recorded at all.
+    """
+    from src.services import audit
+    try:
+        response = current_app.make_response(_upload_incognito_request())
+    except Exception:
+        audit.record('incognito.used', outcome='failed')
+        raise
+    status = response.status_code
+    audit.record('incognito.used',
+                 outcome='success' if status < 400 else 'denied' if status == 403 else 'failed')
+    return response
+
+
+def _upload_incognito_request():
     """
     Process audio in incognito mode - no database storage.
     Returns transcript/summary directly in response.

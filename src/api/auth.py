@@ -22,7 +22,7 @@ import markdown
 from src.database import db
 from src.models import User, SystemSetting, GroupMembership
 from src.utils import password_check, is_safe_url
-from src.services import login_lock
+from src.services import audit, login_lock
 from src.utils.localization import format_file_size, format_number, translate, api_error, request_language, LazyTranslation
 from src.auth.sso import (
     init_sso_client,
@@ -308,6 +308,8 @@ def register():
         from src.config.ui_themes import apply_new_user_defaults
         apply_new_user_defaults(user)
         db.session.add(user)
+        db.session.flush()
+        audit.record_in_tx('auth.registered', target_user_id=user.id)
         db.session.commit()
 
         # Send verification email if enabled
@@ -335,19 +337,31 @@ def _password_accepted(user, password):
     wrong password. While the account is locked for this client address, a
     correct password is refused too, and the count does not change.
     """
+    return _password_result(user, password)[0]
+
+
+def _password_result(user, password):
+    """(accepted, reason): reason is the audit code of a refusal, else None."""
     matches = bcrypt.check_password_hash(user.password, password)
     max_attempts, minutes = login_lock.lock_settings()
     if max_attempts == 0:
-        return matches
+        return matches, (None if matches else 'bad_password')
     key = login_lock.client_key(request.remote_addr)
     if login_lock.is_locked(user.id, key):
-        return False
+        return False, 'locked'
     if matches:
         login_lock.clear_failures(user.id, key)
         db.session.commit()
-        return True
+        return True, None
     login_lock.record_failure(user.id, key, max_attempts, minutes)
-    return False
+    return False, 'bad_password'
+
+
+def _audit_login_failed(user, reason, method='password'):
+    """One row per minute per address and account. The typed address is never stored."""
+    audit.record('auth.login.failed', outcome='failed',
+                 target_user_id=user.id if user is not None else None,
+                 details={'reason': reason, 'method': method}, dedup=audit.DEDUP_LOGIN_FAILED)
 
 
 _dummy_password_hash = None
@@ -383,17 +397,21 @@ def login():
         # Every attempt pays for one bcrypt check and gets the same message,
         # whether or not the account exists or has a local password (#534).
         if user and user.password:
-            accepted = _password_accepted(user, form.password.data)
+            accepted, refusal = _password_result(user, form.password.data)
         else:
             accepted = _dummy_password_check(form.password.data)
+            refusal = 'no_local_password' if user else 'unknown_account'
         if password_login_disabled and not (accepted and user.is_admin):
             # Only an admin with the correct password gets past this.
+            _audit_login_failed(user, 'password_login_disabled')
             flash(translate('server.flash.passwordLoginDisabled'), 'warning')
         elif not accepted:
+            _audit_login_failed(user, refusal)
             flash(translate('server.flash.loginFailed'), 'danger')
         else:
             # Check email verification if required
             if is_email_verification_required() and not user.email_verified:
+                _audit_login_failed(user, 'unverified_email')
                 # Store user email in session for resend functionality
                 session['unverified_email'] = user.email
                 return render_template('auth/check_email.html',
@@ -403,6 +421,8 @@ def login():
                                      show_resend=True)
 
             login_user(user, remember=form.remember.data)
+            audit.record('auth.login.succeeded', actor_kind='session', actor_user_id=user.id,
+                         details={'method': 'password', 'remember': bool(form.remember.data)})
             next_page = request.args.get('next')
             if not is_safe_url(next_page):
                 return redirect(url_for('recordings.index'))
@@ -476,11 +496,13 @@ def sso_callback():
         userinfo = resolve_userinfo(oauth, token)
     except Exception as e:
         current_app.logger.warning(f"SSO callback error: {e}")
+        _audit_login_failed(None, 'sso_error', method='sso')
         flash(translate('server.flash.ssoLoginFailed'), 'danger')
         return redirect(url_for('auth.login'))
 
     subject = userinfo.get('sub')
     if not subject:
+        _audit_login_failed(None, 'sso_error', method='sso')
         flash(translate('server.flash.ssoMissingSubject'), 'danger')
         return redirect(url_for('auth.login'))
 
@@ -503,6 +525,7 @@ def sso_callback():
         update_user_profile_from_claims(target_user, userinfo)
         target_user.sso_provider = cfg.get('provider_name', 'SSO')
         target_user.sso_subject = subject
+        audit.record_in_tx('auth.sso.linked', target_user_id=target_user.id)
         db.session.commit()
         flash(translate('server.flash.ssoLinked'), 'success')
         return redirect(url_for('auth.account'))
@@ -510,17 +533,22 @@ def sso_callback():
     try:
         user = create_or_update_sso_user(userinfo)
     except PermissionError as e:
+        _audit_login_failed(None, 'sso_error', method='sso')
         flash(str(e), 'danger')
         return redirect(url_for('auth.login'))
     except ValueError as e:
+        _audit_login_failed(None, 'sso_error', method='sso')
         flash(str(e), 'danger')
         return redirect(url_for('auth.login'))
     except Exception as e:
         current_app.logger.warning(f"SSO login error: {e}")
+        _audit_login_failed(None, 'sso_error', method='sso')
         flash(translate('server.flash.ssoLoginIncomplete'), 'danger')
         return redirect(url_for('auth.login'))
 
     login_user(user, remember=remember)
+    audit.record('auth.login.succeeded', actor_kind='session', actor_user_id=user.id,
+                 details={'method': 'sso', 'remember': remember})
 
     if next_url and is_safe_url(next_url):
         return redirect(next_url)
@@ -553,6 +581,7 @@ def sso_unlink():
 
     current_user.sso_provider = None
     current_user.sso_subject = None
+    audit.record_in_tx('auth.sso.unlinked')
     db.session.commit()
     flash(translate('server.flash.ssoUnlinked'), 'success')
     return redirect(url_for('auth.account'))
@@ -581,6 +610,8 @@ def logout():
     # POST-only so the global CSRF check applies: a cross-site GET (e.g.
     # <img src="/logout">) can no longer force-log-out a victim. The menu
     # "Sign out" controls are CSRF-token-carrying POST forms.
+    if current_user.is_authenticated:
+        audit.record('auth.logout')
     logout_user()
     return signed_out_redirect()
 
@@ -686,6 +717,9 @@ def forgot_password():
             return render_template('auth/forgot_password.html', title='Forgot Password')
 
         user = User.find_by_email(email)
+        # The account when it exists, never the typed address.
+        audit.record('auth.password.reset_requested',
+                     target_user_id=user.id if user else None, dedup=audit.DEDUP_RESET_REQUESTED)
 
         # Always show the same message to prevent email enumeration
         if user:
@@ -775,6 +809,7 @@ def reset_password(token):
         if not user.email_verified:
             user.email_verified = True
 
+        audit.record_in_tx('auth.password.reset', target_user_id=user.id)
         db.session.commit()
 
         flash(translate('server.flash.passwordResetDone'), 'success')
@@ -1271,6 +1306,7 @@ def change_password():
     # in again with the new login id.
     remembered = current_app.config.get('REMEMBER_COOKIE_NAME', 'remember_token') in request.cookies
     current_user.end_all_sessions()
+    audit.record_in_tx('auth.password.changed')
     db.session.commit()
     # The real object, not the proxy: login_user stores what it is given as
     # the request's user, and a stored proxy resolves to itself, so any later

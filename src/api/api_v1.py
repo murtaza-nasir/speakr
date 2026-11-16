@@ -1079,6 +1079,8 @@ def revoke_current_token():
     if token is None or is_sso_token(token):
         return jsonify({'error': translate('server.apiError.no_api_token'), 'code': 'no_api_token'}), 400
     current_app.logger.info("API token %s of user %s revoked by itself", token.id, token.user_id)
+    from src.services import audit
+    audit.record_in_tx('token.revoked', details={'token_id': token.id})
     db.session.delete(token)
     db.session.commit()
     return jsonify({'message': translate('server.apiMessage.tokenRevoked')}), 200

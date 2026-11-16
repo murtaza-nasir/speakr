@@ -163,6 +163,12 @@ def issue_token(user_id, name, expires_in_days, scopes_value, sso_client_id=None
     )
 
     db.session.add(api_token)
+    db.session.flush()
+    # The id and the scopes; never the name, which the user types.
+    from src.services import audit
+    audit.record_in_tx('token.created', target_user_id=user_id, details={
+        'token_id': api_token.id, 'scopes': api_token.scope_list,
+        'expires': expires_at is not None, 'sso_client_id': sso_client_id})
     db.session.commit()
 
     # Return the token data INCLUDING the plaintext token
@@ -196,6 +202,8 @@ def revoke_token(token_id):
         return jsonify(api_error('token_not_found')), 404
 
     # Delete the token
+    from src.services import audit
+    audit.record_in_tx('token.revoked', details={'token_id': api_token.id})
     db.session.delete(api_token)
     db.session.commit()
 
@@ -249,6 +257,9 @@ def update_token(token_id):
 
     if new_name:
         api_token.name = new_name
+    from src.services import audit
+    audit.record_in_tx('token.changed', details={
+        'token_id': api_token.id, 'scopes': api_token.scope_list if 'scopes' in data else None})
     db.session.commit()
 
     return jsonify(api_token.to_dict()), 200

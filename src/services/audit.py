@@ -75,7 +75,7 @@ EVENTS = {
     'auth.login.failed': ('auth', frozenset({'reason', 'method'})),
     'auth.login.locked': ('auth', frozenset({'minutes'})),
     'auth.logout': ('auth', _NONE),
-    'auth.registered': ('auth', frozenset({'method'})),
+    'auth.registered': ('auth', _NONE),
     'auth.password.changed': ('auth', _NONE),
     'auth.password.reset_requested': ('auth', _NONE),
     'auth.password.reset': ('auth', _NONE),
@@ -145,6 +145,8 @@ DEDUP_DOWNLOAD = 5 * 60
 DEDUP_DENIED = 60
 DEDUP_LOGIN_FAILED = 60
 DEDUP_RESET_REQUESTED = 5 * 60
+# One bucket for all time: the event is written once.
+DEDUP_ONCE = 10 ** 11
 
 # System settings whose old and new value are stored with a change: booleans,
 # integers and enumerations. For every other key only the name is stored.
@@ -311,12 +313,13 @@ def _request_actor():
     return 'api_token', user_id, getattr(api_token, 'id', None)
 
 
-def _visitor_hash():
-    """A short keyed hash of address and user agent, for the de-duplication of
-    public link events only. It is never stored on its own."""
+def _visitor_hash(with_agent=True):
+    """A short keyed hash of the address (and the user agent), for the
+    de-duplication of events without an account. It is never stored."""
     from flask import current_app, request
     secret = str(current_app.config.get('SECRET_KEY') or '').encode()
-    material = f"{request.remote_addr}|{request.headers.get('User-Agent', '')}".encode()
+    agent = request.headers.get('User-Agent', '') if with_agent else ''
+    material = f"{request.remote_addr}|{agent}".encode()
     return hmac.new(secret, material, hashlib.sha256).hexdigest()[:12]
 
 
@@ -381,7 +384,7 @@ def _build(event, *, recording=None, recording_id=None, recording_owner_id=None,
         elif actor_user_id is not None:
             who = f'u{actor_user_id}'
         elif in_request:
-            who = 'a' + _visitor_hash()
+            who = 'a' + _visitor_hash(with_agent=False)
         else:
             who = 'system'
         parts = [who, f'r{recording_id}' if recording_id is not None else None,
