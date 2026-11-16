@@ -246,13 +246,15 @@ def test_another_actor_recording_or_outcome_is_a_separate_row():
     with app.app_context():
         start = _max_id()
         common = dict(actor_kind='session', dedup=audit.DEDUP_VIEW)
-        audit.record('recording.viewed', recording_id=1, actor_user_id=1, **common)
-        audit.record('recording.viewed', recording_id=1, actor_user_id=2, **common)
-        audit.record('recording.viewed', recording_id=2, actor_user_id=1, **common)
-        audit.record('recording.viewed', recording_id=1, actor_user_id=1, outcome='denied', **common)
-        audit.record('recording.content.read', recording_id=1, actor_user_id=1,
+        # Ids no other test uses: the keys are unique in the whole table.
+        a, b, r1, r2 = 8100001, 8100002, 8200001, 8200002
+        audit.record('recording.viewed', recording_id=r1, actor_user_id=a, **common)
+        audit.record('recording.viewed', recording_id=r1, actor_user_id=b, **common)
+        audit.record('recording.viewed', recording_id=r2, actor_user_id=a, **common)
+        audit.record('recording.viewed', recording_id=r1, actor_user_id=a, outcome='denied', **common)
+        audit.record('recording.content.read', recording_id=r1, actor_user_id=a,
                      details={'part': 'transcript'}, dedup_extra='transcript', **common)
-        audit.record('recording.content.read', recording_id=1, actor_user_id=1,
+        audit.record('recording.content.read', recording_id=r1, actor_user_id=a,
                      details={'part': 'summary'}, dedup_extra='summary', **common)
         audit.flush()
         assert len(_rows_after(start)) == 6
@@ -279,9 +281,9 @@ def test_views_off_drops_views_and_plays_only():
     with app.app_context():
         _set('audit_log_record_views', 'false')
         start = _max_id()
-        audit.record('recording.viewed', recording_id=1)
-        audit.record('recording.media.played', recording_id=1)
-        audit.record('recording.media.downloaded', recording_id=1)
+        audit.record('recording.viewed', recording_id=8300001)
+        audit.record('recording.media.played', recording_id=8300001)
+        audit.record('recording.media.downloaded', recording_id=8300001)
         audit.record('recording.downloaded', recording_id=1, details={'part': 'transcript', 'format': 'docx'})
         audit.record('recording.content.read', recording_id=1, details={'part': 'transcript'})
         audit.record('share.public.opened', recording_id=1, actor_kind='public_link', details={'share_id': 4})
