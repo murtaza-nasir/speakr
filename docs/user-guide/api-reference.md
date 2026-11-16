@@ -1183,7 +1183,7 @@ Finds words in the titles, participants, notes, summaries and transcripts of you
 | `scope` | string | `own` | `own`, `shared` or `all` (see [List Recordings](#list-recordings)) |
 | `recording_ids` | string | - | Comma list of recording ids |
 | `tag_id`, `folder_id` | - | - | As on [List Recordings](#list-recordings) |
-| `speaker` | string | - | Transcript hits of this speaker only (exact name, any case) |
+| `speaker` | string | - | Transcript hits of this speaker only (exact name, any case). A diarization label such as `SPEAKER_00` is ignored, as if the parameter was not sent. |
 | `date_from`, `date_to` | string | - | ISO dates or date-times; a date alone includes that whole day |
 | `date_field` | string | `meeting_date` | `meeting_date` (the creation time where a recording has none) or `created_at` |
 | `limit` | integer | 20 | 1 to 50 hits |
@@ -1377,6 +1377,8 @@ GET /api/v1/speakers
 
 `?email=` returns the speaker with that address (any case).
 
+A speaker is a person you named. A diarization label (`SPEAKER_00`, `Speaker 1`, `Speaker A`, `spk_0`, `Unknown`, `Unknown Speaker`) is never a speaker: it is absent from this list, it has no voice profile, and it is not part of `participants`. See [Diarization labels](#diarization-labels).
+
 **Response:**
 
 ```json
@@ -1417,7 +1419,7 @@ POST /api/v1/speakers
 }
 ```
 
-`email` and `aliases` are optional.
+`email` and `aliases` are optional. A diarization label as `name` gives `400` with the code `invalid_parameter`.
 
 ### Update Speaker
 
@@ -1427,7 +1429,7 @@ PUT /api/v1/speakers/{id}
 
 **Scope:** `write`
 
-Changes the name, email or aliases; send only what changes. A new name appears in every recording the speaker is in (transcript, participants, search). `email` must be an address (stored in lower case); `null` or `""` removes it. `aliases`: at most 20 names of at most 100 characters, trimmed, duplicates (any case) dropped; `[]` removes them. A name another of your speakers has gives `409`.
+Changes the name, email or aliases; send only what changes. A new name appears in every recording the speaker is in (transcript, participants, search). `email` must be an address (stored in lower case); `null` or `""` removes it. `aliases`: at most 20 names of at most 100 characters, trimmed, duplicates (any case) dropped; `[]` removes them. A name another of your speakers has gives `409`. A diarization label as `name` gives `400` with the code `invalid_parameter`.
 
 **Request Body:**
 
@@ -1446,6 +1448,19 @@ DELETE /api/v1/speakers/{id}
 ```
 
 **Scope:** `delete`
+
+### Diarization labels
+
+A diarization label is the placeholder of a voice that has not been named: `SPEAKER_00`, `SPEAKER_7`, `Speaker 1`, `Speaker A`, `spk_0`, `Unknown`, `Unknown Speaker`, in any case, and the default name of the segment editor in each interface language (`Sprecher 1`, `Orateur 1`). A single letter, a number alone and a name that only contains one of the words (`Speaker Johnson`, `Guest 1`) are names.
+
+The fields of the API are unchanged. The following applies to the labels:
+
+- **Transcripts.** A label is returned as before in `speaker` and `speaker_label` of a segment, with `speaker_id` `null`, and in [Get Recording Speakers](#get-recording-speakers) with `identified_name` `null`.
+- **Speakers.** A label is never returned by [List Speakers](#list-speakers), and it is refused as a name by [Create Speaker](#create-speaker) and [Update Speaker](#update-speaker) with `400`.
+- **Assigning names.** In `speaker_map` of `PUT /api/v1/recordings/{id}/speakers/assign`, a label given as the name is accepted: the segments are shown under that text, and no speaker, voice sample or quote is saved. When a named speaker of a recording is given a label again, the voice sample of that recording is removed from the profile of the person.
+- **Participants.** Labels are removed from `participants` when it is written, by an upload, by [Update Recording](#update-recording) or by a change of the speakers. A value without a label is stored as sent.
+- **Filters.** A label as a speaker filter is ignored, and the request succeeds as if the filter was not sent: `speaker` of [Search](#search), `filters.speakers` of [Inquire](#inquire), and `speaker:` in the `q` of the recording list of the web interface. Other values of the same filter are still applied.
+- **Inquire passages.** In semantic search hits, `speaker` is `null` for a passage spoken mainly by an unnamed voice. The `text` of the passage still shows the label.
 
 ### Get Recording Speakers
 

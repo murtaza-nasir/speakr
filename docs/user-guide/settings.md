@@ -223,6 +223,8 @@ The Speakers Management tab provides a comprehensive interface for managing all 
 
 Speakers are automatically saved when you identify them during transcription editing. The system builds your library over time as you consistently name participants across recordings. When speaker diarization is enabled, Speakr automatically collects voice embeddings to build recognition profiles.
 
+Only named speakers are saved. A placeholder of the diarization, such as `SPEAKER_00`, `Speaker 1` or `Unknown Speaker`, is never saved as a speaker and never receives a voice profile, and a saved speaker cannot be renamed to one. See [Speaker Identification](transcripts.md#speaker-identification).
+
 ### Speaker Card Information
 
 Each speaker card displays essential information in a clean, scannable format. The speaker's name appears prominently, followed by usage statistics showing how many times they've been identified across your recordings. The last used date helps you understand which speakers are current versus historical. When a speaker was added to your library is tracked for reference.

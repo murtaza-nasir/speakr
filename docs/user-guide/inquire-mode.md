@@ -30,7 +30,7 @@ The left column holds filters that limit the search to some recordings before yo
 
 - **Tags**: recordings with the selected tags, for example one project, one client or one kind of meeting. The count beside each tag is the number of recordings that carry it.
 - **Folders**, when folders are enabled: recordings in the selected folders. When tags and folders are both selected, only recordings that are in one of the selected folders and carry one of the selected tags are searched.
-- **Speakers**: what specific people said across recordings, for example to track the commitments of one person.
+- **Speakers**: what specific people said across recordings, for example to track the commitments of one person. Only named participants are listed; placeholders such as `SPEAKER_00` are left out.
 - **Date range**: recordings from a period, such as one quarter or one project phase.
 
 The scope chip is updated as you change the filters. Ambrose can narrow a search within the filters and never goes beyond them.

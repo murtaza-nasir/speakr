@@ -13,6 +13,8 @@ When you select a recording from the sidebar, the center panel displays the full
 
 If your recording was processed with [speaker diarization](../features.md#speaker-diarization) enabled, each speaker's contributions are labeled with colored tags like SPEAKER_01, SPEAKER_02, and so on. This requires the [ASR endpoint](../getting-started.md#option-b-custom-asr-endpoint-configuration). These labels are automatically generated during transcription and help you follow multi-person conversations.
 
+A label such as `SPEAKER_01` is a placeholder for a voice that has not been named. It belongs to one recording: `SPEAKER_01` of one recording and `SPEAKER_01` of another are unrelated voices. A placeholder is therefore never saved as a speaker. No voice profile, voice sample or quote is kept for it, and it is not listed under the participants, in the **Speakers** filters or in the saved speakers of a name field. In the transcript, in the speaker statistics and in downloads, it is shown as before. The same applies to the other forms of a placeholder, such as `Speaker 1`, `Speaker A`, `spk_0`, `Unknown` and `Unknown Speaker`.
+
 ### Identifying Speakers
 
 When you need to assign real names to speaker labels, click the speaker identification button in the toolbar. This opens a modal where you can:
@@ -36,6 +38,8 @@ The same names and voice matches are saved from both places. There is no separat
 ### Managing Saved Speakers
 
 All speakers you identify are automatically saved to your speaker database. You can manage these saved speakers through the dedicated [Speakers Management tab](settings.md#speakers-management-tab) in your [account settings](settings.md). Navigate to Account > Speakers Management to view all your saved speakers.
+
+A speaker is saved when a name is given. When a placeholder such as `Speaker 1` or `SPEAKER_03` is typed as the name, the turns are shown under that text and the speaker still counts as unnamed: nothing is saved, and no error is shown. When a named speaker of a recording is given a placeholder again, the voice of that recording is removed from the voice profile of the person; the saved speaker stays. A saved speaker cannot be renamed to a placeholder under Speakers Management.
 
 ![Speakers Management](../assets/images/screenshots/settings-speakers-management.png)
 
@@ -63,7 +67,7 @@ The ASR editor shows your transcription the way the transcript reads: each segme
 
 **Edit Text Content**: Click into the text of a segment and type. Press **Enter** to split the segment at the cursor; the time of the cut follows the share of the text before it, or the playhead when it lies inside the segment. Press **Backspace** at the very start of a segment to merge it into the previous one, which keeps the previous segment's speaker. **Esc** leaves the text field so that the single-key shortcuts below work.
 
-**Change Speakers**: Click a speaker chip to open the speaker picker. It lists the speakers of this recording first, then your saved speakers (those whose voice matches come first), and accepts a new name typed into its field. Check **All segments of …** to rename a speaker in the whole recording in one step. With one or more segments selected, the keys **1** to **9** assign the recording's speakers in the order shown in the picker.
+**Change Speakers**: Click a speaker chip to open the speaker picker. It lists the speakers of this recording first, then your saved speakers (those whose voice matches come first), and accepts a new name typed into its field. Placeholders such as `SPEAKER_02` are listed among the speakers of the recording only, never among the saved speakers. Check **All segments of …** to rename a speaker in the whole recording in one step. With one or more segments selected, the keys **1** to **9** assign the recording's speakers in the order shown in the picker.
 
 **Voice Match Suggestions**: When a speaker is still an unnamed label (such as `SPEAKER_00`) and its voice matches one of your saved speakers, the best match is offered on the speaker's first segment and in the picker, for example "Dana Lee, 87%". The lane header of that speaker in the timeline offers it as well. Click the suggestion to hear a few of that speaker's longest segments, and **Accept** to rename the speaker in the whole recording; the message that follows has **Undo** in it. When the diarization split one person into two labels and both match the same saved speaker, both are offered: after you accept one, the button of the other reads **Merge**, and it gives those segments the same speaker, so one speaker and one lane are left. The match is recorded when you save, exactly as in the speaker identification dialog.
 
@@ -83,7 +87,7 @@ While you drag, the edge snaps to the edges of other segments, to the playhead a
 
 **Speakers in the Timeline**: A speaker can be renamed in the whole recording by clicking its name in the timeline. The speaker picker is then shown for all segments of that speaker, and a saved speaker, another speaker of the recording or a typed name can be chosen. When a choice labeled **Merge into …** is selected, the segments are given to a speaker the recording already has, and one speaker and one lane are left. The change can be reversed with **Undo** in the message that follows. A voice match beside the name is accepted with its own **Accept** or **Merge** button, as before.
 
-A speaker can be added with **Add speaker** beside **Overview** at the foot of the lane names (a plus sign on a phone). The new speaker is named with the next label (`SPEAKER_04` after `SPEAKER_03`) and has an empty lane and, among the first nine speakers, a number key. Segments are given to it with the speaker picker, with its number key, or by dragging a block or empty space in its lane, and it can be renamed through its name. A speaker without segments is not saved, and it can be removed with the trash button in its lane; the removal can be undone.
+A speaker can be added with **Add speaker** beside **Overview** at the foot of the lane names (a plus sign on a phone). The new speaker is named with the next label (`SPEAKER_04` after `SPEAKER_03`) and has an empty lane and, among the first nine speakers, a number key. Segments are given to it with the speaker picker, with its number key, or by dragging a block or empty space in its lane, and it can be renamed through its name. The label is a placeholder: until a name is given, no saved speaker is created for it. A speaker without segments is not saved, and it can be removed with the trash button in its lane; the removal can be undone.
 
 **Problems**: The toolbar counts segments whose end is not after their start and segments that overlap the previous segment of the same speaker. Click the count to step through them.
 
