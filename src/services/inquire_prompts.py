@@ -15,7 +15,6 @@ def _today_for(user_ctx):
     return now_local(zone if is_valid_timezone(zone) else 'UTC').strftime('%Y-%m-%d')
 
 
-
 _TOOL_PHRASES = (
     ('search_transcripts', 'search transcripts'),
     ('search_text', 'search for exact words'),
