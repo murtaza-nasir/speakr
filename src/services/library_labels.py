@@ -16,7 +16,6 @@ folder_tree.py; a database without nested folders has no parent_id column and
 every path is one name.
 """
 
-import re
 
 from src.database import db
 from src.models import Folder, GroupMembership, InternalShare, Recording, RecordingTag, Tag
@@ -188,9 +187,9 @@ def capped(names, cap):
     return f"{', '.join(names[:cap])} and {len(names) - cap} more"
 
 
-_GENERIC_SPEAKER = re.compile(r'^(speaker|spk|unknown|unidentified)[\s_-]*\d*$', re.IGNORECASE)
-
-
 def is_generic_speaker(name):
-    """True for a diarization label such as SPEAKER_00, never a person's name."""
-    return not name or bool(_GENERIC_SPEAKER.match(name.strip()))
+    """True for a diarization label such as SPEAKER_00, and for no name at all.
+
+    The rule is src/utils/speaker_labels.py."""
+    from src.utils.speaker_labels import is_real_speaker_name
+    return not is_real_speaker_name(name)

@@ -68,6 +68,7 @@ def _union_participants(recordings):
     """Union the comma-separated participants of all sources, de-duplicated
     case-insensitively and order-preserving. Participants are additive across a
     merge, so none should be lost. Returns a comma-separated string or None."""
+    from src.utils.speaker_labels import is_generic_speaker_label
     seen = set()
     out = []
     for rec in recordings:
@@ -75,7 +76,7 @@ def _union_participants(recordings):
             continue
         for name in (p.strip() for p in rec.participants.split(',')):
             key = name.lower()
-            if name and key not in seen:
+            if name and key not in seen and not is_generic_speaker_label(name):
                 seen.add(key)
                 out.append(name)
     return ', '.join(out) if out else None

@@ -3624,6 +3624,7 @@
       "speaker_map_required": "speaker_map 为必填项",
       "speaker_name_empty": "发言人姓名不能为空",
       "speaker_name_exists": "已存在名为 \"{{name}}\" 的发言人",
+      "speaker_name_generic": "不能将 SPEAKER_00 这样的说话人分离标签保存为发言人姓名",
       "speaker_name_required": "发言人姓名为必填项",
       "speaker_name_taken": "已存在同名发言人",
       "speaker_not_found": "未找到发言人",

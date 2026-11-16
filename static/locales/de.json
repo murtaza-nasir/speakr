@@ -3624,6 +3624,7 @@
       "speaker_map_required": "speaker_map ist erforderlich",
       "speaker_name_empty": "Der Sprechername darf nicht leer sein",
       "speaker_name_exists": "Ein Sprecher namens \"{{name}}\" existiert bereits",
+      "speaker_name_generic": "Ein Diarisierungslabel wie SPEAKER_00 kann nicht als Sprechername gespeichert werden",
       "speaker_name_required": "Der Sprechername ist erforderlich",
       "speaker_name_taken": "Ein Sprecher mit diesem Namen existiert bereits",
       "speaker_not_found": "Sprecher nicht gefunden",

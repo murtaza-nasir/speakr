@@ -257,6 +257,7 @@ def _sanitize_identified_map(identified_map, speaker_labels, candidate_names=Non
     the generic name-cleanup below is skipped so punctuated saved names like
     "Smith, John" survive intact.
     """
+    from src.utils.speaker_labels import is_generic_speaker_label
     speaker_label_re = re.compile(r'^SPEAKER_\d{2}$')
 
     # Detect inverted map ({name: "SPEAKER_XX"}) and flip it
@@ -308,8 +309,9 @@ def _sanitize_identified_map(identified_map, speaker_labels, candidate_names=Non
         # Collapse whitespace
         name = re.sub(r'\s+', ' ', name)
 
-        # Final check: if result still matches SPEAKER_XX, clear it
-        if speaker_label_re.match(name) or not name:
+        # Final check: a diarization label in any shape ("Speaker 1",
+        # "Unknown Speaker") is not a name; clear it
+        if not name or is_generic_speaker_label(name):
             sanitized[speaker_label] = ""
             continue
 
@@ -337,10 +339,11 @@ def apply_contextual_auto_labels(recording, user):
     from src.services.speaker_embedding_matcher import apply_speaker_names_to_transcription
     from src.services.speaker_snippets import create_speaker_snippets
 
+    from src.utils.speaker_labels import is_real_speaker_name
     candidates = [
         speaker.name
         for speaker in Speaker.query.filter_by(user_id=user.id).order_by(Speaker.name.asc()).all()
-        if speaker.name
+        if is_real_speaker_name(speaker.name)
     ]
     if not candidates:
         current_app.logger.info(

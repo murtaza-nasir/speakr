@@ -3624,6 +3624,7 @@
       "speaker_map_required": "speaker_map é obrigatório",
       "speaker_name_empty": "O nome do orador não pode estar vazio",
       "speaker_name_exists": "Já existe um orador chamado \"{{name}}\"",
+      "speaker_name_generic": "Um rótulo de diarização como SPEAKER_00 não pode ser salvo como nome de orador",
       "speaker_name_required": "O nome do orador é obrigatório",
       "speaker_name_taken": "Já existe um orador com este nome",
       "speaker_not_found": "Orador não encontrado",

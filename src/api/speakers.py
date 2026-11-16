@@ -22,6 +22,7 @@ from src.services.speaker_embedding_matcher import find_matching_speakers
 from src.services.speaker_snippets import get_speaker_snippets, get_speaker_recordings_with_snippets
 from src.services.speaker_merge import merge_speakers, preview_merge, can_merge_speakers
 from src.utils.localization import api_error, translate
+from src.utils.speaker_labels import is_generic_speaker_label
 
 # Create blueprint
 speakers_bp = Blueprint('speakers', __name__)
@@ -55,6 +56,8 @@ def get_speakers():
         speakers = Speaker.query.filter_by(user_id=current_user.id)\
                                .order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
                                .all()
+        # A diarization label (SPEAKER_00) is never listed as a speaker.
+        speakers = [s for s in speakers if not is_generic_speaker_label(s.name)]
         # Voice profile counts (samples, variants) from one query for all.
         from src.models import SpeakerVoiceSample
         from src.services.voice_profiles import voice_summary
@@ -90,10 +93,10 @@ def search_speakers():
         stmt = Speaker.query.filter_by(user_id=current_user.id)
         if query:
             stmt = stmt.filter(Speaker.name.ilike(contains_pattern(query), escape=LIKE_ESCAPE))
-        speakers = stmt.order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
-                       .limit(10)\
-                       .all()
-        
+        speakers = stmt.order_by(Speaker.use_count.desc(), Speaker.last_used.desc()).all()
+        # Diarization labels are never offered as saved speakers.
+        speakers = [s for s in speakers if not is_generic_speaker_label(s.name)][:10]
+
         return jsonify([speaker.to_dict() for speaker in speakers])
     except Exception as e:
         current_app.logger.error(f"Error searching speakers: {e}")
@@ -111,7 +114,9 @@ def create_speaker():
         
         if not name:
             return jsonify(api_error('speaker_name_required')), 400
-        
+        if is_generic_speaker_label(name):
+            return jsonify(api_error('speaker_name_generic')), 400
+
         # Check if speaker already exists for this user
         existing_speaker = Speaker.query.filter_by(user_id=current_user.id, name=name).first()
         
@@ -155,6 +160,8 @@ def update_speaker(speaker_id):
 
         if not new_name:
             return jsonify(api_error('speaker_name_empty')), 400
+        if is_generic_speaker_label(new_name):
+            return jsonify(api_error('speaker_name_generic')), 400
 
         # Check if another speaker with this name already exists for this user
         existing_speaker = Speaker.query.filter_by(user_id=current_user.id, name=new_name).first()

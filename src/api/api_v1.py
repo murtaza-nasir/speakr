@@ -26,6 +26,7 @@ from typing import Optional
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
 from src.utils.token_auth import public_route, require_scope, token_rate_key
+from src.utils.speaker_labels import clean_participants, is_generic_speaker_label, real_speaker_names
 from sqlalchemy import func, extract, or_, and_
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -1696,6 +1697,9 @@ def search_recordings_v1():
                    date_from=args.get('date_from') or None, date_to=args.get('date_to') or None,
                    date_field=date_field, scope=scope)
     speaker = (args.get('speaker') or '').strip() or None
+    # A diarization label (SPEAKER_00) names nobody: the filter is ignored.
+    if speaker and is_generic_speaker_label(speaker):
+        speaker = None
 
     use_semantic = mode == 'semantic' or (mode == 'auto' and search_v1.semantic_available())
     if mode == 'semantic' and not search_v1.semantic_available():
@@ -2199,7 +2203,7 @@ def update_recording(recording_id):
             recording.title_source = 'user'
         recording.title = data['title']
     if 'participants' in data:
-        recording.participants = data['participants']
+        recording.participants = clean_participants(data['participants'])
     if 'notes' in data:
         from src.services.recording_state import set_user_notes
         set_user_notes(recording, current_user, data['notes'])
@@ -3092,7 +3096,9 @@ def list_speakers():
     if email:
         query = query.filter(db.func.lower(Speaker.email) == email)
     speakers = query.order_by(Speaker.use_count.desc(), Speaker.last_used.desc()).all()
-    return jsonify({'speakers': [_speaker_item(s) for s in speakers]})
+    # A diarization label (SPEAKER_00) is never listed as a speaker.
+    return jsonify({'speakers': [_speaker_item(s) for s in speakers
+                                 if not is_generic_speaker_label(s.name)]})
 
 
 _EMAIL = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
@@ -3160,6 +3166,8 @@ def create_speaker():
         return jsonify(api_error('speaker_name_required')), 400
 
     name = data['name'].strip()
+    if is_generic_speaker_label(name):
+        return jsonify({'error': translate('server.apiError.speaker_name_generic'), 'code': 'invalid_parameter'}), 400
 
     # Check if already exists
     existing = Speaker.query.filter_by(user_id=current_user.id, name=name).first()
@@ -3211,6 +3219,9 @@ def update_speaker(speaker_id):
         if not new_name:
             db.session.rollback()
             return jsonify({'error': translate('server.apiError.speaker_name_empty'), 'code': 'invalid_parameter'}), 400
+        if is_generic_speaker_label(new_name):
+            db.session.rollback()
+            return jsonify({'error': translate('server.apiError.speaker_name_generic'), 'code': 'invalid_parameter'}), 400
         if new_name != speaker.name:
             clash = Speaker.query.filter_by(user_id=current_user.id, name=new_name).first()
             if clash and clash.id != speaker.id:
@@ -3626,7 +3637,7 @@ def inquire_v1():
         'filter_recording_ids': allowed,
         'filter_tags': filters.get('tag_ids') or [],
         'filter_folders': filters.get('folder_ids') or [],
-        'filter_speakers': filters.get('speakers') or [],
+        'filter_speakers': real_speaker_names(filters.get('speakers')),
         'filter_date_from': filters.get('date_from'),
         'filter_date_to': filters.get('date_to'),
     }
@@ -4267,7 +4278,7 @@ def upload_recording():
 
     def _prepare(recording):
         if participants is not None:
-            recording.participants = participants.strip() or None
+            recording.participants = clean_participants(participants.strip()) or None
         if key:
             recording.upload_idempotency_key = key
         db.session.flush()

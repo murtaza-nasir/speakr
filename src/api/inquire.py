@@ -19,6 +19,7 @@ from src.models import *
 from src.utils import *
 from src.utils.localization import translate, api_error
 from src.utils.error_text import log_failure, user_error_text
+from src.utils.speaker_labels import real_speaker_names
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
 from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
 
@@ -108,7 +109,7 @@ def create_inquire_session():
             user_id=current_user.id,
             session_name=data.get('session_name'),
             filter_tags=json.dumps(data.get('filter_tags', [])),
-            filter_speakers=json.dumps(data.get('filter_speakers', [])),
+            filter_speakers=json.dumps(real_speaker_names(data.get('filter_speakers', []))),
             filter_date_from=datetime.fromisoformat(data['filter_date_from']).date() if data.get('filter_date_from') else None,
             filter_date_to=datetime.fromisoformat(data['filter_date_to']).date() if data.get('filter_date_to') else None,
             filter_recording_ids=json.dumps(data.get('filter_recording_ids', []))
@@ -146,8 +147,9 @@ def inquire_search():
             filters['tag_ids'] = data['filter_tags']
         if data.get('filter_folders'):
             filters['folder_ids'] = data['filter_folders']
-        if data.get('filter_speakers'):
-            filters['speaker_names'] = data['filter_speakers']
+        # Diarization labels (SPEAKER_00) name nobody: such values are ignored.
+        if real_speaker_names(data.get('filter_speakers')):
+            filters['speaker_names'] = real_speaker_names(data['filter_speakers'])
         if data.get('filter_recording_ids'):
             filters['recording_ids'] = data['filter_recording_ids']
         if data.get('filter_date_from'):
@@ -424,7 +426,7 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                 available_speakers = set()
                 for recording in recordings_with_participants:
                     if recording.participants:
-                        participants = [p.strip() for p in recording.participants.split(',') if p.strip()]
+                        participants = real_speaker_names(recording.participants.split(','))
                         available_speakers.update(participants)
                 
                 # Check if any speakers are mentioned in the user query but missing from results
@@ -616,7 +618,7 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                 available_speakers = set()
                 for recording in recordings_with_participants:
                     if recording.participants:
-                        participants = [p.strip() for p in recording.participants.split(',') if p.strip()]
+                        participants = real_speaker_names(recording.participants.split(','))
                         available_speakers.update(participants)
                 
                 available_speakers = sorted(list(available_speakers))
@@ -1107,8 +1109,9 @@ def get_available_filters():
         speaker_names = set()
         for recording in recordings_with_participants:
             if recording.participants:
-                # Split participants by comma and clean up
-                participants = [p.strip() for p in recording.participants.split(',') if p.strip()]
+                # Split participants by comma and clean up; diarization
+                # labels (SPEAKER_00) are never offered as a filter
+                participants = real_speaker_names(recording.participants.split(','))
                 speaker_names.update(participants)
 
         speaker_names = sorted(list(speaker_names))

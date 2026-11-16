@@ -271,7 +271,8 @@ def tool_search_transcripts(ctx, args):
             return {'query': query, 'search_type': 'none', 'result_count': 0, 'results': [],
                     'note': ' '.join(notes) or 'No recording in scope matches these tags and folder.'}
         filters['recording_ids'] = sorted(narrowed)
-    speakers = _name_list(args.get('speakers'))
+    from src.utils.speaker_labels import real_speaker_names
+    speakers = real_speaker_names(_name_list(args.get('speakers')))
     if speakers:
         filters['speaker_names'] = speakers
     for key, arg in (('date_from', 'date_from'), ('date_to', 'date_to')):
@@ -610,7 +611,8 @@ def tool_search_text(ctx, args):
     if err:
         return {'error': err}
     q = db.session.query(Recording.id).filter(Recording.id.in_(ids)) if ids else None
-    speakers = _name_list(args.get('speakers'))
+    from src.utils.speaker_labels import real_speaker_names
+    speakers = real_speaker_names(_name_list(args.get('speakers')))
     if q is not None and speakers:
         q = q.filter(db.or_(*[Recording.participants.ilike(contains_pattern(s), escape=LIKE_ESCAPE)
                               for s in speakers]))

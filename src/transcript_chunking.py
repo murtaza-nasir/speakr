@@ -9,6 +9,8 @@ clear and testable independently of the embedding pipeline.
 import os
 import json
 
+from src.utils.speaker_labels import is_generic_speaker_label
+
 
 # Segment-aware chunking target. ~1400 chars ≈ 300-350 tokens: large enough
 # that a rapid back-and-forth exchange stays together in one chunk, small
@@ -58,7 +60,11 @@ def _finalize_segment_chunk(segs):
     # Dominant speaker goes in the metadata column (single exact name, so the
     # speaker-rename maintenance which matches by equality keeps working);
     # every speaker remains visible inline in the chunk text itself.
-    dominant = max(set(speakers), key=speakers.count) if speakers else None
+    # A diarization label (SPEAKER_00) is not a person and is not stored as
+    # metadata: such a chunk has no speaker name, and its text keeps the label.
+    dominant = max(sorted(set(speakers)), key=speakers.count) if speakers else None
+    if dominant is not None and is_generic_speaker_label(dominant):
+        dominant = None
     starts = [s['start'] for s in segs if s['start'] is not None]
     ends = [s['end'] for s in segs if s['end'] is not None]
     return {
