@@ -105,7 +105,8 @@ On a screen narrower than 768 px, the recording list and a recording are two sep
 
 - The summary and notes editors fill the screen, with **Cancel** and **Save** in a footer under the editor.
 - The upload dialog is a sheet that is dismissed with a downward drag on its header.
-- While background jobs are running, the processing queue is shown as a bar above the player strip, or at the bottom edge of the list.
+- While the processing queue has rows, a one-line strip is shown above the player strip, and at the foot of the recording list. The queue is opened as a sheet with a tap on the strip. See [Processing Queue](recording.md#processing-queue).
+- Notifications are shown above the strip, the player and the tabs, and under the top bar while a sheet is open.
 
 ### Share to Speakr (Share Target)
 
