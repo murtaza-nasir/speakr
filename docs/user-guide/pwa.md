@@ -66,7 +66,7 @@ On a screen narrower than 768 px, the recording list and a recording are two sep
 **The recording list**
 
 - The top bar holds the menu button, the search field and the button for selection mode. Tags, speakers, a date range and the other filters are opened with the button inside the search field.
-- Under the top bar, filter chips are shown for the sort order, the folder, **Inbox**, **Starred**, **Archived** and **From others**. The chips wrap to a second row on a narrow screen.
+- Under the top bar, filter chips are shown for the sort order, the folder, **Inbox**, **Starred**, **Archived** and **From others**. The chips are one row; the row is swiped sideways where the chips do not fit.
 - Notifications, shared recordings, settings, the color scheme, dark mode and **Sign out** are found in the menu. The same menu leads to Ask Ambrose and, for administrators, to the admin pages.
 - A recording is opened with a tap on its row.
 - **New recording** is a button over the lower right corner of the list. The upload and record choices are opened with it.

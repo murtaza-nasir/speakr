@@ -1,9 +1,12 @@
 <!-- The filter chips of the recording list on a phone, at the top of the
      scrolling list: sort order, folder, Inbox, Starred, Archived and From
-     others. They wrap; nothing scrolls sideways. The further filters (tags,
-     speakers, dates and the rest) are in the sheet behind the button in the
-     search field (components/phone/list-sheets.html). -->
+     others. They are one row that scrolls sideways; a chip that is set and out
+     of view is brought into view when the list is shown
+     (revealPhoneFilter). The further filters (tags, speakers, dates and the
+     rest) are in the sheet behind the button in the search field
+     (components/phone/list-sheets.html). -->
 <div class="ph-filters" data-phone-filters>
+<div class="ph-filters__row" data-phone-filter-row :ref="revealPhoneFilter">
     <button type="button" class="ph-fc" data-phone-filter="sort"
             @click="sortBy = sortBy === 'created_at' ? 'meeting_date' : 'created_at'"
             :title="t('sidebar.sortBy')">
@@ -38,6 +41,7 @@
             @click="clearAllFilters" :title="t('buttons.clearAllFilters')">
         <i class="fas fa-times" aria-hidden="true"></i><span v-text="t('common.clearAll')"></span>
     </button>
+</div>
     <label v-if="foldersEnabled && selectedFolderHasChildren" class="ph-filters__check">
         <input type="checkbox" v-model="includeChildFolders">
         <span v-text="t('folderManagement.includeSubfolders')"></span>

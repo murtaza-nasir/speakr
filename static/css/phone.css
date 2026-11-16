@@ -709,7 +709,24 @@ html body .ph-search input, html body .ph-search input:focus {
 .ph-search--inline { margin: 6px 4px; padding-inline-end: 14px; height: 40px; }
 
 /* Filter chips: 36px high with a 44px touch target; they wrap */
-.ph-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px max(12px, var(--ph-safe-r)) 6px max(12px, var(--ph-safe-l)); }
+/* The chips are one row that scrolls sideways, edge to edge; the last chip in view is cut by the
+   edge, which shows that there are more */
+.ph-filters { padding: 10px 0 6px; }
+.ph-filters__row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    padding: 4px max(12px, var(--ph-safe-r)) 4px max(12px, var(--ph-safe-l));
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 12px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.ph-filters__row::-webkit-scrollbar { display: none; }
+.ph-filters__row > .ph-fc { flex: none; max-width: 70vw; }
 .ph-fc {
     position: relative;
     display: inline-flex;
@@ -734,7 +751,7 @@ html body .ph-search input, html body .ph-search input:focus {
 .ph-fc__chev { font-size: 10px !important; opacity: 0.7; }
 .ph-fc[aria-pressed="true"] { background: var(--ph-accent-c); color: var(--ph-on-accent-c); border-color: transparent; }
 .ph-fc--clear { border-style: dashed; }
-.ph-filters__check { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; font-size: 13px; color: var(--ph-text-2); }
+.ph-filters__check { display: flex; align-items: center; gap: 8px; min-height: 44px; padding-inline: max(12px, var(--ph-safe-l)) max(12px, var(--ph-safe-r)); font-size: 13px; color: var(--ph-text-2); }
 .ph-filters__check input { width: 18px; height: 18px; }
 
 /* The filters sheet */

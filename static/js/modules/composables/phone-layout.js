@@ -108,6 +108,21 @@ export function usePhoneLayout({
         if (scroller) scroller.scrollTop = 0;
     }));
 
+    // The chip row of the list scrolls sideways. When the row is shown, a chip
+    // that is set and out of view is brought into view, so that the reason for
+    // a filtered list can be seen. Used as the row's template ref.
+    const revealPhoneFilter = (row) => {
+        if (!row) return;
+        nextTick(() => {
+            const chip = row.querySelector('.ph-fc[aria-pressed="true"]');
+            if (!chip) return;
+            const frame = row.getBoundingClientRect();
+            const box = chip.getBoundingClientRect();
+            if (box.left < frame.left + 12) row.scrollLeft -= frame.left + 12 - box.left;
+            else if (box.right > frame.right - 12) row.scrollLeft += box.right - (frame.right - 12);
+        });
+    };
+
     const phoneRename = () => {
         closePhoneSheet();
         toggleEditTitle();
@@ -142,7 +157,7 @@ export function usePhoneLayout({
     return {
         phoneSheet, openPhoneSheet, closePhoneSheet,
         phoneListOpen, showPhoneList, phoneFilterByTag, phoneFilterCount,
-        phoneDetailsOpen, phoneDates, phoneEditing, phoneFill, phoneRename,
+        phoneDetailsOpen, phoneDates, phoneEditing, phoneFill, phoneRename, revealPhoneFilter,
         phoneSpeaker, skipAudio, growPhoneComposer,
     };
 }

@@ -1089,9 +1089,19 @@ def test_the_list_is_a_screen_with_search_filters_and_new_recording(phone):
     for chip in ("sort", "inbox", "starred", "archived"):
         assert chip in chips, chips
     assert set(chips) <= {"sort", "folder", "inbox", "starred", "archived", "shared", "clear"}, chips
-    # The chips wrap; nothing scrolls sideways
-    row = page.locator("[data-phone-filters]")
-    assert row.evaluate("(el) => el.scrollWidth <= el.clientWidth + 1 && getComputedStyle(el).flexWrap === 'wrap'")
+    # The chips are one row that scrolls sideways within itself; the page does not
+    row = page.locator("[data-phone-filter-row]")
+    tops = row.locator("[data-phone-filter]").evaluate_all("(els) => [...new Set(els.map((el) => Math.round(el.getBoundingClientRect().top)))]")
+    assert len(tops) == 1, f"the chips are on more than one row: {tops}"
+    assert row.evaluate("(el) => getComputedStyle(el).overflowX === 'auto' && getComputedStyle(el).flexWrap === 'nowrap'")
+    heights = row.locator("[data-phone-filter]").evaluate_all("(els) => els.map((el) => el.getBoundingClientRect().height)")
+    assert min(heights) >= 36, heights
+    # The last chip can be reached by scrolling the row, and a tap on it works
+    last = row.locator("[data-phone-filter]").last
+    last.scroll_into_view_if_needed()
+    box, frame = last.bounding_box(), row.bounding_box()
+    assert box["x"] >= frame["x"] - 1 and box["x"] + box["width"] <= frame["x"] + frame["width"] + 1, f"{box} in {frame}"
+    row.evaluate("(el) => { el.scrollLeft = 0; }")
     phone.no_sideways_scroll("the list")
     titles = page.locator(ROWS).all_inner_texts()
     assert any(MEETING_TITLE in t for t in titles) and any(LONG_TITLE in t for t in titles), titles
