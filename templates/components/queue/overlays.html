@@ -1,0 +1,19 @@
+{#- The parts of the processing queue that lie over the page: the panel
+    under the top bar while the recording list is collapsed (or above the
+    status bar of the Desk theme), and the sheet of the phone layout. The
+    docked panel is in components/sidebar.html, the indicators are in the
+    sidebar, the header, the phone layout and the Desk status bar. -#}
+{% from 'components/queue/_queue.html' import queue_panel, queue_rows %}
+{% from 'components/phone/_sheet.html' import phone_sheet %}
+<div v-if="queuePlace === 'float' && queuePopupShown && queuePanelOpen" class="queue-float"
+     :class="{ 'queue-float--status': queueStatusBar }" data-queue-float>
+    {{ queue_panel('float') }}
+</div>
+<template v-if="isMobile">
+{% call phone_sheet('queue', "t('progressQueue.title')") %}
+<div class="queue-sheet" data-queue-panel="sheet">
+    <p v-if="queueParts.length > 0" class="queue-sheet__summary" data-queue-summary v-text="queueSummaryText"></p>
+    {{ queue_rows() }}
+</div>
+{% endcall %}
+</template>

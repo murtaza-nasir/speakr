@@ -93,7 +93,28 @@ Only one branch is rendered at a time, so an id or a `ref` that appears in two b
 | `transcript-turn` | `components/detail/desktop-transcription-panel.html` | One speaker turn of the simple transcript on desktop. A timestamp and speaker column or an avatar is added in two designs. Also rendered, read-only, by the public share page (see below). |
 | `transcript-turn-mobile` | `components/detail/mobile-transcript-panel.html` | The same on phones, inside the shared phone layout (see below). |
 | `inquire-filters` | `inquire.html`, the filter column | The Inquire page's left column. Its groups were restyled in every design (disclosures, compact rows with counts, chips, the sidebar's navigation style). |
-| `status-area` | `components/progress-popup.html` (moved whole) | The processing queue popup of the main page. In one design a status bar is added beside it, with a button for the queue. |
+| `status-area` | `index.html`, after the upload dialog | The parts of the processing queue that lie over the page: the panel under the top bar while the recording list is collapsed, and the sheet of the phone layout. In one design a status bar is added, with the indicator of the queue in it. The markup of the indicator, the panel and the rows is shared (`templates/components/queue/_queue.html`) and is not part of the slot. |
+
+## The raised layer: toasts and the processing queue
+
+Toasts and the processing queue have one structure and one stylesheet for every theme (`static/css/styles.css` under "Toasts", `static/css/queue.css`). Their surface is not a theme surface. It is defined once, as tokens on `:root` and `.dark` in `styles.css`, and mixed from the variables of the color contract above, so a theme has nothing to style:
+
+| Token | Sets | Value |
+|---|---|---|
+| `--pop-bg` | The surface of a toast, of the indicator and of the panel | Light: `--bg-secondary` mixed 15% into white. Dark: `--text-primary` mixed 12% into `--bg-secondary`, which is lighter than every page surface |
+| `--pop-line`, `--pop-hairline` | The border of the indicator and the panel, the lines between rows | `--text-primary` mixed into the surface |
+| `--pop-bar`, `--pop-track` | Progress bars, the spinner and the hairline of the indicator, and their track | `--bg-button` (light), `--text-accent` (dark) |
+| `--pop-shadow`, `--pop-shadow-up` | The shadow of a toast and of the panel over the page, and the upward shadow of the docked panel | |
+| `--pop-radius`, `--pop-radius-sm` | The corners of cards and of buttons and marks | `--radius-lg`, `--radius-md` |
+| `--type-info`, `--type-success`, `--type-warning`, `--type-error` | The badge and the border of a toast, the mark of a failed row | Blue, green, amber and red, the same in every theme and color scheme |
+| `--type-*-fg` | Text and icons of a type on the surface | A value for light and a value for dark, each 4.5:1 or more on the surface |
+
+Rules for a theme:
+
+- The type colors are not changed, and `--pop-bg` is not set to a page color. A message has to stand out from the page in every theme.
+- The shape follows the radius tokens. A rule on a `.queue-*` or `.toast-*` class is added only where the layout of the theme requires it, as in the Workspace theme, where the docked panel is placed in the grid of the sidebar.
+- The docked panel is a child of `.sidebar-content-wrapper`, after the recording list. In a theme where that wrapper is not a column flexbox, the theme places `.queue-dock` itself and caps the height of `.queue-dock.is-open`.
+- The marks of the rows use `--bg-info-light`, `--bg-processing-light`, `--bg-success-light` and `--bg-tertiary` with their text colors.
 
 ## The phone layout
 
@@ -121,7 +142,7 @@ Rules for a theme's section:
 
 The public share page (`templates/share.html`) shows the transcript in the visitor's theme, so it includes the `transcript-turn` slot a second time, with `transcript_read_only` set. Its Vue app (`static/js/share-page.js`) is not the main app and provides only `transcriptView`, `currentPlayingSegmentIndex`, `seekAudioFromEvent`, `showTimestampsSimpleView` (always false), `formatTimestamp`, `t` and `uiTheme`. A `transcript-turn` partial therefore reads nothing else, and puts what belongs to the owner alone (the double click that opens the editor and its tooltip) inside `{% if not transcript_read_only %} ... {% endif %}`. The guard test checks both.
 
-Changes that only add a class or adjust an inline style on shared chrome (the header bar, the account tab strip, the sign-in body) are made in the theme's CSS against the existing selectors instead of in a slot. A JavaScript default that differs per theme (for example whether the queue popup starts minimized) is read from `uiTheme` in `static/js/app.modular.js`. A formatting helper needed by a theme partial is added to the main app's returned scope, where it is available to every theme.
+Changes that only add a class or adjust an inline style on shared chrome (the header bar, the account tab strip, the sign-in body) are made in the theme's CSS against the existing selectors instead of in a slot. A JavaScript default that differs per theme (for example where the indicator of the processing queue is shown) is read from `uiTheme` in `static/js/app.modular.js`. A formatting helper needed by a theme partial is added to the main app's returned scope, where it is available to every theme.
 
 ### Shared hooks a theme can use
 

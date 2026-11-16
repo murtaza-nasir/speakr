@@ -1,3 +1,4 @@
+{% from 'components/queue/_queue.html' import queue_indicator, queue_panel %}
 <!-- Mobile Sidebar Backdrop -->
 <div v-if="!isSidebarCollapsed && isMobileScreen && !isMobile"
      @click="toggleSidebar"
@@ -136,6 +137,17 @@
             </div>
         </div>
 
+        <!-- The processing queue at the foot of the list: the one-line
+             indicator, or the panel, which takes its room from the list
+             (the list gets shorter and scrolls; nothing lies over it). On a
+             phone the strip opens the queue as a sheet; with a recording open
+             the strip is above the player strip (components/detail-view.html). -->
+        <div v-if="queuePopupShown && queuePlace !== 'float' && (!isMobile || phoneListOpen)" class="queue-dock" data-queue-dock
+             :class="{ 'is-open': queuePanelOpen && !isMobile }">
+            <template v-if="isMobile">{{ queue_indicator('strip') }}</template>
+            <template v-else-if="queuePanelOpen">{{ queue_panel('dock') }}</template>
+            <template v-else-if="!queueStatusBar">{{ queue_indicator('foot') }}</template>
+        </div>
     </div>
 
     <!-- New recording (phones): opens the upload and record choices -->

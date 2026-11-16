@@ -1,8 +1,11 @@
 {# A failed transcription, shown in place of the transcript on desktop and
    mobile. Every cause is an error (notice--danger); the cause is told by the
-   icon and the title. The technical details open below the actions, inside
-   the card, so nothing beside them moves. #}
-<div class="notice notice--danger">
+   icon and the title. A transcription that was canceled in the processing
+   queue is a state and not an error: its card has the level info (set where
+   the stored card is read, app.modular.js). The technical details
+   open below the actions, inside the card, so nothing beside them moves. #}
+<div class="notice" :class="'notice--' + (processedTranscription.error.level || 'danger')"
+     :data-notice-level="processedTranscription.error.level || 'danger'">
     <div class="notice__icon"><i :class="['fas', processedTranscription.error.icon]"></i></div>
     <div class="notice__body">
         <h3 class="notice__title">${processedTranscription.error.title}</h3>

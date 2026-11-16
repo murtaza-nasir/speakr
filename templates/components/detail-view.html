@@ -1,3 +1,4 @@
+{% from 'components/queue/_queue.html' import queue_indicator %}
 <!-- Detail View Container -->
 <div v-if="currentView === 'detail' && selectedRecording" class="flex-1 flex flex-col overflow-hidden">
     <!-- Incognito Mode Indicator Bar (theme-safe tint via --tint-incognito).
@@ -46,6 +47,11 @@
             {% include 'components/detail/mobile-transcript-panel.html' %}
             {% include 'components/detail/mobile-notes-panel.html' %}
             {% include 'components/detail/mobile-chat-panel.html' %}
+        </div>
+
+        <!-- The indicator of the processing queue; it opens the queue sheet -->
+        <div v-if="showProcessingPopup" class="queue-dock queue-dock--recording" data-queue-dock>
+            {{ queue_indicator('strip') }}
         </div>
 
         <!-- Player strip -->

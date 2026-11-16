@@ -410,13 +410,12 @@ const unifiedProgressItems = computed(() => {
     for (const job of allJobs.value) {
         const key = `rec_${job.recording_id}`;
         items.set(key, {
+            ...queueFieldsFromJob(job),   // stage code, real progress, times, actions
             id: key,
             recordingId: job.recording_id,
             jobId: job.id,
             title: job.recording_title,
             status: mapJobStatus(job),
-            progress: getProgress(job),
-            progressMessage: getMessage(job),
             // ...
         });
     }
@@ -425,7 +424,6 @@ const unifiedProgressItems = computed(() => {
     for (const upload of uploadQueue.value) {
         // If recordingId exists and matches a job, merge
         // Otherwise create new entry
-        // Use global progress refs for currently uploading file
     }
 
     // Sort by status priority
@@ -435,77 +433,59 @@ const unifiedProgressItems = computed(() => {
 
 #### Queue Data Layer
 
-The functions that read one job of the queue status answer are in `static/js/modules/utils/queue-data.js`: `jobStage`, `jobProgress`, `elapsedSeconds`, `clockOffsetMs`, `queueFieldsFromJob`, `cancelResult` and `settledCancels`. The following fields are set on each unified item of a job: `stageCode`, `stageDetail`, `progressInfo`, `progress` (a percent, or `null` for a moving bar), `indeterminate`, `startedAt`, `finishedAt`, `queuePosition`, `queueName`, `canCancel`, `cancelRequested`, `canRetry` and `canRemove`. The values 25, 50 and 80 that earlier releases set as `progress` for converting, transcribing and summarizing items were never sent by the server and are no longer set.
+The functions that read one job of the queue status answer are in `static/js/modules/utils/queue-data.js`: `jobStage`, `jobProgress`, `elapsedSeconds`, `clockOffsetMs`, `queueFieldsFromJob`, `cancelResult` and `settledCancels`. The following fields are set on each unified item of a job: `stageCode`, `stageDetail`, `progressInfo`, `progress` (a percent, or `null` for a moving bar), `indeterminate`, `startedAt`, `finishedAt`, `queuePosition`, `queueName`, `canCancel`, `cancelRequested`, `canRetry` and `canRemove`, together with `jobType` and `isNewUpload`. An item of the upload queue carries `serverProcessing`, `serverProcessingAt` and `canCancelUpload`. The values 25, 50 and 80 that earlier releases set as `progress` for converting, transcribing and summarizing items were never sent by the server and are no longer set.
 
 `cancelJob(jobId, recordingId)`, `cancelProgressItem(item)`, `clearFailedJobs()` and `jobQueueClockOffset` are returned from the setup function of `app.modular.js`, and `cancelUpload(clientId)` from the upload composable. The meaning of a cancel for an upload item is defined by `uploadCancelPlan` in `static/js/modules/utils/upload-cancel.js`. The upload of a recording made in the app is not canceled, because its audio exists only in the browser until the upload has finished.
 
+The queue status is requested once when the page is loaded, so that rows which failed or finished within the last hour are listed after a reload. It is polled every 5 seconds only while an upload, a job or a recording is in progress.
+
 #### Unified Status States
-| Status | Description | Icon | Color |
-|--------|-------------|------|-------|
-| `uploading` | File uploading to server | cloud-upload-alt | blue |
-| `transcribing` | Server transcribing audio | microphone-alt | purple |
-| `summarizing` | Server generating summary | file-alt | green |
-| `queued` | Waiting in server queue | clock | yellow |
-| `ready` | Waiting to upload | clock | gray |
-| `completed` | Processing finished | check-circle | green |
-| `failed` | Server processing failed | exclamation-circle | red |
-| `upload_failed` | Upload failed | exclamation-circle | red |
-
-#### Filtered Views
-```javascript
-const activeProgressItems = computed(() =>
-    unifiedProgressItems.value.filter(item =>
-        ['uploading', 'transcribing', 'summarizing', 'queued', 'ready'].includes(item.status)
-    )
-);
-
-const completedProgressItems = computed(() =>
-    unifiedProgressItems.value.filter(item => item.status === 'completed')
-);
-
-const failedProgressItems = computed(() =>
-    unifiedProgressItems.value.filter(item =>
-        ['failed', 'upload_failed'].includes(item.status)
-    )
-);
-```
+| Status | Description | Group in the panel |
+|--------|-------------|--------------------|
+| `uploading` | File uploading to server | Active |
+| `transcribing` | A job of the transcription queue is running (converting, joining, transcribing, titling, summarizing) | Active |
+| `summarizing` | A job of the summary queue is running | Active |
+| `translating` | A translation job is running | Active |
+| `queued` | Waiting in a server queue | Waiting |
+| `ready` | Waiting to upload | Waiting |
+| `failed` | Server processing failed | Failed |
+| `upload_failed` | Upload failed | Failed |
+| `completed` | Processing finished | Recently finished |
 
 #### Key Deduplication Logic
 - Items keyed by `rec_${recordingId}` when recordingId is known
 - Items keyed by `client_${clientId}` for uploads without recordingId yet
+- A translation job is keyed by `tr_${recordingId}`, so it has a row of its own beside the other jobs of the recording
 - When upload completes and gets recordingId, it merges with any existing job entry
 - Backend job data takes precedence for status (more accurate)
 - Upload progress refs used for live progress during upload phase
 
-### 2. Progress Popup Template (`templates/components/progress-popup.html`)
+### 2. Indicator and Panel (`templates/components/queue/_queue.html`, `static/css/queue.css`)
 
-Displays unified progress items in a single list:
+The queue is shown as a one-line indicator and a panel. The markup of both is in the macros of `templates/components/queue/_queue.html`, which are used at these places:
 
-```html
-<!-- Active Items -->
-<div v-for="item in activeProgressItems" :key="item.id">
-    <i :class="getStatusDisplay(item.status).icon"></i>
-    <span>${item.title}</span>
-    <div v-if="item.status === 'uploading'" class="progress-bar">
-        <div :style="{width: item.progress + '%'}"></div>
-    </div>
-    <p>${item.progressMessage}</p>
-</div>
+| Place | Template | Shown when |
+|---|---|---|
+| Indicator at the foot of the recording list, or the docked panel | `components/sidebar.html` | The list is shown (`queuePlace === 'dock'`) |
+| Pill in the top bar | `components/header.html` | The list is collapsed (`queuePlace === 'float'`) |
+| Panel under the top bar | slot `status-area` | The list is collapsed and the panel is open |
+| Indicator in the status bar | `themes/desk/status-area.html` | Desk theme, from 1024 px |
+| Strip above the player strip, and at the foot of the list | `components/detail-view.html`, `components/sidebar.html` | Phone layout (`queuePlace === 'phone'`) |
+| Sheet | slot `status-area`, with the sheet macro of the phone layout | Phone layout, `phoneSheet === 'queue'` |
 
-<!-- Failed Items (with retry/delete buttons) -->
-<div v-for="item in failedProgressItems" :key="item.id">
-    <span>${item.title}</span>
-    <span v-if="item.errorMessage">${item.errorMessage}</span>
-    <button @click="retryProgressItem(item)">Retry</button>
-    <button @click="removeProgressItem(item)">Delete</button>
-</div>
+The state is held in `app.modular.js` under "THE QUEUE ON THE PAGE":
 
-<!-- Completed Items -->
-<div v-for="item in completedProgressItems" :key="item.id">
-    <span>${item.title}</span>
-    <span>Done</span>
-</div>
-```
+- `progressPopupMinimized` is the one stored state of the desktop panel. It starts as `true` and is set to `false` when an upload or a recording is started. On a phone the panel is open while the sheet named `queue` is open.
+- `queueGroupList` holds the four groups (Active, Waiting, Failed, Recently finished). Each item carries `view`, the result of `queueRowView`: the stage in words, the progress model, the number, the start of the step and the end of the job in the clock of the browser, the error text and the actions of the row.
+- `queueSummary`, `queueParts` and `queuePillParts` hold the counts and the parts of the indicator line.
+- `toggleQueuePanel`, `openQueueRecording` and `cancelQueueItem` are the actions that are not already job functions. A cancel is confirmed with `window.confirmDialog` only when `cancelNeedsConfirm(item)` is true: a running first transcription before its transcript is stored.
+- The classes `queue-open` and `queue-minimized` are set on `<body>` for the stylesheets.
+
+The grouping, the counts and the wording are pure functions in `static/js/modules/utils/queue-view.js`: `queueGroup`, `groupQueueItems`, `queueSummary`, `summaryParts`, `stageLabel`, `rowProgress`, `formatElapsed`, `finishedAgo`, `rowMark` and `cancelNeedsConfirm`. `rowProgress` returns `percent` (the uploaded share of a file, a measured fraction), `count` (parts finished of a total), `moving` (no number: a moving bar with the time since the start of the step) or `none`. No function returns an estimate.
+
+Elapsed times and the time since a row finished are written by one timer of one second (`tickQueueClock`) directly into the elements marked `data-queue-since` and `data-queue-finished`. No reactive state is changed by a passing second, so the page is not rendered again. The timer is stopped while the panel is minimized and while the tab is in the background. The only animations are three CSS animations on `transform`: the spinner, the hairline of the indicator and the moving bar.
+
+The surface, the borders and the type colors are the tokens of the raised layer (`--pop-*`, `--type-*`) in `static/css/styles.css`, which are mixed from the color variables every theme defines. See [UI Themes](ui-themes.md#the-raised-layer-toasts-and-the-processing-queue).
 
 ## Job Lifecycle Flow
 
@@ -566,7 +546,7 @@ if add_column_if_not_exists(engine, 'processing_job', 'is_new_upload', 'BOOLEAN 
 
 ### Upload Failures
 - Stored in IndexedDB for background sync retry
-- Shown in progress popup with retry button
+- Listed in the Failed group of the queue panel, with Retry
 
 ### Processing Failures
 - `is_new_upload=true`: Recording and audio file deleted

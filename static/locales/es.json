@@ -1553,7 +1553,10 @@
     "updateSpeakerNamesFailed": "No se pudieron actualizar los nombres de los hablantes",
     "updateSummaryFailed": "No se pudo actualizar el resumen",
     "updateTranscriptFailed": "No se pudo guardar la transcripción",
-    "updateTranscriptionFailed": "No se pudo guardar la transcripción"
+    "updateTranscriptionFailed": "No se pudo guardar la transcripción",
+    "canceledTitle": "Procesamiento cancelado",
+    "canceledMessage": "La transcripción de esta grabación se canceló antes de terminar.",
+    "canceledGuidance": "Usa Reprocesar para iniciar de nuevo la transcripción."
   },
   "eventExtraction": {
     "description": "Encuentra reuniones, citas y plazos mencionados en las grabaciones, como eventos de calendario que puedes descargar.",
@@ -2408,44 +2411,74 @@
   },
   "progressQueue": {
     "title": "Cola de procesamiento",
-    "clear": "Limpiar",
-    "uploading": "{{count}} subiendo",
-    "transcribing": "{{count}} transcribiendo",
-    "summarizing": "{{count}} resumiendo",
-    "queued": "{{count}} en cola",
     "cancel": "Cancelar",
     "failed": "Fallidos",
-    "completed": "Completados",
     "done": "Hecho",
     "empty": "La cola está vacía",
     "duplicateWarning": "Archivo duplicado detectado",
     "retry": "Reintentar",
     "delete": "Eliminar",
-    "uploadingShort": "subiendo",
-    "transcribingShort": "transcribiendo",
-    "summarizingShort": "resumiendo",
-    "queuedShort": "en cola",
-    "joiningShort": "uniendo",
     "joining": "Uniendo",
     "joiningMessage": "Uniendo los archivos de audio…",
-    "convertingShort": "convirtiendo",
     "converting": "Convirtiendo",
-    "convertingMessage": "Convirtiendo el archivo de audio…",
-    "processingOnServer": "Procesando…",
     "waitingForJoin": "Subido, esperando {{count}} archivo más para unir",
     "waitingForJoinPlural": "Subido, esperando {{count}} archivos más para unir",
-    "positionInQueue": "N.º {{position}} en la cola",
-    "transcribingAudio": "Transcribiendo audio…",
     "unknownFile": "Archivo desconocido",
     "uploadFailed": "Error en la subida",
-    "uploadingMessage": "Subiendo…",
     "waiting": "En espera",
     "waitingForProcessing": "Subido, esperando el procesamiento…",
     "waitingToUpload": "Esperando para subir…",
     "region": "Elementos de la cola de procesamiento",
     "translating": "Traduciendo",
-    "translatingShort": "traduciendo",
-    "translatingMessage": "Traduciendo la transcripción"
+    "count": {
+      "processing": "{{count}} en proceso",
+      "queued": "{{count}} en cola",
+      "failed": "{{count}} con error",
+      "finished": "{{count}} terminados",
+      "inQueue": "{{count}} en la cola"
+    },
+    "groups": {
+      "active": "Activos",
+      "waiting": "En espera",
+      "failed": "Fallidos",
+      "done": "Terminados hace poco"
+    },
+    "stage": {
+      "assembling": "Ensamblando",
+      "titling": "Titulando",
+      "indexing": "Indexando"
+    },
+    "queuedFor": {
+      "conversion": "N.º {{position}} en cola para conversión",
+      "transcription": "N.º {{position}} en cola para transcripción",
+      "summary": "N.º {{position}} en cola para resumen",
+      "translation": "N.º {{position}} en cola para traducción"
+    },
+    "detail": {
+      "waiting": "en espera",
+      "preparing": "preparando",
+      "aligning": "alineando",
+      "diarizing": "identificando hablantes",
+      "onServer": "procesando en el servidor"
+    },
+    "canceling": "Cancelando…",
+    "partsOf": "{{done}} de {{total}}",
+    "elapsed": "Tiempo desde el inicio de este paso",
+    "justNow": "ahora mismo",
+    "minutesAgo": "hace {{count}} min",
+    "hoursAgo": "hace {{count}} h",
+    "clearFinished": "Quitar terminados",
+    "clearFailed": "Quitar fallidos",
+    "open": "Abrir grabación",
+    "remove": "Quitar de la lista",
+    "duplicate": "Archivo duplicado",
+    "emptyHint": "Las nuevas subidas y los reprocesos aparecen aquí.",
+    "cancelConfirm": {
+      "title": "¿Cancelar la transcripción?",
+      "message": "«{{title}}» aún no tiene transcripción. Tras cancelar, la grabación queda marcada como fallida y el audio se conserva.",
+      "confirm": "Cancelar transcripción",
+      "keep": "Seguir procesando"
+    }
   },
   "promptVariables": {
     "title": "Variables del prompt",
@@ -2839,8 +2872,7 @@
     "stuck": "Restablecer procesamiento bloqueado",
     "summarizing": "Resumiendo",
     "transcribing": "Transcribiendo",
-    "uploading": "Subiendo",
-    "queuedTranslation": "En cola (traducción)"
+    "uploading": "Subiendo"
   },
   "summary": {
     "actionItems": "Elementos de acción",
@@ -2973,7 +3005,6 @@
     "editTranscript": "Editar transcripción",
     "enterFullscreen": "Pantalla completa",
     "exitFullscreen": "Salir de pantalla completa",
-    "expand": "Expandir",
     "followPlayerDisabled": "Seguir la reproducción",
     "followPlayerEnabled": "Dejar de seguir la reproducción",
     "fullscreenVideo": "Vídeo en pantalla completa",

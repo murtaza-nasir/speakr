@@ -7,7 +7,7 @@ import { releasesToShow, releaseVersion } from './modules/utils/whats-new.js';
 import { useUpload } from './modules/composables/upload.js';
 import { useAudio } from './modules/composables/audio.js';
 import { useUI } from './modules/composables/ui.js';
-import { useUiTheme, currentUiTheme } from './modules/composables/ui-theme.js';
+import { useUiTheme } from './modules/composables/ui-theme.js';
 import { useModals } from './modules/composables/modals.js';
 import { useSharing } from './modules/composables/sharing.js';
 import { resolveSearchScope } from './modules/utils/share-picker.js';
@@ -32,7 +32,7 @@ import { useFolders } from './modules/composables/folders.js';
 import { usePhoneLayout } from './modules/composables/phone-layout.js';
 
 // Import utilities
-import { showToast } from './modules/utils/toast.js';
+import { placeToasts, showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
 import { labelPathForFilter, parseLabelPath } from './modules/utils/label-links.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
@@ -41,7 +41,12 @@ import {
     promptsDiffer, runVariables, saveLabel, sourceLabel,
 } from './modules/utils/regenerate-summary.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
-import { cancelResult, clockOffsetMs, queueFieldsFromJob, settledCancels } from './modules/utils/queue-data.js';
+import { cancelResult, clockOffsetMs, parseServerInstant as parseQueueInstant, queueFieldsFromJob, settledCancels } from './modules/utils/queue-data.js';
+import {
+    cancelNeedsConfirm, finishedAgo, formatElapsed, groupQueueItems, queueSummary as summarizeQueue,
+    rowMark, rowProgress, stageLabel, summaryParts,
+} from './modules/utils/queue-view.js';
+import { canCancelUpload } from './modules/utils/upload-cancel.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
 import { installTabsBarFit } from './modules/utils/tabs-bar-fit.js';
 import {
@@ -72,6 +77,20 @@ const parseTranscriptionError = (text) => {
             const jsonStr = text.substring(11);
             const data = JSON.parse(jsonStr);
             const _t = (key, fb) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fb;
+            // A canceled first transcription (src/services/job_cancel.py): not
+            // an error, and worded in the language of the interface
+            if (data.y === 'canceled') {
+                return {
+                    title: _t('errors.canceledTitle', data.t || 'Processing canceled'),
+                    message: _t('errors.canceledMessage', data.m || ''),
+                    guidance: _t('errors.canceledGuidance', data.g || ''),
+                    icon: data.i || 'fa-ban',
+                    type: 'canceled',
+                    level: 'info',
+                    isKnown: true,
+                    technical: ''
+                };
+            }
             return {
                 title: data.t || _t('errors.fallbackTitle', 'Error'),
                 message: stripAnsi(data.m) || _t('errors.fallbackMessage', 'Something went wrong.'),
@@ -391,10 +410,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const processingMessage = ref('');
             const isProcessingActive = ref(false);
             const pollInterval = ref(null);
-            // The Desk theme starts with the queue collapsed (its status bar has the queue button);
-            // every other theme starts it open, as before.
-            const progressPopupMinimized = ref(currentUiTheme(document) === 'desk');
-            const progressPopupClosed = ref(false);
+            // The panel of the processing queue starts minimized: the page shows
+            // its one-line indicator. An upload or a recording that starts
+            // opens the panel (composables/upload.js, audio.js).
+            const progressPopupMinimized = ref(true);
             const maxFileSizeMB = ref(250);
             const chunkingEnabled = ref(true);
             const chunkingMode = ref('size');
@@ -1955,7 +1974,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Upload
                 uploadQueue, allJobs, currentlyProcessingFile, processingProgress, processingMessage,
-                isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
+                isProcessingActive, pollInterval, progressPopupMinimized,
                 maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, chunkingLimitDisplay,
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 uploadDisclaimer, showUploadDisclaimerModal,
@@ -3301,13 +3320,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }, { immediate: true });
 
-            // When popup opens, do a one-time fetch to populate it
-            watch(() => progressPopupClosed.value, (closed) => {
-                if (!closed) {
-                    // Popup just opened - fetch current status
-                    fetchJobQueueStatus();
-                }
-            });
 
             // Track completed recording IDs to detect new completions
             const completedRecordingIds = new Set();
@@ -3425,7 +3437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         headers: { 'Content-Type': 'application/json' }
                     });
                     if (response.ok) {
-                        fetchJobQueueStatus();
+                        fetchJobQueueStatus(true);
                         showToast(safeT('messages.jobQueuedForRetry'), 'success');
                     } else {
                         const data = await response.json();
@@ -3444,7 +3456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         method: 'DELETE'
                     });
                     if (response.ok) {
-                        fetchJobQueueStatus();
+                        await fetchJobQueueStatus(true);
                     } else {
                         const data = await response.json();
                         showToast(data.error || safeT('messages.failedToDeleteJob'), 'error');
@@ -3516,9 +3528,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         headers: { 'Content-Type': 'application/json' }
                     });
                     if (response.ok) {
-                        // Clear upload queue completed/failed items
+                        // Finished uploads are rows too; failed ones have
+                        // their own button (clearFailedJobs)
                         uploadQueue.value = uploadQueue.value.filter(item =>
-                            !['completed', 'failed', 'COMPLETED', 'FAILED'].includes(item.status)
+                            !['completed', 'COMPLETED'].includes(item.status)
                         );
                         // Force fetch to update the job list (bypass debounce)
                         await fetchJobQueueStatus(true);
@@ -3575,23 +3588,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const percent = translationProgressPercent(job);
                         items.set(key, {
                             // Stage code, real progress, times and actions
-                            // (queue-data.js); the fields below keep their
-                            // meaning for the current popup.
+                            // (queue-data.js)
                             ...queueFieldsFromJob(job),
                             id: key,
                             recordingId: job.recording_id,
                             jobId: job.id,
+                            jobType: job.job_type,
+                            isNewUpload: !!job.is_new_upload,
                             clientId: null,
                             title: job.recording_title || t('common.untitled'),
                             status,
                             stage: null,
-                            statusLabel: status === 'queued' ? t('status.queuedTranslation') : null,
                             progress: percent,
-                            progressMessage: status === 'queued' ? t('progressQueue.positionInQueue', { position: job.position || '?' }) :
-                                             status === 'translating' ? (percent === null ? t('progressQueue.translatingMessage')
-                                                 : t('translation.progress', { done: job.progress_done || 0, total: job.progress_total })) :
-                                             status === 'completed' ? t('progressQueue.done') : t('progressQueue.failed'),
-                            queuePosition: job.position,
                             errorMessage: job.error_message,
                             friendlyError: job.error_message ? parseUnformattedError(job.error_message) : null,
                             completedAt: job.completed_at,
@@ -3620,10 +3628,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // queued for transcription (#543).
                     const isConverting = job.job_type === 'convert' && unifiedStatus === 'transcribing';
                     const stage = isJoining ? 'joining' : (isConverting ? 'converting' : null);
-                    // A waiting job says what it waits for.
-                    const queuedLabel = unifiedStatus !== 'queued' ? null
-                        : job.job_type === 'convert' ? t('status.queuedConversion')
-                        : job.queue_type === 'transcription' ? t('status.queuedTranscription') : null;
                     if (!existing || ['queued', 'transcribing', 'summarizing'].includes(unifiedStatus)) {
                         const queueFields = queueFieldsFromJob(job);
                         items.set(key, {
@@ -3631,22 +3635,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                             id: key,
                             recordingId: job.recording_id,
                             jobId: job.id,
+                            jobType: job.job_type,
+                            isNewUpload: !!job.is_new_upload,
                             clientId: null,
                             title: job.recording_title || t('common.untitled'),
                             status: unifiedStatus,
                             stage,
-                            statusLabel: isJoining ? t('progressQueue.joining') : (isConverting ? t('progressQueue.converting') : queuedLabel),
                             // A percent only where the server holds a real
                             // number (chunks, a measured fraction); null
                             // means a moving bar with the elapsed time.
                             progress: queueFields.progress,
-                            progressMessage: unifiedStatus === 'queued' ? t('progressQueue.positionInQueue', { position: job.position || '?' }) :
-                                             isJoining ? t('progressQueue.joiningMessage') :
-                                             isConverting ? t('progressQueue.convertingMessage') :
-                                             unifiedStatus === 'transcribing' ? t('progressQueue.transcribingAudio') :
-                                             unifiedStatus === 'summarizing' ? t('help.generatingSummary') :
-                                             unifiedStatus === 'completed' ? t('progressQueue.done') : t('progressQueue.failed'),
-                            queuePosition: job.position,
                             errorMessage: job.error_message,
                             friendlyError: job.error_message ? parseUnformattedError(job.error_message) : null,
                             completedAt: job.completed_at,
@@ -3670,7 +3668,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             if (upload.status === 'uploading') {
                                 existing.status = 'uploading';
                                 existing.progress = upload.progress || 0;
-                                existing.progressMessage = upload.serverProcessing ? t('progressQueue.processingOnServer') : 'Uploading...';
+                                existing.progressInfo = null;
+                                existing.serverProcessing = !!upload.serverProcessing;
+                                existing.serverProcessingAt = upload.serverProcessingAt || null;
+                                existing.canCancel = false;
                                 existing.title = upload.displayName || upload.file?.name || existing.title;
                             }
                             continue;
@@ -3683,10 +3684,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let progressMsg = t('progressQueue.waitingToUpload');
 
                     if (upload.status === 'uploading') {
+                        // With serverProcessing the bytes are sent and the
+                        // server is checking and converting the file before
+                        // it answers (the row says so, queueRowView).
                         unifiedStatus = 'uploading';
-                        // The bytes are sent; the server is checking and
-                        // converting the file before it answers.
-                        progressMsg = upload.serverProcessing ? t('progressQueue.processingOnServer') : t('progressQueue.uploadingMessage');
+                        progressMsg = '';
                     } else if (upload.status === 'pending' && upload.joinWaiting) {
                         unifiedStatus = 'queued';
                         progressVal = 100;
@@ -3728,6 +3730,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         status: unifiedStatus,
                         progress: progressVal,
                         progressMessage: progressMsg,
+                        serverProcessing: !!upload.serverProcessing,
+                        serverProcessingAt: upload.serverProcessingAt || null,
+                        // A file that waits is removed, one in flight is
+                        // aborted; the upload of a recording made in the app
+                        // is the only copy and is not canceled.
+                        canCancelUpload: canCancelUpload(upload),
                         queuePosition: null,
                         errorMessage: upload.status === 'failed' ? upload.error : null,
                         duplicateWarning: upload.duplicateWarning || null,
@@ -3754,6 +3762,87 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             });
 
+            // ============================================
+            // THE QUEUE ON THE PAGE
+            // An indicator line and a panel (templates/components/queue/,
+            // static/css/queue.css). The groups, the counts and the wording
+            // of a row come from utils/queue-view.js.
+            // ============================================
+
+            // What one row shows: stage in words, a real number or a moving
+            // bar with the elapsed time, and what can be done with it.
+            const queueRowView = (item, group) => {
+                const label = stageLabel(item);
+                const fromUpload = !item.jobId;
+                const progress = rowProgress(item, parseQueueInstant);
+                // Times of the server are shown against the clock of this browser
+                const toLocal = (ms) => (ms === null || ms === undefined ? null
+                    : (item.jobId ? ms - jobQueueClockOffset.value : ms));
+                let number = '';
+                if (progress.kind === 'percent') number = formatPercent(progress.percent);
+                else if (progress.kind === 'count') number = t('progressQueue.partsOf', { done: progress.done, total: progress.total });
+                let stage = t(label.key, label.params || undefined);
+                let detail = label.detailKey ? t(label.detailKey) : '';
+                if (group === 'waiting' && fromUpload) stage = item.progressMessage || stage;
+                if (item.status === 'uploading' && item.serverProcessing) detail = t('progressQueue.detail.onServer');
+                const error = group !== 'failed' ? null : item.friendlyError
+                    ? { title: item.friendlyError.title, text: item.friendlyError.guidance || item.friendlyError.message || '' }
+                    : { title: item.status === 'upload_failed' ? t('progressQueue.uploadFailed') : t('progressQueue.failed'),
+                        text: item.errorMessage || '' };
+                const finished = group === 'done' ? parseQueueInstant(item.finishedAt || item.completedAt) : null;
+                return {
+                    mark: rowMark(item),
+                    stage,
+                    detail,
+                    progress,
+                    number,
+                    since: progress.kind === 'moving' ? toLocal(progress.since) : null,
+                    finished: toLocal(finished),
+                    error,
+                    canOpen: !!item.recordingId,
+                    canCancel: fromUpload ? !!item.canCancelUpload : !!item.canCancel,
+                    canRetry: group === 'failed' && !!item.jobId,
+                    canRemove: group === 'failed' || group === 'done',
+                };
+            };
+
+            const QUEUE_GROUP_TITLES = {
+                active: 'progressQueue.groups.active',
+                waiting: 'progressQueue.groups.waiting',
+                failed: 'progressQueue.groups.failed',
+                done: 'progressQueue.groups.done',
+            };
+            // Active, Waiting, Failed, Recently finished
+            const queueGroupList = computed(() => {
+                const groups = groupQueueItems(unifiedProgressItems.value);
+                return Object.keys(QUEUE_GROUP_TITLES).map(name => ({
+                    name,
+                    title: t(QUEUE_GROUP_TITLES[name]),
+                    items: groups[name].map(item => ({ ...item, view: queueRowView(item, name) })),
+                }));
+            });
+            const queueSummary = computed(() => {
+                const groups = {};
+                for (const group of queueGroupList.value) groups[group.name] = group.items;
+                return summarizeQueue(groups);
+            });
+            // "2 processing · 1 queued · 1 failed"
+            const queueParts = computed(() => summaryParts(queueSummary.value).map(part => ({
+                ...part,
+                text: t(`progressQueue.count.${part.key}`, { count: part.count }),
+            })));
+            // The pill in the top bar has less room: "5 in queue · 1 failed"
+            const queuePillParts = computed(() => {
+                const { processing, queued } = queueSummary.value;
+                if (!(processing + queued)) return queueParts.value;
+                return [
+                    { key: 'inQueue', count: processing + queued, tone: 'plain', text: t('progressQueue.count.inQueue', { count: processing + queued }) },
+                    ...queueParts.value.filter(part => part.key === 'failed'),
+                ];
+            });
+            const queueSummaryText = computed(() => queueParts.value.map(part => part.text).join(' · ')
+                || t('progressQueue.empty'));
+
             // Filtered views of unified items
             const activeProgressItems = computed(() =>
                 unifiedProgressItems.value.filter(item =>
@@ -3770,22 +3859,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ['failed', 'upload_failed'].includes(item.status)
                 )
             );
-
-            // Helper to get status display info
-            const getStatusDisplay = (status) => {
-                const displays = {
-                    'ready': { label: t('progressQueue.waiting'), color: 'gray', icon: 'fa-clock' },
-                    'uploading': { label: t('status.uploading'), color: 'blue', icon: 'fa-cloud-upload-alt', animate: true },
-                    'queued': { label: t('status.queued'), color: 'yellow', icon: 'fa-clock' },
-                    'transcribing': { label: t('status.transcribing'), color: 'purple', icon: 'fa-microphone-alt', animate: true },
-                    'summarizing': { label: t('status.summarizing'), color: 'green', icon: 'fa-file-alt', animate: true },
-                    'translating': { label: t('progressQueue.translating'), color: 'green', icon: 'fa-language', animate: true },
-                    'completed': { label: t('progressQueue.done'), color: 'green', icon: 'fa-check-circle' },
-                    'failed': { label: t('progressQueue.failed'), color: 'red', icon: 'fa-exclamation-circle' },
-                    'upload_failed': { label: t('progressQueue.uploadFailed'), color: 'red', icon: 'fa-exclamation-circle' }
-                };
-                return displays[status] || displays['ready'];
-            };
 
             // Cancel/remove an item from the queue
             const removeProgressItem = async (item) => {
@@ -3820,44 +3893,127 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return activeProgressItems.value.length;
             });
 
-            // Should show the processing popup
+            // The queue has rows
             const showProcessingPopup = computed(() => {
                 return unifiedProgressItems.value.length > 0;
             });
-            // The queue popup is on the page (themes/*/status-area.html)
-            const queuePopupShown = computed(() =>
-                showProcessingPopup.value && !progressPopupClosed.value
-                && !(isMobileScreen.value && !uiComposable.isMobile.value && !isSidebarCollapsed.value));
 
-            // The state of the queue popup and of the sidebar as classes on
-            // <body>, for the stylesheets (primitives.css and the themes).
-            // They used body:has(...) for this, which made the browser look
-            // at the whole page again whenever an element was added or
-            // removed anywhere.
-            watch([queuePopupShown, progressPopupMinimized, isSidebarCollapsed, isMobileScreen], () => {
+            // Where the queue is on the page (the indicator cannot be closed;
+            // it is shown while the queue has rows):
+            //   phone   a strip above the player strip and at the foot of the
+            //           list; the panel is the sheet named 'queue'
+            //   dock    at the foot of the recording list; the open panel
+            //           takes its room from the list
+            //   float   the list is collapsed: a pill in the top bar and the
+            //           panel under it
+            // In the Desk theme the button in the status bar is the indicator
+            // while that bar is shown.
+            const { phoneSheet, openPhoneSheet, closePhoneSheet } = phoneLayoutComposable;
+            const isPhoneLayout = uiComposable.isMobile;
+            const queuePlace = computed(() => (isPhoneLayout.value ? 'phone' : (isSidebarCollapsed.value ? 'float' : 'dock')));
+            const queuePanelOpen = computed(() => (isPhoneLayout.value
+                ? phoneSheet.value === 'queue' : !progressPopupMinimized.value));
+            // An open panel stays when its last row is cleared (the empty state)
+            const queuePopupShown = computed(() => showProcessingPopup.value || (!isPhoneLayout.value && queuePanelOpen.value));
+            const queueStatusBar = computed(() => uiTheme.value === 'desk' && !isMobileScreen.value);
+            const queueIndicatorLabel = computed(() => `${t('progressQueue.title')}: ${queueParts.value.map(part => part.text).join(', ')}`);
+
+            const toggleQueuePanel = () => {
+                if (isPhoneLayout.value) {
+                    if (phoneSheet.value === 'queue') closePhoneSheet();
+                    else openPhoneSheet('queue');
+                    return;
+                }
+                progressPopupMinimized.value = !progressPopupMinimized.value;
+                if (!progressPopupMinimized.value) fetchJobQueueStatus();
+            };
+            watch(phoneSheet, (name) => { if (name === 'queue') fetchJobQueueStatus(); });
+
+            const openQueueRecording = async (item) => {
+                if (!item || !item.recordingId) return;
+                if (isPhoneLayout.value && phoneSheet.value === 'queue') closePhoneSheet();
+                await recordingsComposable.selectRecordingById(item.recordingId);
+            };
+
+            // Cancel of a row that waits or runs. Only a running first
+            // transcription is asked about first: it leaves a recording
+            // without a transcript.
+            const cancelQueueItem = async (item) => {
+                if (!item || !item.view || !item.view.canCancel) return;
+                if (!item.jobId) {
+                    await uploadComposable.cancelUpload(item.clientId);
+                    return;
+                }
+                if (cancelNeedsConfirm(item)) {
+                    const agreed = await window.confirmDialog({
+                        title: t('progressQueue.cancelConfirm.title'),
+                        message: t('progressQueue.cancelConfirm.message', { title: item.title }),
+                        confirmLabel: t('progressQueue.cancelConfirm.confirm'),
+                        cancelLabel: t('progressQueue.cancelConfirm.keep'),
+                        danger: true,
+                    });
+                    if (!agreed) return;
+                }
+                await cancelProgressItem(item);
+            };
+
+            // The state of the queue and of the sidebar as classes on
+            // <body>, for the stylesheets (queue.css, phone.css and the
+            // themes). A :has() on <body> would make the browser look at the
+            // whole page again whenever an element is added or removed
+            // anywhere.
+            watch([queuePopupShown, queuePanelOpen, isSidebarCollapsed, isMobileScreen, isPhoneLayout], () => {
                 const classes = document.body.classList;
                 const sidebarOpen = !isSidebarCollapsed.value && !isMobileScreen.value;
-                classes.toggle('queue-open', queuePopupShown.value && !progressPopupMinimized.value);
-                classes.toggle('queue-minimized', queuePopupShown.value && progressPopupMinimized.value);
+                const open = queuePopupShown.value && queuePanelOpen.value && !isPhoneLayout.value;
+                classes.toggle('queue-open', open);
+                classes.toggle('queue-minimized', queuePopupShown.value && !open);
                 classes.toggle('app-sidebar-open', sidebarOpen);
                 classes.toggle('app-sidebar-closed', !sidebarOpen);
                 classes.toggle('app-rail-open', !isSidebarCollapsed.value);
             }, { immediate: true });
+            // The panel over the page starts under the top bar, whose height
+            // differs between the themes
+            watch([queuePlace, queuePanelOpen, uiTheme], () => {
+                if (queuePlace.value !== 'float' || !queuePanelOpen.value) return;
+                const header = document.querySelector('#app > header');
+                if (header) document.documentElement.style.setProperty('--queue-float-top', `${Math.round(header.getBoundingClientRect().bottom)}px`);
+            }, { flush: 'post', immediate: true });
+            // A sheet covers the bottom of a phone screen: the toasts go
+            // under the top bar meanwhile (styles.css). The menu of the list
+            // is a drawer of the full height, with its close button at the
+            // top: the toasts stay at the bottom over it.
+            watch(phoneSheet, (name) => {
+                document.body.classList.toggle('phone-sheet-open', !!name && name !== 'menu');
+                nextTick(placeToasts);
+            }, { immediate: true });
 
-            // On phones the queue shows as a compact top-right pill by
-            // default — auto-minimize it when it first appears so it doesn't
-            // pop open over the content. The user can tap to expand. Desktop
-            // (and tablets ≥ 641 px) keep the existing expanded card.
-            watch(showProcessingPopup, (show) => {
-                if (show && windowWidth.value <= 640) {
-                    progressPopupMinimized.value = true;
+            // One clock for every elapsed time and "finished ... ago" in the
+            // panel. It writes the text into the rows itself, so a second
+            // that passes re-renders nothing, and it runs only while the
+            // panel is open and the tab is in front.
+            let queueClock = null;
+            const tickQueueClock = () => {
+                const now = Date.now();
+                for (const el of document.querySelectorAll('[data-queue-panel] [data-queue-since]')) {
+                    const since = Number(el.dataset.queueSince);
+                    const text = since > 0 ? formatElapsed((now - since) / 1000) : '';
+                    if (el.textContent !== text) el.textContent = text;
                 }
-            });
-
-            // All completed items count
-            const allCompletedCount = computed(() => {
-                return completedProgressItems.value.length + failedProgressItems.value.length;
-            });
+                for (const el of document.querySelectorAll('[data-queue-panel] [data-queue-finished]')) {
+                    const ago = finishedAgo(Number(el.dataset.queueFinished) || NaN, now);
+                    const text = ago ? t(ago.key, { count: ago.count }) : '';
+                    if (el.textContent !== text) el.textContent = text;
+                }
+            };
+            const syncQueueClock = () => {
+                const run = queuePanelOpen.value && queuePopupShown.value && document.visibilityState === 'visible';
+                if (run) tickQueueClock();
+                if (run && !queueClock) queueClock = setInterval(tickQueueClock, 1000);
+                if (!run && queueClock) { clearInterval(queueClock); queueClock = null; }
+            };
+            watch([queuePanelOpen, queuePopupShown, queueGroupList], syncQueueClock, { flush: 'post' });
+            document.addEventListener('visibilitychange', syncQueueClock);
 
             // Speaker computed properties
             const hasSpeakerNames = computed(() => {
@@ -4329,6 +4485,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         window.history.replaceState({}, '', newUrl);
                     }
                 } catch (_) { /* no-op: param parsing/replaceState are best-effort */ }
+
+                // The queue as it stands: rows that failed or finished in
+                // the last hour are in the indicator after a reload too
+                // (polling starts only with something in progress).
+                fetchJobQueueStatus(true);
 
                 // ?open=shares|appearance: the header on the other pages opens
                 // these main-app dialogs by linking here.
@@ -4811,15 +4972,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 clearFailedJobs,
                 recentlyCompletedBackend,
                 clearAllCompleted,
-                allCompletedCount,
                 // Unified progress tracking
                 unifiedProgressItems,
                 activeProgressItems,
                 completedProgressItems,
                 failedProgressItems,
-                getStatusDisplay,
                 removeProgressItem,
                 retryProgressItem,
+                queueGroupList,
+                queueSummary,
+                queueParts,
+                queuePillParts,
+                queueSummaryText,
+                queuePlace,
+                queuePanelOpen,
+                queueStatusBar,
+                queueIndicatorLabel,
+                toggleQueuePanel,
+                openQueueRecording,
+                cancelQueueItem,
                 hasSpeakerNames,
                 canSaveSpeakerEdits,
                 showDuplicatesModal,

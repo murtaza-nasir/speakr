@@ -22,7 +22,7 @@ import { UPLOAD_ACCEPT, isAcceptedUploadFile, isVideoFileName } from '../utils/u
 export function useUpload(state, utils) {
     const {
         uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
-        isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
+        isProcessingActive, pollInterval, progressPopupMinimized,
         maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, maxConcurrentUploads,
         recordings, selectedRecording, totalRecordings, globalError,
         selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, uploadPromptVariables, transcriptionModelOptions,
@@ -519,7 +519,6 @@ export function useUpload(state, utils) {
             }
         }
         progressPopupMinimized.value = false;
-        progressPopupClosed.value = false;
         startProcessingQueue();
         if (closeModalAfterUpload) {
             closeModalAfterUpload = false;
@@ -727,7 +726,7 @@ export function useUpload(state, utils) {
                 };
                 // Every byte is sent; the server now checks and converts the
                 // file before answering, which can take minutes.
-                xhr.upload.onload = () => { fileItem.serverProcessing = true; };
+                xhr.upload.onload = () => { fileItem.serverProcessing = true; fileItem.serverProcessingAt = Date.now(); };
 
                 xhr.onload = () => {
                     const contentType = xhr.getResponseHeader('content-type') || '';
@@ -815,6 +814,7 @@ export function useUpload(state, utils) {
                     onProgress: (fraction) => {
                         fileItem.progress = Math.round(5 + fraction * 85);
                         fileItem.serverProcessing = fraction >= 1;
+                        if (fraction >= 1 && !fileItem.serverProcessingAt) fileItem.serverProcessingAt = Date.now();
                     },
                     onXhr: (xhr) => { fileItem._xhr = xhr; },
                     isCanceled: () => !!fileItem.uploadCanceled,
@@ -1174,7 +1174,6 @@ export function useUpload(state, utils) {
         processingMessage.value = t('incognito.processingInProgress');
         processingProgress.value = 10;
         progressPopupMinimized.value = false;
-        progressPopupClosed.value = false;
 
         try {
             const formData = new FormData();

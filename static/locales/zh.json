@@ -1553,7 +1553,10 @@
     "updateSpeakerNamesFailed": "无法更新发言人名称",
     "updateSummaryFailed": "无法更新摘要",
     "updateTranscriptFailed": "无法保存转录文本",
-    "updateTranscriptionFailed": "无法保存转录文本"
+    "updateTranscriptionFailed": "无法保存转录文本",
+    "canceledTitle": "处理已取消",
+    "canceledMessage": "此录音的转录在完成前被取消。",
+    "canceledGuidance": "使用“重新处理”可再次开始转录。"
   },
   "eventExtraction": {
     "description": "查找录音中提到的会议、约会和截止日期，生成可下载的日历事件。",
@@ -2408,44 +2411,74 @@
   },
   "progressQueue": {
     "title": "处理队列",
-    "clear": "清除",
-    "uploading": "{{count}} 个正在上传",
-    "transcribing": "{{count}} 个正在转录",
-    "summarizing": "{{count}} 个正在生成摘要",
-    "queued": "{{count}} 个排队中",
     "cancel": "取消",
     "failed": "失败",
-    "completed": "已完成",
     "done": "完成",
     "empty": "队列为空",
     "duplicateWarning": "检测到重复文件",
     "retry": "重试",
     "delete": "删除",
-    "uploadingShort": "个正在上传",
-    "transcribingShort": "个正在转录",
-    "summarizingShort": "个正在生成摘要",
-    "queuedShort": "个排队中",
-    "joiningShort": "合并中",
     "joining": "合并中",
     "joiningMessage": "正在合并音频文件…",
-    "convertingShort": "个正在转换",
     "converting": "转换中",
-    "convertingMessage": "正在转换音频文件…",
-    "processingOnServer": "正在处理…",
     "waitingForJoin": "已上传，等待另外 {{count}} 个文件以便合并",
     "waitingForJoinPlural": "已上传，等待另外 {{count}} 个文件以便合并",
-    "positionInQueue": "队列第 {{position}} 位",
-    "transcribingAudio": "正在转录音频…",
     "unknownFile": "未知文件",
     "uploadFailed": "上传失败",
-    "uploadingMessage": "正在上传…",
     "waiting": "等待中",
     "waitingForProcessing": "已上传，等待处理…",
     "waitingToUpload": "等待上传…",
     "region": "处理队列项目",
     "translating": "翻译中",
-    "translatingShort": "翻译中",
-    "translatingMessage": "正在翻译转录内容"
+    "count": {
+      "processing": "{{count}} 个处理中",
+      "queued": "{{count}} 个排队中",
+      "failed": "{{count}} 个失败",
+      "finished": "{{count}} 个已完成",
+      "inQueue": "队列中 {{count}} 个"
+    },
+    "groups": {
+      "active": "处理中",
+      "waiting": "等待中",
+      "failed": "失败",
+      "done": "最近完成"
+    },
+    "stage": {
+      "assembling": "组装中",
+      "titling": "生成标题",
+      "indexing": "索引中"
+    },
+    "queuedFor": {
+      "conversion": "排队第 {{position}} 位，等待转换",
+      "transcription": "排队第 {{position}} 位，等待转录",
+      "summary": "排队第 {{position}} 位，等待摘要",
+      "translation": "排队第 {{position}} 位，等待翻译"
+    },
+    "detail": {
+      "waiting": "等待中",
+      "preparing": "准备中",
+      "aligning": "对齐中",
+      "diarizing": "识别说话人",
+      "onServer": "服务器处理中"
+    },
+    "canceling": "正在取消…",
+    "partsOf": "{{done}} / {{total}}",
+    "elapsed": "此步骤开始后经过的时间",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}} 分钟前",
+    "hoursAgo": "{{count}} 小时前",
+    "clearFinished": "清除已完成",
+    "clearFailed": "清除失败项",
+    "open": "打开录音",
+    "remove": "从列表中移除",
+    "duplicate": "重复文件",
+    "emptyHint": "新的上传和重新处理任务会显示在这里。",
+    "cancelConfirm": {
+      "title": "取消转录？",
+      "message": "“{{title}}”还没有转录文本。取消后，该录音将标记为失败，音频会保留。",
+      "confirm": "取消转录",
+      "keep": "继续处理"
+    }
   },
   "promptVariables": {
     "title": "提示变量",
@@ -2839,8 +2872,7 @@
     "stuck": "重置卡住的处理",
     "summarizing": "生成摘要中",
     "transcribing": "转录中",
-    "uploading": "上传中",
-    "queuedTranslation": "排队中（翻译）"
+    "uploading": "上传中"
   },
   "summary": {
     "actionItems": "行动事项",
@@ -2973,7 +3005,6 @@
     "editTranscript": "编辑转录",
     "enterFullscreen": "全屏",
     "exitFullscreen": "退出全屏",
-    "expand": "展开",
     "followPlayerDisabled": "跟随播放",
     "followPlayerEnabled": "停止跟随播放",
     "fullscreenVideo": "视频全屏",

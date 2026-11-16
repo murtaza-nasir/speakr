@@ -1553,7 +1553,10 @@
     "updateSpeakerNamesFailed": "Couldn't update speaker names",
     "updateSummaryFailed": "Couldn't update summary",
     "updateTranscriptFailed": "Couldn't save the transcript",
-    "updateTranscriptionFailed": "Couldn't save the transcript"
+    "updateTranscriptionFailed": "Couldn't save the transcript",
+    "canceledTitle": "Processing canceled",
+    "canceledMessage": "The transcription of this recording was canceled before it finished.",
+    "canceledGuidance": "Use Reprocess to start the transcription again."
   },
   "eventExtraction": {
     "description": "Find meetings, appointments and deadlines mentioned in recordings, as calendar events you can download.",
@@ -2408,44 +2411,74 @@
   },
   "progressQueue": {
     "title": "Processing queue",
-    "clear": "Clear",
-    "uploading": "{{count}} uploading",
-    "transcribing": "{{count}} transcribing",
-    "summarizing": "{{count}} summarizing",
-    "queued": "{{count}} queued",
     "cancel": "Cancel",
     "failed": "Failed",
-    "completed": "Completed",
     "done": "Done",
     "empty": "The queue is empty",
     "duplicateWarning": "Duplicate file detected",
     "retry": "Retry",
     "delete": "Delete",
-    "uploadingShort": "uploading",
-    "transcribingShort": "transcribing",
-    "summarizingShort": "summarizing",
-    "queuedShort": "queued",
-    "joiningShort": "joining",
     "joining": "Joining",
     "joiningMessage": "Joining audio files…",
-    "convertingShort": "converting",
     "converting": "Converting",
-    "convertingMessage": "Converting the audio file…",
-    "processingOnServer": "Processing…",
     "waitingForJoin": "Uploaded, waiting for {{count}} more file to join",
     "waitingForJoinPlural": "Uploaded, waiting for {{count}} more files to join",
-    "positionInQueue": "#{{position}} in queue",
-    "transcribingAudio": "Transcribing audio…",
     "unknownFile": "Unknown file",
     "uploadFailed": "Upload failed",
-    "uploadingMessage": "Uploading…",
     "waiting": "Waiting",
     "waitingForProcessing": "Uploaded, waiting for processing…",
     "waitingToUpload": "Waiting to upload…",
     "region": "Processing queue items",
     "translating": "Translating",
-    "translatingShort": "translating",
-    "translatingMessage": "Translating the transcript"
+    "count": {
+      "processing": "{{count}} processing",
+      "queued": "{{count}} queued",
+      "failed": "{{count}} failed",
+      "finished": "{{count}} finished",
+      "inQueue": "{{count}} in queue"
+    },
+    "groups": {
+      "active": "Active",
+      "waiting": "Waiting",
+      "failed": "Failed",
+      "done": "Recently finished"
+    },
+    "stage": {
+      "assembling": "Assembling",
+      "titling": "Titling",
+      "indexing": "Indexing"
+    },
+    "queuedFor": {
+      "conversion": "Queued #{{position}} for conversion",
+      "transcription": "Queued #{{position}} for transcription",
+      "summary": "Queued #{{position}} for summary",
+      "translation": "Queued #{{position}} for translation"
+    },
+    "detail": {
+      "waiting": "waiting",
+      "preparing": "preparing",
+      "aligning": "aligning",
+      "diarizing": "identifying speakers",
+      "onServer": "processing on the server"
+    },
+    "canceling": "Canceling…",
+    "partsOf": "{{done}} of {{total}}",
+    "elapsed": "Time since this step started",
+    "justNow": "just now",
+    "minutesAgo": "{{count}} min ago",
+    "hoursAgo": "{{count}} h ago",
+    "clearFinished": "Clear finished",
+    "clearFailed": "Clear failed",
+    "open": "Open recording",
+    "remove": "Remove from the list",
+    "duplicate": "Duplicate file",
+    "emptyHint": "New uploads and reprocessing jobs appear here.",
+    "cancelConfirm": {
+      "title": "Cancel transcription?",
+      "message": "\"{{title}}\" has no transcript yet. After a cancel the recording is marked as failed and the audio is kept.",
+      "confirm": "Cancel transcription",
+      "keep": "Keep processing"
+    }
   },
   "promptVariables": {
     "title": "Prompt variables",
@@ -2839,8 +2872,7 @@
     "stuck": "Reset stuck processing",
     "summarizing": "Summarizing",
     "transcribing": "Transcribing",
-    "uploading": "Uploading",
-    "queuedTranslation": "Queued (translation)"
+    "uploading": "Uploading"
   },
   "summary": {
     "actionItems": "Action items",
@@ -2973,7 +3005,6 @@
     "editTranscript": "Edit transcript",
     "enterFullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",
-    "expand": "Expand",
     "followPlayerDisabled": "Follow playback",
     "followPlayerEnabled": "Stop following playback",
     "fullscreenVideo": "Fullscreen video",

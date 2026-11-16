@@ -1,0 +1,140 @@
+{#- The processing queue on the page (static/css/queue.css; the state is in
+    app.modular.js under "THE QUEUE ON THE PAGE", the wording of a row in
+    static/js/modules/utils/queue-view.js).
+
+        {% from 'components/queue/_queue.html' import queue_indicator, queue_panel, queue_rows %}
+
+    queue_indicator(variant)  the one-line indicator, a button that opens and
+                              minimizes the panel. Variants: 'foot' (foot of
+                              the recording list), 'pill' (top bar, while the
+                              list is collapsed), 'status' (the status bar of
+                              the Desk theme), 'strip' (phones).
+    queue_panel(variant)      the panel with its header: 'dock' or 'float'.
+    queue_rows()              the groups and rows alone (the phone sheet has
+                              its own heading).
+
+    One structure for every UI theme. Vue delimiters are ${ }. -#}
+
+{% macro queue_indicator(variant) -%}
+<button type="button" class="queue-ind queue-ind--{{ variant }}" data-queue-indicator="{{ variant }}"
+        {%- if variant == 'strip' %} data-queue-strip{% endif %}
+        :class="{ 'is-busy': queueSummary.state === 'busy' }"
+        @click="toggleQueuePanel()"
+        {%- if variant == 'strip' %} aria-haspopup="dialog"{% else %} :aria-expanded="queuePanelOpen ? 'true' : 'false'"{% endif %}
+        :aria-label="queueIndicatorLabel" :title="t('progressQueue.title')">
+    <span v-if="queueSummary.state === 'busy'" class="queue-spin" aria-hidden="true"></span>
+    <i v-else-if="queueSummary.state === 'failed'" class="fas fa-circle-xmark queue-ind__icon is-error" aria-hidden="true"></i>
+    <i v-else-if="queueSummary.state === 'done'" class="fas fa-circle-check queue-ind__icon is-ok" aria-hidden="true"></i>
+    <i v-else class="fas fa-inbox queue-ind__icon" aria-hidden="true"></i>
+    <span class="queue-ind__label" data-queue-summary>
+        <template v-for="(part, index) in {{ 'queuePillParts' if variant == 'pill' else 'queueParts' }}" :key="part.key"><span v-if="index > 0" class="queue-ind__sep" aria-hidden="true"> · </span><span :class="part.tone === 'error' ? 'queue-ind__part is-error' : (index > 0 ? 'queue-ind__part is-quiet' : 'queue-ind__part')" :data-queue-part="part.key" v-text="part.text"></span></template>
+        <span v-if="queueParts.length === 0" class="queue-ind__part" v-text="t('progressQueue.empty')"></span>
+    </span>
+    <i class="fas queue-ind__chevron" :class="queuePanelOpen ? 'fa-chevron-down' : 'fa-chevron-up'" aria-hidden="true"></i>
+</button>
+{%- endmacro %}
+
+{% macro queue_rows() -%}
+<template v-for="group in queueGroupList" :key="group.name">
+    <div v-if="group.items.length > 0" class="queue-group" :data-queue-group="group.name">
+        <div class="queue-group__head" :class="{ 'is-error': group.name === 'failed' }">
+            <span class="queue-group__name" v-text="group.title"></span>
+            <span class="queue-group__count" v-text="group.items.length"></span>
+            <button v-if="group.name === 'failed'" type="button" class="queue-tbtn" data-queue-clear-failed
+                    @click="clearFailedJobs()" v-text="t('progressQueue.clearFailed')"></button>
+            <button v-if="group.name === 'done'" type="button" class="queue-tbtn" data-queue-clear-finished
+                    @click="clearAllCompleted()" v-text="t('progressQueue.clearFinished')"></button>
+        </div>
+        <div v-for="item in group.items" :key="item.id" class="queue-row"
+             :class="{ 'is-link': group.name === 'done' && item.view.canOpen }"
+             :data-queue-row="item.id" :data-queue-status="item.status" :data-queue-job="item.jobId || null" :data-tone="item.view.mark.tone"
+             @click="group.name === 'done' && item.view.canOpen ? openQueueRecording(item) : null">
+            <span class="queue-row__mark" aria-hidden="true"><i class="fas" :class="item.view.mark.icon"></i></span>
+            <div class="queue-row__main">
+                <div class="queue-row__title" dir="auto" :title="item.title" v-text="item.title"></div>
+
+                <!-- Failed: the cause, and what to do about it on up to two lines -->
+                <div v-if="group.name === 'failed'" class="queue-row__line queue-row__line--failed">
+                    <span class="queue-row__error" data-queue-error v-text="item.view.error.title"></span>
+                    <span v-if="item.view.error.text" class="queue-row__reason" dir="auto" data-queue-reason
+                          :title="item.view.error.text" v-text="item.view.error.text"></span>
+                </div>
+                <!-- Finished -->
+                <div v-else-if="group.name === 'done'" class="queue-row__line">
+                    <span class="queue-row__detail"><span v-text="item.view.stage"></span><template v-if="item.view.finished"> · <span :data-queue-finished="item.view.finished"></span></template></span>
+                    <span v-if="item.duplicateWarning" class="queue-row__flag" data-queue-duplicate :title="t('progressQueue.duplicateWarning')">
+                        <i class="fas fa-copy" aria-hidden="true"></i><span v-text="t('progressQueue.duplicate')"></span>
+                    </span>
+                </div>
+                <!-- Active and waiting: the stage in words, then a real number or the elapsed time -->
+                <div v-else class="queue-row__line">
+                    <span class="queue-row__stage" data-queue-stage v-text="item.view.stage"></span>
+                    <span v-if="item.view.detail" class="queue-row__detail" data-queue-detail> · ${ item.view.detail }</span>
+                    <span v-if="item.view.number" class="queue-row__num" data-queue-number v-text="item.view.number"></span>
+                    <span v-else-if="item.view.since" class="queue-row__num" data-queue-elapsed
+                          :data-queue-since="item.view.since" :title="t('progressQueue.elapsed')"></span>
+                </div>
+                <div v-if="item.view.progress.kind === 'percent' || item.view.progress.kind === 'count'" class="queue-bar"
+                     role="progressbar" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="item.view.progress.percent"
+                     :aria-label="item.view.stage" data-queue-bar="real">
+                    <i :style="{ width: item.view.progress.percent + '%' }"></i>
+                </div>
+                <div v-else-if="item.view.progress.kind === 'moving'" class="queue-bar queue-bar--moving"
+                     role="progressbar" :aria-label="item.view.stage" data-queue-bar="moving"><i></i></div>
+            </div>
+            <div class="queue-row__actions">
+                <button v-if="item.view.canRetry" type="button" class="queue-tbtn" data-queue-retry
+                        @click.stop="retryProgressItem(item)" v-text="t('progressQueue.retry')"></button>
+                <button v-if="item.view.canOpen" type="button" class="queue-ibtn" data-queue-open
+                        @click.stop="openQueueRecording(item)"
+                        :title="t('progressQueue.open')" :aria-label="t('progressQueue.open') + ': ' + item.title">
+                    <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                </button>
+                <button v-if="item.view.canCancel" type="button" class="queue-ibtn is-danger" data-queue-cancel
+                        @click.stop="cancelQueueItem(item)"
+                        :title="t('progressQueue.cancel')" :aria-label="t('progressQueue.cancel') + ': ' + item.title">
+                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                </button>
+                <button v-if="group.name === 'failed'" type="button" class="queue-ibtn is-danger" data-queue-delete
+                        @click.stop="removeProgressItem(item)"
+                        :title="t('progressQueue.delete')" :aria-label="t('progressQueue.delete') + ': ' + item.title">
+                    <i class="fas fa-trash-can" aria-hidden="true"></i>
+                </button>
+                <button v-if="group.name === 'done'" type="button" class="queue-ibtn" data-queue-remove
+                        @click.stop="removeProgressItem(item)"
+                        :title="t('progressQueue.remove')" :aria-label="t('progressQueue.remove') + ': ' + item.title">
+                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+<div v-if="unifiedProgressItems.length === 0" class="queue-empty" data-queue-empty>
+    <i class="fas fa-inbox" aria-hidden="true"></i>
+    <strong v-text="t('progressQueue.empty')"></strong>
+    <span v-text="t('progressQueue.emptyHint')"></span>
+</div>
+{%- endmacro %}
+
+{% macro queue_panel(variant) -%}
+<section class="queue-panel queue-panel--{{ variant }}" data-queue-panel="{{ variant }}" role="region" :aria-label="t('progressQueue.title')"
+         @keydown.esc.stop="toggleQueuePanel()">
+    <header class="queue-panel__head">
+        <span v-if="queueSummary.state === 'busy'" class="queue-spin" aria-hidden="true"></span>
+        <i v-else-if="queueSummary.state === 'failed'" class="fas fa-circle-xmark queue-panel__icon is-error" aria-hidden="true"></i>
+        <i v-else-if="queueSummary.state === 'done'" class="fas fa-circle-check queue-panel__icon is-ok" aria-hidden="true"></i>
+        <i v-else class="fas fa-inbox queue-panel__icon" aria-hidden="true"></i>
+        <div class="queue-panel__title">
+            <strong v-text="t('progressQueue.title')"></strong>
+            <small v-if="queueParts.length > 0" data-queue-summary v-text="queueSummaryText"></small>
+        </div>
+        <button type="button" class="queue-ibtn" data-queue-minimize @click="toggleQueuePanel()"
+                :title="t('tooltips.minimize')" :aria-label="t('tooltips.minimize')" aria-expanded="true">
+            <i class="fas fa-chevron-down" aria-hidden="true"></i>
+        </button>
+    </header>
+    <div class="queue-panel__body" tabindex="0" role="group" :aria-label="t('progressQueue.region')">
+        {{ queue_rows() }}
+    </div>
+</section>
+{%- endmacro %}

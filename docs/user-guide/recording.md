@@ -27,24 +27,67 @@ When you upload a file, it immediately appears in the upload queue with a progre
 
 ### Processing Queue
 
-Every file that is uploaded, converted, transcribed, summarized or translated has a row in the processing queue. The following is given for each row:
+Every file that is uploaded, converted, transcribed, summarized or translated has a row in the processing queue. While the queue has rows, a one-line indicator is shown at the foot of the recording list, for example "2 processing · 1 queued · 1 failed". Failures are counted in red. The indicator cannot be closed. It is removed from the page when the queue is empty.
 
-- **Stage**: uploading, waiting, converting, transcribing, generating the title, summarizing or translating. For a waiting file, the place in its queue is given.
-- **Progress**: a number is given only where a measured one exists. These are the uploaded share of a file, the finished parts of a long recording that is transcribed in parts, the finished parts of a translation, and the share reported by a transcription service that measures it. In every other case a moving bar is shown with the time since the step started. Remaining time is never estimated.
-- **Result**: finished files stay in the list for an hour, failed files with the reason.
+![Processing queue](../assets/images/screenshots/processing-queue.png)
+
+The panel of the queue is opened with a click on the indicator, and it is opened automatically when an upload or a recording is started. The panel is docked at the foot of the recording list: the list is shortened and can still be scrolled, and no recording is covered. With **Minimize** in the header of the panel, or with Esc, the panel is reduced to the indicator again.
+
+| Layout | Indicator | Panel |
+|---|---|---|
+| Recording list shown | At the foot of the list | Docked at the foot of the list |
+| Recording list collapsed | In the top bar, in a shorter form such as "3 in queue · 1 failed" | Under the top bar |
+| Desk theme | In the status bar | At the foot of the list, or above the status bar while the list is collapsed |
+| Phone | A strip above the player, and at the foot of the recording list | A sheet from the bottom edge |
+
+On a phone, the queue is opened as a sheet:
+
+![Processing queue on a phone](../assets/images/screenshots/mobile-processing-queue.png)
+
+The rows are grouped in this order: **Active**, **Waiting**, **Failed**, **Recently finished**. The following is given for each row:
+
+- **Stage**: Uploading, Converting, Transcribing, Titling, Summarizing or Translating. For a waiting file, the place in its queue is given, for example "Queued #2 for transcription". A step reported by the transcription service is added after the stage, for example "Transcribing · aligning".
+- **Progress**: a number is given only where a measured one exists. These are the uploaded share of a file, the finished parts of a long recording that is transcribed in parts ("3 of 8"), the finished parts of a translation, and the share reported by a transcription service that measures it. In every other case a moving bar is shown with the time since the step started. Remaining time is never estimated.
+- **Result**: finished files stay in the list for an hour, with the time since the end. Failed files are listed with the reason, on up to two lines; the full text is shown when the pointer rests on it. A finished file with the same content as an earlier upload is marked "Duplicate file".
+
+The actions of a row depend on its group:
+
+| Group | Actions |
+|---|---|
+| Active, Waiting | Open the recording. Cancel. |
+| Failed | **Retry**. Open the recording. **Delete**: the row is removed; for a failed new upload, the recording and its audio are deleted with it. |
+| Recently finished | Open the recording, also with a click on the row. Remove the row from the list. |
+
+With **Clear finished** and **Clear failed**, all rows of the group are removed in one step. Cleared failed rows are removed from the list only; the recordings stay in the library, where each can be reprocessed or deleted.
+
+After a reload of the page, the rows that failed or finished within the last hour are listed again.
 
 Processing can be canceled while a file waits or is processed:
 
 - A file that waits is removed from the queue at once.
-- A file in processing is stopped at the next safe point: between two parts of a long recording, at the next status check of the transcription service, or before the next request to the language model. A request that is already under way is finished first and its result is discarded, so the row can stay marked as canceling for a short time.
+- A file in processing is stopped at the next safe point: between two parts of a long recording, at the next status check of the transcription service, or before the next request to the language model. A request that is already under way is finished first and its result is discarded. Until then, "Canceling…" is shown as the stage of the row.
+- A confirmation is requested only for a running first transcription, because no transcript of the recording exists yet.
 - A recording that already had a transcript returns to its previous state: when a reprocess is canceled, the previous transcript, summary and events are restored.
 - When the transcript of the current run is already stored and the cancel arrives during the title or the summary, the transcript is kept and the recording is completed without the missing step.
-- After the cancel of a first transcription, the recording has the status Failed and the message "Processing was canceled." The audio is kept. To start the transcription again, use [Reprocess](first-steps.md#reprocessing-options).
+- After the cancel of a first transcription, the recording has the status Failed and the message "Processing was canceled." In place of the transcript, the notice "Processing canceled" is shown. The audio is kept. To start the transcription again, use [Reprocess](first-steps.md#reprocessing-options).
 - No failure email and no webhook is sent for a canceled file.
 
 An upload can be canceled while the file is sent. The request is aborted and nothing of the file is kept on the server. The upload of a recording made in Speakr is not canceled, because the audio exists only in the browser until the upload has finished.
 
-Finished rows and failed rows can each be cleared in one step. Cleared failed rows are removed from the list only; the recordings stay in the library, where each can be reprocessed or deleted.
+### Notifications
+
+Short messages about the result of an action are shown at the bottom center of the reading area, above the player. On a phone they are shown at the full width above the queue strip, the player and the tab bar, and under the top bar while a sheet is open.
+
+![Notifications](../assets/images/screenshots/notifications.png)
+
+| Type | Color | Shown for |
+|---|---|---|
+| Information | Blue | 3 seconds |
+| Success | Green | 3 seconds |
+| Warning | Amber | At least 8 seconds |
+| Error | Red | Until it is closed; at least 8 seconds for a minor failure |
+
+The colors of the four types are the same in every theme and color scheme. On a message that is closed automatically, the remaining time is shown as a line along its bottom edge. The time is paused while the pointer or the keyboard focus is on the message. A message is closed with its close button or with Esc. When the same message is issued again while it is shown, a count such as "×2" is added and its time starts again. An action that belongs to a message, such as **Undo**, is offered as a button in the message.
 
 ## Recording Live Audio
 

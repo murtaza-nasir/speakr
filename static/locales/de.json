@@ -1553,7 +1553,10 @@
     "updateSpeakerNamesFailed": "Sprechernamen konnten nicht aktualisiert werden",
     "updateSummaryFailed": "Zusammenfassung konnte nicht aktualisiert werden",
     "updateTranscriptFailed": "Transkript konnte nicht gespeichert werden",
-    "updateTranscriptionFailed": "Transkript konnte nicht gespeichert werden"
+    "updateTranscriptionFailed": "Transkript konnte nicht gespeichert werden",
+    "canceledTitle": "Verarbeitung abgebrochen",
+    "canceledMessage": "Die Transkription dieser Aufnahme wurde vor dem Abschluss abgebrochen.",
+    "canceledGuidance": "Mit „Erneut verarbeiten“ wird die Transkription neu gestartet."
   },
   "eventExtraction": {
     "description": "Meetings, Termine und Fristen, die in Aufnahmen erwähnt werden, als herunterladbare Kalenderereignisse finden.",
@@ -2408,44 +2411,74 @@
   },
   "progressQueue": {
     "title": "Verarbeitungswarteschlange",
-    "clear": "Leeren",
-    "uploading": "{{count}} werden hochgeladen",
-    "transcribing": "{{count}} werden transkribiert",
-    "summarizing": "{{count}} werden zusammengefasst",
-    "queued": "{{count}} in der Warteschlange",
     "cancel": "Abbrechen",
     "failed": "Fehlgeschlagen",
-    "completed": "Abgeschlossen",
     "done": "Fertig",
     "empty": "Die Warteschlange ist leer",
     "duplicateWarning": "Doppelte Datei erkannt",
     "retry": "Wiederholen",
     "delete": "Löschen",
-    "uploadingShort": "werden hochgeladen",
-    "transcribingShort": "werden transkribiert",
-    "summarizingShort": "werden zusammengefasst",
-    "queuedShort": "in der Warteschlange",
-    "joiningShort": "zusammengefügt",
     "joining": "Zusammenfügen",
     "joiningMessage": "Audiodateien werden zusammengefügt…",
-    "convertingShort": "werden konvertiert",
     "converting": "Konvertierung",
-    "convertingMessage": "Audiodatei wird konvertiert…",
-    "processingOnServer": "Wird verarbeitet…",
     "waitingForJoin": "Hochgeladen, wartet auf {{count}} weitere Datei zum Zusammenfügen",
     "waitingForJoinPlural": "Hochgeladen, wartet auf {{count}} weitere Dateien zum Zusammenfügen",
-    "positionInQueue": "Nr. {{position}} in der Warteschlange",
-    "transcribingAudio": "Audio wird transkribiert…",
     "unknownFile": "Unbekannte Datei",
     "uploadFailed": "Upload fehlgeschlagen",
-    "uploadingMessage": "Wird hochgeladen…",
     "waiting": "Wartet",
     "waitingForProcessing": "Hochgeladen, wartet auf Verarbeitung…",
     "waitingToUpload": "Wartet auf Upload…",
     "region": "Einträge der Verarbeitungswarteschlange",
     "translating": "Übersetzen",
-    "translatingShort": "werden übersetzt",
-    "translatingMessage": "Transkript wird übersetzt"
+    "count": {
+      "processing": "{{count}} in Verarbeitung",
+      "queued": "{{count}} wartend",
+      "failed": "{{count}} fehlgeschlagen",
+      "finished": "{{count}} fertig",
+      "inQueue": "{{count}} in der Warteschlange"
+    },
+    "groups": {
+      "active": "Aktiv",
+      "waiting": "Wartend",
+      "failed": "Fehlgeschlagen",
+      "done": "Kürzlich fertig"
+    },
+    "stage": {
+      "assembling": "Zusammensetzen",
+      "titling": "Titel",
+      "indexing": "Indexierung"
+    },
+    "queuedFor": {
+      "conversion": "Platz {{position}} für Konvertierung",
+      "transcription": "Platz {{position}} für Transkription",
+      "summary": "Platz {{position}} für Zusammenfassung",
+      "translation": "Platz {{position}} für Übersetzung"
+    },
+    "detail": {
+      "waiting": "wartet",
+      "preparing": "Vorbereitung",
+      "aligning": "Abgleich",
+      "diarizing": "Sprechererkennung",
+      "onServer": "Verarbeitung auf dem Server"
+    },
+    "canceling": "Wird abgebrochen…",
+    "partsOf": "{{done}} von {{total}}",
+    "elapsed": "Zeit seit Beginn dieses Schritts",
+    "justNow": "gerade eben",
+    "minutesAgo": "vor {{count}} Min.",
+    "hoursAgo": "vor {{count}} Std.",
+    "clearFinished": "Fertige entfernen",
+    "clearFailed": "Fehlgeschlagene entfernen",
+    "open": "Aufnahme öffnen",
+    "remove": "Aus der Liste entfernen",
+    "duplicate": "Doppelte Datei",
+    "emptyHint": "Neue Uploads und erneute Verarbeitungen erscheinen hier.",
+    "cancelConfirm": {
+      "title": "Transkription abbrechen?",
+      "message": "„{{title}}“ hat noch kein Transkript. Nach dem Abbruch wird die Aufnahme als fehlgeschlagen markiert, das Audio bleibt erhalten.",
+      "confirm": "Transkription abbrechen",
+      "keep": "Weiter verarbeiten"
+    }
   },
   "promptVariables": {
     "title": "Prompt-Variablen",
@@ -2839,8 +2872,7 @@
     "stuck": "Blockierte Verarbeitung zurücksetzen",
     "summarizing": "Zusammenfassung",
     "transcribing": "Transkribierung",
-    "uploading": "Upload",
-    "queuedTranslation": "In Warteschlange (Übersetzung)"
+    "uploading": "Upload"
   },
   "summary": {
     "actionItems": "Aktionspunkte",
@@ -2973,7 +3005,6 @@
     "editTranscript": "Transkript bearbeiten",
     "enterFullscreen": "Vollbild",
     "exitFullscreen": "Vollbild beenden",
-    "expand": "Erweitern",
     "followPlayerDisabled": "Wiedergabe folgen",
     "followPlayerEnabled": "Wiedergabe nicht mehr folgen",
     "fullscreenVideo": "Video im Vollbild",

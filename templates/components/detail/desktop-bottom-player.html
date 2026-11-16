@@ -4,7 +4,7 @@
      screen so the player is always within reach — Spotify-style.
      Pulled out of desktop-right-panel.html so the right column no
      longer carries the player. -->
-<div class="flex-shrink-0 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] px-5 py-2">
+<div data-toast-avoid class="flex-shrink-0 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] px-5 py-2">
     <!-- Show message if audio has been deleted -->
     <div v-if="selectedRecording.audio_deleted_at"
          class="text-[var(--text-muted)] text-sm flex items-center gap-2 py-1">
