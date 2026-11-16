@@ -1297,9 +1297,12 @@ def test_the_phone_strip_and_sheet_in_every_theme(browser, desk, theme):
         # higher as the stack needs, so that the heading and the close button of the sheet stay free
         top_toast, last_toast, panel, closer = session.rects(f"{TOAST}:first-child", f"{TOAST}:last-child", '[data-phone-sheet="queue"] .ph-sheet',
                                                            '[data-phone-sheet="queue"] [data-phone-sheet-close]')
-        assert 0 <= top_toast["top"] <= 64, f"{theme}: the toasts are not at the top: {top_toast}"
-        if last_toast["bottom"] > panel["top"]:
-            assert top_toast["top"] <= 9, f"{theme}: the stack reaches the sheet although it could start higher: {top_toast}"
+        stack = session.rects("#toastContainer")[0]
+        assert 0 <= stack["top"] <= 64, f"{theme}: the toasts are not at the top: {stack}"
+        # A stack that is too high for the room above the sheet shows its newest toast and is cut off there
+        assert stack["bottom"] <= panel["top"] and last_toast["bottom"] <= panel["top"] + 1, f"{theme}: the toasts reach the sheet: {stack} {last_toast} {panel}"
+        assert last_toast["top"] >= stack["top"] - 1, f"{theme}: the newest toast is cut off: {last_toast}"
+        sheet.locator("[data-queue-summary]").click()   # nothing of the toasts lies over the sheet
         session.page.locator(f"{TOAST} .toast__close").last.click()
         session.wait("() => document.querySelectorAll('#toastContainer .toast-message').length === 1")
         session.wait("([sel, top]) => document.querySelector(sel).getBoundingClientRect().bottom <= top", [TOAST, closer["top"]])

@@ -3997,9 +3997,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (header) document.documentElement.style.setProperty('--queue-float-top', `${Math.round(header.getBoundingClientRect().bottom)}px`);
             }, { flush: 'post', immediate: true });
             // A sheet covers the bottom of a phone screen: the toasts go
-            // under the top bar meanwhile (styles.css)
+            // under the top bar meanwhile (styles.css). The menu of the list
+            // is a drawer of the full height, with its close button at the
+            // top: the toasts stay at the bottom over it.
             watch(phoneSheet, (name) => {
-                document.body.classList.toggle('phone-sheet-open', !!name);
+                document.body.classList.toggle('phone-sheet-open', !!name && name !== 'menu');
                 nextTick(placeToasts);
             }, { immediate: true });
 

@@ -146,7 +146,6 @@ describe('toast rules', () => {
         expect(topUnderBar(500, 60)).toBe(60);     // a short sheet: room under the top bar
         expect(topUnderBar(101, 46)).toBe(47);     // a tall sheet: one toast ends just above it
         expect(topUnderBar(101, 200)).toBe(8);     // a stack that cannot fit starts at the top edge
-        expect(topUnderBar(0, 46)).toBe(8);        // the menu, a sheet of the full height
     });
 
     it('keys on message and type', () => {

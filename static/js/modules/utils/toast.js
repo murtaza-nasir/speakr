@@ -194,7 +194,9 @@ const TOP_EDGE = 8;
 /**
  * Where the toasts start on a phone while a sheet is open: under the top
  * bar, or as much higher as the stack needs to end above the sheet (whose
- * heading and close button it would cover), down to the top edge.
+ * heading and close button it would cover), down to the top edge. A stack
+ * that is still too high shows its newest toasts; the older ones are cut off
+ * (--toast-max, styles.css).
  */
 export const topUnderBar = (sheetTop, stackHeight) =>
     Math.max(TOP_EDGE, Math.min(UNDER_TOP_BAR, Math.floor(sheetTop - 8 - stackHeight)));
@@ -209,9 +211,18 @@ const placeContainer = (container) => {
         container.style.removeProperty('--toast-center');
         // While a sheet is open the toasts are at the top (styles.css): under
         // the top bar, or higher when the stack would reach the sheet
-        const sheet = document.querySelector('[data-phone-sheet] .ph-sheet');
-        if (sheet) container.style.setProperty('--toast-top', `${topUnderBar(vh - sheet.offsetHeight, container.offsetHeight)}px`);
-        else container.style.removeProperty('--toast-top');
+        const sheet = document.querySelector('[data-phone-sheet] .ph-sheet:not(.ph-sheet--drawer)');
+        if (sheet) {
+            // The stack measured at its full height, then cut to the room above the sheet
+            container.style.removeProperty('--toast-max');
+            const sheetTop = vh - sheet.offsetHeight;
+            const top = topUnderBar(sheetTop, container.scrollHeight);
+            container.style.setProperty('--toast-top', `${top}px`);
+            container.style.setProperty('--toast-max', `${Math.max(46, Math.floor(sheetTop - 8 - top))}px`);
+        } else {
+            container.style.removeProperty('--toast-top');
+            container.style.removeProperty('--toast-max');
+        }
         return;
     }
     // The main column makes room for the recording list with a padding

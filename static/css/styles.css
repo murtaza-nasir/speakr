@@ -2849,6 +2849,11 @@ body {
     body.phone-sheet-open #toastContainer {
         top: calc(var(--toast-top, 60px) + env(safe-area-inset-top, 0px));
         bottom: auto;
+        /* Never over the heading and the close button of the sheet: a stack
+           that is too high shows its newest toasts */
+        max-height: var(--toast-max, none);
+        justify-content: flex-end;
+        overflow: hidden;
     }
     body.phone-sheet-open .toast-message { transform: translateY(-14px) scale(0.96); }
     body.phone-sheet-open .toast-message.toast-show { transform: none; }
