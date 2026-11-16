@@ -203,7 +203,7 @@ def convert_if_needed(
                 is_lossless = is_lossless_audio(filepath, codec_info=codec_info)
                 can_remux = not is_lossless or not AUDIO_COMPRESS_UPLOADS
             except Exception as e:
-                logger.warning(f"Could not determine if audio is lossless: {e}. Will transcode.")
+                logger.warning(f"Could not determine if audio is lossless: {loggable_error(e, filepath)}. Will transcode.")
 
         try:
             if can_remux:
@@ -395,7 +395,7 @@ def convert_if_needed(
                     final_codec=compress_target_codec
                 )
         except Exception as e:
-            logger.warning(f"Failed to compress lossless audio: {e}. Continuing with original.")
+            logger.warning(f"Failed to compress lossless audio: {loggable_error(e, filepath)}. Continuing with original.")
             # Fall through to return original file
 
     # No processing needed - the file is stored as-is. Before returning,

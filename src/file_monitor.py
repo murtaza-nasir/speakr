@@ -146,7 +146,7 @@ class FileMonitor:
                     self._scan_single_user_directory()
                     
             except Exception as e:
-                self.logger.error(f"Error during directory scan: {e}", exc_info=True)
+                self.logger.error(f"Error during directory scan: {loggable_error(e)}", exc_info=True)
             
             # Wait for next check
             time.sleep(self.check_interval)
@@ -250,7 +250,7 @@ class FileMonitor:
         if key in self._extension_skipped:
             return
         self._extension_skipped.add(key)
-        # The name of the file at DEBUG; a file with no extension has no label.
+        # The name of the file at DEBUG.
         self.logger.info(f"Skipping {loggable_path(file_path)} in the watch folder: the extension "
                          f"'{file_path.suffix or '(none)'}' is not a supported audio or video type")
         self.logger.debug(f"Skipped in the watch folder: {file_path}")
@@ -323,7 +323,7 @@ class FileMonitor:
                     self.logger.info(f"Unlocked {loggable_path(processing_path)} after processing error "
                                      f"(attempt {attempts} of {MAX_ATTEMPTS}, next in {delay}s).")
                 except Exception as rename_err:
-                    self.logger.error(f"CRITICAL: Failed to unlock file {loggable_path(processing_path)} after error: {rename_err}")
+                    self.logger.error(f"CRITICAL: Failed to unlock file {loggable_path(processing_path)} after error: {loggable_error(rename_err, processing_path, file_path)}")
 
     def _set_aside(self, processing_path, file_path, user_id, message_key, log_reason, reason=None):
         """Rename a file that cannot be processed to <name>.failed and tell its owner once."""

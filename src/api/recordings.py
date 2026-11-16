@@ -3293,7 +3293,7 @@ def get_audio(recording_id):
 
         return sandbox_media_response(send_file(delivery.local_path, mimetype=serve_mime, conditional=True))
     except Exception as e:
-        current_app.logger.error(f"Error serving audio for recording {recording_id}: {e}", exc_info=True)
+        current_app.logger.error(f"Error serving audio for recording {recording_id}: {loggable_error(e)}", exc_info=True)
         return jsonify(api_error('unexpected_error')), 500
 
 

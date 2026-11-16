@@ -415,8 +415,11 @@ class FairJobQueue:
         """
         from src.services import job_control
 
+        from src.utils.log_filters import recording_scope
+
         control = job_control.JobControl(job.id)
-        with job_control.running(control):
+        # Every file label of the job ends with the id of its recording (#620).
+        with job_control.running(control), recording_scope(job.recording_id):
             self._run_claimed_job(job, control)
 
     def _run_claimed_job(self, job, control):

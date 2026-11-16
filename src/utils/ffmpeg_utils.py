@@ -195,7 +195,7 @@ def extract_audio_from_video(
                 current_app.logger.info(f"Copying audio stream (codec: {audio_codec}) without re-encoding")
                 
             except Exception as probe_error:
-                current_app.logger.warning(f"Failed to detect audio codec: {probe_error}. Falling back to MP3 encoding.")
+                current_app.logger.warning(f"Failed to detect audio codec: {loggable_error(probe_error, video_path)}. Falling back to MP3 encoding.")
                 # Fallback to MP3 encoding if we can't detect the codec
                 output_ext = 'mp3'
                 mime_type = 'audio/mpeg'
@@ -595,7 +595,7 @@ def temp_audio_conversion(input_path: str, target_format: str = 'mp3'):
             try:
                 os.unlink(temp_path)
             except Exception as e:
-                current_app.logger.warning(f"Failed to cleanup temp file {temp_path}: {e}")
+                current_app.logger.warning(f"Failed to cleanup temp file {loggable_path(temp_path)}: {loggable_error(e, temp_path)}")
 
 
 def decode_ffmpeg_output(data) -> str:

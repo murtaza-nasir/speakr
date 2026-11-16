@@ -29,7 +29,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
-from src.utils.log_filters import loggable_path
+from src.utils.log_filters import loggable_locator, loggable_path
 from src.models import (
     Folder, Group, GroupMembership, ProcessingJob, Recording, RecordingTag, Tag, User,
 )
@@ -498,7 +498,8 @@ def _decide(convert_workers=1, retention=False, passthrough=False, chunking=Fals
     args = dict(codec_info=AUDIO, has_video=False, keep_audio_only_flag=False, join=None,
                 original_filename="talk.m4a", should_enforce_size_limit=True, enforce_upload_limits=True,
                 effective_audio_only=True, is_likely_video_by_ext=False, regular_limit_mb=10,
-                original_file_size=3 * MB)
+                original_file_size=3 * MB,
+                log_path="/staging/20261115101500_0123456789abcdef0123456789abcdef_talk.m4a")
     args.update(overrides)
     with patch("src.services.recording_ingestion.CONVERT_WORKERS", convert_workers), \
             patch("src.services.recording_ingestion.VIDEO_RETENTION", retention), \
@@ -515,7 +516,9 @@ def test_decide_conversion_defers_when_probe_succeeds():
         chunking_will_handle_large_audio=False, extracted_audio_limit_mb=None,
         can_defer_conversion=True, conversion_deferred=True, convert_in_request=False,
     )
-    info.assert_called_once_with("Upload <file .m4a>: converting after the upload is answered")
+    # The upload is named by its staged file, not by the name the user gave it (#620).
+    info.assert_called_once_with(
+        "Upload <stored file 20261115101500_0123456789ab.m4a>: converting after the upload is answered")
 
 
 @pytest.mark.parametrize("overrides", [
@@ -562,7 +565,8 @@ def test_decide_conversion_skips_an_audio_join_part():
     assert decision.skip_conversion_for_join is True
     assert (decision.can_defer_conversion, decision.conversion_deferred, decision.convert_in_request) == \
         (False, False, False)
-    info.assert_called_once_with("Join part <file .m4a>: skipping conversion, the merge re-encodes it")
+    info.assert_called_once_with(
+        "Join part <stored file 20261115101500_0123456789ab.m4a>: skipping conversion, the merge re-encodes it")
     with app.app_context():
         video_part = _decide(join=("group", 0, 2), codec_info=VIDEO, has_video=True)
     assert (video_part.skip_conversion_for_join, video_part.convert_in_request) == (False, True)
@@ -794,7 +798,12 @@ def test_store_recording_commits_and_returns_response(owner, staged):
             ("key", "talk.wav", rec_id, now),
             ("upload", staged, f"recordings/{rec_id}/talk.wav", "audio/wav", True),
         ]
-        info.assert_called_once_with(f"Initial recording record created with ID: {rec_id}")
+        # The staging label, the id and the stored label in one line (#620).
+        assert [call.args[0] for call in info.call_args_list] == [
+            f"Stored upload {loggable_path(staged)} of recording {rec_id} as "
+            f"{loggable_locator(f'local://recordings/{rec_id}/talk.wav')}",
+            f"Initial recording record created with ID: {rec_id}",
+        ]
         db.session.expire_all()
     with app.app_context():
         rec = db.session.get(Recording, rec_id)
@@ -844,7 +853,7 @@ def test_store_recording_adds_tags_in_order_and_the_folder(tagworld, staged):
                             user_title="Board meeting")
         rec_id = stored.recording.id
         shares.assert_called_once_with(stored.recording, folder)
-        assert info.call_args_list[0].args == (f"Added 2 tags to recording {rec_id}: own2, group",)
+        assert info.call_args_list[1].args == (f"Added 2 tags to recording {rec_id}: own2, group",)
     with app.app_context():
         rec = db.session.get(Recording, rec_id)
         assert rec.folder_id == w.own_folder

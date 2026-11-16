@@ -12,6 +12,7 @@ SHARED-DB: users, recordings and chunks are removed afterwards.
 import json
 import logging
 import os
+import re
 import sys
 import uuid
 from types import SimpleNamespace
@@ -562,8 +563,9 @@ def test_loggable_path_and_error():
     from src.utils.log_filters import loggable_error, loggable_path
     stored = "/data/uploads/20261115101500_0123456789abcdef0123456789abcdef_Jane_Doe_intake.mp3"
     assert loggable_path(stored) == "<stored file 20261115101500_0123456789ab.mp3>"
-    assert loggable_path("/watch/user7/Jane Doe intake.M4A") == "<file .m4a>"
-    assert loggable_path("no-extension") == "<file>"
+    # A file of no known scheme: a keyed digest of its name, never the extension alone (#620).
+    assert re.fullmatch(r"<file [0-9a-f]{10}\.m4a>", loggable_path("/watch/user7/Jane Doe intake.M4A"))
+    assert re.fullmatch(r"<file [0-9a-f]{10}>", loggable_path("no-extension"))
     assert loggable_path(None) == "<no file>"
     text = loggable_error(RuntimeError(f"{stored}: Invalid data found when processing input"), stored)
     assert "Jane" not in text and "Invalid data found" in text and "<stored file 20261115101500_" in text

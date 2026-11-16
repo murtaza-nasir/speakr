@@ -161,7 +161,7 @@ def lookup_duplicate(*, owner, filepath, form, processing_source, original_filen
                 )
         existing = duplicate_query.first()
     except Exception as e:
-        current_app.logger.warning(f"Could not compute file hash or check duplicates: {e}")
+        current_app.logger.warning(f"Could not compute file hash or check duplicates: {loggable_error(e)}")
 
     # A replay (reuse_duplicate) is answered by handle_duplicate_replay instead.
     if existing and not reuse_duplicate:
@@ -478,12 +478,13 @@ class ConversionDecision(NamedTuple):
 
 def decide_conversion(*, codec_info, has_video, keep_audio_only_flag, join, original_filename,
                       should_enforce_size_limit, enforce_upload_limits, effective_audio_only,
-                      is_likely_video_by_ext, regular_limit_mb, original_file_size):
+                      is_likely_video_by_ext, regular_limit_mb, original_file_size, log_path=None):
     """Decide whether the upload is kept as it is, converted later or converted now.
 
     A retained or passed-through video and an audio part of a join are kept;
     a readable file with audio is left to the convert job (#543). Anything
     else has convert_in_request set: :func:`convert_upload_in_request`.
+    log_path is the staged file: the log names the upload by it (#620).
     """
     # Read from src.api.recordings at call time: init sets it.
     from src.api.recordings import chunking_service
@@ -534,10 +535,10 @@ def decide_conversion(*, codec_info, has_video, keep_audio_only_flag, join, orig
     if keep_video_for_this_upload:
         current_app.logger.info(f"Video {'passthrough' if _self.VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
     elif skip_conversion_for_join:
-        current_app.logger.info(f"Join part {loggable_path(original_filename)}: skipping conversion, the merge re-encodes it")
+        current_app.logger.info(f"Join part {loggable_path(log_path or original_filename)}: skipping conversion, the merge re-encodes it")
     elif can_defer_conversion:
         conversion_deferred = True
-        current_app.logger.info(f"Upload {loggable_path(original_filename)}: converting after the upload is answered")
+        current_app.logger.info(f"Upload {loggable_path(log_path or original_filename)}: converting after the upload is answered")
     else:
         convert_in_request = True
     return ConversionDecision(
@@ -794,6 +795,9 @@ def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_
     # the staging file may already be gone (notably on S3 backend). Workers should
     # always read from recording.audio_path via the storage facade.
     recording.audio_path = stored_object.locator
+    # The one line that has the staging label, the id and the stored label (#620).
+    current_app.logger.info(f"Stored upload {loggable_path(filepath)} of recording {recording.id} "
+                            f"as {loggable_locator(stored_object.locator)}")
 
     try:
         # Add tags to recording if selected (preserve order)
@@ -846,7 +850,7 @@ def handle_unique_conflict(error, *, filepath, on_conflict):
     if replay is not None:
         current_app.logger.info("Upload lost a race on a unique key; answering with the earlier recording")
         return replay
-    current_app.logger.error(f"Error during file upload: {error}", exc_info=True)
+    current_app.logger.error(f"Error during file upload: {loggable_error(error)}", exc_info=True)
     return jsonify(api_error('unexpected_error_upload')), 500
 
 
@@ -1107,6 +1111,7 @@ def ingest(
             is_likely_video_by_ext=is_likely_video_by_ext,
             regular_limit_mb=regular_limit_mb,
             original_file_size=original_file_size,
+            log_path=filepath,
         )
         keep_video_for_this_upload = conversion.keep_video_for_this_upload
         extracted_audio_limit_mb = conversion.extracted_audio_limit_mb
@@ -1405,7 +1410,7 @@ def ingest(
     except Exception as e:
         db.session.rollback()
         _discard_staging(filepath)
-        current_app.logger.error(f"Error during file upload: {e}", exc_info=True)
+        current_app.logger.error(f"Error during file upload: {loggable_error(e, filepath)}", exc_info=True)
         return jsonify(api_error('unexpected_error_upload')), 500
 
 

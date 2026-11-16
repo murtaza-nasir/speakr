@@ -9,6 +9,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -137,11 +138,15 @@ def test_a_skipped_extension_is_logged_once_at_info(watch, caplog):
     for _ in range(3):
         assert scan() == []
     lines = _skip_lines(caplog)
+    from src.utils.log_filters import loggable_path
     assert sorted(r.getMessage() for r in lines) == sorted([
-        # The file is named by its extension at INFO, by its path at DEBUG (privacy review B2).
-        "Skipping <file .xyz> in the watch folder: the extension '.xyz' is not a supported audio or video type",
-        "Skipping <file> in the watch folder: the extension '(none)' is not a supported audio or video type",
+        # The file is named by a keyed digest at INFO, by its path at DEBUG (privacy review B2, #620).
+        f"Skipping {loggable_path('meeting.xyz')} in the watch folder: the extension '.xyz' is not a supported audio or video type",
+        f"Skipping {loggable_path('noextension')} in the watch folder: the extension '(none)' is not a supported audio or video type",
     ])
+    text = " ".join(r.getMessage() for r in lines)
+    assert "meeting" not in text and "noextension" not in text
+    assert re.search(r"<file [0-9a-f]{10}\.xyz>", text) and re.search(r"<file [0-9a-f]{10}>", text)
     assert all(r.levelno == logging.INFO for r in lines)
 
 

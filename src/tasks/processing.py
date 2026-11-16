@@ -1266,7 +1266,7 @@ def make_retained_video_seekable(recording, filepath):
         return True
     except Exception as e:
         db.session.rollback()
-        current_app.logger.warning(f"Could not check the retained video of recording {recording.id} for fragments: {e}")
+        current_app.logger.warning(f"Could not check the retained video of recording {recording.id} for fragments: {loggable_error(e, filepath, recording_id=recording.id)}")
         return False
 
 
@@ -1310,7 +1310,7 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
                 else:
                     current_app.logger.info(f"Audio codec '{audio_codec}' not in supported codecs {supported_codecs}, will re-encode")
             except FFProbeError as e:
-                current_app.logger.warning(f"Failed to probe video codec: {e}. Will re-encode to be safe.")
+                current_app.logger.warning(f"Failed to probe video codec: {loggable_error(e, video_filepath)}. Will re-encode to be safe.")
 
         if AUDIO_COMPRESS_UPLOADS:
             # Re-encode to configured codec
@@ -1946,9 +1946,9 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             try:
                 is_video = is_video_file(filepath, timeout=10)
                 if is_video:
-                    current_app.logger.info(f"Video detected for recording {recording_id} ({loggable_path(original_filename)})")
+                    current_app.logger.info(f"Video detected for recording {recording_id} ({loggable_path(filepath, recording_id)})")
             except FFProbeError as e:
-                current_app.logger.warning(f"Failed to probe the file of recording {recording_id} ({loggable_path(original_filename)}): {loggable_error(e, original_filename, filepath)}. Falling back to MIME type detection.")
+                current_app.logger.warning(f"Failed to probe the file of recording {recording_id} ({loggable_path(filepath, recording_id)}): {loggable_error(e, filepath, original_filename, recording_id=recording_id)}. Falling back to MIME type detection.")
                 video_mime_types = [
                     'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm',
                     'video/avi', 'video/x-ms-wmv', 'video/3gpp'
@@ -1997,11 +1997,11 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             if extracted_duration and extracted_duration > 0:
                                 recording.audio_duration_seconds = float(extracted_duration)
                         except Exception as duration_err:
-                            current_app.logger.warning(f"Could not determine extracted audio duration for recording {recording.id}: {duration_err}")
+                            current_app.logger.warning(f"Could not determine extracted audio duration for recording {recording.id}: {loggable_error(duration_err, audio_filepath, recording_id=recording.id)}")
                         db.session.commit()
                         current_app.logger.info(f"Video retained (media path unchanged), temp audio extracted: {loggable_path(audio_filepath)}")
                     except Exception as e:
-                        current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
+                        current_app.logger.error(f"Failed to extract audio from video: {loggable_error(e, filepath, recording_id=recording_id)}")
                         recording.status = 'FAILED'
                         recording.error_message = sanitize_error_message(f"Audio extraction failed: {str(e)}")
                         db.session.commit()
@@ -2038,7 +2038,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 if extracted_duration and extracted_duration > 0:
                                     recording.audio_duration_seconds = float(extracted_duration)
                             except Exception as duration_err:
-                                current_app.logger.warning(f"Could not determine extracted audio duration for recording {recording.id}: {duration_err}")
+                                current_app.logger.warning(f"Could not determine extracted audio duration for recording {recording.id}: {loggable_error(duration_err, audio_filepath, recording_id=recording.id)}")
                             db.session.commit()
                             current_app.logger.info(f"Audio extracted and stored: {loggable_locator(stored_audio.locator)}")
 
@@ -2059,7 +2059,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             )
                         current_app.logger.info(f"Audio extracted: {loggable_path(audio_filepath)}")
                     except Exception as e:
-                        current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
+                        current_app.logger.error(f"Failed to extract audio from video: {loggable_error(e, filepath, recording_id=recording_id)}")
                         recording.status = 'FAILED'
                         recording.error_message = sanitize_error_message(f"Audio extraction failed: {str(e)}")
                         db.session.commit()
@@ -2104,10 +2104,10 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         actual_content_type = conversion_result.mime_type
                         actual_filename = os.path.basename(converted_filepath)
                 except (FFmpegError, FFmpegNotFoundError) as conv_error:
-                    current_app.logger.error(f"Audio conversion failed: {conv_error}")
+                    current_app.logger.error(f"Audio conversion failed: {loggable_error(conv_error, actual_filepath, recording_id=recording_id)}")
                     raise  # Let the job fail - can't process this file
                 except Exception as e:
-                    current_app.logger.warning(f"Could not validate/convert audio: {e}, proceeding with original file")
+                    current_app.logger.warning(f"Could not validate/convert audio: {loggable_error(e, actual_filepath, recording_id=recording_id)}, proceeding with original file")
 
             # Determine if we should diarize
             if diarize is None:
@@ -2334,7 +2334,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 )
                                 continue  # Retry with converted file
                             except (FFmpegError, FFmpegNotFoundError) as conv_error:
-                                current_app.logger.error(f"Failed to convert to MP3: {conv_error}")
+                                current_app.logger.error(f"Failed to convert to MP3: {loggable_error(conv_error, actual_filepath, recording_id=recording_id)}")
                                 # Fall through to raise original error
                         else:
                             current_app.logger.warning(f"File is already MP3 but still getting format error")

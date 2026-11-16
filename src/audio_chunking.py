@@ -431,10 +431,10 @@ class AudioChunkingService:
             return mp3_path, mp3_duration, mp3_size
 
         except (FFmpegError, FFmpegNotFoundError) as e:
-            logger.error(f"Error converting file to MP3: {e}")
+            logger.error(f"Error converting {loggable_path(file_path)} to MP3: {loggable_error(e, file_path)}")
             raise
         except Exception as e:
-            logger.error(f"Error converting file to MP3: {e}")
+            logger.error(f"Error converting {loggable_path(file_path)} to MP3: {loggable_error(e, file_path)}")
             raise
 
     def parse_chunk_limit(self) -> Tuple[str, float]:
@@ -699,7 +699,7 @@ class AudioChunkingService:
                     os.remove(wav_path)
                     logger.debug(f"Cleaned up temporary WAV file: {wav_path}")
                 except Exception as e:
-                    logger.warning(f"Error cleaning up temporary WAV file: {e}")
+                    logger.warning(f"Error cleaning up temporary WAV file: {loggable_error(e, wav_path)}")
     
     def merge_transcriptions(self, chunk_results: List[Dict[str, Any]]) -> str:
         """
@@ -873,7 +873,7 @@ class AudioChunkingService:
             return analysis
             
         except Exception as e:
-            logger.warning(f"Error analyzing chunk audio properties: {e}")
+            logger.warning(f"Error analyzing chunk audio properties: {loggable_error(e)}")
             return {'error': str(e)}
     
     def log_processing_statistics(self, chunk_results: List[Dict[str, Any]]) -> None:
@@ -1007,7 +1007,7 @@ class AudioChunkingService:
                 os.remove(temp_mp3_path)
                 logger.debug(f"Cleaned up temporary MP3 file: {temp_mp3_path}")
             except Exception as e:
-                logger.warning(f"Error cleaning up temporary MP3 file: {e}")
+                logger.warning(f"Error cleaning up temporary MP3 file: {loggable_error(e, temp_mp3_path)}")
 
 def get_audio_duration_ffprobe(file_path: str) -> Optional[float]:
     """Get actual audio duration using ffprobe."""
@@ -1191,7 +1191,7 @@ def extract_speaker_samples(
                 logger.warning(f"Sample file not created for speaker {speaker}")
 
         except Exception as e:
-            logger.error(f"Error extracting sample for speaker {speaker}: {e}")
+            logger.error(f"Error extracting sample for speaker {speaker}: {loggable_error(e, audio_path)}")
 
     return speaker_samples
 
@@ -1226,7 +1226,7 @@ def samples_to_data_urls(speaker_samples: Dict[str, str]) -> Dict[str, str]:
             logger.debug(f"Converted speaker {speaker} sample to data URL ({len(b64_data)} bytes)")
 
         except Exception as e:
-            logger.error(f"Error converting speaker {speaker} sample to data URL: {e}")
+            logger.error(f"Error converting speaker {speaker} sample to data URL: {loggable_error(e)}")
 
     return data_urls
 

@@ -118,6 +118,26 @@ def test_upload_logs_no_file_name_at_info(user, log):
     recording = _upload(user)
     default_log = _assert_no_name(log)
     assert f"recording {recording.id}" in default_log.lower() or str(recording.id) in default_log
+    # No label is an extension alone (#620).
+    assert not re.search(r"<(?:stored )?file ?(?:\.\w+)?>", default_log)
+    assert "<file ." not in default_log and "*.mp3" not in default_log
+
+
+def test_upload_logs_the_staging_label_with_the_stored_label(user, log):
+    """One INFO line has the staging label, the recording id and the stored
+    label, so the lines before and after the upload can be matched (#620)."""
+    recording = _upload(user)
+    default_log = _assert_no_name(log)
+    line = re.search(r"Stored upload (<stored file \d{14}_[0-9a-f]{12}\.mp3>) of recording (\d+) as (<stored file [^>]+>)",
+                     default_log)
+    assert line, default_log
+    staging_label, recording_id, stored_label = line.groups()
+    assert int(recording_id) == recording.id
+    assert stored_label == loggable_locator(recording.audio_path)
+    assert LABEL.fullmatch(stored_label).group(1) == str(recording.id)
+    # The lines of the upload before the file was stored have the staging label.
+    assert f"File saved to {staging_label}" in default_log
+    assert f"Detected codec for {staging_label}" in default_log
 
 
 def test_deletion_logs_the_stored_file_without_its_name(user, log):
@@ -196,10 +216,12 @@ def test_loggable_locator():
     # A row of an earlier release: a path in the upload folder.
     legacy = "/data/uploads/20261115101500_0123456789abcdef0123456789abcdef_Jane_Doe.wav"
     assert loggable_locator(legacy) == "<stored file /data/uploads/20261115101500_0123456789ab.wav>"
-    assert loggable_locator("/data/uploads/Jane Doe intake.m4a") == "<stored file /data/uploads/*.m4a>"
-    assert loggable_locator("funasr/42/Jane_Doe.flac") == "<stored file funasr/42/*.flac>"
-    assert loggable_locator("Jane Doe") == "<stored file *>"
+    # A name of no known scheme: a keyed digest, never the extension alone (#620).
+    assert re.fullmatch(r"<stored file /data/uploads/[0-9a-f]{10}\.m4a>", loggable_locator("/data/uploads/Jane Doe intake.m4a"))
+    assert re.fullmatch(r"<stored file funasr/42/[0-9a-f]{10}\.flac>", loggable_locator("funasr/42/Jane_Doe.flac"))
+    assert re.fullmatch(r"<stored file [0-9a-f]{10}>", loggable_locator("Jane Doe"))
     assert loggable_locator(None) == "<no file>"
     # The error text of the storage backend names the file as well.
     text = loggable_error(OSError(13, "Permission denied", f"/data/uploads/{key}"), f"local://{key}")
-    assert "Jane" not in text and "Permission denied" in text and "/data/uploads/recordings/2026/11/42/" in text
+    assert "Jane" not in text and "Permission denied" in text
+    assert "<stored file 20261115101500.mp3 of recording 42>" in text

@@ -22,7 +22,7 @@ from src.utils import md_to_html
 from src.services.storage import get_storage_service
 from src.services.public_shares import active_share_or_404, link_is_https, public_url
 from src.utils.mime import served_media_mime, sandbox_media_response
-from src.utils.log_filters import loggable_locator
+from src.utils.log_filters import loggable_error, loggable_locator
 from src.utils.localization import api_error, translate, request_language
 
 # Configuration from environment
@@ -196,7 +196,7 @@ def get_shared_audio(public_id):
         # an unknown public_id must stay a 404, not be masked as a 500.
         raise
     except Exception as e:
-        current_app.logger.error(f"Error serving shared audio for public_id {public_id}: {e}", exc_info=True)
+        current_app.logger.error(f"Error serving shared audio for public_id {public_id}: {loggable_error(e)}", exc_info=True)
         return jsonify(api_error('unexpected_error')), 500
 
 

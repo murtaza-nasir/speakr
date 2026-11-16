@@ -309,7 +309,7 @@ def mark_export_as_deleted(recording_id):
                             return None
                         new_filepath = user_dir / f"[deleted]_{name}.md"
                         old_filepath.rename(new_filepath)
-                        logger.info(f"Marked export as deleted: {loggable_path(new_filepath)}")
+                        logger.info(f"Marked the export of recording {recording_id} as deleted: {loggable_path(new_filepath, recording_id)}")
                         return str(new_filepath)
 
             return None
@@ -752,12 +752,12 @@ def export_recording(recording_id):
             # Write to file (overwrites if exists)
             filepath.write_text(content, encoding='utf-8')
 
-            logger.info(f"Exported recording {recording_id} to {loggable_path(filepath)}")
+            logger.info(f"Exported recording {recording_id} to {loggable_path(filepath, recording_id)}")
             logger.debug(f"Exported recording {recording_id} to {filepath}")
             return str(filepath)
 
         except Exception as e:
-            logger.error(f"Failed to export recording {recording_id}: {e}")
+            logger.error(f"Failed to export recording {recording_id}: {loggable_error(e)}")
             return None
 
 

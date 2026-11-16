@@ -85,14 +85,14 @@ def convert_uploaded_recording(recording_id, params):
                 connector_specs=connector_specs,
             )
         except FFmpegNotFoundError as e:
-            current_app.logger.error(f"FFmpeg not found while converting recording {recording_id}: {e}")
+            current_app.logger.error(f"FFmpeg not found while converting recording {recording_id}: {loggable_error(e, local_path, recording_id=recording_id)}")
             raise ConversionFailed(translate('server.apiError.audio_converter_missing', language)) from None
         except FFmpegTimeoutError as e:
-            current_app.logger.error(f"Conversion of recording {recording_id} timed out: {e}")
+            current_app.logger.error(f"Conversion of recording {recording_id} timed out: {loggable_error(e, local_path, recording_id=recording_id)}")
             raise ConversionFailed(translate('server.apiError.audio_conversion_timeout', language)) from None
         except FFmpegError as e:
             # FFmpeg's output names its build and the file's path: it stays in the log.
-            current_app.logger.error(f"Conversion of recording {recording_id} failed: {e}")
+            current_app.logger.error(f"Conversion of recording {recording_id} failed: {loggable_error(e, local_path, recording_id=recording_id)}")
             raise ConversionFailed(AUDIO_DECODE_FAILED_MESSAGE) from None
 
         output_path = result.output_path
@@ -116,7 +116,7 @@ def convert_uploaded_recording(recording_id, params):
             try:
                 duration = get_duration(output_path, timeout=30)
             except Exception as e:
-                current_app.logger.warning(f"Could not determine duration of converted recording {recording_id}: {e}")
+                current_app.logger.warning(f"Could not determine duration of converted recording {recording_id}: {loggable_error(e, output_path, local_path, recording_id=recording_id)}")
 
             if converted or changed_copy:
                 stem = os.path.splitext(original_filename)[0] or 'recording'
@@ -152,7 +152,7 @@ def convert_uploaded_recording(recording_id, params):
         try:
             storage.delete(old_locator)
         except Exception as e:
-            current_app.logger.warning(f"Could not delete the original upload of recording {recording_id}: {loggable_error(e, old_locator)}")
+            current_app.logger.warning(f"Could not delete the original upload of recording {recording_id}: {loggable_error(e, old_locator, recording_id=recording_id)}")
     if result.was_converted or result.was_compressed:
         current_app.logger.info(
             f"Converted recording {recording_id}: {result.original_codec} -> {result.final_codec}, "

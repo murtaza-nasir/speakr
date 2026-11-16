@@ -446,6 +446,15 @@ try:
 except ValueError as _sk_exc:
     raise RuntimeError(str(_sk_exc))
 app.config['SECRET_KEY'] = _secret_key
+# The file digests of the log are keyed by a value derived from the secret, so
+# that a guessed file name cannot be confirmed from a log line (#620).
+from src.utils.log_filters import configure as _configure_log_labels
+_configure_log_labels(secret_key=_secret_key, private_dirs=[
+    app.config['UPLOAD_FOLDER'],
+    os.environ.get('FILE_STORAGE_STAGING_DIR', ''),
+    os.environ.get('AUTO_PROCESS_WATCH_DIR', '/data/auto-process'),
+    os.environ.get('AUTO_EXPORT_DIR', '/data/exports'),
+])
 if _secret_key_action == 'generated':
     app.logger.warning(
         "SECRET_KEY was not set; generated a strong random key and persisted "
