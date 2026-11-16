@@ -42,7 +42,7 @@ The panel of the queue is opened with a click on the indicator, and it is opened
 
 On a phone, the queue is opened as a sheet:
 
-![Processing queue on a phone](../assets/images/screenshots/mobile-processing-queue.png){: style="max-width: 320px" }
+![Processing queue on a phone](../assets/images/screenshots/mobile-processing-queue.png)
 
 The rows are grouped in this order: **Active**, **Waiting**, **Failed**, **Recently finished**. The following is given for each row:
 
