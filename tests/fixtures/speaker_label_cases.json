@@ -1,0 +1,23 @@
+{
+  "_comment": "Shared by tests/test_generic_speaker_labels.py and static/js/modules/utils/speaker-labels.test.js. generic: diarization labels. names: values that must be kept as names (an empty value is not a label).",
+  "generic": [
+    "SPEAKER_00", "SPEAKER_01", "SPEAKER_12", "SPEAKER_100", "SPEAKER_0", "SPEAKER_7", "speaker_03", "Speaker_1",
+    " SPEAKER_00 ", "SPEAKER 03", "SPEAKER-03", "SPEAKER00",
+    "Speaker 1", "speaker 1", "SPEAKER 1", "Speaker  2", "Speaker1", "Speaker #3", "Speaker-4", "Speaker 5", "Ｓｐｅａｋｅｒ １",
+    "Speaker A", "speaker b", "SPEAKER_C", "Speaker-D",
+    "spk_0", "SPK_1", "spk1", "spk 2", "spkr_3", "Spkr 4",
+    "Unknown", "unknown", "UNKNOWN", "Unknown Speaker", "unknown speaker", "UNKNOWN_SPEAKER", "unknown_speaker_1",
+    "Unknown 2", "Unknown Speaker 3", "Unidentified", "Unidentified Speaker", "unidentified speaker 2",
+    "Speaker", "speaker", "SPEAKER", "spk",
+    "Sprecher 1", "Hablante 2", "Orateur 3", "Orador 4", "Спикер 5", "спикер 1", "发言人 1", "发言人1"
+  ],
+  "names": [
+    "", " ", "Dana", "Dana Lee", "dana", "A", "B", "a", "J", "1", "00", "42",
+    "Speaker Johnson", "Dr. Speaker", "Keynote Speaker", "Guest Speaker", "Main speaker", "The Speaker",
+    "Speakerphone", "Speaker AB", "Speaker 1 (Dana)", "Speaker one", "Speaker 12345", "SPEAKER_00 Dana", "Dana SPEAKER_00",
+    "Unknown Mortal", "Unknown caller", "Mr. Unknown", "Unknowns", "Unidentified caller",
+    "Guest 1", "Host", "Me", "Participant 1", "Person 2", "User 3", "Caller 4", "S1",
+    "Sprecher", "Hablante", "Orateur", "Orador", "Спикер", "发言人", "Sprecher A",
+    "Spike 1", "Spkr", "Anna-Maria", "O'Neil", "Jean_Luc", "R2-D2", "Agent 47", "Åsa", "José 1"
+  ]
+}
