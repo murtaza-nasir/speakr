@@ -69,7 +69,7 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 - **Signed webhooks** - HMAC-signed, SSRF-guarded, retrying outbound notifications on recording lifecycle events.
 - **Usage budgets** for LLM tokens and transcription minutes, per user.
 
-Speakr is also an installable Progressive Web App - mobile-first, offline-capable, with a phone share-target - and ships light/dark themes, an incognito mode, a configurable Help Center link for your own documentation, and a UI translated into seven languages.
+Speakr is also an installable Progressive Web App - mobile-first, with a phone share-target - and ships light/dark themes, an incognito mode, a configurable Help Center link for your own documentation, and a UI translated into seven languages.
 
 ## Works with Mailr
 

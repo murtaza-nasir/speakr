@@ -376,9 +376,8 @@ Because notes cannot be meaningfully combined, when more than one source has not
 **Installing as a PWA** - For the best mobile experience, install Speakr as a Progressive Web App. This provides:
 
 - Wake Lock API to prevent screen from auto-sleeping while recording
-- Faster load times with offline caching
+- Faster load times: the application files are kept in the browser
 - Native app-like experience
-- Persistent notification during recording
 
 See the [PWA Guide](pwa.md) for installation instructions and important limitations.
 

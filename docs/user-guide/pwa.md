@@ -7,10 +7,11 @@ Speakr is a Progressive Web App that can be installed on your device for a more 
 A Progressive Web App combines the best of web and mobile apps:
 
 - **Installable** - Add to your home screen like a native app
-- **Fast loading** - Cached assets load instantly
+- **Fast loading** - Application files are kept in the browser
 - **Wake lock** - Prevents screen from auto-sleeping during recording
 - **No app store** - Install directly from your browser
 - **Auto-updates** - Always get the latest version automatically
+- **Offline notice** - A "You are offline" page is shown when the server cannot be reached
 
 ## Installing Speakr as a PWA
 
@@ -118,19 +119,13 @@ Each account can share up to 20 files per hour this way (`SHARE_TARGET_RATE_LIMI
 !!! warning "Installed PWA only"
     Share-to-Speakr works only for the **installed PWA**, not a browser tab. If you installed the PWA before this feature shipped, reopen the app, then uninstall and reinstall it so Android registers the new share entry.
 
-### Offline Support
+### Without a Connection
 
-Once installed, Speakr caches essential files for offline use:
+A connection to the server is required: recordings, transcripts and summaries are loaded from it each time and are never kept in the browser by the service worker.
 
-- Application interface and UI
-- CSS stylesheets and fonts
-- JavaScript application code
-- Icons and images
-
-Note: API calls and file uploads require internet connection.
-
-!!! info "Offline Capabilities"
-    While you can access the app offline, transcription and AI features require an internet connection to your configured API endpoints.
+- When the server cannot be reached, a page with the text "You are offline" is shown in place of the browser's error page. The server is asked again every few seconds, and the requested page is loaded as soon as it answers, or with **Try again**.
+- The application files (scripts, styles, fonts, images, translations) are kept in the browser, so a page is loaded faster once the connection is there.
+- A recording in progress is kept in the browser until it is uploaded, and a failed upload is kept for a later retry. Both are described in the [recording guide](recording.md).
 
 ### Mobile Recording Features
 
@@ -141,13 +136,6 @@ Prevents your device screen from auto-sleeping while app is visible:
 - **Keeps screen on** - Prevents screen from turning off while app is in foreground
 - **Auto-recovery** - Re-acquires if released during recording
 - **Battery consideration** - Only active during recording sessions
-
-#### Persistent Notifications
-Shows recording status in your notification tray (mobile only):
-
-- **Status indicator** - Visual reminder that recording is active
-- **One-tap return** - Tap notification to return to the app
-- **Silent** - No sound or vibration
 
 #### Page Visibility Detection
 Monitors when the app goes to background:
@@ -192,9 +180,8 @@ Native apps don't have this limitation because they use platform-specific APIs t
 
 1. Start recording (microphone or system audio)
 2. Wake lock prevents screen from auto-sleeping
-3. Notification appears in notification tray
-4. **Keep Speakr visible** in the foreground
-5. Do not minimize, lock screen, or switch apps
+3. **Keep Speakr visible** in the foreground
+4. Do not minimize, lock screen, or switch apps
 
 **If you accidentally minimize:**
 
@@ -217,13 +204,7 @@ Native apps don't have this limitation because they use platform-specific APIs t
 - **Why**: Capture audio from browser tabs, applications
 - **Scope**: Only active during recording
 
-### Recommended Permissions
-
-#### Notification Permission (Mobile)
-- **When**: First recording on mobile device
-- **Why**: Show visual reminder that recording is active
-- **Impact**: Provides quick access to return to app
-- **Scope**: Only shown during active recordings
+The notification permission is not requested: no push messages and no system notifications are sent.
 
 !!! tip "Granting Permissions"
     If you accidentally deny a permission, you can reset it in your browser/device settings:
@@ -234,48 +215,29 @@ Native apps don't have this limitation because they use platform-specific APIs t
 
 ## Service Worker
 
-Speakr uses a service worker to provide PWA capabilities:
+A service worker is registered on the signed-in pages, with the whole app as its scope. A secure context is required by browsers: `https`, or `http` on `localhost`. Over plain `http` on another address no service worker exists; the app is used without it, and the browser's own error page is shown when the server cannot be reached.
 
-### What it Does
+### What It Does
 
-- **Caches static assets** - For offline access and faster loading
-- **Manages updates** - Automatically updates cached content
-- **Handles notifications** - Manages persistent recording notifications
-- **Background sync** - Foundation for future features like upload retry
+- **Application files** under `/static/` are kept in the browser's Cache Storage and are taken from there first.
+- **Pages** are always requested from the server. When that fails, the "You are offline" page is shown. No page is stored.
+- **Everything else** is passed to the server untouched: recordings, transcripts, audio, shared pages, the admin pages, sign-in, uploads. None of it is stored.
+- **At sign-out**, Cache Storage is emptied, together with the other data of the account in the browser. See [Browser storage](../admin-guide/privacy.md#browser-storage).
 
-### Viewing Service Worker Status
+Push messages, system notifications and background sync are not implemented.
+
+### Viewing the Status
 
 **Chrome DevTools:**
 
 1. Press F12 to open DevTools
-2. Go to **Application** tab
-3. Select **Service Workers** in the sidebar
-4. See registration status and version
+2. Go to the **Application** tab
+3. Select **Service Workers** in the sidebar: one registration is listed, with the source `sw.js?v=<version>`
+4. Select **Cache Storage**: one cache is listed, `speakr-static-<version>`, with files under `/static/` only
 
-**Console Logs:**
+### Updates
 
-The service worker logs its activity to the browser console:
-
-```
-[Service Worker] Installing...
-[Service Worker] Caching static assets
-[Service Worker] Activating...
-[Service Worker] Script loaded
-```
-
-### Updating Service Worker
-
-The service worker automatically updates:
-
-- **Check interval**: Every 60 seconds while app is open
-- **Update process**: Downloads new version in background
-- **Activation**: Takes effect on next page reload
-
-To force an update:
-
-1. Close all Speakr tabs/windows
-2. Reopen Speakr
-3. New service worker activates automatically
+A new address is used for the worker file with each release (`/sw.js?v=<version>`). The new worker is installed at the first page load after an upgrade and is put in control of the open tabs at once, and the cache of the release before it is deleted. No tab has to be closed. A registration from a release before the scope was changed (`/static/sw.js`) is removed at the same time.
 
 ## Browser Compatibility
 
@@ -286,7 +248,6 @@ To force an update:
 | PWA Install | ✅ Android 5+ | ✅ iOS 11.3+ | ✅ 4.0+ |
 | Service Worker | ✅ Chrome 40+ | ✅ iOS 11.3+ | ✅ 4.0+ |
 | Wake Lock | ✅ Chrome 84+ | ✅ iOS 16.4+ | ✅ 13.0+ |
-| Notifications | ✅ Chrome 42+ | ✅ iOS 16.4+ | ✅ 4.0+ |
 | Page Visibility | ✅ All versions | ✅ All versions | ✅ All versions |
 
 ### Desktop Browsers
@@ -329,35 +290,17 @@ To force an update:
 1. **Confirm the PWA is installed** - Share-to-Speakr only works for the installed app, not a browser tab
 2. **Reinstall the PWA** - If you installed before share support shipped, reopen the app, then uninstall and reinstall it so Android registers the share entry
 
-### Service Worker Not Registering
+### Service Worker Not Registered
 
-**Check console for errors:**
+1. **Check the address** - A service worker exists only over `https`, or over `http` on `localhost`. Over `http://192.168.x.x` none is registered, and the app is used without it
+2. **Check the browser** - A private window of some browsers has no service workers
+3. **Reload once** - The worker is registered after the first page load, and the page is controlled by it from the next load on
 
-```javascript
-// Open browser console (F12)
-// Look for service worker errors
-```
+### A Page Stays on "You are offline"
 
-**Solutions:**
-
-1. **Verify HTTPS** - Service workers require secure context
-2. **Check browser support** - Update to latest browser version
-3. **Clear site data** - Browser settings → Clear site data
-4. **Hard reload** - Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
-
-### Offline Features Not Working
-
-**Verify:**
-
-1. Service worker is registered (check DevTools → Application)
-2. Assets are cached (check DevTools → Application → Cache Storage)
-3. You've visited the site at least once while online
-
-**Solutions:**
-
-- Reload the page while online
-- Clear cache and reload
-- Uninstall and reinstall PWA
+1. **Check the connection** to the server; the page is loaded again as soon as the server answers
+2. **Select Try again** on the page
+3. **Check the server** - The same page is shown when the server or the reverse proxy does not answer
 
 ## Best Practices
 
@@ -379,9 +322,10 @@ To force an update:
 ### Privacy Considerations
 
 1. **Microphone access** - Only granted during recording
-2. **Notifications** - Only shown during recording (mobile)
-3. **Cached data** - Stored locally on your device
-4. **Service worker** - Can be unregistered in browser settings
+2. **Notifications** - None are sent, and the permission is not requested
+3. **Cached data** - Only application files are kept by the service worker; they are removed at sign-out
+4. **Shared computers** - Sign out after use: the data of the account in the browser is removed then
+5. **Service worker** - Can be unregistered in browser settings
 
 ## Uninstalling the PWA
 
