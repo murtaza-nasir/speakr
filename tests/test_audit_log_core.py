@@ -261,6 +261,23 @@ def test_another_actor_recording_or_outcome_is_a_separate_row():
         assert all(len(r.dedup_key) <= 80 for r in _rows_after(start))
 
 
+def test_a_new_recording_with_the_id_of_a_deleted_one_is_not_a_repeat():
+    """SQLite gives the id of a deleted recording to the next one."""
+    from types import SimpleNamespace
+    with app.app_context():
+        start = _max_id()
+        first = SimpleNamespace(id=8400001, user_id=8100001, created_at=datetime(2026, 5, 1, 10, 0, 0))
+        second = SimpleNamespace(id=8400001, user_id=8100001, created_at=datetime(2026, 5, 1, 10, 0, 1))
+        common = dict(actor_kind='session', actor_user_id=8100001, dedup=audit.DEDUP_VIEW)
+        audit.record('recording.viewed', recording=first, **common)
+        audit.record('recording.viewed', recording=first, **common)
+        audit.record('recording.viewed', recording=second, **common)
+        audit.flush()
+        rows = _rows_after(start, 'recording.viewed')
+        assert len(rows) == 2 and all(len(r.dedup_key) <= 80 for r in rows)
+        assert audit.stamp(None) == '' and audit.stamp(first.created_at) != audit.stamp(second.created_at)
+
+
 # --- Settings -----------------------------------------------------------------
 
 def test_off_records_nothing_except_the_log_itself_and_forced_events():

@@ -115,7 +115,7 @@ def _audit_public_link(event, share):
     and visitor. The public_id is the access secret and is never recorded."""
     audit.record(event, actor_kind='public_link', recording_id=share.recording_id,
                  recording_owner_id=share.user_id, details={'share_id': share.id},
-                 dedup=audit.DEDUP_VIEW, dedup_extra=f's{share.id}')
+                 dedup=audit.DEDUP_VIEW, dedup_extra=f's{share.id}{audit.stamp(share.created_at)}')
 
 
 def _audit_internal_share(action, share, old=None, cascade=False):

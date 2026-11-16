@@ -94,7 +94,7 @@ Rows with `imported` in the details were copied from the table `share_audit_log`
 | `admin.user.password_set` | An administrator set the password of an account | `self` |
 | `admin.user.unlocked` | An administrator ended the sign-in lock of an account | |
 | `admin.user.role_changed` | The administrator role was given or taken away | `old`, `new` |
-| `admin.setting.changed` | A system setting was saved or cleared | `key`. For settings that hold a switch, a number or a fixed choice: `old` and `new`. For every other setting, only the key. |
+| `admin.setting.changed` | A system setting was saved or cleared | `key`. For settings that hold a switch, a number or a fixed choice: `old` and `new`. For every other setting, only the key. A key that is not a setting of the application is stored as `other`. |
 | `admin.retention.run` | Automatic deletion was started by hand | Counts |
 | `group.created`, `group.changed`, `group.deleted` | A group was created, changed or deleted | `fields` |
 | `group.member.added`, `group.member.role_changed`, `group.member.removed` | A member was added to a group, changed in role, or removed | `role`, `old_role` |
@@ -143,7 +143,7 @@ The client address is the address that the application receives. Behind a revers
 
 The tab is shown to site administrators. Group administrators have no access to it.
 
-- **Table.** The newest events are listed first. A row is opened with a click and then shows the details, the affected account, the owner of the recording and the user agent. A deleted account is shown as "Deleted user" with its id.
+- **Table.** The newest events are listed first, in the order in which they were written. An event of a read or a sign-in is written up to a second after it happened, so two events of the same second can be listed in either order; the time of each event is exact. A row is opened with a click and then shows the details, the affected account, the owner of the recording and the user agent. A deleted account is shown as "Deleted user" with its id.
 - **Filters.** From, To, User (a username or an id; events by that account and events that concern it), Events (a group of events), Recording ID, Result and Access by. Dates are days in the time zone of the browser.
 - **Paging.** The result is paged with **Older** and **Newer**, 50 rows at a time.
 - **Export.** With **Export CSV** and **Export JSONL**, the rows of the current filter are downloaded as a file, with the columns of the table unchanged. In the CSV file, a text cell that begins with `=`, `+`, `-` or `@` is preceded by an apostrophe, so that a spreadsheet does not read it as a formula.

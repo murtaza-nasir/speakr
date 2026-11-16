@@ -106,11 +106,9 @@ def _mark_used(api_token):
         # given, because this runs while Flask-Login is still loading the
         # user of the request.
         from src.services import audit
-        created = api_token.created_at
         audit.record('token.first_used', actor_kind='api_token', actor_user_id=api_token.user_id,
                      actor_token_id=api_token.id, details={'token_id': api_token.id},
-                     dedup=audit.DEDUP_ONCE,
-                     dedup_extra=created.strftime('%Y%m%d%H%M%S%f') if created else None)
+                     dedup=audit.DEDUP_ONCE, dedup_extra=audit.stamp(api_token.created_at))
     api_token.last_used_at = datetime.utcnow()
     from src.database import db
     db.session.commit()

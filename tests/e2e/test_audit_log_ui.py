@@ -177,9 +177,13 @@ def test_the_tab_lists_events_newest_first(admin):
     assert heads == [en(f"auditLog.{key}").lower() for key in ("time", "user", "event", "recording", "address", "result")]
     rows = admin.rows()
     assert len(rows) == 50, f"{len(rows)} rows on the first page"
-    assert all(row["event"] == "admin.setting.changed" for row in rows[:20]), rows[:3]
-    assert all(row["result"] == en("auditLog.outcomes.success") for row in rows[:20])
-    assert all(row["user"] and row["time"] and row["address"] for row in rows[:20]), rows[:3]
+    # The setting changes of the fixture fill most of the page. A sign-in or
+    # a read of the log can lie between them: such an event is written by
+    # the background writer up to a second after it happened.
+    changes = [row for row in rows if row["event"] == "admin.setting.changed"]
+    assert len(changes) >= 40, [row["event"] for row in rows]
+    assert all(row["result"] == en("auditLog.outcomes.success") for row in changes)
+    assert all(row["user"] and row["time"] and row["address"] for row in rows), rows[:3]
     # The time is relative, with the full date and time on hover.
     time = page.locator(f"{ROWS} time").first
     assert time.get_attribute("datetime") and time.get_attribute("title")

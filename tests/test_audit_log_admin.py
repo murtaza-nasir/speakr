@@ -154,6 +154,29 @@ def test_the_switch_cannot_hide_itself(created):
     assert all(r.event == 'admin.setting.changed' and r.actor_user_id == admin.id for r in rows)
 
 
+def test_a_key_is_known_only_from_a_list_of_the_code(created):
+    import re
+    from pathlib import Path
+    from src.utils.system_settings import ENV_BACKED_SETTINGS
+    source = (Path(__file__).resolve().parent.parent / 'src' / 'init_db.py').read_text(encoding='utf-8')
+    for key in set(re.findall(r"key='([a-z_0-9]+)'", source)) | set(ENV_BACKED_SETTINGS):
+        assert audit.known_setting_key(key), key
+    assert audit.known_setting_key('permission_create_groups')
+    assert audit.known_setting_key('llm_temperature_summary')
+    assert not audit.known_setting_key('llm_temperature_SENTINEL')
+    # A key that was saved once is still typed text.
+    admin = make_user(created, prefix='adm', is_admin=True)
+    client = client_for(admin)
+    start = max_id()
+    try:
+        for _ in range(2):
+            assert client.post('/admin/settings', json={'key': 'sentinel_key', 'value': 'x'}).status_code == 200
+        assert [r.details for r in rows_after(start)] == [{'key': 'other'}, {'key': 'other'}]
+    finally:
+        SystemSetting.query.filter_by(key='sentinel_key').delete()
+        db.session.commit()
+
+
 def test_setting_values(created):
     assert audit.setting_value('users_can_delete', True) == 'true'
     assert audit.setting_value('users_can_delete', 'Yes') == 'true'

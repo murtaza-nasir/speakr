@@ -1266,10 +1266,8 @@ def admin_update_setting():
     # An empty value for a setting that falls back to .env clears the saved
     # value, so the .env value applies again (#567).
     from src.utils.system_settings import ENV_BACKED_SETTINGS
-    # The stored value before the change, for the audit row. A key that the
-    # application does not know is recorded as 'other', never as typed.
+    # The stored value before the change, for the audit row.
     existing_row = SystemSetting.query.filter_by(key=key).first()
-    setting_known = existing_row is not None or key in ENV_BACKED_SETTINGS
     old_value = existing_row.value if existing_row is not None else None
     if key in ENV_BACKED_SETTINGS and (value is None or (isinstance(value, str) and not value.strip())):
         try:
@@ -1344,7 +1342,7 @@ def admin_update_setting():
         setting_type = 'string'
 
     try:
-        audit.setting_changed(key, old_value, value, known=setting_known)
+        audit.setting_changed(key, old_value, value)
         setting = SystemSetting.set_setting(key, value, description, setting_type)
 
         # Recompute the Werkzeug ceiling whenever either upload limit

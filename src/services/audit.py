@@ -324,6 +324,23 @@ def _visitor_hash(with_agent=True):
     return hmac.new(secret, material, hashlib.sha256).hexdigest()[:12]
 
 
+def stamp(moment):
+    """A creation time as a short code for a de-duplication key.
+
+    The id of a deleted recording, token or share is given out again on
+    SQLite. With the creation time in the key, an event of the new object is
+    never taken for a repeat of an event of the deleted one."""
+    if moment is None:
+        return ''
+    value = int(moment.timestamp() * 1000)
+    digits = '0123456789abcdefghijklmnopqrstuvwxyz'
+    code = ''
+    while value:
+        value, rest = divmod(value, 36)
+        code = digits[rest] + code
+    return code or '0'
+
+
 def _epoch():
     """The time the de-duplication buckets are counted from (tests replace it)."""
     return time.time()
@@ -369,10 +386,12 @@ def _build(event, *, recording=None, recording_id=None, recording_owner_id=None,
     elif actor_kind not in ACTOR_KINDS:
         raise ValueError(f'Unknown audit actor kind {actor_kind!r}')
 
+    recording_stamp = ''
     if recording is not None:
         recording_id = recording.id
         if recording_owner_id is None:
             recording_owner_id = recording.user_id
+        recording_stamp = stamp(getattr(recording, 'created_at', None))
 
     ip = user_agent = None
     if in_request and actor_kind != 'system':
@@ -393,7 +412,7 @@ def _build(event, *, recording=None, recording_id=None, recording_owner_id=None,
             who = 'a' + _visitor_hash(with_agent=False)
         else:
             who = 'system'
-        parts = [who, f'r{recording_id}' if recording_id is not None else None,
+        parts = [who, f'r{recording_id}{recording_stamp}' if recording_id is not None else None,
                  f'x{target_user_id}' if target_user_id is not None else None,
                  outcome if outcome != 'success' else None, dedup_extra]
         dedup_key = _dedup_key(event, parts, dedup, _epoch())
@@ -940,14 +959,49 @@ def setting_value(key, raw):
         return 'other'
 
 
-def setting_changed(key, old_raw, new_raw, known=True):
+# Settings created at the first start (src/init_db.py) and by the admin page.
+# tests/test_audit_log_admin.py checks that every key of init_db is here.
+_DEFINED_SETTING_KEYS = frozenset({
+    'admin_default_contextual_speaker_prompt', 'admin_default_hotwords', 'admin_default_initial_prompt',
+    'admin_default_summary_prompt', 'admin_default_title_prompt', 'asr_timeout_seconds',
+    'audit_log_notice_dismissed', 'custom_banner', 'default_storage_quota_mb', 'default_timezone',
+    'disable_auto_summarization', 'disable_auto_translation', 'embedding_identifier', 'enable_folders',
+    'login_lockout_minutes', 'login_max_failed_attempts', 'max_audio_only_video_size_mb',
+    'max_file_size_mb', 'recording_disclaimer', 'show_whats_new', 'transcript_length_limit',
+    'upload_disclaimer', 'transcription_models_visible_json', 'transcription_default_model',
+})
+
+
+def known_setting_key(key):
+    """Whether the key names a setting the application itself defines.
+
+    POST /admin/settings accepts any key, so a key is typed text until it is
+    found in a list of the code. A key that was merely saved before is not
+    known."""
+    from src.utils.system_settings import ENV_BACKED_SETTINGS
+    if not isinstance(key, str):
+        return False
+    if key in ENV_BACKED_SETTINGS or key in SETTING_VALUE_KEYS or key in _DEFINED_SETTING_KEYS:
+        return True
+    try:
+        from src.auth.permissions import permission_for_setting
+        if permission_for_setting(key):
+            return True
+        from src.services.llm_settings import TEMPERATURES, setting_key
+        return key in {setting_key(kind) for kind in TEMPERATURES}
+    except Exception:
+        return False
+
+
+def setting_changed(key, old_raw, new_raw):
     """admin.setting.changed in the transaction of the change.
 
-    The key is stored when it is a setting the application knows, else as
-    'other': POST /admin/settings accepts any key. Old and new value are
-    stored for the keys in SETTING_VALUE_KEYS only. A change of an
-    audit_log_* setting is recorded also while the log is off.
+    The key is stored when it is a setting the application defines, else as
+    'other'. Old and new value are stored for the keys in SETTING_VALUE_KEYS
+    only. A change of an audit_log_* setting is recorded also while the log
+    is off.
     """
+    known = known_setting_key(key)
     details = {'key': key if known else 'other'}
     if known and key in SETTING_VALUE_KEYS:
         details['old'] = setting_value(key, old_raw)
