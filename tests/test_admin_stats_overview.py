@@ -98,10 +98,20 @@ def test_recordings_by_day_source_and_failure(world):
     assert after["activity"]["created"] - before["activity"]["created"] == 3
     assert after["overview"]["recordings"]["previous"] - before["overview"]["recordings"]["previous"] == 1
     assert after["activity"]["failure_rate"] is not None
+    # The list holds the five latest failed recordings of the whole database,
+    # which other test files share, so the one from this test is dated after
+    # every other failed recording before the list is read.
+    with app.app_context():
+        broken = Recording.query.filter_by(user_id=world["admin"], status="FAILED").one()
+        latest = db.session.query(db.func.max(Recording.created_at)).filter(Recording.status == "FAILED").scalar()
+        broken.created_at = latest + timedelta(seconds=1)
+        db.session.commit()
+        broken_id = broken.id
+        failed_recent = build_overview(7, today)["failed_recent"]
     # A failed recording is named by its id: no title and no file name of another user.
-    assert any(r["error"] == "boom" for r in after["failed_recent"])
-    assert all(set(r) == {"id", "username", "created_at", "error"} for r in after["failed_recent"])
-    assert "Broken one" not in str(after["failed_recent"])
+    assert any(r["id"] == broken_id and r["error"] == "boom" for r in failed_recent)
+    assert all(set(r) == {"id", "username", "created_at", "error"} for r in failed_recent)
+    assert "Broken one" not in str(failed_recent)
 
 
 def test_tokens_split_by_task_with_embeddings_apart(world):
