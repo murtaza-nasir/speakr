@@ -314,6 +314,10 @@ def test_three_concurrent_boots_clear_the_text_once(tmp_path):
                UPLOAD_FOLDER=str(tmp_path / "uploads"), SPEAKR_SKIP_BACKGROUND_TASKS="true",
                PYTHONPATH=str(ROOT))
     env.pop("PYTEST_DATABASE_URI", None)
+    # The transcription settings of the test session can have been changed by an earlier
+    # test file; a process that starts the app needs them, so they are given here
+    env.update(USE_ASR_ENDPOINT="false", TRANSCRIPTION_API_KEY="test-key",
+               TRANSCRIPTION_BASE_URL="https://api.openai.com/v1")
     seed = textwrap.dedent('''
         from src.app import app, db
         from src.init_db import initialize_database
