@@ -42,7 +42,7 @@ You can guide diarization with a speaker count. The upload, recording, and repro
 
 **Self-Hosted Diarization with OpenASR**: OpenASR runs locally with an OpenAI-compatible API, diarizes with an exact speaker count, and, on servers from openasr#379 onward, returns speaker embeddings when `ASR_RETURN_SPEAKER_EMBEDDINGS=true`, so voice profiles work with it the same way they do with WhisperX.
 
-**Cloud Diarization with OpenAI**: When using OpenAI's `gpt-4o-transcribe-diarize` model, speaker diarization is also available with speakers labeled as A, B, C, etc. For longer files (over ~23 minutes) that require chunking, the system maintains speaker identity across chunks using audio reference samples. This technique supports **up to 4 speakers** - recordings with more speakers may have inconsistent labels across different sections of the transcript.
+**Cloud Diarization with OpenAI**: When using OpenAI's `gpt-4o-transcribe-diarize` model, speaker diarization is also available. The letters returned by the service (A, B, C) are stored as `SPEAKER_00`, `SPEAKER_01`, `SPEAKER_02`. For longer files (over ~23 minutes) that require chunking, the system maintains speaker identity across chunks using audio reference samples. This technique supports **up to 4 speakers** - recordings with more speakers may have inconsistent labels across different sections of the transcript.
 
 **Cloud Diarization with Mistral**: Mistral's Voxtral model provides built-in speaker diarization and automatic language detection. It handles chunking internally, so long files work without extra configuration.
 

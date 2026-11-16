@@ -3,6 +3,7 @@ Base classes and data types for transcription connectors.
 """
 
 import json
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -146,9 +147,57 @@ class TranscriptionResponse:
     # Raw response for debugging
     raw_response: Optional[Dict[str, Any]] = None
 
+    def normalize_speaker_labels(self) -> Dict[Any, str]:
+        """
+        Bring the speaker labels of this result to the form SPEAKER_NN.
+
+        Services number voices in different ways ("A", "S01", "speaker_0").
+        The mapping of src/utils/speaker_labels.diarization_label_map() is
+        applied to everything in this result that is keyed by a label: the
+        speaker of each segment, `speakers`, the keys of
+        `speaker_embeddings` and the "[label]:" line prefixes of `text`.
+        `raw_response` keeps what the service sent.
+
+        Labels are read in the order segments, `speakers`, embedding keys.
+        A result that is already normalized is not changed, so a second call
+        does nothing. Returns the mapping that was applied ({} for none).
+        """
+        from src.utils.speaker_labels import diarization_label_map
+
+        def usable(label):
+            return isinstance(label, (str, int)) and not isinstance(label, bool)
+
+        labels = [seg.speaker for seg in self.segments or []]
+        labels += list(self.speakers or [])
+        labels += list(self.speaker_embeddings or {})
+        mapping = diarization_label_map([label for label in labels if usable(label)])
+        if not mapping:
+            return {}
+
+        def new(label):
+            return mapping.get(label, label) if usable(label) else label
+
+        for seg in self.segments or []:
+            seg.speaker = new(seg.speaker)
+        if self.speakers:
+            self.speakers = list(dict.fromkeys(new(label) for label in self.speakers))
+        if self.speaker_embeddings:
+            self.speaker_embeddings = {new(label): vector for label, vector in self.speaker_embeddings.items()}
+        if isinstance(self.text, str) and self.text:
+            by_text = {str(label): target for label, target in mapping.items()}
+            prefix = re.compile(r'^\[(' + '|'.join(re.escape(label) for label in by_text) + r')\](?=:)',
+                                re.MULTILINE)
+            self.text = prefix.sub(lambda match: f'[{by_text[match.group(1)]}]', self.text)
+        return mapping
+
     def to_storage_format(self) -> str:
         """
         Convert to the JSON format used for storage in database.
+
+        The speaker labels are normalized first (normalize_speaker_labels),
+        in place: every stored transcript passes through this method, so the
+        segments, `speakers` and `speaker_embeddings` of this result carry
+        the stored labels afterwards.
 
         Returns a JSON string in the format expected by the existing codebase:
         [
@@ -161,6 +210,7 @@ class TranscriptionResponse:
             ...
         ]
         """
+        self.normalize_speaker_labels()
         if self.segments:
             return json.dumps([
                 {

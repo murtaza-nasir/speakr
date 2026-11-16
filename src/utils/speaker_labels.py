@@ -32,6 +32,13 @@ value is not a label; callers treat it as no name at all.
 The same rule is implemented in static/js/modules/utils/speaker-labels.js.
 Both are tested against tests/fixtures/speaker_label_cases.json: a change to
 the rule is made in all three files.
+
+Ingestion. Transcription services number voices in different ways (``A``,
+``S01``, ``speaker_0``, ``SPEAKER_0``). The result of a service is brought to
+the one form ``SPEAKER_00``, ``SPEAKER_01`` before it is stored; see
+diarization_label_map() below. That mapping is for the output of a service
+only. It is never applied to a stored transcript or to text a person typed,
+where ``A`` may be a name.
 """
 
 import re
@@ -91,3 +98,126 @@ def clean_participants(text):
     if not any(is_generic_speaker_label(p) for p in parts):
         return text
     return ", ".join(p for p in parts if p and not is_generic_speaker_label(p)) or None
+
+
+# ---------------------------------------------------------------------------
+# Ingestion: the labels of a transcription service in the form SPEAKER_NN
+# ---------------------------------------------------------------------------
+
+_CANONICAL = re.compile(r"^SPEAKER_([0-9]{2,})$")
+_TRAILING_NUMBER = re.compile(r"^[^0-9]*?([0-9]{1,4})$")
+_ONE_LETTER = re.compile(r"^(?:speaker[ _\-]+)?([a-z])$")
+_TWO_CAPITALS = re.compile(r"^[A-Z]{2}$")
+
+
+def raw_label_scheme(label):
+    """(scheme, number) of a label as a transcription service returned it.
+
+    scheme is one of:
+
+    - ``'canonical'``: ``SPEAKER_00`` exactly (upper case, two digits or
+      more). number is its number.
+    - ``'letter'``: one letter in either case (``A``), ``Speaker A``, or two
+      capitals (``AA``). number is the position of the letter: A is 0, Z is
+      25, AA is 26, AB is 27.
+    - ``'number'``: a number alone, as text or as an integer (``0``, ``12``).
+    - ``'generic_number'``: a label of the rule above that ends in a number
+      and is not canonical (``SPEAKER_0``, ``speaker_1``, ``Speaker 2``).
+    - ``'prefixed_number'``: any other text that ends in a number of one to
+      four digits and holds no other digit (``S01``, ``voice-3``).
+    - ``None``: everything else. number is None. This covers an empty value,
+      the unknown family (``Unknown``, ``UNKNOWN_SPEAKER``), a bare
+      ``speaker`` and text without a number (``Dana``, ``Interviewer``).
+
+    For 'number', 'generic_number' and 'prefixed_number', number is the
+    number the label carries, unchanged (``S01`` carries 1).
+    """
+    if isinstance(label, bool):
+        return None, None
+    if isinstance(label, int):
+        return ('number', label) if 0 <= label <= 9999 else (None, None)
+    if not isinstance(label, str):
+        return None, None
+    match = _CANONICAL.match(label)
+    if match:
+        return 'canonical', int(match.group(1))
+    text = normalize_label(label)
+    if not text:
+        return None, None
+    match = _ONE_LETTER.match(text)
+    if match:
+        return 'letter', ord(match.group(1)) - ord('a')
+    stripped = unicodedata.normalize("NFKC", label).strip()
+    if _TWO_CAPITALS.match(stripped):
+        return 'letter', 26 * (ord(stripped[0]) - ord('A') + 1) + ord(stripped[1]) - ord('A')
+    if _UNKNOWN.match(text):
+        return None, None
+    match = _TRAILING_NUMBER.match(text)
+    if match:
+        number = int(match.group(1))
+        if text.isdigit():
+            return 'number', number
+        return ('generic_number' if is_generic_speaker_label(label) else 'prefixed_number'), number
+    return None, None
+
+
+def diarization_label_map(labels):
+    """{raw label: SPEAKER_NN} for the labels of one transcription result.
+
+    `labels` are the speaker values of one result in order of first
+    appearance, as the service returned them (repeats, None and empty values
+    are allowed). The returned dict holds only the labels that change; a
+    label that is not a key stays as it is.
+
+    The mapping (schemes as in raw_label_scheme()):
+
+    - A canonical label (``SPEAKER_00``) is never changed, and its number is
+      not given to another label.
+    - A letter takes the number of its position: ``A`` becomes
+      ``SPEAKER_00``, ``B`` ``SPEAKER_01``, ``AA`` ``SPEAKER_26``. The result
+      does not depend on the order of the turns.
+    - A label that carries a number keeps that number: ``0`` and
+      ``SPEAKER_0`` become ``SPEAKER_00``; ``S01``, ``speaker_1`` and
+      ``Speaker 1`` become ``SPEAKER_01``. The number is not shifted, so a
+      service that counts from 1 has no ``SPEAKER_00``.
+    - When two labels of one result ask for the same number (``A`` and ``0``,
+      or ``S01`` beside an existing ``SPEAKER_01``), the label that appears
+      first keeps it. Each of the others receives the lowest number that no
+      label of the result holds or asked for, in order of first appearance.
+    - Every other label is left unchanged: an empty value, the unknown
+      family (``Unknown``, ``UNKNOWN_SPEAKER``; no voice was identified, so
+      no number is claimed) and text without a number or letter position
+      (``Dana``), which is taken for a name the service supplied.
+
+    The mapping is one to one, and the same labels in the same order always
+    give the same result.
+
+    Only the output of a transcription service is passed to this function,
+    before a person has seen it. A stored transcript is never passed: there a
+    single letter or a number may be a name somebody typed.
+    """
+    seen = []
+    for label in labels or []:
+        if isinstance(label, (str, int)) and not isinstance(label, bool) and label not in seen:
+            seen.append(label)
+
+    schemes = {label: raw_label_scheme(label) for label in seen}
+    taken = {number for scheme, number in schemes.values() if scheme == 'canonical'}
+    mapping, waiting = {}, []
+    for label in seen:
+        scheme, number = schemes[label]
+        if scheme in (None, 'canonical'):
+            continue
+        if number in taken:
+            waiting.append(label)
+        else:
+            taken.add(number)
+            mapping[label] = number
+    wanted = taken | {schemes[label][1] for label in waiting}
+    free = 0
+    for label in waiting:
+        while free in wanted:
+            free += 1
+        mapping[label] = free
+        wanted.add(free)
+    return {label: f"SPEAKER_{number:02d}" for label, number in mapping.items()}

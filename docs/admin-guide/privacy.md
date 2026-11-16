@@ -35,6 +35,8 @@ Service keys (LLM, transcription, embeddings, SMTP, SSO) are read from environme
 
 A diarization label is the placeholder of a voice that has not been named, such as `SPEAKER_00`, `Speaker 1`, `spk_0` or `Unknown Speaker`. Labels are kept in the transcript, where an unnamed turn is shown under its label. They are never stored as speaker data: no row in `speaker`, `speaker_voice_sample` or `speaker_snippet` is written for a label, and labels are left out of `recording.participants`, of `transcript_chunk.speaker_name` and of the speaker filters stored in `inquire_session`. The rule is described in `src/utils/speaker_labels.py`.
 
+Labels returned by a transcription service in another form (`A`, `S01`, `SPEAKER_0`) are stored as `SPEAKER_00`, `SPEAKER_01` when a recording is transcribed or reprocessed. Transcripts stored by earlier releases are not rewritten; the command below also counts the recordings that still hold such labels.
+
 Earlier releases could store a label in these places. At the first start after the upgrade, such entries are removed once (migration `0008_remove_generic_speaker_labels`):
 
 - Saved speakers whose name is a label are deleted, together with their voice samples and quotes. In transcripts, the link from a segment to such a speaker is cleared; the text and the visible label of the segment are not changed.

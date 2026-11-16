@@ -11,6 +11,12 @@ This command prints the counts of that cleanup for a database. It only
 reads: a SQLite file is opened read-only, and no statement that writes is
 sent to any database. The output holds counts and ids, never a name.
 
+A second part counts the recordings whose stored transcript holds
+diarization labels in another form than SPEAKER_NN ("A", "S01",
+"SPEAKER_0"), and how those labels are treated today. New transcripts are
+normalized when they are stored; stored transcripts are not rewritten. See
+src/utils/unnormalized_label_report.py. --ids adds the recording ids.
+
 Usage inside the container (the database of the instance):
 
     docker compose exec app python scripts/generic_speakers_dry_run.py
@@ -35,6 +41,8 @@ def parse_args(argv=None):
         description='Print the counts of the diarization-label cleanup. Reads only; changes nothing.')
     p.add_argument('--database-uri',
                    help='Database to read (default: SQLALCHEMY_DATABASE_URI, as the application uses)')
+    p.add_argument('--ids', action='store_true',
+                   help='List the ids of the recordings whose labels are not in the normalized form')
     return p.parse_args(argv)
 
 
@@ -60,16 +68,23 @@ def main(argv=None):
     if not uri:
         raise SystemExit('No database: give --database-uri or set SQLALCHEMY_DATABASE_URI.')
 
+    from src.utils import unnormalized_label_report
     from src.utils.generic_speaker_cleanup import plan, summary_lines
     engine = read_only_engine(uri)
     try:
         planned = plan(engine)
+        unnormalized = unnormalized_label_report.report(engine)
     finally:
         engine.dispose()
 
     print('Diarization-label cleanup, dry run. Nothing was changed.')
     for line in summary_lines(planned['counts'], planned['kept_speaker_ids'],
                               users_affected=planned['users_affected'], dry_run=True):
+        print('  ' + line)
+
+    print()
+    print('Stored transcripts with diarization labels that are not in the normalized form. Nothing was changed.')
+    for line in unnormalized_label_report.summary_lines(unnormalized, with_ids=args.ids):
         print('  ' + line)
     return 0
 
