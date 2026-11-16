@@ -55,7 +55,7 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 
 ### Organize
 - **Folders and bulk operations** to keep a large library tidy.
-- **Smart tags** that carry their own AI prompt and ASR settings - and stack, so multiple tags layer their instructions.
+- **Smart tags** with their own AI prompt and ASR settings - and stack, so multiple tags layer their instructions.
 - **Retention policies** with auto-deletion and per-recording protection from cleanup.
 - **Automated export** to templated files when a recording finishes.
 

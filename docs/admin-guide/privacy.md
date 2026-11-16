@@ -232,7 +232,7 @@ No content of an incognito request is stored on the server, and no recording row
 
 - **Usage rows.** An incognito request is counted against the monthly budgets of the user. The same rows as for an ordinary request are written to `token_usage` and `transcription_usage`: user, date, kind of operation or connector, model name, token and second counts, request count and cost. These rows hold no title, no file name, no content and no recording id, and requests in incognito mode are not marked in them.
 - **One audit row.** For each incognito upload, also one that is refused or fails, one `incognito.used` row is written to the [audit log](audit-log.md). The row holds the account, the time and the outcome (`success`, `denied` or `failed`). The client address, the user agent and the id of an API token are not stored in this row, whatever the value of `audit_log_store_ip`. Nothing about the file, its size, its duration or its content is part of the row, and no row is written for an incognito chat or summary request. The row is subject to the master switch of the audit log: with `audit_log_enabled=false` it is not written.
-- **Last use of the account.** The time of the last use is updated as for any other request and carries no mark of incognito mode (see [Database](#database)).
+- **Last use of the account.** The time of the last use is updated as for any other request and has no mark of incognito mode (see [Database](#database)).
 
 The budget checks of an ordinary request apply. For a user over the monthly token budget, no title, summary or chat answer is requested from the LLM: the transcript is returned with the default title and without a summary, and a chat or summary request is refused.
 
