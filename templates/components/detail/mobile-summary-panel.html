@@ -2,11 +2,14 @@
 
      Two modes:
      (1) READING: Copy, Download and Edit above the prose, in the one
-         scrolling area of the recording. In edit mode there is no such
-         row, only the editor's own toolbar and a Cancel/Save footer.
+         scrolling area of the recording, with the buttons for Events and
+         Speaker stats at the end of the same row (they open sheets). In
+         edit mode there is no such row, only the editor's own toolbar and
+         a Cancel/Save footer.
      (2) EDITING: editor fills the panel edge-to-edge with minimal
          outer padding so the typing area is as large as possible;
          Cancel and Save live in a sticky footer below the editor. -->
+{% from 'components/phone/_empty.html' import phone_empty %}
 <div v-if="mobileTab === 'summary'" class="ph-pane" :class="{ 'ph-pane--fill': editingSummary }" data-phone-pane="summary">
 
     <!-- Editing-mode shell — editor goes edge-to-edge (no horizontal
@@ -26,7 +29,9 @@
     </div>
 
     <!-- Reading mode: Copy, Download and Edit above the text; Events and
-         Speaker stats as rows at its end (they open sheets). -->
+         Speaker stats at the end of the same row, with or without a
+         summary, so that a long summary is never between the reader and
+         them. -->
     <div v-else class="ph-pane__body">
         <div class="ph-acts" data-phone-acts="summary">
             <button v-if="selectedRecording.summary" type="button" class="ph-tbtn" @click="copySummary" :title="t('buttons.copySummary')">
@@ -39,20 +44,26 @@
             <button type="button" class="ph-tbtn" @click="toggleEditSummary" :title="t('buttons.editSummary')">
                 <i class="fas fa-pen" aria-hidden="true"></i><span v-text="t('common.edit')"></span>
             </button>
+            <span v-if="(selectedRecording.events && selectedRecording.events.length > 0) || hasRecordingStats" class="ph-acts__end" data-phone-also>
+                <button v-if="selectedRecording.events && selectedRecording.events.length > 0" type="button" class="ph-ib" data-phone-open="events"
+                        @click="openPhoneSheet('events')" aria-haspopup="dialog" :aria-label="t('events.title')" :title="t('events.title')">
+                    <i class="fas fa-calendar-alt" aria-hidden="true"></i><span class="ph-ib__badge" v-text="selectedRecording.events.length"></span>
+                </button>
+                <button v-if="hasRecordingStats" type="button" class="ph-ib" data-phone-open="stats"
+                        @click="openPhoneSheet('stats')" aria-haspopup="dialog" :aria-label="t('phone.speakerStats')" :title="t('phone.speakerStats')">
+                    <i class="fas fa-chart-bar" aria-hidden="true"></i>
+                </button>
+            </span>
         </div>
         <div>
-            <div v-if="selectedRecording.status === 'SUMMARIZING'" class="empty">
-                <div class="spinner spinner--lg"></div>
+            <div v-if="selectedRecording.status === 'SUMMARIZING'" class="empty ph-empty" data-phone-empty="summary-busy">
+                <div class="ph-empty__mark"><div class="spinner spinner--lg"></div></div>
                 <div class="empty__title" v-text="t('help.generatingSummary')"></div>
             </div>
-            <div v-else-if="!selectedRecording.summary" class="empty">
-                <div class="empty__icon"><i class="fas fa-file-alt"></i></div>
-                <div class="empty__title" v-text="t('summary.noSummary')"></div>
-                <div v-if="processedTranscription.isError" class="banner banner--info">
-                    <i class="fas fa-info-circle"></i>
-                    <span v-text="t('summary.needsTranscription')"></span>
-                </div>
-                <div class="flex items-center gap-2" style="margin-top: var(--sp-3);">
+            {% call phone_empty('summary', "t('summary.noSummary')",
+                                "processedTranscription.isError ? t('summary.needsTranscription') : t('summary.emptyHint')",
+                                icon='fa-file-alt', attrs='v-else-if="!selectedRecording.summary"') %}
+                <div class="ph-empty__acts">
                     <button class="btn btn--primary"
                             @click="generateSummary()"
                             :disabled="processedTranscription.isError">
@@ -66,19 +77,8 @@
                         <i class="fas fa-sliders-h"></i>
                     </button>
                 </div>
-            </div>
+            {% endcall %}
             <div v-else class="prose-flush" v-html="summaryHtml"></div>
-        </div>
-        <div v-if="(selectedRecording.events && selectedRecording.events.length > 0) || hasRecordingStats" class="ph-also" data-phone-also>
-            <button v-if="selectedRecording.events && selectedRecording.events.length > 0" type="button" class="ph-row" data-phone-open="events"
-                    @click="openPhoneSheet('events')" aria-haspopup="dialog">
-                <i class="fas fa-calendar-alt" aria-hidden="true"></i><span class="ph-row__label" v-text="t('events.title')"></span>
-                <span class="ph-row__val"><span class="ph-pill ph-pill--info" v-text="selectedRecording.events.length"></span><i class="fas fa-chevron-right" aria-hidden="true"></i></span>
-            </button>
-            <button v-if="hasRecordingStats" type="button" class="ph-row" data-phone-open="stats" @click="openPhoneSheet('stats')" aria-haspopup="dialog">
-                <i class="fas fa-chart-bar" aria-hidden="true"></i><span class="ph-row__label" v-text="t('phone.speakerStats')"></span>
-                <span class="ph-row__val"><i class="fas fa-chevron-right" aria-hidden="true"></i></span>
-            </button>
         </div>
     </div>
 </div>

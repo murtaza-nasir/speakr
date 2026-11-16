@@ -4,6 +4,7 @@
      so the edit-pen active-state inconsistency disappears, and the
      editor takes the full panel height with thin outer padding plus a
      sticky Cancel/Save footer. -->
+{% from 'components/phone/_empty.html' import phone_empty %}
 <div v-if="mobileTab === 'notes'" class="ph-pane" :class="{ 'ph-pane--fill': editingNotes }" data-phone-pane="notes">
 
     <!-- Editing-mode shell — editor goes edge-to-edge. -->
@@ -35,11 +36,8 @@
             </button>
         </div>
         <div @click="clickToEditNotes">
-            <div v-if="!selectedRecording.notes" class="empty">
-                <div class="empty__icon"><i class="fas fa-sticky-note"></i></div>
-                <div class="empty__title" v-text="t('help.clickToAddNotes')"></div>
-                <div class="empty__body" v-text="t('notes.markdownSupported')"></div>
-            </div>
+            {{ phone_empty('notes', "t('help.clickToAddNotes')", "t('notes.markdownSupported')",
+                           icon='fa-sticky-note', attrs='v-if="!selectedRecording.notes"') }}
             <div v-else class="prose-flush" v-html="notesHtml"></div>
         </div>
     </div>

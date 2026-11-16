@@ -2890,7 +2890,8 @@
     "title": "摘要",
     "customizePrompt": "自定义提示",
     "editingSaveHint": "正在编辑。请通过上方的标签栏保存。",
-    "needsTranscription": "转录文本完成后即可生成摘要。"
+    "needsTranscription": "转录文本完成后即可生成摘要。",
+    "emptyHint": "摘要根据转录文本生成。"
   },
   "tagManagement": {
     "asrDefaults": "ASR 默认值",
@@ -3102,7 +3103,8 @@
     "speaker": "发言人 {{number}}",
     "speakerLabels": "发言人标签",
     "title": "转录文本",
-    "unknownSpeaker": "未知发言人"
+    "unknownSpeaker": "未知发言人",
+    "emptyHint": "处理完成后，转录文本将显示在此处。"
   },
   "unifiedShareModal": {
     "noPublicLinks": "尚无公开分享链接",
@@ -4066,7 +4068,8 @@
     "scopeRecording": "此录音",
     "scopeLibrary": "所有录音",
     "sendHint": "发送（Enter）。换行请按 Ctrl+Enter。",
-    "jumpToLatest": "跳到最新"
+    "jumpToLatest": "跳到最新",
+    "recordingHint": "回答基于此录音。"
   },
   "regenerateSummary": {
     "title": "重新生成摘要",

@@ -12,6 +12,8 @@ What is guarded:
   - an incognito recording has no download control, on a phone or on the
     desktop (the download routes need a stored recording);
   - the texts of the phone layout exist and are all used;
+  - Events and Speaker stats are opened from the row above the summary, and
+    the four tabs take their empty state from one macro;
   - no :has() in the phone stylesheet (a :has() on <body> made the browser
     look at the whole page again on every change).
 """
@@ -215,6 +217,31 @@ def test_phone_texts_exist_and_are_used():
         keys = set(json.load(f)['phone'])
     used = set(re.findall(r"'phone\.([a-zA-Z0-9]+)'", _phone_markup()))
     assert used == keys, (sorted(used - keys), sorted(keys - used))
+
+
+def test_events_and_stats_are_opened_from_the_row_above_the_summary():
+    summary = _read(DETAIL_DIR, 'mobile-summary-panel.html')
+    row = summary[summary.index('data-phone-acts="summary"'):]
+    row = row[:row.index('\n        </div>')]
+    assert 'data-phone-open="events"' in row and 'data-phone-open="stats"' in row
+    # only there: nothing after the text of the summary opens them
+    assert summary.count('data-phone-open=') == 2
+    assert 'ph-also' not in summary and '.ph-also' not in _read(ROOT, 'static', 'css', 'phone.css')
+    # an icon button has a name
+    for name in ('events', 'stats'):
+        assert ':aria-label=' in _element_with(row, f'data-phone-open="{name}"'), name
+
+
+def test_the_four_tabs_share_one_empty_state():
+    macro = _read(PHONE_DIR, '_empty.html')
+    for part in ('class="empty ph-empty"', 'ph-empty__mark', 'empty__title', 'empty__body'):
+        assert part in macro, part
+    for name, tab in (('mobile-summary-panel.html', 'summary'), ('mobile-transcript-panel.html', 'transcript'),
+                      ('mobile-notes-panel.html', 'notes'), ('mobile-chat-panel.html', 'chat')):
+        panel = _read(DETAIL_DIR, name)
+        assert f"phone_empty('{tab}'," in panel, name
+        # no empty state drawn by hand beside the macro (the two spinner states use its class)
+        assert len(re.findall(r'class="empty(?! ph-empty)[" ]', panel)) == 0, name
 
 
 def test_the_stylesheet_is_linked_and_has_no_has_selector():

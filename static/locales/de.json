@@ -2890,7 +2890,8 @@
     "title": "Zusammenfassung",
     "customizePrompt": "Prompt anpassen",
     "editingSaveHint": "Bearbeitung. Speichern Sie über die Tab-Leiste oben.",
-    "needsTranscription": "Eine Zusammenfassung ist verfügbar, sobald das Transkript fertig ist."
+    "needsTranscription": "Eine Zusammenfassung ist verfügbar, sobald das Transkript fertig ist.",
+    "emptyHint": "Die Zusammenfassung wird aus dem Transkript erstellt."
   },
   "tagManagement": {
     "asrDefaults": "ASR-Standards",
@@ -3102,7 +3103,8 @@
     "speaker": "Sprecher {{number}}",
     "speakerLabels": "Sprecher-Labels",
     "title": "Transkript",
-    "unknownSpeaker": "Unbekannter Sprecher"
+    "unknownSpeaker": "Unbekannter Sprecher",
+    "emptyHint": "Das Transkript wird nach der Verarbeitung hier angezeigt."
   },
   "unifiedShareModal": {
     "noPublicLinks": "Noch keine öffentlichen Freigabe-Links",
@@ -4066,7 +4068,8 @@
     "scopeRecording": "Diese Aufnahme",
     "scopeLibrary": "Alle Aufnahmen",
     "sendHint": "Senden (Enter). Für eine neue Zeile drücken Sie Strg+Enter.",
-    "jumpToLatest": "Zur neuesten Nachricht"
+    "jumpToLatest": "Zur neuesten Nachricht",
+    "recordingHint": "Fragen werden anhand dieser Aufnahme beantwortet."
   },
   "regenerateSummary": {
     "title": "Zusammenfassung neu generieren",

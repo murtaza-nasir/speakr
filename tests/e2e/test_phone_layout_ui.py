@@ -11,7 +11,11 @@ test opens the seeded recordings at phone widths and checks:
   the upload fall on the same day, and the Info sheet;
 - the actions in the sheet behind More for a recording of one's own, one
   shared without rights, a failed one and an incognito one;
-- the four tabs, with Events and Speaker stats as sheets;
+- the four tabs, with Events and Speaker stats as sheets, opened from the
+  row at the top of the summary, in the same place with a long summary and
+  without one;
+- one layout for the empty Summary, Transcript, Notes and assistant tabs
+  (the mark, the title and the hint at the same height), in every theme;
 - the pinned bar of the transcript: it stays under the top bar while a
   transcript of 20,000 segments scrolls, the page stays small, the switch
   shows the translation, and the find bar goes to a match far away;
@@ -641,29 +645,168 @@ def test_four_fixed_tabs_and_the_sheets_of_the_summary(phone):
         phone.tab(name)
         assert page.locator("[data-phone-pane]:visible").count() == 1
         phone.no_sideways_scroll(f"tab {name}")
-    # Speaker stats: a row at the end of the summary opens a sheet
-    row = page.locator('[data-phone-open="stats"]')
-    row.scroll_into_view_if_needed()
+    # Speaker stats: a button at the top of the summary opens a sheet
     stats = phone.open_sheet('[data-phone-open="stats"]', "stats")
     assert stats.locator("[data-phone-stats]").is_visible()
     assert en("stats.perSpeaker") in stats.inner_text()
     phone.no_sideways_scroll("Speaker stats")
     phone.close_sheet()
     assert page.locator('[data-phone-tab="summary"]').get_attribute("aria-current") == "true"
-    # Events: with events, a row and a sheet as well
+    # Events: with events, a button and a sheet as well
     recording_id = phone.ids[MEETING_TITLE]
     phone.patches[recording_id] = {"events": [{"id": 901, "title": "Design review", "description": "Screens",
                                                "start_datetime": "2026-03-10T14:00:00", "end_datetime": "2026-03-10T14:30:00",
                                                "location": "Room 2", "attendees": ["Dana", "Marco"]}]}
     phone.open(recording_id)
     page.locator('[data-phone-open="events"]').wait_for(state="visible", timeout=WAIT)
-    page.locator('[data-phone-open="events"]').scroll_into_view_if_needed()
     events = phone.open_sheet('[data-phone-open="events"]', "events")
     assert "Design review" in events.inner_text() and "Room 2" in events.inner_text()
     assert events.locator('[data-phone-action="export-events"]').is_visible()
     phone.close_sheet()
     assert "events" in phone.actions()
     phone.check("tabs and the sheets of the summary")
+
+
+EVENTS = [{"id": 901, "title": "Design review", "description": "Screens",
+           "start_datetime": "2026-03-10T14:00:00", "end_datetime": "2026-03-10T14:30:00",
+           "location": "Room 2", "attendees": ["Dana", "Marco"]},
+          {"id": 902, "title": "Budget follow-up", "description": "", "start_datetime": "2026-03-12T09:00:00",
+           "end_datetime": None, "location": "", "attendees": []}]
+LONG_SUMMARY = "## Overview\n\n" + "\n\n".join(
+    f"### Topic {n}\n\nThe team discussed item {n} at length, with points about the budget, hiring and the schedule.\n\n"
+    f"- A decision on item {n}\n- An action item for Dana" for n in range(1, 40))
+
+# The buttons for Events and Speaker stats: where they are in the screen, and in the row of Copy, Download and Edit
+ALSO = """() => {
+    const box = (el) => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, bottom: r.bottom }; };
+    const row = document.querySelector('[data-phone-acts="summary"]');
+    const frame = document.querySelector('[data-phone-scroll]');
+    const text = document.querySelector('[data-phone-pane="summary"] .prose-flush, [data-phone-pane="summary"] [data-phone-empty]');
+    const out = { row: box(row), frame: box(frame), text: box(text), scrollTop: frame.scrollTop,
+                  overflow: frame.scrollHeight - frame.clientHeight,
+                  after: [...document.querySelectorAll('[data-phone-pane="summary"] [data-phone-open]')].filter((el) => !row.contains(el)).length };
+    for (const name of ['events', 'stats']) {
+        const el = document.querySelector(`[data-phone-open="${name}"]`);
+        out[name] = el ? { ...box(el), label: el.getAttribute('aria-label'), inRow: row.contains(el),
+                           hit: el.contains(document.elementFromPoint(el.getBoundingClientRect().left + 22, el.getBoundingClientRect().top + 22)) } : null;
+    }
+    return out;
+}"""
+
+
+def test_stats_and_events_are_at_the_top_of_the_summary_with_and_without_a_summary(phone):
+    page = phone.page
+    recording_id = phone.ids[MEETING_TITLE]
+    places = {}
+    for state, summary in (("long", LONG_SUMMARY), ("none", "")):
+        phone.patches[recording_id] = {"summary": summary, "summary_html": "", "events": EVENTS}
+        phone.open(recording_id)
+        page.locator('[data-phone-open="stats"]').wait_for(state="visible", timeout=WAIT)
+        place = page.evaluate(ALSO)
+        places[state] = place
+        assert place["scrollTop"] == 0, (state, place)
+        if state == "long":
+            # A summary of many screens: what was at its end is far below
+            assert place["overflow"] > 3 * PHONE["height"], place
+            assert page.locator('[data-phone-pane="summary"] .prose-flush h3').count() == 39
+        else:
+            assert page.locator('[data-phone-empty="summary"]').is_visible()
+        for name, label in (("events", en("events.title")), ("stats", en("phone.speakerStats"))):
+            button = place[name]
+            assert button, (state, name)
+            # In the row of Copy, Download and Edit, in view without scrolling, above the text, a 44px target with a name
+            assert button["inRow"] and button["hit"], (state, name, button)
+            assert button["y"] >= place["frame"]["y"] and button["bottom"] <= place["frame"]["bottom"], (state, name, place)
+            assert button["bottom"] <= place["text"]["y"] + 1, (state, name, place)
+            assert button["w"] >= 44 and button["h"] >= 44, (state, name, button)
+            assert button["label"] == label, (state, name, button)
+        # One row, and nothing of the kind is left after the text
+        assert place["row"]["h"] <= 46, (state, place["row"])
+        assert place["after"] == 0, (state, place)
+        assert page.locator('[data-phone-open="events"] .ph-ib__badge').inner_text().strip() == "2"
+        stats = phone.open_sheet('[data-phone-open="stats"]', "stats")
+        assert stats.locator("[data-phone-stats]").is_visible() and en("stats.perSpeaker") in stats.inner_text()
+        phone.shot(f"phone-layout-test-summary-{state}-stats")
+        phone.close_sheet()
+        events = phone.open_sheet('[data-phone-open="events"]', "events")
+        assert "Design review" in events.inner_text() and "Budget follow-up" in events.inner_text()
+        assert events.locator('[data-phone-action="export-events"]').is_visible()
+        phone.close_sheet()
+        assert page.locator('[data-phone-tab="summary"]').get_attribute("aria-current") == "true"
+        phone.no_sideways_scroll(f"summary ({state})")
+        phone.shot(f"phone-layout-test-summary-{state}")
+        phone.check(f"stats and events at the top of the summary ({state})")
+    # The same place with a summary and without one
+    for name in ("events", "stats"):
+        for side in ("x", "y", "w", "h"):
+            assert abs(places["long"][name][side] - places["none"][name][side]) <= 1, (name, side, places)
+    # Without events and without timed segments there is no button, and the row keeps its height
+    phone.patches[recording_id] = {"summary": "", "summary_html": "", "events": [], "transcription": None}
+    phone.open(recording_id)
+    assert page.locator("[data-phone-open]").count() == 0
+    assert abs(page.locator('[data-phone-acts="summary"]').bounding_box()["height"] - places["none"]["row"]["h"]) <= 1
+    phone.check("a summary tab without events and stats")
+
+
+# The mark, the title and the hint of the empty state that is shown
+EMPTY = """() => {
+    const shown = [...document.querySelectorAll('[data-phone-empty]')].filter((el) => el.getClientRects().length);
+    if (shown.length !== 1) return { count: shown.length };
+    const box = (selector) => { const el = shown[0].querySelector(selector); if (!el) return null;
+        const r = el.getBoundingClientRect(); return { y: r.top, h: r.height, center: r.left + r.width / 2, w: r.width, size: parseFloat(getComputedStyle(el).fontSize) }; };
+    const mark = shown[0].querySelector('.ph-empty__mark > *');
+    const drawn = mark.getBoundingClientRect();
+    return { count: 1, name: shown[0].dataset.phoneEmpty, mark: box('.ph-empty__mark'), drawn: [drawn.width, drawn.height],
+             title: box('.empty__title'), hint: box('.empty__body'),
+             titleText: shown[0].querySelector('.empty__title').innerText.trim(), hintText: (shown[0].querySelector('.empty__body') || {}).innerText };
+}"""
+
+
+@pytest.mark.parametrize("theme", THEMES)
+def test_the_empty_tabs_share_one_layout(browser, phone, theme):
+    session = Phone(browser)
+    saved = session.page.locator("html").get_attribute("data-ui-theme") or "default"
+    try:
+        page = session.page
+        session.set_theme(theme)
+        recording_id = session.ids[MEETING_TITLE]
+        session.patches[recording_id] = {"summary": "", "summary_html": "", "notes": "", "notes_html": "", "transcription": None, "events": []}
+        session.open(recording_id)
+        assert page.locator("html").get_attribute("data-ui-theme") == theme
+        found = {}
+        for name in ("notes", "summary", "transcript", "chat"):
+            session.tab(name)
+            session.rendered()
+            state = page.evaluate(EMPTY)
+            assert state["count"] == 1 and state["name"] == name, f"{theme}: {name}: {state}"
+            assert state["mark"] and state["title"] and state["hint"], f"{theme}: {name}: {state}"
+            assert state["titleText"] and state["hintText"].strip(), f"{theme}: {name}: {state}"
+            found[name] = state
+            session.no_sideways_scroll(f"{theme}: empty {name}")
+            session.shot(f"phone-layout-test-empty-{theme}-{name}")
+        assert found["notes"]["titleText"] == en("help.clickToAddNotes") and found["notes"]["hintText"] == en("notes.markdownSupported")
+        assert found["summary"]["titleText"] == en("summary.noSummary") and found["summary"]["hintText"] == en("summary.emptyHint")
+        assert found["transcript"]["titleText"] == en("transcription.noTranscription")
+        assert found["transcript"]["hintText"] == en("transcription.emptyHint")
+        assert found["chat"]["hintText"] == en("assistant.recordingHint")
+        # The notes tab is the reference: the others have the mark, the title and the hint
+        # at the same height, centered, in the same sizes
+        reference = found["notes"]
+        for name in ("summary", "transcript", "chat"):
+            for part in ("mark", "title", "hint"):
+                mine, theirs = found[name][part], reference[part]
+                assert abs(mine["y"] - theirs["y"]) <= 1, f"{theme}: {name}: the {part} is at {mine['y']}, in Notes at {theirs['y']}"
+                assert abs(mine["center"] - PHONE["width"] / 2) <= 1, f"{theme}: {name}: the {part} is not centered: {mine}"
+                assert mine["size"] == theirs["size"], f"{theme}: {name}: {part}: {mine['size']}px, in Notes {theirs['size']}px"
+            assert found[name]["mark"]["h"] == reference["mark"]["h"] and found[name]["mark"]["w"] == reference["mark"]["w"]
+            assert found[name]["drawn"] == reference["drawn"], f"{theme}: {name}: the mark is {found[name]['drawn']}, in Notes {reference['drawn']}"
+            assert found[name]["title"]["h"] == reference["title"]["h"], f"{theme}: {name}: {found[name]['title']}"
+        # In the upper half of the tab, under whatever the tab has above it
+        assert 0 < reference["mark"]["y"] < PHONE["height"] / 2, f"{theme}: {reference}"
+        session.check(f"the empty tabs in the {theme} theme", utilities=False)
+    finally:
+        session.set_theme(saved)
+        session.close()
 
 
 # ---- the transcript ----------------------------------------------------------
@@ -1051,7 +1194,9 @@ def test_no_sideways_scrolling(browser, phone, width):
         session.patches[recording_id] = {
             "meeting_date": "2026-03-02T10:02:00", "created_at": "2026-03-05T09:15:00",
             "title": "A recording with a long title that takes two lines of the top bar on a small phone, and then some",
-            "participants": "Dana Whitlock, Marco Ibarra, Priya Raman, Tomas Ferreira, Lena Okafor, Jun Akiyama"}
+            "participants": "Dana Whitlock, Marco Ibarra, Priya Raman, Tomas Ferreira, Lena Okafor, Jun Akiyama",
+            "events": [{"id": 901, "title": "Design review", "description": "", "start_datetime": "2026-03-10T14:00:00",
+                        "end_datetime": None, "location": "", "attendees": []}]}
         session.open_list()
         session.no_sideways_scroll(f"{width}: list")
         for opener, name in (("[data-phone-menu]", "menu"), ("[data-phone-more-filters]", "filters")):
@@ -1077,6 +1222,11 @@ def test_no_sideways_scrolling(browser, phone, width):
         assert all(left >= 0 and right <= width for left, right in buttons), f"{width}: {buttons}"
         page.locator("[data-phone-find]").click()
         session.tab("summary")
+        # Copy, Download, Edit, Events and Speaker stats share one row
+        page.locator('[data-phone-open="stats"]').wait_for(state="visible", timeout=WAIT)
+        row = page.locator('[data-phone-acts="summary"]')
+        assert row.locator("button:visible").count() == 5
+        assert row.bounding_box()["height"] <= 46, f"{width}: the row above the summary wraps: {row.bounding_box()}"
         for opener, name in (("[data-phone-more]", "actions"), ("[data-phone-info]", "info"), ("[data-phone-player-open]", "player")):
             sheet = session.open_sheet(opener, name)
             session.no_sideways_scroll(f"{width}: {name}")
