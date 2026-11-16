@@ -24,13 +24,11 @@ export const normalizeType = (type) => (TYPES.includes(type) ? type : 'info');
  * How long a toast stays, in ms; 0 means until it is closed. Errors stay
  * unless the caller asked for a duration other than the default; warnings
  * stay at least WARNING_MIN_DURATION. An error whose type was read from its
- * icon (`inferred`) stays as long as a warning: its caller did not ask for a
- * message that has to be closed.
+ * icon stays like any other error, so no failure message goes unread.
  */
-export const toastDuration = (type, duration = DEFAULT_DURATION, inferred = false) => {
+export const toastDuration = (type, duration = DEFAULT_DURATION) => {
     const ms = Number.isFinite(duration) && duration > 0 ? duration : DEFAULT_DURATION;
     const kind = normalizeType(type);
-    if (kind === 'error' && inferred) return Math.max(ms, WARNING_MIN_DURATION);
     if (kind === 'error') return ms === DEFAULT_DURATION ? 0 : ms;
     if (kind === 'warning') return Math.max(ms, WARNING_MIN_DURATION);
     return ms;
@@ -357,7 +355,7 @@ export const showToast = (message, iconClass = 'fa-info-circle', duration = DEFA
     toast.append(close);
 
     // The line that counts down the time of a toast that closes by itself
-    const life = Math.round(toastDuration(kind, duration, inferred) * timeScale());
+    const life = Math.round(toastDuration(kind, duration) * timeScale());
     let countdown = null;
     const drawCountdown = () => {
         if (!life) return;
