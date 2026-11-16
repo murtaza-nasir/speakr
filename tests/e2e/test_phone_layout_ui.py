@@ -1258,6 +1258,15 @@ def test_the_same_structure_in_every_theme(browser, phone, theme):
         assert round(side["x"]) == 0 and round(side["width"]) == PHONE["width"], f"{theme}: the list is not a full screen: {side}"
         assert page.locator(LIST_BAR).is_visible() and page.locator("[data-phone-new]").is_visible()
         assert page.locator("#app > header").count() == 0
+        # The search field is one pill: the theme gives the input inside it no box of its own
+        field = page.locator("[data-phone-search]").evaluate(
+            "(el) => { const c = getComputedStyle(el); return [c.backgroundColor, c.borderTopWidth, c.borderTopLeftRadius, c.paddingLeft]; }")
+        assert field == ["rgba(0, 0, 0, 0)", "0px", "0px", "0px"], f"{theme}: the search input is a box inside the search field: {field}"
+        # A date heading with a background has its label in the middle of the band
+        if theme == "classic":
+            heading = page.evaluate("""() => { const el = document.querySelector('.recording-group-header'); if (!el) return null;
+                const c = getComputedStyle(el); return [c.backgroundColor, parseFloat(c.paddingTop), parseFloat(c.paddingBottom)]; }""")
+            assert heading and heading[0] != "rgba(0, 0, 0, 0)" and abs(heading[1] - heading[2]) <= 1, f"{theme}: the date heading is off center: {heading}"
         session.no_sideways_scroll(f"{theme}: list")
         session.shot(f"phone-layout-test-theme-{theme}-list")
         page.locator(ROWS).filter(has_text=MEETING_TITLE).first.click()

@@ -696,8 +696,12 @@ html body a.ph-row, html body a.ph-row:hover { color: var(--ph-text); text-decor
     font-size: 16px;   /* 16px: iOS does not zoom the page on focus */
     box-shadow: none;
 }
-/* The themes style every input; this one is a bare field inside .ph-search */
-html body .ph-search input, html body .ph-search input:focus { background: none; border: 0; box-shadow: none; outline: 0; border-radius: 0; min-height: 0; }
+/* The themes style every input, some with selectors no class here can outrank; this one is a
+   bare field inside .ph-search, so the declarations are forced */
+html body .ph-search input, html body .ph-search input:focus {
+    background: none !important; border: 0 !important; box-shadow: none !important; outline: 0 !important;
+    border-radius: 0 !important; min-height: 0 !important; padding: 0 !important;
+}
 .ph-search input::placeholder { color: var(--ph-text-3); opacity: 1; }
 .ph-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .ph-search:focus-within { border-color: var(--border-focus, var(--ph-link)); }
