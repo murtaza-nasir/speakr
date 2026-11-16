@@ -58,7 +58,7 @@ function fakeIndexedDB(databases) {
 
 function load({
     register = false, version = '9.9.9', cookie = '', serviceWorker = true, registrations = [],
-    databases = null, confirmAnswer = true, cacheNames = [], controller = true,
+    databases = null, confirmAnswer = true, cacheNames = [], controller = true, local = {},
 } = {}) {
     const listeners = {};
     const cookies = { value: cookie, writes: [] };
@@ -86,6 +86,11 @@ function load({
         register: vi.fn(async (url, options) => ({ url, scope: `${ORIGIN}${options.scope}` })),
     };
     const sessionStorage = { clear: vi.fn() };
+    // `local` is the content of localStorage; null stands for a browser that refuses access to it.
+    const localStorage = {
+        getItem: vi.fn((key) => { if (local === null) throw new Error('SecurityError'); return key in local ? local[key] : null; }),
+        removeItem: vi.fn((key) => { if (local === null) throw new Error('SecurityError'); delete local[key]; }),
+    };
     const confirmDialog = vi.fn(async () => confirmAnswer);
     const window = {
         document,
@@ -93,6 +98,7 @@ function load({
         navigator: serviceWorker ? { serviceWorker: container } : {},
         caches,
         sessionStorage,
+        localStorage,
         confirmDialog,
         addEventListener: vi.fn(),
     };
@@ -118,7 +124,7 @@ function load({
     });
     const submit = (target) => { const event = submitEvent(target); listeners.submit.handler(event); return event; };
 
-    return { api: window.SpeakrServiceWorker, window, listeners, container, caches, worker, sessionStorage, confirmDialog, cookies, form, submit };
+    return { api: window.SpeakrServiceWorker, window, listeners, container, caches, worker, sessionStorage, localStorage, local, confirmDialog, cookies, form, submit };
 }
 
 describe('registration', () => {
@@ -237,6 +243,40 @@ describe('the sign-out form', () => {
         await expect(api.localCopies()).resolves.toBe(0);
     });
 
+    it('counts an upload in slices that did not finish, and asks before it is forgotten', async () => {
+        const now = Date.now();
+        const local = {
+            'speakr.slicedUploads': JSON.stringify({
+                'Jane Doe intake.mp4|900000000|1700000000000': { sessionId: 'a', sliceBytes: 1, savedAt: now - 60 * 1000 },
+                'second.mp4|800000000|1700000000001': { sessionId: 'b', sliceBytes: 1, savedAt: now - 23 * 3600 * 1000 },
+                // Past the 24 hours in which an upload can be resumed, and one without a session.
+                'old.mp4|1|1': { sessionId: 'c', sliceBytes: 1, savedAt: now - 25 * 3600 * 1000 },
+                'broken.mp4|1|1': { savedAt: now },
+            }),
+            darkMode: 'true',
+        };
+        const databases = { SpeakrFailedUploads: { failedUploads: { 1: {} } } };
+        const { api, form, submit, confirmDialog } = load({ databases, local, confirmAnswer: false });
+        await expect(api.localCopies()).resolves.toBe(3);
+        const f = form();
+        submit(f);
+        await flush();
+        expect(confirmDialog).toHaveBeenCalledTimes(1);
+        expect(confirmDialog.mock.calls[0][0].message).toContain('3 recordings or uploads');
+        expect(f.requestSubmit).not.toHaveBeenCalled();
+        // The question deletes nothing.
+        expect(Object.keys(JSON.parse(local['speakr.slicedUploads']))).toHaveLength(4);
+    });
+
+    it('counts an unfinished upload in slices without IndexedDB, and none where localStorage is refused or damaged', async () => {
+        const entry = JSON.stringify({ 'a.mp4|9|1': { sessionId: 'a', savedAt: Date.now() } });
+        await expect(load({ local: { 'speakr.slicedUploads': entry } }).api.localCopies()).resolves.toBe(1);
+        await expect(load({ local: null }).api.localCopies()).resolves.toBe(0);
+        await expect(load({ local: { 'speakr.slicedUploads': '{not json' } }).api.localCopies()).resolves.toBe(0);
+        await expect(load({ local: { 'speakr.slicedUploads': 'null' } }).api.localCopies()).resolves.toBe(0);
+        await expect(load({ local: {} }).api.localCopies()).resolves.toBe(0);
+    });
+
     it('signs out when the browser has no IndexedDB or the lookup fails', async () => {
         const { form, submit } = load();
         const f = form();
@@ -276,13 +316,45 @@ describe('after a sign-out', () => {
         expect(cookies.value).toBe('');
     });
 
+    it('removes the file names of unfinished uploads in slices from localStorage and keeps the preferences', async () => {
+        const local = {
+            'speakr.slicedUploads': JSON.stringify({ 'Jane Doe intake.mp4|900000000|1700000000000': { sessionId: 'a', savedAt: Date.now() } }),
+            darkMode: 'true',
+            lastSelectedRecordingId: '42',
+        };
+        const { api, localStorage, sessionStorage } = load({ cookie: 'speakr_signed_out=1', local });
+        await api.ready;
+        expect(local).toEqual({ darkMode: 'true', lastSelectedRecordingId: '42' });
+        expect(localStorage.removeItem.mock.calls).toEqual([['speakr.slicedUploads']]);
+        // The result of an incognito recording, with its file name and size, is in sessionStorage.
+        expect(sessionStorage.clear).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses the key and the lifetime of the upload module', () => {
+        const upload = readFileSync(fileURLToPath(new URL('./modules/db/sliced-file-upload.js', import.meta.url)), 'utf8');
+        expect(upload).toContain("const RESUME_KEY = 'speakr.slicedUploads';");
+        expect(upload).toContain('const RESUME_TTL_MS = 24 * 60 * 60 * 1000;');
+        expect(SOURCE).toContain("const SLICED_UPLOADS_KEY = 'speakr.slicedUploads';");
+        expect(SOURCE).toContain('const SLICED_UPLOADS_TTL_MS = 24 * 60 * 60 * 1000;');
+        const incognito = readFileSync(fileURLToPath(new URL('./modules/db/incognito-storage.js', import.meta.url)), 'utf8');
+        expect(incognito).not.toContain('localStorage');
+    });
+
+    it('still clears the rest where localStorage is refused', async () => {
+        const { api, sessionStorage, cookies } = load({ cookie: 'speakr_signed_out=1', local: null, cacheNames: ['a'] });
+        await api.ready;
+        expect(sessionStorage.clear).toHaveBeenCalledTimes(1);
+        expect(cookies.value).toBe('');
+    });
+
     it('clears nothing without the mark of a sign-out', async () => {
         const databases = { SpeakrFailedUploads: { failedUploads: { 1: {} } } };
         for (const cookie of ['', 'session=abc', 'speakr_signed_out=0', 'xspeakr_signed_out=1', 'speakr_signed_out=10']) {
-            const { api, sessionStorage, caches, worker, cookies } = load({ cookie, databases, cacheNames: ['speakr-static-9.9.9'] });
+            const { api, sessionStorage, localStorage, caches, worker, cookies } = load({ cookie, databases, cacheNames: ['speakr-static-9.9.9'] });
             await api.ready;
             await flush();
             expect(sessionStorage.clear, cookie).not.toHaveBeenCalled();
+            expect(localStorage.removeItem, cookie).not.toHaveBeenCalled();
             expect(caches.delete, cookie).not.toHaveBeenCalled();
             expect(worker.postMessage, cookie).not.toHaveBeenCalled();
             expect(cookies.writes, cookie).toEqual([]);
