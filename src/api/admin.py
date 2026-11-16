@@ -23,7 +23,7 @@ from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chun
 from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
 from src.services.storage_quota import default_quota_mb
-from src.services import login_lock
+from src.services import audit, login_lock
 from src.auth.permissions import CREATE_GROUPS, set_user_grant, user_has_grant
 from src.config.startup import get_file_monitor_functions
 
@@ -353,6 +353,11 @@ def admin_add_user():
     apply_new_user_defaults(new_user)
 
     db.session.add(new_user)
+    db.session.flush()
+    # The username is stored here and at the deletion of the account, and on
+    # no other row, so that a row can be attributed after the account is gone.
+    audit.record_in_tx('admin.user.created', target_user_id=new_user.id,
+                       details={'username': new_user.username, 'is_admin': bool(new_user.is_admin)})
     db.session.commit()
 
     return jsonify({
@@ -389,7 +394,13 @@ def admin_update_user(user_id):
     data = request.json
     if not data:
         return jsonify(api_error('no_data_provided')), 400
-    
+
+    audited_fields = ('username', 'email', 'can_share_publicly', 'monthly_token_budget',
+                      'monthly_transcription_budget', 'storage_quota_mb')
+    before = {name: getattr(user, name) for name in audited_fields}
+    before['create_groups_granted'] = user_has_grant(CREATE_GROUPS, user.id)
+    was_admin = bool(user.is_admin)
+
     # Update user fields
     if 'username' in data and data['username'] != user.username:
         if not 2 <= len(str(data['username']).strip()) <= 20:
@@ -456,6 +467,20 @@ def admin_update_user(user_id):
         except (TypeError, ValueError):
             return jsonify(api_error('invalid_storage_quota')), 400
 
+    # The names of the fields that changed, never their values.
+    changed = [name for name in audited_fields if getattr(user, name) != before[name]]
+    if 'create_groups_granted' in data and bool(data['create_groups_granted']) != before['create_groups_granted']:
+        changed.append('create_groups_granted')
+    if changed:
+        audit.record_in_tx('admin.user.changed', target_user_id=user.id, details={'fields': sorted(changed)})
+    if 'password' in data and data['password']:
+        audit.record_in_tx('admin.user.password_set', target_user_id=user.id,
+                           details={'self': user.id == current_user.id})
+    if data.get('unlock_login') is True:
+        audit.record_in_tx('admin.user.unlocked', target_user_id=user.id)
+    if bool(user.is_admin) != was_admin:
+        audit.record_in_tx('admin.user.role_changed', target_user_id=user.id,
+                           details={'old': was_admin, 'new': bool(user.is_admin)})
     db.session.commit()
     if user.id == current_user.id and data.get('password'):
         # An administrator who sets their own password stays signed in here
@@ -546,6 +571,8 @@ def admin_delete_user(user_id):
     # Groups the user created keep existing without a creator (#576)
     Group.query.filter_by(created_by=user_id).update({'created_by': None}, synchronize_session=False)
 
+    audit.record_in_tx('admin.user.deleted', target_user_id=user_id,
+                       details={'username': user.username, 'recordings_deleted': len(recordings)})
     # Delete user (cascade will handle remaining related data including chunks/embeddings)
     db.session.delete(user)
     db.session.commit()
@@ -583,6 +610,8 @@ def admin_toggle_admin(user_id):
 
     # Toggle admin status
     user.is_admin = not user.is_admin
+    audit.record_in_tx('admin.user.role_changed', target_user_id=user.id,
+                       details={'old': not user.is_admin, 'new': bool(user.is_admin)})
     db.session.commit()
 
     return jsonify({'success': True, 'is_admin': user.is_admin})
@@ -1006,6 +1035,7 @@ def admin_set_llm_temperatures():
         parsed[kind] = value
     for kind, value in parsed.items():
         key = setting_key(kind)
+        audit.setting_changed(key, None, None)
         if value is None:
             SystemSetting.query.filter_by(key=key).delete()
         else:
@@ -1066,8 +1096,14 @@ def admin_update_setting():
     # An empty value for a setting that falls back to .env clears the saved
     # value, so the .env value applies again (#567).
     from src.utils.system_settings import ENV_BACKED_SETTINGS
+    # The stored value before the change, for the audit row. A key that the
+    # application does not know is recorded as 'other', never as typed.
+    existing_row = SystemSetting.query.filter_by(key=key).first()
+    setting_known = existing_row is not None or key in ENV_BACKED_SETTINGS
+    old_value = existing_row.value if existing_row is not None else None
     if key in ENV_BACKED_SETTINGS and (value is None or (isinstance(value, str) and not value.strip())):
         try:
+            audit.setting_changed(key, old_value, None)
             setting = SystemSetting.set_setting(key, None, description, ENV_BACKED_SETTINGS[key][2])
             return jsonify(setting.to_dict())
         except Exception as e:
@@ -1138,6 +1174,7 @@ def admin_update_setting():
         setting_type = 'string'
 
     try:
+        audit.setting_changed(key, old_value, value, known=setting_known)
         setting = SystemSetting.set_setting(key, value, description, setting_type)
 
         # Recompute the Werkzeug ceiling whenever either upload limit
@@ -1176,6 +1213,11 @@ def run_auto_deletion():
 
     try:
         stats = process_auto_deletion()
+        if isinstance(stats, dict) and 'checked' in stats:
+            audit.record_in_tx('admin.retention.run', details={
+                name: int(stats.get(name) or 0)
+                for name in ('checked', 'deleted_audio_only', 'deleted_full', 'errors')})
+            db.session.commit()
         return jsonify(stats)
     except Exception as e:
         current_app.logger.error(f"Error running auto-deletion: {e}")
@@ -1625,6 +1667,8 @@ def admin_save_visible_models():
                     'label': str(opt.get('label') or opt['value']).strip(),
                 })
 
+        audit.setting_changed('transcription_models_visible_json', None, None)
+        audit.setting_changed('transcription_default_model', None, None)
         SystemSetting.set_setting(
             key='transcription_models_visible_json',
             value=_json.dumps(normalised),

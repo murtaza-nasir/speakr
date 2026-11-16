@@ -901,3 +901,50 @@ def _record_access(event, dedup, details, recording_of, view_args, status):
     if _has_recording_access is not None and not _has_recording_access(recording, current_user):
         record(event, recording=recording, outcome='denied', details=values,
                dedup=DEDUP_DENIED, dedup_extra=extra)
+
+
+# --- System settings --------------------------------------------------------
+
+_SETTING_ENUMS = {
+    'user_search_scope': ('everyone', 'groups', 'exact'),
+    'deletion_mode': ('audio_only', 'full_recording'),
+    'audit_log_store_ip': ('full', 'truncated', 'off'),
+}
+_BOOLEAN_WORDS = {'true': 'true', '1': 'true', 'yes': 'true', 'false': 'false', '0': 'false', 'no': 'false'}
+
+
+def setting_value(key, raw):
+    """A setting value as a details value: a boolean word, an integer or a
+    code of the setting's enumeration. Anything else is 'other'; an empty or
+    cleared value is None."""
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return None
+    if isinstance(raw, bool):
+        return 'true' if raw else 'false'
+    text_value = str(raw).strip().lower()
+    if key in _SETTING_ENUMS:
+        return text_value if text_value in _SETTING_ENUMS[key] else 'other'
+    if isinstance(raw, int):
+        return raw
+    if text_value in ('true', 'false', 'yes', 'no'):
+        return _BOOLEAN_WORDS[text_value]
+    try:
+        return int(text_value)
+    except ValueError:
+        return 'other'
+
+
+def setting_changed(key, old_raw, new_raw, known=True):
+    """admin.setting.changed in the transaction of the change.
+
+    The key is stored when it is a setting the application knows, else as
+    'other': POST /admin/settings accepts any key. Old and new value are
+    stored for the keys in SETTING_VALUE_KEYS only. A change of an
+    audit_log_* setting is recorded also while the log is off.
+    """
+    details = {'key': key if known else 'other'}
+    if known and key in SETTING_VALUE_KEYS:
+        details['old'] = setting_value(key, old_raw)
+        details['new'] = setting_value(key, new_raw)
+    return record_in_tx('admin.setting.changed', details=details,
+                        force=known and key.startswith('audit_log_'))
