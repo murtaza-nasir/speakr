@@ -20,7 +20,8 @@ All text is kept in the application database (SQLite by default, PostgreSQL as a
 | Calendar events extracted from a transcript | `event` |
 | Job parameters (including hotwords and initial prompt) and error text of a job | `processing_job` |
 | Public links and internal shares | `share`, `internal_share` |
-| Creation, change and revocation of internal shares, with actor, target user, time and IP address | `share_audit_log` |
+| The [audit log](audit-log.md): sign-ins, access to recordings, changes, shares and administrative actions, each with time, account, client address and user agent. Ids and codes only; no title, file name or content. Rows are kept for `audit_log_retention_days` days (default 365). | `audit_event` |
+| Changes of internal shares recorded by earlier releases. The table is no longer written; its rows were copied to `audit_event`. | `share_audit_log` |
 | Webhook addresses, signing secrets in plain text, and the payload of every delivery of the last `webhook_delivery_retention_days` days (default 30) | `webhook`, `webhook_delivery` |
 | Token and audio-second counts per user and day, with the counts of incognito requests | `token_usage`, `transcription_usage` |
 | API tokens as SHA-256 hashes, with name, scopes, expiry and time of last use | `api_token` |
@@ -71,7 +72,7 @@ With `PRESERVE_TEMP_AUDIO=true`, a debug copy of each converted file is kept in 
 
 ### Deletion and retention
 
-When a recording is deleted, by its owner, through the API or by a retention rule, the following is removed: the media file, the waveform data, the transcript passages and embeddings, the public links and internal shares, the tag assignments, the speaker quotes, the processing jobs, the share audit rows of the recording, and a job still held by a WhisperX transcription service.
+When a recording is deleted, by its owner, through the API or by a retention rule, the following is removed: the media file, the waveform data, the transcript passages and embeddings, the public links and internal shares, the tag assignments, the speaker quotes, the processing jobs, and a job still held by a WhisperX transcription service.
 
 The following remains after the deletion of a recording:
 
@@ -80,6 +81,7 @@ The following remains after the deletion of a recording:
 - Speaker profiles and voice embeddings learned from the recording, until the speaker is deleted. A speaker profile without any recording is removed by the cleanup of orphaned speakers.
 - The exported file, when automatic export is enabled. By default the file is renamed with the `[deleted]_` prefix and its content is kept. With `auto_export_delete_with_recording=true`, the file is deleted together with the recording. Files renamed before the setting was turned on are not removed afterwards.
 - The usage counts in `token_usage` and `transcription_usage`. These rows hold numbers per user and day, without a recording id.
+- The rows of the [audit log](audit-log.md) that name the recording: who opened, played, downloaded, changed, shared and deleted it, and when. The rows hold the id of the recording and of its owner, without a title or any content, and are removed after `audit_log_retention_days` days (default 365; with 0 they are kept without limit). The same applies after the deletion of an account: the rows that name the account remain, by id, and the username is kept in the row of its deletion.
 - Log lines already written, and any copy held by an external service that received the audio or the text.
 - The media file itself, in the case of a storage error during a deletion by a user. The error is logged with the storage path.
 
@@ -112,6 +114,12 @@ The error text of a failed job is stored in `processing_job.error_message` and o
 - The result is limited to 500 characters, with both ends kept.
 
 A repetition of fewer than 20 characters outside quotation marks is not detected. Text taken from the audio itself, such as a transcribed passage in the error of a transcription service, is not detected either.
+
+### Audit log fallback
+
+An audit event that cannot be written to the database after four further attempts is written to the log instead, as one line that begins with `AUDIT-FALLBACK`, at the level `ERROR`. The line holds the values of the audit row: event name, time, ids, outcome and, unless `audit_log_store_ip` is `off`, the client address and the user agent. It holds no title, file name or content. See [Failures](audit-log.md#failures).
+
+### Incognito requests
 
 During an incognito request, only metadata is logged at every level, including `DEBUG`: user id, sizes, lengths, durations, language code, connector name and status codes. Every other log record created during the request, including the records of the HTTP and LLM client libraries, is replaced by a line with its length and source location. An error of a provider is logged as its class, status code and message length, without the message.
 
@@ -181,7 +189,7 @@ Incognito mode is off by default and is enabled with `ENABLE_INCOGNITO_MODE=true
 5. Transcript, title and summary are returned in the response and are kept in the `sessionStorage` of the browser tab. They are gone when the tab is closed.
 6. Chat questions are sent to `/api/recordings/incognito/chat` together with the transcript, and a new summary is requested from `/api/recordings/incognito/summary` in the same way. Nothing from these requests is stored.
 
-An incognito request is counted against the monthly budgets of the user. The same rows as for an ordinary request are written to `token_usage` and `transcription_usage`: user, date, kind of operation or connector, model name, token and second counts, request count and cost. These rows hold no title, no file name, no content and no recording id, and they do not show which requests were incognito. No other row is added to the database, and no content of the request is stored. One value of the account can change: the time of its last use, which is updated as for any other request and carries no mark of incognito mode (see [Database](#database)).
+An incognito request is counted against the monthly budgets of the user. The same rows as for an ordinary request are written to `token_usage` and `transcription_usage`: user, date, kind of operation or connector, model name, token and second counts, request count and cost. These rows hold no title, no file name, no content and no recording id, and they do not show which requests were incognito. One further row is added to the database for an incognito upload: the `incognito.used` row of the [audit log](audit-log.md), with the account, the time, the client address, the user agent and the outcome. Nothing about the file, its size, its duration or its content is part of that row, and no row is written for an incognito chat or summary request. With `audit_log_enabled=false`, the `incognito.used` row is not written either. No other row is added to the database, and no content of the request is stored. One value of the account can change: the time of its last use, which is updated as for any other request and carries no mark of incognito mode (see [Database](#database)).
 
 The budget checks of an ordinary request apply. An upload by a user over the monthly transcription budget is refused with `403`. For a user over the monthly token budget, no title, summary or chat answer is requested from the LLM: the transcript is returned with the default title and without a summary, and a chat or summary request is refused.
 
@@ -203,7 +211,7 @@ Limits of incognito mode:
 
 - **Public links.** Anyone with a link can read the transcript and play the audio, and can read the summary and the notes when the owner includes them. An expiry date is optional. An administrator stops public sharing with `ENABLE_PUBLIC_SHARING=false`, or withdraws the permission from individual users. From that moment the page and the audio of every existing link of the instance, or of that user, are answered with `404`, the same answer as for an unknown link. The links are kept, and they are served again when public sharing is turned on again or the permission is returned. In the share list of the owner, and in the API, such a link is reported with `active: false`.
 - **Internal sharing.** Sharing between accounts is enabled with `ENABLE_INTERNAL_SHARING`. With `SHOW_USERNAMES_IN_UI` and `user_search_scope` (`everyone`, `groups` or `exact`), an administrator limits the usernames that a user can see and find.
-- **Administrators.** A site administrator has no route to read the recordings of another user. An administrator can set the password of any account, and a person with access to the server or the database can read everything.
+- **Administrators.** A site administrator has no route to read the recordings of another user. An administrator can set the password of any account, and a person with access to the server or the database can read everything. Each password set by an administrator, each change of an account, a role or a system setting, and each reading or export of the audit log is recorded in the [audit log](audit-log.md).
 - **API tokens.** Tokens are stored as SHA-256 hashes. Scopes and an expiry date are optional, and a token without a date never expires. A token in the `?token=` query parameter is accepted on `GET` requests by default and then appears in the access log of a reverse proxy. With `api_query_tokens_enabled=false`, a token in the query parameter is refused on every method, and a token must be sent in a header.
 - **Sessions.** Cookies are `HttpOnly` and `SameSite=Lax`. The `Secure` flag is set only with `SESSION_COOKIE_SECURE=true`. A warning is logged when `APP_BASE_URL` is an https address, or a request arrives over HTTPS, while the flag is off. With `session_idle_timeout_minutes` above 0, a user whose browser session sent no request for that time must sign in again; the default is 0, without an idle timeout. See [Session idle timeout](system-settings.md#session-idle-timeout).
 - **Passwords.** At least 8 characters with upper case, lower case, digit and special character are required. After 5 wrong passwords for one account from one address, sign-in from that address is refused for 15 minutes. Both numbers are system settings (`login_max_failed_attempts`, `login_lockout_minutes`).
@@ -227,11 +235,13 @@ Limits of incognito mode:
 14. Leave `ENABLE_AUTO_EXPORT`, `ENABLE_AUTO_PROCESSING` and `PRESERVE_TEMP_AUDIO` unset unless their folders are covered by the same protection. With automatic export in use, set `auto_export_delete_with_recording=true`.
 15. Apply the retention and the encryption of the live system to its backups. Recordings deleted later are still present in an older backup.
 16. Keep a list of the people with access to the host, the Docker daemon, the database and the backups. Each of them can read all recordings.
-17. Instruct users on shared computers to sign out after use and to close the other tabs, or give each user a separate browser profile. What is removed at sign-out is listed under [Sign-out](#sign-out).
+17. Set `audit_log_retention_days` to the period required by the institution (2190 for six years), and decide on `audit_log_store_ip`. Export the [audit log](audit-log.md#access-for-an-external-system) on a schedule to a system outside the reach of the server administrators, and keep the `AUDIT-FALLBACK` lines of the container log.
+18. Instruct users on shared computers to sign out after use and to close the other tabs, or give each user a separate browser profile. What is removed at sign-out is listed under [Sign-out](#sign-out).
 
 ## Known limits
 
-- **No access audit log.** No record is kept of who viewed, played, downloaded or exported a recording, of sign-ins and failed sign-ins, or of actions by administrators. The only records are the share audit table for internal shares (its rows are deleted together with the recording), the time of last use of each API token, and the temporary counters of failed sign-ins. An access record required by a regulation must come from the reverse proxy or another system.
+- **Access that the audit log does not record.** The [audit log](audit-log.md) records who opened, played, downloaded, changed, shared and deleted a recording, sign-ins and failed sign-ins, and actions by administrators. It does not record lists of recordings, searches, questions to Ask Ambrose or to the chat of a recording, shares made by a group tag or folder, or text that is copied or saved in the browser after a recording was opened. Up to one second of read and sign-in events can be missing after a kill of the server process.
+- **The audit log can be changed in the database.** No route of the application changes or deletes a row, but the table is not protected against a person with access to the database. A copy on another system is made with the export.
 - **No encryption at rest in the application.** Database content, media files, webhook signing secrets and exported files are stored as plain data.
 - **Content in the browser.** Audio of an ordinary recording in progress and files of failed ordinary uploads are kept in IndexedDB, and chat threads in `sessionStorage`, as listed under [Browser storage](#browser-storage). They are removed at sign-out, but not when a session ends through an idle timeout or when the browser is closed without a sign-out. Interface preferences in `localStorage`, among them the id of the last selected recording, are kept.
 - **Titles and file names after deletion.** They are kept in the webhook delivery rows for `webhook_delivery_retention_days` (default 30), unless `webhook_omit_titles` is on.
@@ -241,3 +251,4 @@ Limits of incognito mode:
 - **No idle timeout by default** for sessions, and no expiry for API tokens without a date. An idle timeout is set with `session_idle_timeout_minutes`.
 - **Tokens in the URL by default.** The `?token=` query parameter is accepted until `api_query_tokens_enabled` is set to `false`.
 - **Usage rows of incognito requests.** The counts of an incognito request are stored per user and day, as for every other request.
+- **Audit row of an incognito upload.** The fact that an account used incognito mode, and when, is recorded in the audit log while `audit_log_enabled` is on.
