@@ -21,7 +21,7 @@
      Template rules: no object literals inside ${ } (use v-text), no window.*
      in expressions. -->
 
-<div v-if="showSpeakerModal" @click.self="closeSpeakerModal" class="modal-overlay">
+<div v-if="showSpeakerModal" @click.self="closeSpeakerModal" class="modal-overlay" :data-shortcut-dirty="editedTranscriptData !== null ? 'true' : null">
     <div class="modal-panel modal-panel--xl spk-modal" style="height: 90vh; max-height: 90vh;">
 
         <div class="modal-header">

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-    SEQUENCE_MS, createShortcuts, isControlTarget, isTypingTarget, keyCaps, keyToken,
+    SEQUENCE_MS, createShortcuts, isAltGraphCharacter, isControlTarget, isTypingTarget, keyCaps, keyToken,
 } from './keyboard-shortcuts.js';
 
 // A keydown event as the registry reads it. The tests run without a DOM.
@@ -28,7 +28,8 @@ function setup(options = {}) {
         { keys: ['j'], scope: 'list', group: 'list', label: 'move', repeat: true, run: run('next') },
         { keys: ['k'], scope: 'list', group: 'list', label: 'move', repeat: true, run: run('previous') },
         { keys: ['s'], scope: 'list', group: 'list', label: 'star', run: run('star') },
-        { keys: ['D'], scope: 'global', group: 'general', label: 'dark', run: run('dark') },
+        { keys: ['C'], scope: 'global', group: 'general', label: 'copy tab', run: run('copy tab') },
+        { keys: ['#'], scope: 'list', group: 'list', label: 'delete', run: run('delete') },
         { keys: ['Enter', 'o'], scope: 'list', group: 'list', label: 'open', run: run('open') },
         { keys: ['g r'], scope: 'global', group: 'navigation', label: 'recordings', run: run('go recordings') },
         { keys: ['g s'], scope: 'global', group: 'navigation', label: 'settings', run: run('go settings') },
@@ -107,10 +108,10 @@ describe('a single key', () => {
 
     it('tells Shift from no Shift, whatever Caps Lock says', () => {
         const { registry, calls } = setup();
-        registry.handle(press('D', { shiftKey: true }));
-        registry.handle(press('D', { shiftKey: false })); // Caps Lock: a plain d, which has no binding
+        registry.handle(press('C', { shiftKey: true }));
+        registry.handle(press('C', { shiftKey: false })); // Caps Lock: a plain c, which has no binding
         registry.handle(press('S', { shiftKey: false })); // Caps Lock: a plain s
-        expect(calls).toEqual(['dark', 'star']);
+        expect(calls).toEqual(['copy tab', 'star']);
     });
 
     it('does nothing while Ctrl, Cmd or Alt is held', () => {
@@ -121,6 +122,58 @@ describe('a single key', () => {
             expect(event.defaultPrevented).toBe(false);
         });
         expect(calls).toEqual([]);
+    });
+
+    it('accepts a character that the layout types with AltGr, and no letter that way', () => {
+        // Windows reports AltGr as Ctrl+Alt
+        const altGr = { ctrlKey: true, altKey: true, getModifierState: (name) => name === 'AltGraph' };
+        const { registry, calls } = setup();
+        const hash = press('#', altGr);
+        expect(registry.handle(hash).label).toBe('delete');
+        expect(hash.defaultPrevented).toBe(true);
+        // AltGr alone, as other systems report it
+        registry.handle(press('#', { getModifierState: (name) => name === 'AltGraph' }));
+        expect(calls).toEqual(['delete', 'delete']);
+        // A letter with AltGr, Ctrl+Alt without AltGr, and Cmd are still not keys of the app
+        [press('s', altGr), press('j', altGr), press('#', { ctrlKey: true, altKey: true }),
+            press('#', { ctrlKey: true, altKey: true, getModifierState: () => false }),
+            press('#', { ...altGr, metaKey: true }), press('#', { ctrlKey: true })].forEach((event) => {
+            expect(registry.handle(event)).toBeNull();
+            expect(event.defaultPrevented).toBe(false);
+        });
+        expect(calls).toEqual(['delete', 'delete']);
+
+        expect(isAltGraphCharacter(press('#', altGr))).toBe(true);
+        expect(isAltGraphCharacter(press('@', altGr))).toBe(true);
+        expect(isAltGraphCharacter(press('\u0105', altGr))).toBe(false); // a letter typed with AltGr
+        expect(isAltGraphCharacter(press(' ', altGr))).toBe(false);
+        expect(isAltGraphCharacter(press('Enter', altGr))).toBe(false);
+        expect(isAltGraphCharacter(press('#'))).toBe(false);
+        expect(isAltGraphCharacter(null)).toBe(false);
+    });
+
+    it('keeps the key from the browser only when it is handled', () => {
+        const registry = createShortcuts({ scopes: () => ['recording'] });
+        const calls = [];
+        let free = true;
+        registry.add([{ keys: ['Space'], scope: 'recording', group: 'player', label: 'play', when: () => free, run: () => calls.push('play') }]);
+        const handled = press(' ');
+        registry.handle(handled);
+        expect(handled.defaultPrevented).toBe(true);
+        free = false;
+        const left = press(' ');
+        expect(registry.handle(left)).toBeNull();
+        expect(left.defaultPrevented).toBe(false);
+        // On a focused button Space is the button's, whatever the binding says
+        free = true;
+        const onButton = press(' ', { target: el('BUTTON') });
+        expect(registry.handle(onButton)).toBeNull();
+        expect(onButton.defaultPrevented).toBe(false);
+        // In a field it types a space
+        const typing = press(' ', { target: el('TEXTAREA') });
+        expect(registry.handle(typing)).toBeNull();
+        expect(typing.defaultPrevented).toBe(false);
+        expect(calls).toEqual(['play']);
     });
 
     it('does nothing while an input method composes text', () => {
@@ -394,10 +447,10 @@ describe('the help', () => {
         const help = registry.help(['general', 'navigation', 'list', 'recording', 'player']);
         expect(help.map((entry) => entry.group)).toEqual(['general', 'navigation', 'list', 'recording', 'player']);
         const list = help.find((entry) => entry.group === 'list');
-        expect(list.rows.map((row) => row.label)).toEqual(['move', 'star', 'open']);
+        expect(list.rows.map((row) => row.label)).toEqual(['move', 'star', 'delete', 'open']);
         // j and k share a row, Enter and o are two keys of one binding
         expect(list.rows[0].keys.map((key) => key.caps.join('+'))).toEqual(['j', 'k']);
-        expect(list.rows[2].keys.map((key) => key.caps.join('+'))).toEqual(['Enter', 'o']);
+        expect(list.rows[3].keys.map((key) => key.caps.join('+'))).toEqual(['Enter', 'o']);
         expect(help.find((entry) => entry.group === 'navigation').rows[0].keys[0]).toEqual({ caps: ['g', 'r'], sequence: true });
         // A reference row is listed
         expect(help.find((entry) => entry.group === 'recording').rows[0].keys[0].caps).toEqual(['Ctrl', 'F']);

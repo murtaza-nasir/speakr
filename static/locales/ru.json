@@ -4174,7 +4174,6 @@
     "search": "Поиск записей",
     "newRecording": "Новая запись",
     "toggleQueue": "Показать или скрыть очередь обработки",
-    "toggleDarkMode": "Переключить светлую и тёмную тему",
     "goRecordings": "Записи",
     "goAssistant": "Спросить {{name}}",
     "goSettings": "Настройки аккаунта",

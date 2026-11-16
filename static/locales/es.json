@@ -4174,7 +4174,6 @@
     "search": "Buscar grabaciones",
     "newRecording": "Nueva grabación",
     "toggleQueue": "Mostrar u ocultar la cola de procesamiento",
-    "toggleDarkMode": "Cambiar entre modo claro y oscuro",
     "goRecordings": "Grabaciones",
     "goAssistant": "Preguntar a {{name}}",
     "goSettings": "Ajustes de la cuenta",

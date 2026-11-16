@@ -4174,7 +4174,6 @@
     "search": "Rechercher des enregistrements",
     "newRecording": "Nouvel enregistrement",
     "toggleQueue": "Afficher ou masquer la file de traitement",
-    "toggleDarkMode": "Basculer entre mode clair et mode sombre",
     "goRecordings": "Enregistrements",
     "goAssistant": "Demander à {{name}}",
     "goSettings": "Paramètres du compte",

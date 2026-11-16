@@ -13,19 +13,23 @@ its button, and that the keys leave the rest of the app alone.
   Esc takes the frame back to the open recording, s and i change the star
   and the inbox mark through the app's own routes, # asks in the delete
   dialog and deletes nothing.
-- The open recording and the player: the tab keys, the view key, play and
-  pause, skipping and the speed.
+- The open recording and the player: the tab keys (with events given to the
+  page for the fourth), the view key, the summary editor, archive and
+  unarchive, play and pause with p and with Space, skipping and the speed.
 - No key fires while text is typed in the search field, the notes editor or
-  the chat field, and Enter on a focused button presses that button.
-- One Esc closes one thing: the dialog before the panel under it.
+  the chat field, and Enter and Space on a focused button press that button.
+  Space plays only while nothing has the focus.
+- One Esc closes one thing: the dialog before the panel under it. A dialog
+  with a changed field is not closed by Esc; the same dialog unchanged is.
 - Ctrl+F still opens the find bar of a long transcript, and the segment
   editor keeps its own keys.
 - g then a letter opens another page, where the help lists that page's keys.
 - The account setting turns every key off, and the phone layout has none.
 
 The queue's answer and a long transcript are given to the page by the test,
-so the instance's data stays as it is, apart from the star and the inbox
-mark, which are set back, and the account setting, which is turned on again.
+so the instance's data stays as it is, apart from the star, the inbox mark
+and the archive mark, which are set back, and the account setting, which is
+turned on again.
 
 Every test fails on a JavaScript error, a same-origin response of 400 or
 higher, template text left in the page and a dialog of the browser.
@@ -374,7 +378,7 @@ def test_the_help_lists_the_keys_of_the_page_and_closes_with_escape(desk):
     groups = page.evaluate(HELP_ROWS)
     assert [g["group"] for g in groups] == ["general", "navigation", "list", "recording", "player", "editor", "video"]
     assert [g["heading"] for g in groups] == [en(f"shortcuts.groups.{g['group']}") for g in groups]
-    rows = {row["label"]: row["keys"] for g in groups for row in g["rows"]}
+    rows = {row["label"]: row["keys"] for g in reversed(groups) for row in g["rows"]}
     # Every label is a translated text, never its key
     assert not [label for label in rows if not label or label.startswith("shortcuts.")], rows
     assert rows[en("shortcuts.showHelp")] == ["?"]
@@ -384,7 +388,8 @@ def test_the_help_lists_the_keys_of_the_page_and_closes_with_escape(desk):
     assert rows[en("shortcuts.goRecordings")] == ["g r"]
     assert rows[en("shortcuts.goSettings")] == ["g s"]
     assert rows[en("shortcuts.goAdmin")] == ["g d"], "the seeded account is an administrator"
-    assert rows[en("shortcuts.toggleDarkMode")] == ["Shift D"]
+    assert rows[en("shortcuts.playPause")] == ["p", en("shortcuts.keys.space")], "play and pause in the Player group"
+    assert not [label for label in rows if "dark" in label.lower()], "there is no key for light and dark"
     assert rows[en("shortcuts.skip15")] == ["Shift H", "Shift L"]
     assert rows[en("shortcuts.findInTranscript")] == ["Ctrl F"]
     assert rows[en("shortcuts.openChat").replace("{{name}}", "Ambrose")] == ["m"]
@@ -576,27 +581,29 @@ def test_new_recording_and_search_keys(desk):
 
 def test_tab_and_view_keys(desk):
     page = desk.page
+    recording_id = desk.ids[MEETING_TITLE]
     desk.open(MEETING_TITLE)
+
     # The tabs beside the transcript are the second tab bar of the page
-
     def tabs():
-        return page.evaluate("() => [...document.querySelectorAll('#mainContentColumns .tabs-bar')][1].querySelector('.tab.is-active').textContent.trim()")
+        return page.evaluate("() => [...document.querySelectorAll('#mainContentColumns .tabs-bar')][1].querySelector('.tab.is-active span').textContent.trim()")
 
-    assert tabs().startswith(en("summary.title"))
+    def tab_names():
+        return page.evaluate("() => [...[...document.querySelectorAll('#mainContentColumns .tabs-bar')][1].querySelectorAll('.tab')].map((t) => t.querySelector('span').textContent.trim())")
+
+    # The seeded recording has two speakers, so it has speaker stats; it has no events
+    assert tab_names() == [en("summary.title"), en("notes.title"), en("stats.title")]
+    assert tabs() == en("summary.title")
     desk.press("2")
-    assert tabs().startswith(en("notes.title")), tabs()
-    desk.press("1")
-    assert tabs().startswith(en("summary.title")), tabs()
-    has_stats = page.evaluate("() => [...document.querySelectorAll('#mainContentColumns .tabs-bar')][1].querySelectorAll('.tab').length >= 3")
+    assert tabs() == en("notes.title")
     desk.press("3")
-    assert tabs().startswith(en("notes.title")) is False
-    if has_stats:
-        assert not tabs().startswith(en("summary.title")), "3 did not show the speaker stats"
-    # The seeded recording has no events: 4 has no button to stand for
-    before = tabs()
-    desk.press("4")
-    assert tabs() == before
+    assert tabs() == en("stats.title")
+    assert page.locator("#mainContentColumns").get_by_text("SPEAKER_00").first.is_visible(), "the speaker stats are not shown"
     desk.press("1")
+    assert tabs() == en("summary.title")
+    # Without events 4 has no button to stand for
+    desk.press("4")
+    assert tabs() == en("summary.title")
 
     bubble = "() => !!document.querySelector('#mainContentColumns .transcription-with-speakers')"
     assert page.evaluate(bubble) is False
@@ -605,6 +612,67 @@ def test_tab_and_view_keys(desk):
     desk.press("v")
     desk.wait(f"() => !({bubble})()")
     desk.check("tabs and view")
+
+    # With events the fourth tab is there, and 4 shows it
+    desk.patches[recording_id] = {"events": [{"id": 901, "title": "Design review", "description": "Screens",
+                                              "start_datetime": "2026-03-10T14:00:00", "end_datetime": "2026-03-10T14:30:00",
+                                              "location": "Room 2", "attendees": ["Dana", "Marco"]}]}
+    desk.open(MEETING_TITLE)
+    assert tab_names() == [en("summary.title"), en("notes.title"), en("stats.title"), en("events.title")]
+    desk.press("4")
+    assert tabs() == en("events.title")
+    assert page.locator("#mainContentColumns").get_by_text("Design review").first.is_visible()
+    desk.press("3")
+    assert tabs() == en("stats.title")
+    desk.press("1")
+    desk.check("events tab")
+
+
+def test_shift_e_edits_the_summary(desk):
+    page = desk.page
+    desk.open(MEETING_TITLE)
+    summary = desk.record(MEETING_TITLE)["summary"]
+    assert summary, "the seeded recording has a summary"
+    editor = page.locator("#mainContentColumns .CodeMirror")
+    assert editor.count() == 0
+    # Without Shift, e is the transcript's key: only Shift+E opens the summary editor
+    desk.press("Shift+E")
+    editor.wait_for(state="visible", timeout=WAIT)
+    assert page.evaluate("() => document.querySelector('#mainContentColumns .CodeMirror').CodeMirror.getValue()").strip() == summary.strip()
+    assert page.locator('.modal-overlay[data-shortcut-scope="editor"]').count() == 0, "the transcript editor opened"
+    # While the editor is shown the key has no button to stand for
+    desk.blur()
+    desk.press("Shift+E")
+    assert editor.count() == 1
+    page.locator("#mainContentColumns button", has_text=en("buttons.cancel")).first.click()
+    editor.wait_for(state="detached", timeout=WAIT)
+    assert desk.record(MEETING_TITLE)["summary"] == summary
+    desk.check("summary editor")
+
+
+def test_a_archives_and_unarchives(desk):
+    page = desk.page
+    desk.open(MEETING_TITLE)
+    opened = desk.ids[MEETING_TITLE]
+    assert desk.record(MEETING_TITLE)["is_archived"] is False
+    archived = "([base, id, v]) => fetch(`${base}/api/recordings/${id}`).then((r) => r.json()).then((d) => d.is_archived === v)"
+    pressed = "(v) => document.querySelector('header .fa-box-archive').closest('button').getAttribute('aria-pressed') === v"
+    try:
+        desk.press("a")
+        page.wait_for_function(archived, arg=[BASE, opened, True], timeout=WAIT)
+        desk.wait(pressed, arg="true")
+        # An archived recording leaves the list and stays open
+        desk.wait("(id) => ![...document.querySelectorAll('aside.sidebar .recording-row')].some((el) => el.dataset.recordingId === String(id))", arg=opened)
+        assert desk.open_id() == opened
+        # Its row is gone, so the key acts on the open recording: unarchived again
+        desk.press("a")
+        page.wait_for_function(archived, arg=[BASE, opened, False], timeout=WAIT)
+        desk.wait(pressed, arg="false")
+    finally:
+        if desk.record(MEETING_TITLE)["is_archived"]:
+            page.request.post(f"{BASE}/recording/{opened}/toggle_archive", headers={"X-CSRFToken": desk.csrf(), "Content-Type": "application/json"})
+    assert desk.record(MEETING_TITLE)["is_archived"] is False
+    desk.check("archive")
 
 
 def test_player_keys(desk):
@@ -618,6 +686,34 @@ def test_player_keys(desk):
         desk.wait(f"() => !({AUDIO})().paused")
         desk.press("p")
         desk.wait(f"() => ({AUDIO})().paused")
+
+        # Space while nothing has the focus: the same button, and the key is kept from the browser
+        desk.blur()
+        assert page.evaluate("() => document.activeElement === document.body")
+        page.evaluate("() => { window.__space = []; document.addEventListener('keydown', (e) => { if (e.key === ' ') setTimeout(() => window.__space.push(e.defaultPrevented)); }); }")
+        desk.press("Space")
+        desk.wait(f"() => !({AUDIO})().paused")
+        desk.press("Space")
+        desk.wait(f"() => ({AUDIO})().paused")
+        desk.wait("() => window.__space.length === 2")
+        assert page.evaluate("() => window.__space") == [True, True]
+
+        # Space on a focused button presses that button and plays nothing
+        notes = page.locator("#mainContentColumns .tabs-bar .tab", has_text=en("notes.title")).first
+        notes.focus()
+        desk.press("Space")
+        assert notes.evaluate("(el) => el.classList.contains('is-active')"), "Space did not press the focused tab"
+        page.wait_for_timeout(300)
+        assert desk.audio()["paused"], "Space on a button started the audio"
+        # Space in the recording list, which it scrolls, is left to the browser
+        page.locator("aside.sidebar .sidebar-list").focus()
+        desk.press("Space")
+        page.wait_for_timeout(300)
+        assert desk.audio()["paused"], "Space in the list started the audio"
+        desk.wait("() => window.__space.length === 4")
+        assert page.evaluate("() => window.__space.slice(2)") == [False, False], "a Space that was not handled was kept from the browser"
+        desk.blur()
+        desk.press("1")
 
         page.evaluate("() => { const a = [...document.querySelectorAll('audio, video')].find((el) => el.currentSrc || el.src); a.currentTime = 30; }")
         desk.wait(f"() => Math.abs(({AUDIO})().time - 30) < 0.5")
@@ -677,16 +773,15 @@ def test_no_key_fires_while_text_is_typed(desk):
         assert desk.cursor() is None, f"{where}: the frame moved"
         assert desk.open_id() == opened and page.url.startswith(f"{BASE}/recordings/"), f"{where}: the page changed"
         assert desk.audio()["paused"], f"{where}: the audio plays"
-        assert page.evaluate("() => document.documentElement.classList.contains('dark')") is False, where
 
     # The search field of the list
     desk.press("/")
     field = page.locator("[data-shortcut-search]:visible")
     field.wait_for(state="visible", timeout=WAIT)
     page.keyboard.type(typed)
-    page.keyboard.press("Shift+D")
     desk.rendered()
-    assert field.input_value() == typed + "D"
+    # Every character was typed, the spaces among them
+    assert field.input_value() == typed
     untouched("search field")
     field.fill("")
     desk.blur()
@@ -795,6 +890,55 @@ def test_escape_closes_the_dialog_before_the_panel(desk):
     desk.check("escape order")
 
 
+def test_escape_does_not_close_a_dialog_with_unsaved_input(desk):
+    page = desk.page
+    desk.open(MEETING_TITLE)
+    dialog = page.locator(".modal-overlay:visible", has=page.locator(".spk-modal"))
+    names = dialog.locator(".spk-name input[type=text]")
+
+    def open_dialog():
+        page.locator("header .fa-user-tag").first.click()
+        dialog.wait_for(state="visible", timeout=WAIT)
+        names.first.wait_for(state="visible", timeout=WAIT)
+        desk.rendered()
+
+    # Unchanged, with the focus on a button: Esc closes it as the Close button does
+    open_dialog()
+    dialog.locator(".modal-close").focus()
+    desk.press("Escape")
+    dialog.wait_for(state="detached", timeout=WAIT)
+
+    # A changed field, with the focus on a button: Esc leaves the dialog open
+    open_dialog()
+    before = names.first.input_value()
+    names.first.click()
+    page.keyboard.type("Ana")
+    assert names.first.input_value() == before + "Ana"
+    # Esc in the field is the field's own key (its list of suggestions)
+    desk.press("Escape")
+    assert dialog.count() == 1
+    dialog.locator(".modal-close").focus()
+    desk.press("Escape")
+    page.wait_for_timeout(400)
+    assert dialog.count() == 1, "Esc closed a dialog with a changed field"
+    assert names.first.input_value() == before + "Ana"
+    # ... and with the focus nowhere
+    desk.blur()
+    desk.press("Escape")
+    page.wait_for_timeout(400)
+    assert dialog.count() == 1, "Esc closed a dialog with a changed field"
+
+    # The field as it was: nothing is unsaved, and Esc closes the dialog
+    names.first.fill(before)
+    dialog.locator(".modal-close").focus()
+    desk.press("Escape")
+    dialog.wait_for(state="detached", timeout=WAIT)
+
+    # A dialog in which the choice is made with buttons is never closed by Esc
+    assert page.locator('[data-shortcut-scope="dialog"]').count() == 0
+    desk.check("unsaved input")
+
+
 def test_ctrl_f_still_opens_the_find_bar_of_a_long_transcript(desk):
     page = desk.page
     desk.patches[desk.ids[LONG_TITLE]] = {"transcription": json.dumps(many_segments())}
@@ -840,17 +984,10 @@ def test_g_then_a_letter_opens_a_page_and_its_help(desk):
     desk.press("Escape")
     page.locator(HELP).wait_for(state="detached", timeout=WAIT)
 
-    # Shift+D is the light and dark switch of the account menu
+    # Light and dark have no key
     dark = "() => document.documentElement.classList.contains('dark')"
+    desk.press("Shift+D", "d")
     assert page.evaluate(dark) is False
-    desk.press("Shift+D")
-    desk.wait(dark)
-    desk.press("Shift+D")
-    desk.wait(f"() => !({dark})()")
-    # d without Shift is not that key
-    desk.press("d")
-    assert page.evaluate(dark) is False
-    page.wait_for_timeout(600)  # the theme is saved after a short wait
     desk.check("account", utilities=False)
 
     desk.press("g", "d")

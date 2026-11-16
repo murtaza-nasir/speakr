@@ -4945,7 +4945,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 toggleTranscriptionViewMode: uiComposable.toggleTranscriptionViewMode,
                 openChatPanel, collapseChatPanel, toggleQueuePanel,
                 closeTranscriptFind: transcriptViewComposable.closeTranscriptFind,
-                toggleDarkMode: uiComposable.toggleDarkMode,
             });
 
             // =========================================================================

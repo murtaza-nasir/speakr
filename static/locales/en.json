@@ -4174,7 +4174,6 @@
     "search": "Search recordings",
     "newRecording": "New recording",
     "toggleQueue": "Show or hide the processing queue",
-    "toggleDarkMode": "Switch between light and dark mode",
     "goRecordings": "Recordings",
     "goAssistant": "Ask {{name}}",
     "goSettings": "Account settings",

@@ -611,7 +611,6 @@
                     // Keyboard shortcuts (docs/user-guide/keyboard-shortcuts.md)
                     const { openHelp: openShortcutsHelp } = installPageShortcuts({
                         t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
-                        toggleDarkMode,
                         extra: [{ keys: ['/'], scope: 'global', group: 'assistant', label: 'shortcuts.focusQuestion',
                             params: { name: assistantName }, run: () => assistant.focusInput() }],
                     });

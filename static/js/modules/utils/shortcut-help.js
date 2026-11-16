@@ -1,8 +1,8 @@
 /**
  * The parts of the keyboard shortcuts that every signed-in page shares: the
  * registry with the user's setting and the phone layout applied, the keys
- * that are the same on every page (the help, navigation, dark mode, Escape
- * on a dialog), and the help dialog.
+ * that are the same on every page (the help, navigation, Escape on a
+ * dialog), and the help dialog.
  *
  * The registry and its rules are in keyboard-shortcuts.js. The keys of the
  * main app are in composables/shortcuts.js.
@@ -43,10 +43,79 @@ export function overlayScope(doc = document) {
     return top ? (top.getAttribute('data-shortcut-scope') || 'modal') : null;
 }
 
-/** The Close button of the dialog over the page. */
+// ---- unsaved input in a dialog ------------------------------------------------
+//
+// Esc closes a dialog as its Close button does, but never one with unsaved
+// input. A dialog is judged by its fields: the value of each input, textarea,
+// select and editable element is noted before the user can change it (at the
+// first key, press or focus in the dialog), and the dialog has unsaved input
+// while one of them differs. A dialog says so itself with
+// data-shortcut-dirty (any value but "false") on it or inside it. Only a
+// dialog of a Vue app is judged, where each opening is a new element; a
+// dialog that stays in the page between openings cannot be, and is left
+// alone, as is one marked with data-shortcut-scope.
+
+const FIELDS = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+const noted = new WeakMap(); // dialog -> Map(field -> value when first seen)
+
+/** What a field holds now, as a string. */
+export function fieldValue(field) {
+    const tag = field.tagName ? String(field.tagName).toUpperCase() : '';
+    if (tag === 'INPUT') {
+        const type = String(field.type || '').toLowerCase();
+        if (type === 'checkbox' || type === 'radio') return field.checked ? 'on' : 'off';
+        if (type === 'hidden' || type === 'button' || type === 'submit' || type === 'reset') return '';
+        return String(field.value == null ? '' : field.value);
+    }
+    if (tag === 'SELECT' && field.multiple) return [...field.options].filter((option) => option.selected).map((option) => option.value).join('\n');
+    if (tag === 'TEXTAREA' || tag === 'SELECT') return String(field.value == null ? '' : field.value);
+    return String(field.textContent == null ? '' : field.textContent);
+}
+
+/** True when each opening of `dialog` is a new element (a dialog of a Vue app). */
+const judged = (dialog) => !!(dialog && dialog.closest && dialog.closest('[data-v-app]'));
+
+/** Note the fields of `dialog` that are not noted yet. */
+export function noteFields(dialog) {
+    if (!dialog || !dialog.querySelectorAll) return;
+    let values = noted.get(dialog);
+    if (!values) { values = new Map(); noted.set(dialog, values); }
+    dialog.querySelectorAll(FIELDS).forEach((field) => { if (!values.has(field)) values.set(field, fieldValue(field)); });
+}
+
+/** True while `dialog` has unsaved input, or cannot be judged. */
+export function hasUnsavedInput(dialog) {
+    if (!judged(dialog)) return true;
+    const flag = dialog.matches('[data-shortcut-dirty]') ? dialog : dialog.querySelector('[data-shortcut-dirty]');
+    if (flag && flag.getAttribute('data-shortcut-dirty') !== 'false') return true;
+    const values = noted.get(dialog);
+    if (!values) return false;
+    for (const [field, value] of values) {
+        if (field.isConnected !== false && fieldValue(field) !== value) return true;
+    }
+    return false;
+}
+
+/** Note the fields of a dialog before the user changes them: at each press and each focus inside it. */
+export function trackDialogInput(doc = document) {
+    if (!doc || !doc.addEventListener || doc.__speakrDialogInput) return;
+    doc.__speakrDialogInput = true;
+    const note = (event) => {
+        const target = event.target;
+        const dialog = target && target.closest ? target.closest('.modal-overlay') : null;
+        if (dialog) noteFields(dialog);
+    };
+    doc.addEventListener('pointerdown', note, true);
+    doc.addEventListener('mousedown', note, true);
+    doc.addEventListener('focusin', note, true);
+    // A key pressed while the focus is outside the dialog (the registry asks for the dialog first)
+    doc.addEventListener('keydown', () => { const top = topOverlay(doc); if (top) noteFields(top); }, true);
+}
+
+/** The Close button of the dialog over the page, unless the dialog has unsaved input. */
 function overlayCloseButton(doc) {
     const top = topOverlay(doc);
-    if (!top || top.hasAttribute('data-shortcut-scope')) return null;
+    if (!top || top.hasAttribute('data-shortcut-scope') || hasUnsavedInput(top)) return null;
     const buttons = [...top.querySelectorAll('.modal-header .modal-close')].filter((button) => shown(button) && !button.disabled);
     return buttons.length ? buttons[buttons.length - 1] : null;
 }
@@ -54,6 +123,7 @@ function overlayCloseButton(doc) {
 /** A registry with the account's setting, the phone layout and the dialogs of the page applied. */
 export function createPageShortcuts({ scopes, win = window, doc = document } = {}) {
     const phoneQuery = win.matchMedia ? win.matchMedia(PHONE_QUERY) : null;
+    trackDialogInput(doc);
     return createShortcuts({
         enabled: () => shortcutSettings(win).enabled,
         phone: () => !!(phoneQuery && phoneQuery.matches),
@@ -122,9 +192,8 @@ export function openShortcutHelp(registry, { t, win = window, doc = document } =
  * @param {(key: string, params?: object) => string} options.t
  * @param {() => void} options.openHelp
  * @param {() => void} [options.home]            go to the recordings (default: open /)
- * @param {() => void} [options.toggleDarkMode]  the function of the light and dark switch in the account menu
  */
-export function globalBindings({ openHelp, home, toggleDarkMode, win = window, doc = document } = {}) {
+export function globalBindings({ openHelp, home, win = window, doc = document } = {}) {
     const settings = shortcutSettings(win);
     const go = (path) => () => { win.location.href = path; };
     const list = [
@@ -142,7 +211,6 @@ export function globalBindings({ openHelp, home, toggleDarkMode, win = window, d
     }
     list.push({ keys: ['g s'], scope: 'global', group: 'navigation', label: 'shortcuts.goSettings', run: go('/account') });
     if (settings.admin) list.push({ keys: ['g d'], scope: 'global', group: 'navigation', label: 'shortcuts.goAdmin', run: go('/admin') });
-    if (toggleDarkMode) list.push({ keys: ['D'], scope: 'global', group: 'general', label: 'shortcuts.toggleDarkMode', run: () => toggleDarkMode() });
     return list;
 }
 
@@ -151,10 +219,10 @@ export function globalBindings({ openHelp, home, toggleDarkMode, win = window, d
  * management, Ask Ambrose): the keys of every page and the page's own.
  * Returns { registry, openHelp }.
  */
-export function installPageShortcuts({ t, toggleDarkMode, extra = [], win = window, doc = document } = {}) {
+export function installPageShortcuts({ t, extra = [], win = window, doc = document } = {}) {
     const registry = createPageShortcuts({ win, doc });
     const openHelp = () => openShortcutHelp(registry, { t, win, doc });
-    registry.add(globalBindings({ openHelp, toggleDarkMode, win, doc }));
+    registry.add(globalBindings({ openHelp, win, doc }));
     registry.add(extra);
     registry.install(doc);
     return { registry, openHelp };

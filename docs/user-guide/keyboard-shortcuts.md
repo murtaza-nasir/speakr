@@ -6,7 +6,7 @@ The list of keys for the current page is opened with `?`, or with **Keyboard sho
 
 ## Rules
 
-- Keys are single letters and characters, pressed without `Ctrl`, `Alt` or `Cmd`. An uppercase letter in the tables is typed with `Shift`. Caps Lock is ignored.
+- Keys are single letters and characters, pressed without `Ctrl`, `Alt` or `Cmd`. A character that the keyboard layout types with `AltGr`, such as `#` on some layouts, is accepted. An uppercase letter in the tables is typed with `Shift`. Caps Lock is ignored.
 - A sequence such as `g` then `r` is typed as two keys, one after the other. The second key is expected within 1.5 seconds.
 - No key is handled while the focus is in a text field, a selection list or an editor, or while text is composed with an input method. `Esc` is the exception where the tables say so.
 - On a focused link or button, `Enter`, `Space`, `Tab`, the arrow keys, `Delete` and `Backspace` keep their usual effect. Letters remain shortcuts.
@@ -20,13 +20,12 @@ The list of keys for the current page is opened with `?`, or with **Keyboard sho
 |---|---|
 | `?` | Show the keyboard shortcuts |
 | `Esc` | Close the dialog, menu or panel on top |
-| `Shift+D` | Switch between light and dark mode |
 | `g` then `r` | Go to the recordings |
 | `g` then `a` | Go to Ask Ambrose, where it is enabled |
 | `g` then `s` | Go to the account settings |
 | `g` then `d` | Go to the administration, for an administrator |
 
-A dialog is closed with `Esc` as with its Close button. While the focus is in a text field of a dialog, `Esc` is left to that field.
+A dialog is closed with `Esc` as with its Close button. While the focus is in a text field of a dialog, `Esc` is left to that field. A dialog with unsaved input is not closed with `Esc`: a field that was changed since the dialog opened keeps it open. The same holds for the dialogs in which a choice is made with buttons (the date picker, the participants, the merge order and the recovery of a recording) and for the dialogs of the account page. These are closed with their own buttons.
 
 On the Ask Ambrose page, the question field receives the focus with `/`.
 
@@ -69,12 +68,12 @@ The transcript is always shown beside these tabs, so it has no key of its own. I
 
 | Key | Action |
 |---|---|
-| `p` | Play or pause |
+| `p` or `Space` | Play or pause |
 | `h`, `l` | Back or forward 5 seconds |
 | `Shift+H`, `Shift+L` | Back or forward 15 seconds |
 | `<`, `>` | Slower or faster playback, in the steps of the speed menu |
 
-A recording with audio is required for the player keys.
+A recording with audio is required for the player keys. `Space` is handled only while no button, link, field or list has the focus. On a focused control it keeps its usual effect, and in a list it scrolls.
 
 ## Order of Esc
 

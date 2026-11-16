@@ -8,7 +8,7 @@
       The user can restore it into the recorder, or discard it.
   The X / click-outside is non-destructive (dismiss only) for both.
 -->
-<div v-if="showRecoveryModal" @click.self="dismissRecovery" class="modal-overlay">
+<div v-if="showRecoveryModal" @click.self="dismissRecovery" class="modal-overlay" data-shortcut-scope="dialog">
     <div class="modal-panel modal-panel--sm">
         <div class="modal-header">
             <i class="fas fa-history text-2xl text-[var(--text-accent)]"></i>

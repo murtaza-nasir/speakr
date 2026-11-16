@@ -31,6 +31,18 @@ export function steppedSpeed(speeds, rate, step) {
     return speeds[Math.min(speeds.length - 1, Math.max(0, at + step))];
 }
 
+/**
+ * True when Space is free for play and pause: no button, link, field or
+ * other control has the focus, and the focus is not in a region that Space
+ * would scroll. Only the page itself (or nothing) having the focus counts.
+ */
+export function spaceIsFree(doc, event) {
+    const active = doc ? doc.activeElement : null;
+    if (active && active !== doc.body) return false;
+    const target = event ? event.target : null;
+    return !target || target === doc.body || target === doc.documentElement || target === doc;
+}
+
 export function useAppShortcuts(ctx) {
     const { ref, watch, nextTick } = Vue;
     const {
@@ -41,7 +53,7 @@ export function useAppShortcuts(ctx) {
         selectRecording, toggleHighlight, toggleInbox, toggleArchive, confirmDelete, switchToUploadView,
         toggleSidebar, toggleAudioPlayback, skipAudio, setPlaybackRate, copyTranscription, copySummary, copyNotes,
         toggleEditSummary, toggleEditNotes, openTranscriptionEditor, toggleTranscriptionViewMode, openChatPanel,
-        collapseChatPanel, toggleQueuePanel, closeTranscriptFind, toggleDarkMode,
+        collapseChatPanel, toggleQueuePanel, closeTranscriptFind,
     } = ctx;
 
     // The row the keys act on. It follows the open recording and is moved with j and k.
@@ -155,7 +167,7 @@ export function useAppShortcuts(ctx) {
     });
     const openShortcutsHelp = () => openShortcutHelp(registry, { t });
 
-    registry.add(globalBindings({ openHelp: openShortcutsHelp, home: showList, toggleDarkMode }));
+    registry.add(globalBindings({ openHelp: openShortcutsHelp, home: showList }));
     registry.add([
         { keys: ['/'], scope: 'global', group: 'general', label: 'shortcuts.search', run: focusSearch },
         { keys: ['n'], scope: 'global', group: 'general', label: 'shortcuts.newRecording', run: () => switchToUploadView() },
@@ -199,6 +211,9 @@ export function useAppShortcuts(ctx) {
         { keys: ['Ctrl+F'], scope: 'recording', group: 'recording', label: 'shortcuts.findInTranscript' },
 
         { keys: ['p'], scope: 'recording', group: 'player', label: 'shortcuts.playPause', when: canPlay, run: () => toggleAudioPlayback() },
+        // Space only while nothing has the focus: on a control it presses the control, in a list it scrolls
+        { keys: ['Space'], scope: 'recording', group: 'player', label: 'shortcuts.playPause',
+            when: (event) => canPlay() && spaceIsFree(document, event), run: () => toggleAudioPlayback() },
         { keys: ['h'], scope: 'recording', group: 'player', label: 'shortcuts.skip5', repeat: true, when: hasPlayer, run: () => skipAudio(-5) },
         { keys: ['l'], scope: 'recording', group: 'player', label: 'shortcuts.skip5', repeat: true, when: hasPlayer, run: () => skipAudio(5) },
         { keys: ['H'], scope: 'recording', group: 'player', label: 'shortcuts.skip15', repeat: true, when: hasPlayer, run: () => skipAudio(-15) },

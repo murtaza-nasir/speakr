@@ -78,8 +78,8 @@ async function mountGlobalHeader() {
                 if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
             };
             const openInMainApp = (query) => { window.location.href = `/?${query}`; };
-            // The keys of every page: the help, navigation and dark mode
-            const { openHelp: openShortcutsHelp } = installPageShortcuts({ t, toggleDarkMode });
+            // The keys of every page: the help and navigation
+            const { openHelp: openShortcutsHelp } = installPageShortcuts({ t });
 
             onMounted(async () => {
                 notifications.startNotificationPolling();

@@ -4174,7 +4174,6 @@
     "search": "搜索录音",
     "newRecording": "新建录音",
     "toggleQueue": "显示或隐藏处理队列",
-    "toggleDarkMode": "切换浅色和深色模式",
     "goRecordings": "录音",
     "goAssistant": "询问 {{name}}",
     "goSettings": "账户设置",

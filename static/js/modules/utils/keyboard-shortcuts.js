@@ -9,7 +9,7 @@
  *   keys    one or more key specs; any of them triggers the binding.
  *           'j'        the letter without Shift
  *           'D'        the letter with Shift (Caps Lock is ignored)
- *           '?' '/'    a character as typed
+ *           '?' '/'    a character as typed (with AltGr where the layout needs it)
  *           'Escape' 'Enter' 'Space'   a named key
  *           'g r'      a sequence: g, released, then r
  *   scope   where the key applies (a name, or several). The page says which
@@ -79,6 +79,19 @@ export function keyToken(event) {
     return key;
 }
 
+/**
+ * True for a character such as # that the keyboard layout types with AltGr.
+ * Windows reports AltGr as Ctrl+Alt, so the event looks like a shortcut of
+ * the browser; it is a typed character. Letters are never accepted this
+ * way, and neither is anything with Cmd held.
+ */
+export function isAltGraphCharacter(event) {
+    const key = event && event.key;
+    if (!key || key.length !== 1 || key === ' ' || key.toLowerCase() !== key.toUpperCase()) return false;
+    if (event.metaKey) return false;
+    return typeof event.getModifierState === 'function' && !!event.getModifierState('AltGraph');
+}
+
 /** The keys of a spec as shown in the help: 'g r' -> ['g', 'r'], 'D' -> ['Shift', 'D'], 'Escape' -> ['Esc']. */
 export function keyCaps(spec) {
     const sequence = String(spec).split(' ').filter(Boolean);
@@ -129,8 +142,8 @@ export function createShortcuts({
         if (!enabled() || phone()) { pending = null; return null; }
         // A key of an input method that is composing text is not a key of the app
         if (event.isComposing || event.keyCode === 229) return null;
-        if (event.ctrlKey || event.metaKey || event.altKey) { pending = null; return null; }
         const token = keyToken(event);
+        if ((event.ctrlKey || event.metaKey || event.altKey) && !isAltGraphCharacter(event)) { pending = null; return null; }
         if (!token) return null;
 
         const typing = isTypingTarget(event.target);

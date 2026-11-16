@@ -1,5 +1,5 @@
 <!-- Edit Participants Modal (design system v1) -->
-<div v-if="showEditParticipantsModal" @click.self="closeEditParticipantsModal" class="modal-overlay">
+<div v-if="showEditParticipantsModal" @click.self="closeEditParticipantsModal" class="modal-overlay" data-shortcut-scope="dialog">
     <div @click="closeAllParticipantSuggestions" class="modal-panel modal-panel--sm">
         <div class="modal-header">
             <h3 class="modal-title" v-text="t('modal.editParticipants')"></h3>
