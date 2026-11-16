@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 
 class TokenBudgetExceeded(Exception):
     """Raised when user exceeds their token budget."""
+    # The budget is as used up at the second attempt as at the first: the job
+    # queue does not retry (src/services/job_queue.py reads this attribute)
+    permanent = True
     def __init__(self, message, usage_percentage=100):
         self.message = message
         self.usage_percentage = usage_percentage

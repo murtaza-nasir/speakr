@@ -3787,7 +3787,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (group === 'waiting' && fromUpload) stage = item.progressMessage || stage;
                 if (item.status === 'uploading' && item.serverProcessing) detail = t('progressQueue.detail.onServer');
                 const error = group !== 'failed' ? null : item.friendlyError
-                    ? { title: item.friendlyError.title, text: item.friendlyError.guidance || item.friendlyError.message || '' }
+                    // A cause that is not recognized is shown in the words of the server (a used-up
+                    // budget, for example); the advice to reprocess says nothing about it
+                    ? { title: item.friendlyError.title,
+                        text: (item.friendlyError.isKnown === false
+                            ? item.friendlyError.message || item.friendlyError.guidance
+                            : item.friendlyError.guidance || item.friendlyError.message) || '' }
                     : { title: item.status === 'upload_failed' ? t('progressQueue.uploadFailed') : t('progressQueue.failed'),
                         text: item.errorMessage || '' };
                 const finished = group === 'done' ? parseQueueInstant(item.finishedAt || item.completedAt) : null;

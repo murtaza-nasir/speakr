@@ -46,7 +46,7 @@
                     @click="clearAllCompleted()" v-text="t('progressQueue.clearFinished')"></button>
         </div>
         <div v-for="item in group.items" :key="item.id" class="queue-row"
-             :class="{ 'is-link': group.name === 'done' && item.view.canOpen }"
+             :class="{ 'is-link': group.name === 'done' && item.view.canOpen, 'is-failed': group.name === 'failed' }"
              :data-queue-row="item.id" :data-queue-status="item.status" :data-queue-job="item.jobId || null" :data-tone="item.view.mark.tone"
              @click="group.name === 'done' && item.view.canOpen ? openQueueRecording(item) : null">
             <span class="queue-row__mark" aria-hidden="true"><i class="fas" :class="item.view.mark.icon"></i></span>

@@ -301,6 +301,13 @@
     white-space: nowrap;
 }
 .queue-row__actions { flex: none; display: flex; align-items: center; gap: 2px; }
+/* A failed row: the buttons are beside the title only, and the cause has the whole width under it */
+.queue-row.is-failed { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; row-gap: 2px; align-items: center; }
+.queue-row.is-failed > .queue-row__mark { grid-row: 1 / span 2; align-self: start; }
+.queue-row.is-failed > .queue-row__main { display: contents; }
+.queue-row.is-failed .queue-row__title { grid-column: 2; grid-row: 1; min-width: 0; }
+.queue-row.is-failed > .queue-row__actions { grid-column: 3; grid-row: 1; }
+.queue-row.is-failed .queue-row__line--failed { grid-column: 2 / -1; grid-row: 2; }
 
 /* Bars: a real number fills the bar; without one a short piece moves */
 .queue-bar {
