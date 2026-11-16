@@ -10,6 +10,7 @@ Retention sent no recording.deleted webhook and left the export in place.
 from flask import current_app
 
 from src.database import db
+from src.utils.log_filters import loggable_error, loggable_locator
 
 
 def delete_recording_completely(recording, storage=None, strict_media=False, reason='deleted',
@@ -45,11 +46,12 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
     if recording.audio_path:
         try:
             storage.delete(recording.audio_path, missing_ok=True)
-            current_app.logger.info(f"Deleted media for recording {recording_id}: {recording.audio_path}")
+            current_app.logger.info(f"Deleted media for recording {recording_id}: {loggable_locator(recording.audio_path)}")
         except Exception as e:
             if strict_media:
                 raise
-            current_app.logger.error(f"Error deleting media {recording.audio_path}: {e}")
+            current_app.logger.error(f"Error deleting media of recording {recording_id} "
+                                     f"{loggable_locator(recording.audio_path)}: {loggable_error(e, recording.audio_path)}")
 
     from src.services.waveform_peaks import remove_peaks
     remove_peaks(current_app.config.get('UPLOAD_FOLDER') or '', recording_id)

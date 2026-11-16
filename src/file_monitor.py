@@ -443,7 +443,7 @@ class FileMonitor:
                         pass
                     if str(original_path) not in self._quota_skipped:
                         self._quota_skipped.add(str(original_path))
-                        self.logger.info(f"Left {original_path} in the watch folder: {quota_error}")
+                        self.logger.info(f"Left {loggable_path(original_path)} in the watch folder: {quota_error}")
                         raise_notice(user, quota_error, original_filename)
                     return
                 self._quota_skipped.discard(str(processing_path.with_name(original_filename)))

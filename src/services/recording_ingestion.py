@@ -78,7 +78,7 @@ from src.services.job_queue import CONVERT_WORKERS, job_queue
 from src.services.transcription_defaults import resolve_transcription_params
 from src.utils.audio_conversion import convert_if_needed
 from src.utils.dates import to_utc_naive
-from src.utils.log_filters import loggable_error, loggable_path
+from src.utils.log_filters import loggable_error, loggable_locator, loggable_path
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError
 from src.utils.ffprobe import (
     FFProbeError, get_codec_info, get_creation_date, get_duration, has_audio_stream,
@@ -819,7 +819,8 @@ def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_
             storage.delete(stored_object.locator)
         except Exception as cleanup_error:
             current_app.logger.warning(
-                f"Could not remove stored file {stored_object.locator} of a failed upload: {cleanup_error}")
+                f"Could not remove stored file {loggable_locator(stored_object.locator)} of a failed upload: "
+                f"{loggable_error(cleanup_error, stored_object.locator)}")
         raise
 
     if selected_tags:

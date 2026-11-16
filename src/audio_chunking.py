@@ -426,7 +426,7 @@ class AudioChunkingService:
                 debug_filename = os.path.basename(mp3_path).replace('_converted', '_converted_debug')
                 debug_path = os.path.join(debug_dir, debug_filename)
                 shutil.copy2(mp3_path, debug_path)
-                logger.info(f"Debug: Preserved converted file as {debug_path}")
+                logger.info(f"Debug: Preserved converted file as {loggable_path(debug_path)} in {debug_dir}")
 
             return mp3_path, mp3_duration, mp3_size
 
@@ -641,7 +641,7 @@ class AudioChunkingService:
                     logger.error(f"ffmpeg timed out extracting chunk {chunk_index} after {_SUBPROCESS_TIMEOUT_SECONDS}s")
                     continue
                 if result.returncode != 0:
-                    logger.error(f"ffmpeg failed for chunk {chunk_index}: {decode_ffmpeg_output(result.stderr)}")
+                    logger.error(f"ffmpeg failed for chunk {chunk_index}: {loggable_error(decode_ffmpeg_output(result.stderr), mp3_path, chunk_path)}")
                     continue
                 
                 # Verify chunk was created and get its size
@@ -675,9 +675,9 @@ class AudioChunkingService:
                         debug_filename = os.path.basename(chunk_path).replace('.mp3', '_debug.mp3')
                         debug_path = os.path.join(debug_dir, debug_filename)
                         shutil.copy2(chunk_path, debug_path)
-                        logger.info(f"Debug: Preserved chunk as {debug_path}")
+                        logger.info(f"Debug: Preserved chunk {chunk_index} as {loggable_path(debug_path)} in {debug_dir}")
                 else:
-                    logger.error(f"Chunk file not created: {chunk_path}")
+                    logger.error(f"Chunk file {chunk_index} not created: {loggable_path(chunk_path)}")
             
             logger.info(f"Created {len(chunks)} chunks for {loggable_path(file_path)}")
             return chunks
@@ -999,7 +999,7 @@ class AudioChunkingService:
                     os.remove(chunk_path)
                     logger.debug(f"Cleaned up chunk file: {chunk_path}")
             except Exception as e:
-                logger.warning(f"Error cleaning up chunk {chunk.get('filename', 'unknown')}: {e}")
+                logger.warning(f"Error cleaning up chunk {chunk.get('index', 'unknown')}: {loggable_error(e, chunk.get('path'))}")
         
         # Clean up temporary MP3 file if provided
         if temp_mp3_path and os.path.exists(temp_mp3_path):
@@ -1166,7 +1166,7 @@ def extract_speaker_samples(
                 logger.error(f"ffmpeg timed out extracting sample for speaker {speaker} after {_SUBPROCESS_TIMEOUT_SECONDS}s")
                 continue
             if result.returncode != 0:
-                logger.error(f"Failed to extract sample for speaker {speaker}: {decode_ffmpeg_output(result.stderr)}")
+                logger.error(f"Failed to extract sample for speaker {speaker}: {loggable_error(decode_ffmpeg_output(result.stderr), audio_path, sample_path)}")
                 continue
 
             if os.path.exists(sample_path) and os.path.getsize(sample_path) > 0:

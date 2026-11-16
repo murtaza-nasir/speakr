@@ -280,7 +280,7 @@ def extract_audio_from_video(
             import shutil
             debug_path = temp_audio_path.replace('_temp', '_debug')
             shutil.copy2(temp_audio_path, debug_path)
-            current_app.logger.info(f"Debug: Preserved temp audio file as {debug_path}")
+            current_app.logger.info(f"Debug: Preserved temp audio file as {loggable_path(debug_path)}")
         
         # Rename temp file to final filename
         os.rename(temp_audio_path, final_audio_path)

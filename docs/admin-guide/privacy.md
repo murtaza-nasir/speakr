@@ -99,7 +99,7 @@ The following remains after the deletion of a recording:
 - The usage counts in `token_usage` and `transcription_usage`. These rows hold numbers per user and day, without a recording id.
 - The rows of the [audit log](audit-log.md) that name the recording: who opened, played, downloaded, changed, shared and deleted it, and when. The rows hold the id of the recording and of its owner, without a title or any content. Share events are among them: the rows of `audit_event` have no link to the recording or to an account, so they remain after the deletion of either. They are removed after `audit_log_retention_days` days (default 365; with 0 they are kept without limit). The same applies after the deletion of an account: the rows that name the account remain, by id, and the username is kept in the row of its deletion.
 - Log lines already written, and any copy held by an external service to which the audio or the text was sent.
-- The media file itself, in the case of a storage error during a deletion by a user. The error is logged with the storage path.
+- The media file itself, in the case of a storage error during a deletion by a user. The error is logged with the id of the recording and the storage path without the original file name.
 
 With the option to delete only the audio, the media file and the waveform data are removed. Transcript, summary, notes, tags and shares remain.
 
@@ -114,14 +114,14 @@ All log output is written to the standard output of the container. No log file i
 | `LOG_LEVEL` | Content of the log |
 |---|---|
 | `ERROR`, `WARNING` | Failures, with ids. An error of a transcription service, an LLM provider or the embedding API is logged as its class, provider, HTTP status, error code and length, without its text. |
-| `INFO` (default) | In addition: ids, lengths, counts, durations, model names and service addresses. No transcript, summary, title, prompt, hotword or search query. Users, groups, tags, folders, speakers, naming templates and recordings are named by id. A file is named by its extension, and an upload in the staging folder by its timestamp and the first 12 characters of its random id. The storage path of a recording is the exception described below. |
+| `INFO` (default) | In addition: ids, lengths, counts, durations, model names and service addresses. No transcript, summary, title, prompt, hotword or search query. Users, groups, tags, folders, speakers, naming templates and recordings are named by id. A file is named by its extension, and an upload in the staging folder by its timestamp and the first 12 characters of its random id. The stored media of a recording is named by the directory part of its storage path, the timestamp at the start of its name and the extension. |
 | `DEBUG` | In addition: titles, summaries, prompts, model replies, search queries, hotwords, usernames, group, tag and speaker names, original file names, recipient addresses of sent email, and the full text and traceback of provider errors. |
 
 `DEBUG` is unsuitable for a deployment with regulated data, except for a short diagnosis on a test instance.
 
-The storage path of a recording ends with the original file name, and it is logged in full at `INFO` in three places: when the media of a recording is deleted, when the audio is removed by a retention rule, and when the audio extracted from a video is stored. It is also part of the `ERROR` and `WARNING` lines about a media file that is missing or cannot be deleted.
+The storage path of a recording ends with the original file name. In the log lines about the stored media of a recording, the path is written without that name, in the form `<stored file local://recordings/2026/11/42/20261115101500.mp3>`: the directory part with the id of the recording, the timestamp and the extension. This applies when the media of a recording is deleted, when the audio is removed by a retention rule, when the audio extracted from a video is stored, and in the `ERROR` and `WARNING` lines about a media file that is missing or cannot be deleted. A chunk of a long recording is named by its number, and a staging object of the FunASR connector by its folder and extension.
 
-Errors of the operating system, the database and FFmpeg are logged with their text at `WARNING` and `ERROR`. In the upload, conversion, probe, chunking, watch folder, export and FFmpeg code, a file named in such text is reduced to its extension or to the timestamp and id of the staged upload. In other code a storage path can appear in an error line.
+Errors of the operating system, the database and FFmpeg are logged with their text at `WARNING` and `ERROR`. In the upload, conversion, probe, chunking, watch folder, export, storage deletion and FFmpeg code, a file named in such text is reduced to its extension or to the timestamp and id of the staged upload. In other code a file path can appear in an error line.
 
 ### Error text shown to the user
 
@@ -254,7 +254,7 @@ The budget checks of an ordinary request apply. For a user over the monthly toke
 7. Keep `FILE_STORAGE_BACKEND=local`, or use an S3 service of the institution.
 8. Terminate TLS at a reverse proxy, set `SESSION_COOKIE_SECURE=true`, and set `TRUSTED_PROXY_HOPS` to the number of proxies. Turn off or protect the access log of the proxy. Set `session_idle_timeout_minutes` to the idle time allowed by the institution, and set `api_query_tokens_enabled=false` once tokens are no longer sent in the URL by any client.
 9. Place the data volume (`/data/uploads`, `/data/instance`), the database and the backups on encrypted disks or volumes. No data is encrypted by the application.
-10. Keep `LOG_LEVEL` at `INFO` or higher, and set a size limit and a retention period for the container logs. Original file names can appear in the log at `INFO` (see [Logs](#logs)).
+10. Keep `LOG_LEVEL` at `INFO` or higher, and set a size limit and a retention period for the container logs. Original file names are written to the log at `DEBUG` only (see [Logs](#logs)).
 11. Set `ENABLE_PUBLIC_SHARING=false`. Existing public links are then answered with `404`.
 12. Set `ALLOW_REGISTRATION=false`. Use `ENABLE_SSO=true` with `SSO_DISABLE_PASSWORD_LOGIN=true` when the institution has an identity provider.
 13. Define retention with `ENABLE_AUTO_DELETION`, `GLOBAL_RETENTION_DAYS` and `DELETION_MODE`, in line with the records policy of the institution.
@@ -273,7 +273,6 @@ The budget checks of an ordinary request apply. For a user over the monthly toke
 - **Content in the browser.** Audio of an ordinary recording in progress and files of failed ordinary uploads are kept in IndexedDB, and chat threads in `sessionStorage`, as listed under [Browser storage](#browser-storage). They are removed at sign-out, but not when a session ends through an idle timeout or when the browser is closed without a sign-out. The content of `localStorage`, with the id of the last selected recording and the file name of an unfinished upload in slices, is kept.
 - **Titles, notes and file names after deletion.** They are kept in the webhook delivery rows for `webhook_delivery_retention_days`, unless `webhook_omit_titles` is on, and in the `recording_session` row of a recording that was made in the browser or uploaded in slices, without a time limit.
 - **Exported files after deletion.** They are kept under a `[deleted]_` name unless `auto_export_delete_with_recording` is on.
-- **Original file names in the default log.** The storage path of a recording ends with the original file name and is logged at `INFO` when media is deleted or extracted, as described under [Logs](#logs).
 - **System error text in the default log.** Errors of the operating system, the database and FFmpeg are logged with their text, as described under [Logs](#logs).
 - **Short repetitions in error text shown to the user.** See [Error text shown to the user](#error-text-shown-to-the-user).
 - **Transcript copy of the VibeVoice connector.** The result of the most recent transcription is kept as a file in the temporary folder, also for an incognito request (see [Files](#files)).

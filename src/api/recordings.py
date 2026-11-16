@@ -34,6 +34,7 @@ from src.services.transcription_defaults import (
     resolve_transcription_model as _resolve_transcription_model,
 )
 from src.utils.dates import to_utc_naive
+from src.utils.log_filters import loggable_locator
 from src.utils.transcript_render import BASIC_TEMPLATE_FORMAT, parse_segments, render_segments
 from src.services.speaker import (
     update_speaker_usage, apply_speaker_map, participants_from_segments, update_voice_profiles,
@@ -3273,7 +3274,7 @@ def get_audio(recording_id):
             return redirect(delivery.url, code=302)
 
         if not delivery.local_path or not os.path.exists(delivery.local_path):
-            current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
+            current_app.logger.error(f"Audio file of recording {recording.id} missing from server: {loggable_locator(recording.audio_path)}")
             return jsonify(api_error('audio_file_missing')), 404
 
         if download:

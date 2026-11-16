@@ -25,6 +25,7 @@ from ..base import (
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.utils.error_body import summarize_error_body
+from src.utils.log_filters import loggable_error, loggable_locator
 
 from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
@@ -629,7 +630,7 @@ def prepare_funasr_file_url(recording) -> tuple:
         current_app.logger.info(
             "Uploading recording %s to FunASR staging object %s",
             recording.id,
-            object_key,
+            loggable_locator(object_key),
         )
         with storage.materialize(locator_str) as materialized:
             storage.s3.upload_local_file(
@@ -668,8 +669,9 @@ def cleanup_funasr_staging(recording) -> None:
         try:
             s3_locator = parse_locator(storage.s3.build_locator(object_key))
             storage.s3.delete(s3_locator, missing_ok=True)
-            current_app.logger.info(f"Cleaned up FunASR staging object {object_key}")
+            current_app.logger.info(f"Cleaned up FunASR staging object {loggable_locator(object_key)}")
         except Exception as exc:  # noqa: BLE001 - best effort only
             current_app.logger.warning(
-                f"Failed to clean up FunASR staging object {object_key}: {exc}"
+                f"Failed to clean up FunASR staging object {loggable_locator(object_key)}: "
+                f"{loggable_error(exc, object_key)}"
             )
