@@ -133,3 +133,25 @@ The app does not use the browser's `confirm()`, `alert()` or `prompt()`: `static
 SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
   pytest tests/e2e/test_app_dialog_ui.py -q --noconftest -rs
 ```
+
+## Service worker browser test
+
+`test_service_worker_ui.py` covers the service worker (`static/sw.js`, served at `/sw.js` with the scope `/`; the page's side is `static/js/service-worker-client.js`). Each test starts a browser profile of its own, without a worker and without caches, from the cookies of one sign-in. It checks that the worker controls the app after the first load, that `navigator.serviceWorker.ready` resolves and that exactly one registration exists, also on `/account` and `/admin`, and none in a browser that is not signed in; that Cache Storage holds files under `/static/` only after browsing the pages, a recording, the API and the incognito endpoints; that a recording page loaded again without a network is the worker's "You are offline" page and not the recording, and that the app is back when the network is; that static files are answered without a network while API requests fail; that sign-out empties Cache Storage, `sessionStorage` and the IndexedDB stores `SpeakrRecordings` and `SpeakrFailedUploads`, with the app's own question first when the browser holds copies that did not reach the server (Cancel keeps them and the session); that a browser with the registration of an earlier release at `/static/` and its cache (`Speakr-cache-<version>`, with a page and an API response in it) ends with one worker at scope `/` and without that cache; and that no notification permission is requested and no push subscription is made. The network is turned off with the browser context's offline mode. The earlier release's worker file is given to the browser by answering `/static/sw.js` in the browser context; the test is skipped where Playwright does not route worker scripts.
+
+A service worker needs a secure context. `http://127.0.0.1` and `http://localhost` count as one, so the test runs against the same instance and in the same `browser-smoke` job as the smoke test:
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
+  pytest tests/e2e/test_service_worker_ui.py -q --noconftest -rs
+```
+
+The worker's decision for each kind of request is unit-tested in `static/js/sw.test.js`, the page's side in `static/js/service-worker-client.test.js`, and the `/sw.js` route and the mark the server leaves at sign-out in `tests/test_service_worker.py`.
+
+## Translation payload browser test
+
+`test_i18n_payload_ui.py` covers the translations a page carries (discussion #611): a page in another language than English embeds that language only. On the public share page for a German browser it checks German text, one embedded table and no request for a locale file. With French saved in the browser and two keys taken out of the French file (the file is answered in the browser context), it checks that French is fetched, that English is fetched once from the versioned address for the missing keys, that the two labels end in English, and that the keys themselves are never shown. It also checks the sign-in page of a German browser, and the main page of an English account (English embedded as before; with German saved in the browser, one request for the German file and none for English).
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
+  pytest tests/e2e/test_i18n_payload_ui.py -q --noconftest -rs
+```
