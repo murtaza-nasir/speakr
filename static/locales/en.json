@@ -2376,6 +2376,9 @@
     "autoProcessFailed": "{{filename}} couldn't be processed after several attempts and was renamed to {{failed_name}} in the watch folder. Rename it back to try again."
   },
   "preferences": {
+    "keyboard": "Keyboard",
+    "keyboardShortcuts": "Keyboard shortcuts",
+    "keyboardShortcutsHelp": "Single keys for the recording list, the open recording and the player. Press ? on a computer for the list of keys. On by default.",
     "autoTranslation": "Auto-translate new recordings",
     "autoTranslationDisabled": "Turned off by your administrator.",
     "autoTranslationHelp": "Translate each new recording into your output language once it is transcribed. When off (the default), use Generate translation. Translations count toward your monthly token budget.",
@@ -4147,5 +4150,64 @@
     "localCopiesMessageOne": "This browser holds 1 recording or upload that did not reach the server. It is deleted from this browser at sign-out.",
     "localCopiesMessage": "This browser holds {{count}} recordings or uploads that did not reach the server. They are deleted from this browser at sign-out.",
     "deleteAndSignOut": "Delete and sign out"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "then": "then",
+    "or": "or",
+    "settingHint": "Turn keyboard shortcuts on or off in Account, Preferences.",
+    "keys": {
+      "space": "Space"
+    },
+    "groups": {
+      "general": "General",
+      "navigation": "Go to",
+      "list": "Recordings",
+      "recording": "Open recording",
+      "player": "Player",
+      "assistant": "Assistant",
+      "editor": "Segment editor",
+      "video": "Full-screen video"
+    },
+    "showHelp": "Show keyboard shortcuts",
+    "close": "Close the dialog, menu or panel on top",
+    "search": "Search recordings",
+    "newRecording": "New recording",
+    "toggleQueue": "Show or hide the processing queue",
+    "goRecordings": "Recordings",
+    "goAssistant": "Ask {{name}}",
+    "goSettings": "Account settings",
+    "goAdmin": "Administration",
+    "moveInList": "Next or previous recording",
+    "openRecording": "Open the selected recording",
+    "star": "Star or remove the star",
+    "inbox": "Move to the inbox or mark as read",
+    "archive": "Archive or unarchive",
+    "delete": "Delete",
+    "selectAll": "Select all, in selection mode",
+    "tab": {
+      "summary": "Show the summary",
+      "notes": "Show the notes",
+      "stats": "Show the speaker stats",
+      "events": "Show the events"
+    },
+    "toggleView": "Switch between simple and bubble view",
+    "copyTranscript": "Copy the transcript",
+    "copyTab": "Copy the summary or the notes",
+    "editTranscript": "Edit the transcript",
+    "editTab": "Edit the summary or the notes",
+    "openChat": "Open the chat with {{name}}",
+    "findInTranscript": "Find in a long transcript",
+    "playPause": "Play or pause",
+    "skip5": "Back or forward 5 seconds",
+    "skip15": "Back or forward 15 seconds",
+    "speed": "Slower or faster playback",
+    "editorHelp": "Show the keys of the segment editor",
+    "editorSave": "Save",
+    "editorFind": "Find and replace",
+    "videoSkip": "Back or forward 10 seconds",
+    "videoVolume": "Volume up or down",
+    "videoLeave": "Leave full screen",
+    "focusQuestion": "Write a question to {{name}}"
   }
 }

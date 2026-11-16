@@ -4,7 +4,7 @@
 <div v-if="showRegenerateSummaryModal" @click.self="closeRegenerateSummaryModal" class="modal-overlay">
     <div class="modal-panel modal-panel--lg modal-panel--phone-full regen-modal"
          role="dialog" aria-modal="true" aria-labelledby="regen-summary-title"
-         @keydown.esc="closeRegenerateSummaryModal">
+         @keydown.esc.stop="closeRegenerateSummaryModal">
         <div class="modal-header">
             <i class="fas fa-magic text-2xl text-[var(--text-accent)]"></i>
             <div class="flex-1 min-w-0">

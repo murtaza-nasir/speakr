@@ -1267,6 +1267,16 @@
                                     </span>
                                 </label>
 
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.keyboard">Keyboard</h3>
+                                <input type="hidden" name="keyboard_shortcuts_shown" value="1">
+                                <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
+                                    <input type="checkbox" id="prefKeyboardShortcuts" name="keyboard_shortcuts" {% if current_user.keyboard_shortcuts is not sameas false %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
+                                    <span class="flex-1">
+                                        <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.keyboardShortcuts">Keyboard shortcuts</span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.keyboardShortcutsHelp">Single keys for the recording list, the open recording and the player. Press ? on a computer for the list of keys. On by default.</span>
+                                    </span>
+                                </label>
+
                                 <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.translation">Translation</h3>
                                 {% if auto_translation_available %}
                                 <input type="hidden" name="auto_translation_shown" value="1">
@@ -2193,7 +2203,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             </div>
 
                             <!-- Add/edit modal -->
-                            <div id="webhook-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                            <div id="webhook-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" data-shortcut-scope="dialog">
                                 <div class="bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg max-w-xl w-full max-h-[90vh] overflow-y-auto">
                                     <div class="flex items-center justify-between p-4 border-b border-[var(--border-primary)]">
                                         <h3 id="webhook-modal-title" class="text-lg font-medium text-[var(--text-primary)]" data-i18n="webhooks.modalTitleNew">New webhook</h3>

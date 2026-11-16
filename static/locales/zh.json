@@ -2376,6 +2376,9 @@
     "autoProcessFailed": "多次尝试后仍无法处理 {{filename}}，已在监视文件夹中将其重命名为 {{failed_name}}。将其改回原名即可重试。"
   },
   "preferences": {
+    "keyboard": "键盘",
+    "keyboardShortcuts": "键盘快捷键",
+    "keyboardShortcutsHelp": "用于录音列表、已打开的录音和播放器的单键操作。在电脑上按 ? 键可显示按键列表。默认开启。",
     "autoTranslation": "自动翻译新录音",
     "autoTranslationDisabled": "已被管理员关闭。",
     "autoTranslationHelp": "每条新录音转录完成后，自动翻译为您的输出语言。关闭时（默认），请使用“生成翻译”。翻译计入您的每月令牌预算。",
@@ -4147,5 +4150,64 @@
     "localCopiesMessageOne": "此浏览器中保存着 1 个未到达服务器的录音或上传。退出登录时会将其从此浏览器中删除。",
     "localCopiesMessage": "此浏览器中保存着 {{count}} 个未到达服务器的录音或上传。退出登录时会将其从此浏览器中删除。",
     "deleteAndSignOut": "删除并退出登录"
+  },
+  "shortcuts": {
+    "title": "键盘快捷键",
+    "then": "然后",
+    "or": "或",
+    "settingHint": "可在“账户”的“偏好设置”中开启或关闭键盘快捷键。",
+    "keys": {
+      "space": "空格"
+    },
+    "groups": {
+      "general": "通用",
+      "navigation": "前往",
+      "list": "录音",
+      "recording": "已打开的录音",
+      "player": "播放器",
+      "assistant": "助手",
+      "editor": "分段编辑器",
+      "video": "全屏视频"
+    },
+    "showHelp": "显示键盘快捷键",
+    "close": "关闭最上层的对话框、菜单或面板",
+    "search": "搜索录音",
+    "newRecording": "新建录音",
+    "toggleQueue": "显示或隐藏处理队列",
+    "goRecordings": "录音",
+    "goAssistant": "询问 {{name}}",
+    "goSettings": "账户设置",
+    "goAdmin": "管理",
+    "moveInList": "下一个或上一个录音",
+    "openRecording": "打开所选录音",
+    "star": "加星标或取消星标",
+    "inbox": "移至收件箱或标为已读",
+    "archive": "归档或取消归档",
+    "delete": "删除",
+    "selectAll": "全选（选择模式下）",
+    "tab": {
+      "summary": "显示摘要",
+      "notes": "显示笔记",
+      "stats": "显示说话人统计",
+      "events": "显示事件"
+    },
+    "toggleView": "切换简单视图和气泡视图",
+    "copyTranscript": "复制转录文本",
+    "copyTab": "复制摘要或笔记",
+    "editTranscript": "编辑转录文本",
+    "editTab": "编辑摘要或笔记",
+    "openChat": "打开与 {{name}} 的聊天",
+    "findInTranscript": "在长转录文本中查找",
+    "playPause": "播放或暂停",
+    "skip5": "后退或前进 5 秒",
+    "skip15": "后退或前进 15 秒",
+    "speed": "减慢或加快播放",
+    "editorHelp": "显示分段编辑器的按键",
+    "editorSave": "保存",
+    "editorFind": "查找和替换",
+    "videoSkip": "后退或前进 10 秒",
+    "videoVolume": "调高或调低音量",
+    "videoLeave": "退出全屏",
+    "focusQuestion": "向 {{name}} 提问"
   }
 }

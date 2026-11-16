@@ -452,6 +452,8 @@
             // The shared Ambrose chat and its library filters (Ambrose 2b)
             const { useAssistantChat } = await import('/static/js/modules/assistant/chat.js');
             const { useSearchIn } = await import('/static/js/modules/assistant/search-in.js');
+            // Keyboard shortcuts: the keys of every page, and / for the question field
+            const { installPageShortcuts } = await import('/static/js/modules/utils/shortcut-help.js');
             
             const csrfToken = ref(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
             const i18nInstance = window.i18n;
@@ -604,6 +606,13 @@
                             return false;
                         },
                         onDone: () => loadTokenBudget(),
+                    });
+
+                    // Keyboard shortcuts (docs/user-guide/keyboard-shortcuts.md)
+                    const { openHelp: openShortcutsHelp } = installPageShortcuts({
+                        t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+                        extra: [{ keys: ['/'], scope: 'global', group: 'assistant', label: 'shortcuts.focusQuestion',
+                            params: { name: assistantName }, run: () => assistant.focusInput() }],
                     });
 
                     // An answer streams while the request runs and it is the
@@ -882,6 +891,7 @@
 
                         // The shared chat (components/assistant/chat.html)
                         assistant,
+                        openShortcutsHelp,
                     };
                 },
                 delimiters: ['${', '}']

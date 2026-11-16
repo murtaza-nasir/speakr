@@ -415,6 +415,43 @@ def test_account_preferences_branch_persists_languages(cleanup_users):
     assert refreshed.audio_player_position == 'top'
 
 
+def test_account_preferences_keyboard_shortcuts_setting(cleanup_users):
+    # On for a new account; saved only by a form that rendered the checkbox.
+    user = _mk_user(cleanup_users)
+    uid = user.id
+    assert user.keyboard_shortcuts is True
+    with _client_logged_in_as(user) as client:
+        # A form without the checkbox's marker leaves the setting alone
+        client.post('/account', data={'preferences_form': '1', 'ui_language': 'en'})
+        assert db.session.get(User, uid).keyboard_shortcuts is True
+        # The marker without the checkbox: turned off
+        client.post('/account', data={'preferences_form': '1', 'ui_language': 'en', 'keyboard_shortcuts_shown': '1'})
+        assert db.session.get(User, uid).keyboard_shortcuts is False
+        page = client.get('/account').get_data(as_text=True)
+        assert '"enabled": false' in page
+        assert 'id="prefKeyboardShortcuts" name="keyboard_shortcuts"  class' in page
+        assert 'data-shortcuts-help' not in page
+        client.post('/account', data={'preferences_form': '1', 'ui_language': 'en', 'keyboard_shortcuts_shown': '1',
+                                      'keyboard_shortcuts': 'on'})
+        assert db.session.get(User, uid).keyboard_shortcuts is True
+        page = client.get('/account').get_data(as_text=True)
+        assert '"enabled": true' in page
+        assert 'name="keyboard_shortcuts" checked' in page
+        assert 'data-shortcuts-help' in page
+
+
+def test_account_preferences_keyboard_shortcuts_null_means_on(cleanup_users):
+    # An account from before the column has NULL: shortcuts are on.
+    user = _mk_user(cleanup_users)
+    uid = user.id
+    User.query.filter_by(id=uid).update({'keyboard_shortcuts': None})
+    db.session.commit()
+    with _client_logged_in_as(user) as client:
+        page = client.get('/account').get_data(as_text=True)
+    assert '"enabled": true' in page
+    assert 'name="keyboard_shortcuts" checked' in page
+
+
 def test_account_preferences_branch_normalizes_legacy_language_name(cleanup_users):
     # Legacy display-name transcription language must be normalized to a code.
     user = _mk_user(cleanup_users)

@@ -13,6 +13,7 @@
 import { useNotifications } from './modules/composables/notifications.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
 import { savedColorScheme } from './modules/utils/theme-defaults.js';
+import { installPageShortcuts } from './modules/utils/shortcut-help.js';
 
 installCloseOutside();
 
@@ -77,6 +78,8 @@ async function mountGlobalHeader() {
                 if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
             };
             const openInMainApp = (query) => { window.location.href = `/?${query}`; };
+            // The keys of every page: the help and navigation
+            const { openHelp: openShortcutsHelp } = installPageShortcuts({ t });
 
             onMounted(async () => {
                 notifications.startNotificationPolling();
@@ -103,6 +106,7 @@ async function mountGlobalHeader() {
                 tokenBudget,
                 isDarkMode,
                 toggleDarkMode,
+                openShortcutsHelp,
                 switchToUploadView: () => openInMainApp('upload=1'),
                 openSharesList: () => openInMainApp('open=shares'),
                 openColorSchemeModal: () => openInMainApp('open=appearance'),

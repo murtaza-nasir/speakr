@@ -142,6 +142,19 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/t
 
 The rules behind both are unit-tested without a browser in `static/js/modules/utils/toast.test.js`, `queue-view.test.js` and `queue-data.test.js`.
 
+## Keyboard shortcuts browser test
+
+`test_keyboard_shortcuts_ui.py` covers the keyboard shortcuts (`static/js/modules/utils/keyboard-shortcuts.js`, `utils/shortcut-help.js`, `composables/shortcuts.js`; the keys are listed in `docs/user-guide/keyboard-shortcuts.md`). It checks the help (opened with `?` and from the account menu, its groups and rows read from the page and compared with the English strings, shown in the app's own dialog and closed with Esc), one pass per UI theme in light and dark (contrast of 4.5:1 or more for the labels, headings and keys, two columns, the panel inside the window, the frame of the list), `j`, `k`, Enter and `o` in the recording list, the star and the inbox mark set through the app's own routes on the open recording and on the framed row (and set back), `#` asking in the delete dialog without deleting, New recording and search, the tab and view keys (the fourth tab with events given to the page), the summary editor, archive and unarchive, play with `p` and with Space (handled while nothing has the focus, left to the browser on a focused button and in the list), skip and speed read from the audio element, copy read from the clipboard, the segment editor keeping its own keys and its own help, no key firing while text is typed in the search field, the notes editor and the chat field, Enter and Space on a focused button, one Esc closing one thing (the delete dialog, the help and the chat panel each before the queue panel), the Identify speakers dialog closed by Esc while unchanged and left open while a name field is changed, Ctrl+F on a transcript that is not rendered whole, `g` then a letter on the main page, the account page, the admin page and the Ask Ambrose page with each page's own help, the account setting turned off and on with its checkbox under Account, Preferences, and a phone width where no key is handled and the account menu has no help entry.
+
+The queue's answer and a transcript of 400 segments are given to the page by the test, so the instance's data stays as it is apart from the star, the inbox mark, the archive mark and the account setting, which are set back. Its contexts block the service worker, because answers are changed on their way to the browser.
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
+  pytest tests/e2e/test_keyboard_shortcuts_ui.py -q --noconftest -rs
+```
+
+The registry's rules (the guards for typing, modifiers and input methods, sequences, scopes, the setting, the help generated from the table) are unit-tested without a browser in `static/js/modules/utils/keyboard-shortcuts.test.js` and `shortcut-help.test.js`, and the setting on the server in `tests/test_cov_auth.py`.
+
 ## App dialog browser test
 
 The app does not use the browser's `confirm()`, `alert()` or `prompt()`: `static/js/app-dialog.js` shows the question in the app's own dialog (`window.confirmDialog`, `alertDialog`, `promptDialog`), in the Vue app and on the pages that are not part of it. `test_app_dialog_ui.py` covers one of those pages: on the account page a saved speaker is deleted from the Speakers tab. Cancel, Esc and a click beside the panel keep the speaker and the focus returns to the button; Tab stays in the dialog; the danger button that names the action deletes. The message and the input dialog are shown once each. The same question over the segment editor (discarding unsaved changes) is in `test_asr_editor_ui.py`. Both fail when a dialog of the browser appears. It runs with the same gate, instance and CI job as the smoke test:

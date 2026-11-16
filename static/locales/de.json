@@ -2376,6 +2376,9 @@
     "autoProcessFailed": "{{filename}} konnte nach mehreren Versuchen nicht verarbeitet werden und wurde im überwachten Ordner in {{failed_name}} umbenannt. Benennen Sie die Datei zurück, um es erneut zu versuchen."
   },
   "preferences": {
+    "keyboard": "Tastatur",
+    "keyboardShortcuts": "Tastenkürzel",
+    "keyboardShortcutsHelp": "Einzelne Tasten für die Aufnahmeliste, die geöffnete Aufnahme und den Player. Am Computer zeigt die Taste ? die Liste der Tasten. Standardmäßig eingeschaltet.",
     "autoTranslation": "Neue Aufnahmen automatisch übersetzen",
     "autoTranslationDisabled": "Von Ihrem Administrator deaktiviert.",
     "autoTranslationHelp": "Jede neue Aufnahme nach der Transkription in Ihre Ausgabesprache übersetzen. Wenn deaktiviert (Standard), verwenden Sie „Übersetzung generieren“. Übersetzungen zählen zu Ihrem monatlichen Token-Budget.",
@@ -4147,5 +4150,64 @@
     "localCopiesMessageOne": "In diesem Browser liegt 1 Aufnahme oder Upload, der den Server nicht erreicht hat. Beim Abmelden wird er aus diesem Browser gelöscht.",
     "localCopiesMessage": "In diesem Browser liegen {{count}} Aufnahmen oder Uploads, die den Server nicht erreicht haben. Beim Abmelden werden sie aus diesem Browser gelöscht.",
     "deleteAndSignOut": "Löschen und abmelden"
+  },
+  "shortcuts": {
+    "title": "Tastenkürzel",
+    "then": "dann",
+    "or": "oder",
+    "settingHint": "Tastenkürzel lassen sich unter Konto, Einstellungen ein- und ausschalten.",
+    "keys": {
+      "space": "Leertaste"
+    },
+    "groups": {
+      "general": "Allgemein",
+      "navigation": "Gehe zu",
+      "list": "Aufnahmen",
+      "recording": "Geöffnete Aufnahme",
+      "player": "Player",
+      "assistant": "Assistent",
+      "editor": "Segmenteditor",
+      "video": "Video im Vollbild"
+    },
+    "showHelp": "Tastenkürzel anzeigen",
+    "close": "Obersten Dialog, das Menü oder das Panel schließen",
+    "search": "Aufnahmen durchsuchen",
+    "newRecording": "Neue Aufnahme",
+    "toggleQueue": "Verarbeitungswarteschlange ein- oder ausblenden",
+    "goRecordings": "Aufnahmen",
+    "goAssistant": "{{name}} fragen",
+    "goSettings": "Kontoeinstellungen",
+    "goAdmin": "Administration",
+    "moveInList": "Nächste oder vorherige Aufnahme",
+    "openRecording": "Ausgewählte Aufnahme öffnen",
+    "star": "Stern setzen oder entfernen",
+    "inbox": "In den Posteingang verschieben oder als gelesen markieren",
+    "archive": "Archivieren oder wiederherstellen",
+    "delete": "Löschen",
+    "selectAll": "Alle auswählen, im Auswahlmodus",
+    "tab": {
+      "summary": "Zusammenfassung anzeigen",
+      "notes": "Notizen anzeigen",
+      "stats": "Sprecherstatistik anzeigen",
+      "events": "Termine anzeigen"
+    },
+    "toggleView": "Zwischen einfacher Ansicht und Sprechblasen wechseln",
+    "copyTranscript": "Transkript kopieren",
+    "copyTab": "Zusammenfassung oder Notizen kopieren",
+    "editTranscript": "Transkript bearbeiten",
+    "editTab": "Zusammenfassung oder Notizen bearbeiten",
+    "openChat": "Chat mit {{name}} öffnen",
+    "findInTranscript": "In einem langen Transkript suchen",
+    "playPause": "Wiedergabe oder Pause",
+    "skip5": "5 Sekunden zurück oder vor",
+    "skip15": "15 Sekunden zurück oder vor",
+    "speed": "Langsamer oder schneller abspielen",
+    "editorHelp": "Tasten des Segmenteditors anzeigen",
+    "editorSave": "Speichern",
+    "editorFind": "Suchen und ersetzen",
+    "videoSkip": "10 Sekunden zurück oder vor",
+    "videoVolume": "Lauter oder leiser",
+    "videoLeave": "Vollbild verlassen",
+    "focusQuestion": "Eine Frage an {{name}} schreiben"
   }
 }

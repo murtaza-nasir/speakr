@@ -648,6 +648,8 @@ def _run_migrations(app, engine):
             app.logger.info("Added show_timestamps_simple_view column to user table")
         if add_column_if_not_exists(engine, 'user', 'editor_autosave', 'BOOLEAN DEFAULT 0'):
             app.logger.info("Added editor_autosave column to user table")
+        if add_column_if_not_exists(engine, 'user', 'keyboard_shortcuts', 'BOOLEAN DEFAULT 1'):
+            app.logger.info("Added keyboard_shortcuts column to user table")
         if add_column_if_not_exists(engine, 'user', 'speaker_count_mode', 'VARCHAR(10)'):
             app.logger.info("Added speaker_count_mode column to user table")
         if add_column_if_not_exists(engine, 'user', 'audio_player_position', "VARCHAR(10) DEFAULT 'bottom'"):

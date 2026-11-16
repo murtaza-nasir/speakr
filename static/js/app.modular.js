@@ -30,6 +30,7 @@ import { useBulkSelection } from './modules/composables/bulk-selection.js';
 import { useBulkOperations } from './modules/composables/bulk-operations.js';
 import { useFolders } from './modules/composables/folders.js';
 import { usePhoneLayout } from './modules/composables/phone-layout.js';
+import { useAppShortcuts } from './modules/composables/shortcuts.js';
 
 // Import utilities
 import { placeToasts, showToast } from './modules/utils/toast.js';
@@ -4915,6 +4916,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             // =========================================================================
+            // KEYBOARD SHORTCUTS (composables/shortcuts.js)
+            // =========================================================================
+            const shortcutsComposable = useAppShortcuts({
+                t, currentView, selectedRecording, recordings, visibleRecordingIds, selectedTab, isSidebarCollapsed,
+                showAdvancedFilters, selectionMode, chatPanelState,
+                queuePopupShown, queuePanelOpen, videoFullscreen, hasRecordingStats, processedTranscription,
+                viewingTranslation, editingSummary, editingNotes, playbackRate, playbackSpeeds, canDeleteRecordings,
+                transcriptFind: transcriptViewComposable.transcriptFind,
+                menus: [isUserMenuOpen, showHeaderFolderMenu, showHeaderReprocessMenu, showHeaderMoreMenu, showSortOptions,
+                    showDownloadMenu, showSummaryDownloadMenu, showSpeedMenu],
+                selectRecording: recordingsComposable.selectRecording,
+                toggleHighlight: recordingsComposable.toggleHighlight,
+                toggleInbox: recordingsComposable.toggleInbox,
+                toggleArchive: recordingsComposable.toggleArchive,
+                confirmDelete: modalsComposable.confirmDelete,
+                switchToUploadView: uiComposable.switchToUploadView,
+                toggleSidebar: uiComposable.toggleSidebar,
+                toggleAudioPlayback: uiComposable.toggleAudioPlayback,
+                skipAudio: phoneLayoutComposable.skipAudio,
+                setPlaybackRate: uiComposable.setPlaybackRate,
+                copyTranscription: uiComposable.copyTranscription,
+                copySummary: uiComposable.copySummary,
+                copyNotes: uiComposable.copyNotes,
+                toggleEditSummary: uiComposable.toggleEditSummary,
+                toggleEditNotes: uiComposable.toggleEditNotes,
+                openTranscriptionEditor: transcriptionComposable.openTranscriptionEditor,
+                toggleTranscriptionViewMode: uiComposable.toggleTranscriptionViewMode,
+                openChatPanel, collapseChatPanel, toggleQueuePanel,
+                closeTranscriptFind: transcriptViewComposable.closeTranscriptFind,
+            });
+
+            // =========================================================================
             // RETURN ALL STATE AND METHODS
             // =========================================================================
             return {
@@ -5095,6 +5128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...bulkSelectionComposable,
                 ...bulkOperationsComposable,
                 ...phoneLayoutComposable,
+                ...shortcutsComposable,
 
                 // Inline tag/folder creation (upload dialog)
                 createTagFromUploadSearch,

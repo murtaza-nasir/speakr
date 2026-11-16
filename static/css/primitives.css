@@ -1228,6 +1228,78 @@ html.dark .modal-overlay {
     .app-dialog .modal-footer .btn { flex: 1 1 0; min-height: 44px; }
 }
 
+/* A key, as in the keyboard shortcuts help and beside a menu entry. */
+.kbd {
+    display: inline-block;
+    min-width: 1.5rem;
+    padding: 1px 6px;
+    border: var(--border-hairline) solid var(--border-secondary);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 0.6875rem;
+    line-height: 1.5;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* The keyboard shortcuts help (static/js/modules/utils/shortcut-help.js),
+   shown in the app's message dialog: groups in columns, a row per action. */
+.shortcut-help__groups {
+    columns: 2 17rem;
+    column-gap: var(--sp-6, 1.5rem);
+}
+.shortcut-help__group {
+    break-inside: avoid;
+    margin: 0 0 var(--sp-4);
+}
+.shortcut-help__heading {
+    margin: 0 0 var(--sp-2);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.shortcut-help__list { margin: 0; }
+.shortcut-help__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: 3px 0;
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+}
+.shortcut-help__row:last-child { border-bottom: 0; }
+.shortcut-help__label {
+    order: 1;
+    margin: 0;
+    min-width: 0;
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+}
+.shortcut-help__keys {
+    order: 2;
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 4px;
+    white-space: nowrap;
+}
+.shortcut-help__combo { display: inline-flex; align-items: center; gap: 3px; }
+.shortcut-help__or,
+.shortcut-help__then {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+}
+.shortcut-help__note {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
 /* Variant: danger-leaning modals get a subtle danger accent on the title */
 .modal-panel--danger .modal-header { border-bottom-color: var(--border-danger); }
 .modal-panel--danger .modal-title { color: var(--text-danger); }

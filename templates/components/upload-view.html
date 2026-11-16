@@ -6,7 +6,7 @@
      the empty/list view). Backdrop-click and Esc both dismiss. -->
 <div v-if="showUploadModal"
      @click.self="closeUploadView"
-     @keydown.esc="closeUploadView"
+     @keydown.esc.stop="closeUploadView"
      tabindex="-1"
      class="modal-overlay">
     <div class="modal-panel modal-panel--lg modal-panel--bottom-sheet"

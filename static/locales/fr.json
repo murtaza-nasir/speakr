@@ -2376,6 +2376,9 @@
     "autoProcessFailed": "{{filename}} n'a pas pu être traité après plusieurs tentatives et a été renommé en {{failed_name}} dans le dossier surveillé. Redonnez-lui son nom d'origine pour réessayer."
   },
   "preferences": {
+    "keyboard": "Clavier",
+    "keyboardShortcuts": "Raccourcis clavier",
+    "keyboardShortcutsHelp": "Des touches simples pour la liste des enregistrements, l’enregistrement ouvert et le lecteur. Sur un ordinateur, la touche ? affiche la liste des touches. Activé par défaut.",
     "autoTranslation": "Traduire automatiquement les nouveaux enregistrements",
     "autoTranslationDisabled": "Désactivée par votre administrateur.",
     "autoTranslationHelp": "Traduit chaque nouvel enregistrement dans votre langue de sortie une fois transcrit. Lorsque l'option est désactivée (par défaut), utilisez Générer la traduction. Les traductions comptent dans votre budget mensuel de tokens.",
@@ -4147,5 +4150,64 @@
     "localCopiesMessageOne": "Ce navigateur contient 1 enregistrement ou envoi qui n'est pas arrivé au serveur. Il est supprimé de ce navigateur à la déconnexion.",
     "localCopiesMessage": "Ce navigateur contient {{count}} enregistrements ou envois qui ne sont pas arrivés au serveur. Ils sont supprimés de ce navigateur à la déconnexion.",
     "deleteAndSignOut": "Supprimer et se déconnecter"
+  },
+  "shortcuts": {
+    "title": "Raccourcis clavier",
+    "then": "puis",
+    "or": "ou",
+    "settingHint": "Les raccourcis clavier s’activent et se désactivent dans Compte, Préférences.",
+    "keys": {
+      "space": "Espace"
+    },
+    "groups": {
+      "general": "Général",
+      "navigation": "Aller à",
+      "list": "Enregistrements",
+      "recording": "Enregistrement ouvert",
+      "player": "Lecteur",
+      "assistant": "Assistant",
+      "editor": "Éditeur de segments",
+      "video": "Vidéo en plein écran"
+    },
+    "showHelp": "Afficher les raccourcis clavier",
+    "close": "Fermer la boîte de dialogue, le menu ou le panneau au premier plan",
+    "search": "Rechercher des enregistrements",
+    "newRecording": "Nouvel enregistrement",
+    "toggleQueue": "Afficher ou masquer la file de traitement",
+    "goRecordings": "Enregistrements",
+    "goAssistant": "Demander à {{name}}",
+    "goSettings": "Paramètres du compte",
+    "goAdmin": "Administration",
+    "moveInList": "Enregistrement suivant ou précédent",
+    "openRecording": "Ouvrir l’enregistrement sélectionné",
+    "star": "Ajouter ou retirer l’étoile",
+    "inbox": "Déplacer vers la boîte de réception ou marquer comme lu",
+    "archive": "Archiver ou désarchiver",
+    "delete": "Supprimer",
+    "selectAll": "Tout sélectionner, en mode sélection",
+    "tab": {
+      "summary": "Afficher le résumé",
+      "notes": "Afficher les notes",
+      "stats": "Afficher les statistiques des intervenants",
+      "events": "Afficher les événements"
+    },
+    "toggleView": "Basculer entre vue simple et vue en bulles",
+    "copyTranscript": "Copier la transcription",
+    "copyTab": "Copier le résumé ou les notes",
+    "editTranscript": "Modifier la transcription",
+    "editTab": "Modifier le résumé ou les notes",
+    "openChat": "Ouvrir la discussion avec {{name}}",
+    "findInTranscript": "Rechercher dans une longue transcription",
+    "playPause": "Lecture ou pause",
+    "skip5": "Reculer ou avancer de 5 secondes",
+    "skip15": "Reculer ou avancer de 15 secondes",
+    "speed": "Lecture plus lente ou plus rapide",
+    "editorHelp": "Afficher les touches de l’éditeur de segments",
+    "editorSave": "Enregistrer",
+    "editorFind": "Rechercher et remplacer",
+    "videoSkip": "Reculer ou avancer de 10 secondes",
+    "videoVolume": "Augmenter ou baisser le volume",
+    "videoLeave": "Quitter le plein écran",
+    "focusQuestion": "Écrire une question à {{name}}"
   }
 }

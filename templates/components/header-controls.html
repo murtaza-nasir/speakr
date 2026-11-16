@@ -113,6 +113,14 @@
                 <span v-text="t('nav.groupManagement')"></span>
             </a>
             {% endif %}
+            {#- The keyboard shortcuts help (static/js/modules/utils/shortcut-help.js).
+                Not on phones, and not while the account has shortcuts turned off. -#}
+            {% if current_user.keyboard_shortcuts is not sameas false %}
+            <button type="button" data-shortcuts-help @click="isUserMenuOpen = false; openShortcutsHelp()"
+                    class="hidden md:flex w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors items-center">
+                <i class="fas fa-keyboard mr-2 w-4 text-center"></i><span class="flex-1" v-text="t('shortcuts.title')"></span><kbd class="kbd" aria-hidden="true">?</kbd>
+            </button>
+            {% endif %}
             {% if help_center_url %}
             <a href="{{ help_center_url }}" target="_blank" rel="noopener noreferrer"
                class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">

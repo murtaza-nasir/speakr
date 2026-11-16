@@ -22,8 +22,16 @@ describe('what a dialog shows', () => {
     it('takes the message alone, with OK and Cancel', () => {
         expect(dialogSpec('confirm', 'Rename the files?')).toEqual({
             kind: 'confirm', title: '', message: 'Rename the files?', confirmLabel: 'OK', cancelLabel: 'Cancel',
-            danger: false, value: '', placeholder: '',
+            danger: false, value: '', placeholder: '', content: null, size: 'sm',
         });
+    });
+
+    it('shows an element in a wider panel in a message dialog only', () => {
+        const content = { nodeType: 1 };
+        expect(dialogSpec('alert', { title: 'Keyboard shortcuts', content, size: 'lg' })).toMatchObject({ content, size: 'lg', message: '' });
+        expect(dialogSpec('alert', { message: 'x', size: 'huge' }).size).toBe('sm');
+        expect(dialogSpec('confirm', { message: 'x', content, size: 'lg' })).toMatchObject({ content: null, size: 'sm' });
+        expect(dialogSpec('alert', { message: 'x', content: 'text' }).content).toBeNull();
     });
 
     it('names a destructive action on a danger button', () => {

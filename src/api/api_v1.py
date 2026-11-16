@@ -1310,6 +1310,8 @@ def get_current_user():
             'auto_summarization': current_user.auto_summarization is not False,
             'show_timestamps_simple_view': bool(current_user.show_timestamps_simple_view),
             'editor_autosave': bool(current_user.editor_autosave),
+            # None means on (an account from before the setting).
+            'keyboard_shortcuts': current_user.keyboard_shortcuts is not False,
             'auto_translation': bool(current_user.auto_translation),
             'notify_email_on_completion': bool(current_user.notify_email_on_completion),
             # The per-user diarize preference has had no control since Aug 2025

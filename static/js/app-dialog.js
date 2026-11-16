@@ -6,13 +6,16 @@
  *
  *   window.confirmDialog({ title?, message, confirmLabel?, cancelLabel?, danger? })
  *       -> Promise<boolean>         true when confirmed
- *   window.alertDialog({ title?, message, confirmLabel? })
+ *   window.alertDialog({ title?, message, confirmLabel?, content?, size? })
  *       -> Promise<void>            resolved when closed
  *   window.promptDialog({ title?, message, value?, placeholder?, confirmLabel?, cancelLabel? })
  *       -> Promise<string | null>   null when cancelled
  *
  * Each also takes the message alone as a string. A destructive confirmation
  * passes `danger: true` and names its action on the button (Delete, Discard).
+ * A message dialog may show an element in place of the message (`content`,
+ * with a title) in a wider panel (`size`: 'md' or 'lg'); the keyboard
+ * shortcuts help is one.
  *
  * The dialog is built from the modal primitives (static/css/primitives.css),
  * so it follows the themes. Esc and a click beside the panel cancel, Enter
@@ -47,8 +50,9 @@
 
     /**
      * What a dialog shows: { kind, title, message, confirmLabel, cancelLabel,
-     * danger, value, placeholder }. `options` is an object or the message.
-     * A message dialog has no cancel button (cancelLabel is '').
+     * danger, value, placeholder, content, size }. `options` is an object or
+     * the message. A message dialog has no cancel button (cancelLabel is '');
+     * only a message dialog has `content` and a size other than 'sm'.
      */
     function dialogSpec(kind, options, t = translate) {
         const given = options && typeof options === 'object' ? options : { message: options };
@@ -62,6 +66,8 @@
             danger: type === 'confirm' && !!given.danger,
             value: type === 'prompt' ? text(given.value) : '',
             placeholder: type === 'prompt' ? text(given.placeholder) : '',
+            content: type === 'alert' && given.content && typeof given.content === 'object' ? given.content : null,
+            size: type === 'alert' && (given.size === 'md' || given.size === 'lg') ? given.size : 'sm',
         };
     }
 
@@ -113,7 +119,7 @@
         const id = `app-dialog-${Date.now().toString(36)}`;
         const overlay = el('div', 'modal-overlay app-dialog');
         overlay.setAttribute('data-app-dialog', spec.kind);
-        const panel = el('div', `modal-panel modal-panel--sm app-dialog__panel${spec.danger ? ' modal-panel--danger' : ''}`);
+        const panel = el('div', `modal-panel modal-panel--${spec.size} app-dialog__panel${spec.danger ? ' modal-panel--danger' : ''}`);
         panel.setAttribute('role', spec.kind === 'alert' || spec.danger ? 'alertdialog' : 'dialog');
         panel.setAttribute('aria-modal', 'true');
         panel.tabIndex = -1;
@@ -128,10 +134,11 @@
         }
 
         const body = el('div', 'modal-body app-dialog__body');
-        const message = el('p', 'app-dialog__message', spec.message);
+        const message = spec.content || el('p', 'app-dialog__message', spec.message);
         message.id = `${id}-message`;
         body.appendChild(message);
-        panel.setAttribute(spec.title ? 'aria-describedby' : 'aria-labelledby', message.id);
+        // An element in place of the message is too long to be read out as the description
+        if (!spec.content || !spec.title) panel.setAttribute(spec.title ? 'aria-describedby' : 'aria-labelledby', message.id);
         let input = null;
         if (spec.kind === 'prompt') {
             input = el('input', 'field app-dialog__input');

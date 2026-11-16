@@ -3,7 +3,14 @@
    the viewer's language is embedded; a locale file that i18n.js fetches
    later carries the app version (window.__I18N_ASSET_VERSION). The
    assistant's name (src/utils/assistant_name.py) fills {{name}} in its
-   strings: window.speakrAssistantName. #}
+   strings: window.speakrAssistantName. For a signed-in account,
+   window.speakrShortcuts carries what the keyboard shortcuts need to know
+   (static/js/modules/utils/shortcut-help.js): the account's setting (Account,
+   Preferences; on unless turned off) and the pages the navigation keys may
+   open. #}
 <script>window.__I18N_BOOTSTRAP = {{ i18n_bootstrap(user_language|default(none))|tojson }};</script>
 <script>window.__I18N_ASSET_VERSION = {{ (app_version|default(''))|tojson }};</script>
 <script>window.speakrAssistantName = {{ (assistant_name|default('Ambrose'))|tojson }};</script>
+{% if current_user is defined and current_user.is_authenticated %}
+<script>window.speakrShortcuts = {{ {'enabled': current_user.keyboard_shortcuts is not sameas false, 'admin': true if current_user.is_admin else false, 'inquire': true if inquire_mode_enabled else false}|tojson }};</script>
+{% endif %}
