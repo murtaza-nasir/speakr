@@ -526,7 +526,7 @@ def admin_delete_user(user_id):
     storage = get_storage_service()
     recordings = list(user.recordings)  # the helper commits after each one
     for recording in recordings:
-        delete_recording_completely(recording, storage=storage)
+        delete_recording_completely(recording, storage=storage, audit_reason='account_deleted')
     if recordings:
         current_app.logger.info(f"Deleted {len(recordings)} recordings of user {user_id}")
 

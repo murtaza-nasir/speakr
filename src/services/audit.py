@@ -97,7 +97,7 @@ EVENTS = {
     'recording.deleted': ('change', frozenset({'reason'})),
     'recording.audio.deleted': ('change', frozenset({'reason'})),
     'recording.reprocessed': ('change', frozenset({'kind'})),
-    'recording.job.canceled': ('change', frozenset({'kind', 'count'})),
+    'recording.job.canceled': ('change', frozenset({'kind'})),
     # Sharing
     'share.internal.created': ('share', frozenset({'share_id', 'can_edit', 'can_reshare', 'imported'})),
     'share.internal.changed': ('share', frozenset({
@@ -475,13 +475,6 @@ def record(event, **fields):
     return True
 
 
-def denied(event, recording, **fields):
-    """A refused access to an existing recording: outcome denied, one row per
-    minute per actor and recording."""
-    fields.setdefault('dedup', DEDUP_DENIED)
-    return record(event, recording=recording, outcome='denied', **fields)
-
-
 # --- Logging outside the incognito filter -----------------------------------
 
 def _log(level, message, *args):
@@ -780,3 +773,131 @@ def stream(filters, chunk=1000):
         for row in rows:
             yield row_dict(row)
         last_id = rows[-1]._mapping['id']
+
+
+# --- Route helpers ----------------------------------------------------------
+
+# The only values of recording.edited "fields".
+EDIT_FIELDS = frozenset({'title', 'participants', 'notes', 'summary', 'transcript', 'translation',
+                         'speakers', 'meeting_date', 'deletion_exempt'})
+
+
+def code(value, allowed, default):
+    """A request value as a details value: one of the allowed codes, else the
+    default. A value typed by the user is never stored as it is."""
+    value = str(value or '').strip().lower()
+    return value if value in allowed else default
+
+
+def edited(recording, fields):
+    """recording.edited in the transaction of the edit, when a field of the
+    fixed set changed. The caller commits."""
+    fields = [f for f in fields if f]
+    unknown = [f for f in fields if f not in EDIT_FIELDS]
+    if unknown and _strict():
+        raise ValueError(f'recording.edited: unknown field(s) {unknown}')
+    fields = sorted(set(fields) & EDIT_FIELDS)
+    if not fields:
+        return None
+    return record_in_tx('recording.edited', recording=recording, details={'fields': fields})
+
+
+def emits(*events):
+    """Mark a view whose body (or a service it calls) records these events.
+
+    The mark is read by tests/test_audit_log_coverage.py, which requires
+    every route that names a recording to be audited or listed as not
+    audited. It records nothing itself."""
+    for name in events:
+        if name not in EVENTS:
+            raise ValueError(f'Unknown audit event {name!r}')
+
+    def decorator(view):
+        view._audit_events = tuple(getattr(view, '_audit_events', ())) + tuple(events)
+        return view
+    return decorator
+
+
+_has_recording_access = None
+
+
+def init_access_check(has_recording_access):
+    """The access rule of the application (src/app.py), given at start."""
+    global _has_recording_access
+    _has_recording_access = has_recording_access
+
+
+def media_event():
+    """Play or download, by the download parameter of the audio routes."""
+    from flask import request
+    if request.args.get('download', 'false').lower() == 'true':
+        return 'recording.media.downloaded', DEDUP_DOWNLOAD
+    return 'recording.media.played', DEDUP_VIEW
+
+
+MEDIA_EVENTS = ('recording.media.played', 'recording.media.downloaded')
+
+
+def access(event, *, dedup=None, details=None, recording_of=None, also=()):
+    """Record a read of a recording after the view answered.
+
+    event: the event name, or a callable returning (name, dedup) for a view
+    that serves two kinds of access (play and download). details: a dict or
+    a callable returning one. recording_of: a callable (**view_args) that
+    returns the recording for a route without recording_id.
+
+    A successful answer (2xx, or a redirect to the storage) records the event.
+    A 403 or 404 for a recording that exists and that the caller cannot
+    access records it with outcome denied, once per minute. Placed directly
+    under login_required, above a decorator that can turn the answer into 304.
+    """
+    names = [event] if isinstance(event, str) else list(also)
+    for name in names:
+        if name not in EVENTS:
+            raise ValueError(f'Unknown audit event {name!r}')
+
+    def decorator(view):
+        import functools
+
+        @functools.wraps(view)
+        def wrapper(*args, **kwargs):
+            from flask import current_app
+            response = current_app.make_response(view(*args, **kwargs))
+            try:
+                _record_access(event, dedup, details, recording_of, kwargs, response.status_code)
+            except Exception as exc:
+                if _strict():
+                    raise
+                _log(logging.ERROR, 'Audit access event was not recorded (%s)', type(exc).__name__)
+            return response
+        wrapper._audit_events = tuple(getattr(view, '_audit_events', ())) + tuple(names)
+        return wrapper
+    return decorator
+
+
+def _record_access(event, dedup, details, recording_of, view_args, status):
+    if status >= 500 or status == 304 or status in (400, 401, 409, 429):
+        return
+    ok = status < 400
+    if not ok and status not in (403, 404):
+        return
+    if callable(event):
+        event, dedup = event()
+    if not ok and not is_enabled():
+        return
+    from src.models import Recording
+    if recording_of is not None:
+        recording = recording_of(**view_args)
+    else:
+        recording = db.session.get(Recording, view_args.get('recording_id'))
+    if recording is None:
+        return
+    values = details() if callable(details) else details
+    extra = (values or {}).get('part')
+    if ok:
+        record(event, recording=recording, details=values, dedup=dedup, dedup_extra=extra)
+        return
+    from flask_login import current_user
+    if _has_recording_access is not None and not _has_recording_access(recording, current_user):
+        record(event, recording=recording, outcome='denied', details=values,
+               dedup=DEDUP_DENIED, dedup_extra=extra)

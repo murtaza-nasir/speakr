@@ -26,6 +26,7 @@ from typing import Optional
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
 from src.utils.token_auth import public_route, require_scope, token_rate_key
+from src.services import audit
 from src.utils.speaker_labels import clean_participants, is_generic_speaker_label, real_speaker_names
 from sqlalchemy import func, extract, or_, and_
 from sqlalchemy.exc import IntegrityError
@@ -1915,6 +1916,7 @@ def list_recording_changes():
 @api_v1_bp.route('/recordings/<int:recording_id>', methods=['GET'])
 @require_scope('read')
 @login_required
+@audit.access('recording.viewed', dedup=audit.DEDUP_VIEW)
 @_conditional('r')
 def get_recording(recording_id):
     """
@@ -2007,6 +2009,7 @@ def get_recording(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/transcript', methods=['GET'])
 @require_scope('read')
 @login_required
+@audit.access('recording.content.read', dedup=audit.DEDUP_VIEW, details={'part': 'transcript'})
 @_conditional('t')
 def get_transcript(recording_id):
     """
@@ -2124,6 +2127,7 @@ def get_transcript(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/summary', methods=['GET'])
 @require_scope('read')
 @login_required
+@audit.access('recording.content.read', dedup=audit.DEDUP_VIEW, details={'part': 'summary'})
 @_conditional('s')
 def get_summary(recording_id):
     """Get summary markdown."""
@@ -2140,6 +2144,7 @@ def get_summary(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/notes', methods=['GET'])
 @require_scope('read')
 @login_required
+@audit.access('recording.content.read', dedup=audit.DEDUP_VIEW, details={'part': 'notes'})
 @_conditional('n')
 def get_notes(recording_id):
     """Get notes markdown."""
@@ -2162,6 +2167,7 @@ def get_notes(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>', methods=['PATCH'])
 @require_scope('write')
 @login_required
+@audit.emits('recording.edited')
 def update_recording(recording_id):
     """
     Update recording metadata, notes, or summary.
@@ -2255,6 +2261,9 @@ def update_recording(recording_id):
             from src.services.auto_shares import drop_stale_auto_shares
             drop_stale_auto_shares(recording_ids=[recording.id])
 
+    # The notes of a recipient are personal notes, not an edit of the recording.
+    audit.edited(recording, [f for f in ('title', 'participants', 'summary', 'meeting_date') if f in data]
+                 + (['notes'] if 'notes' in data and recording.user_id == current_user.id else []))
     db.session.commit()
 
     # recording.updated goes out from the change listener after the commit
@@ -2282,6 +2291,7 @@ def update_recording(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/notes', methods=['PUT'])
 @require_scope('write')
 @login_required
+@audit.emits('recording.edited')
 def replace_notes(recording_id):
     """Replace notes entirely."""
     recording = db.session.get(Recording, recording_id)
@@ -2296,6 +2306,8 @@ def replace_notes(recording_id):
 
     from src.services.recording_state import set_user_notes
     set_user_notes(recording, current_user, data['notes'])
+    if recording.user_id == current_user.id:
+        audit.edited(recording, ['notes'])
     db.session.commit()
 
     return jsonify({'success': True, 'notes': recording.get_user_notes(current_user)})
@@ -2304,6 +2316,7 @@ def replace_notes(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/summary', methods=['PUT'])
 @require_scope('write')
 @login_required
+@audit.emits('recording.edited')
 def replace_summary(recording_id):
     """Replace summary entirely."""
     recording = db.session.get(Recording, recording_id)
@@ -2318,6 +2331,7 @@ def replace_summary(recording_id):
         return jsonify(api_error('summary_field_required')), 400
 
     recording.summary = data['summary']
+    audit.edited(recording, ['summary'])
     db.session.commit()
 
     return jsonify({'success': True, 'summary': recording.summary})
@@ -2330,6 +2344,7 @@ def replace_summary(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>', methods=['DELETE'])
 @require_scope('delete')
 @login_required
+@audit.emits('recording.deleted')
 def delete_recording(recording_id):
     """Delete a recording."""
     recording = db.session.get(Recording, recording_id)
@@ -2363,6 +2378,7 @@ def delete_recording(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/delete-audio', methods=['POST'])
 @require_scope('delete')
 @login_required
+@audit.emits('recording.audio.deleted')
 def delete_recording_audio(recording_id):
     """Delete a recording's media file and keep its transcript, summary and notes."""
     recording = db.session.get(Recording, recording_id)
@@ -2441,6 +2457,7 @@ def _effective_diarize():
 @api_v1_bp.route('/recordings/<int:recording_id>/regenerate_title', methods=['POST'])
 @require_scope('process')
 @login_required
+@audit.emits('recording.reprocessed')
 def api_regenerate_title(recording_id):
     """Regenerate the AI title for a recording based on its existing transcription."""
     from src.api.recordings import regenerate_title
@@ -3267,6 +3284,7 @@ def delete_speaker(speaker_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/speakers', methods=['GET'])
 @require_scope('read')
 @login_required
+@audit.access('recording.content.read', dedup=audit.DEDUP_VIEW, details={'part': 'speakers'})
 @_conditional('k')
 def get_recording_speakers(recording_id):
     """Get speakers in a recording with suggestions."""
@@ -3343,6 +3361,7 @@ def get_recording_speakers(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/speakers/assign', methods=['PUT'])
 @require_scope('write')
 @login_required
+@audit.emits('recording.edited')
 def assign_speakers(recording_id):
     """
     Assign speaker names to a recording's transcription segments.
@@ -3474,6 +3493,7 @@ def identify_speakers(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/transcribe', methods=['POST'])
 @require_scope('process')
 @login_required
+@audit.emits('recording.reprocessed')
 def start_transcription(recording_id):
     """Queue transcription for a recording."""
     from src.services.job_queue import job_queue
@@ -3513,6 +3533,7 @@ def start_transcription(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/summarize', methods=['POST'])
 @require_scope('process')
 @login_required
+@audit.emits('recording.reprocessed')
 def start_summarization(recording_id):
     """Queue summarization for a recording with optional custom prompt."""
     from src.services.job_queue import job_queue
@@ -3698,6 +3719,7 @@ def inquire_v1():
 @api_v1_bp.route('/recordings/<int:recording_id>/events', methods=['GET'])
 @require_scope('read')
 @login_required
+@audit.access('recording.content.read', dedup=audit.DEDUP_VIEW, details={'part': 'events'})
 @_conditional('e')
 def get_recording_events(recording_id):
     """Get calendar events extracted from a recording."""
@@ -3713,6 +3735,7 @@ def get_recording_events(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/events/ics', methods=['GET'])
 @require_scope('read')
 @login_required
+@audit.access('recording.content.read', dedup=audit.DEDUP_VIEW, details={'part': 'events_ics'})
 def download_events_ics(recording_id):
     """Download all events as ICS file."""
     from src.api.events import generate_ics_content
@@ -3744,6 +3767,7 @@ def download_events_ics(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/audio', methods=['GET'])
 @require_scope('read')
 @login_required
+@audit.access(audit.media_event, also=audit.MEDIA_EVENTS)
 def download_audio(recording_id):
     """Download or stream audio file."""
     recording = db.session.get(Recording, recording_id)

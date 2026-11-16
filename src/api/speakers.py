@@ -22,6 +22,7 @@ from src.services.speaker_embedding_matcher import find_matching_speakers
 from src.services.speaker_snippets import get_speaker_snippets, get_speaker_recordings_with_snippets
 from src.services.speaker_merge import merge_speakers, preview_merge, can_merge_speakers
 from src.utils.localization import api_error, translate
+from src.services import audit
 from src.utils.speaker_labels import is_generic_speaker_label
 
 # Create blueprint
@@ -462,6 +463,7 @@ def clear_speaker_embeddings(speaker_id):
 
 @speakers_bp.route('/speakers/snippet-audio/<int:recording_id>', methods=['GET'])
 @login_required
+@audit.access('recording.media.played', dedup=audit.DEDUP_VIEW)
 def get_snippet_audio(recording_id):
     """
     Serve a short audio snippet from a recording.

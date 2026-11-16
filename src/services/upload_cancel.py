@@ -137,7 +137,7 @@ def cancel_upload(user, client_upload_id):
         return result
     recording_id = recording.id
     from src.services.recording_deletion import delete_recording_completely
-    delete_recording_completely(recording)
+    delete_recording_completely(recording, audit_reason='upload_canceled')
     logger.info(f"Upload canceled by user {user.id}: recording {recording_id} deleted")
     result['recording_deleted'] = True
     return result

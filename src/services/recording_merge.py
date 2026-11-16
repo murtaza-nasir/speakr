@@ -394,7 +394,7 @@ def run_merge_job(recording, params):
     if delete_originals:
         for rec in sources:
             try:
-                delete_recording_completely(rec, storage=storage)
+                delete_recording_completely(rec, storage=storage, audit_reason='merged')
             except Exception as e:
                 db.session.rollback()
                 current_app.logger.warning(f"Failed to delete source recording {rec.id} after merge: {e}")
