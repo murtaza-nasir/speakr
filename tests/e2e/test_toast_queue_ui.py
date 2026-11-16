@@ -197,8 +197,11 @@ class App:
         viewport = viewport or DESKTOP
         phone = viewport["width"] < 768
         self.phone = phone
+        # The page is rewritten on its way to the browser (the player position below), which a
+        # route can only do while no service worker answers the navigation
         self.context = browser.new_context(viewport=viewport, locale="en-US", timezone_id="UTC", is_mobile=phone, has_touch=phone,
-                                           color_scheme="dark" if dark else "light", storage_state=App.signed_in)
+                                           color_scheme="dark" if dark else "light", storage_state=App.signed_in,
+                                           service_workers="block")
         self.context.add_init_script("try { localStorage.setItem('darkMode', '%s'); } catch (e) {}" % ("true" if dark else "false"))
         self.context.add_init_script(f"({COUNT_TIMERS})()")
         self.page = self.context.new_page()
