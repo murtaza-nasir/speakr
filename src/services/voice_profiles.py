@@ -332,8 +332,10 @@ def record_sample(speaker, recording, label, vector, speech_seconds=None, source
     (outlier) or 'invalid'. Does not commit.
     """
     from src.models import SpeakerVoiceSample
+    from src.utils.speaker_labels import is_generic_speaker_label
     vec = normalize(vector)
-    if vec is None:
+    # A diarization label is not a person: it never gets a voice sample.
+    if vec is None or is_generic_speaker_label(speaker.name):
         return 'invalid'
     space = recording.speaker_embeddings_space_id
     existing = SpeakerVoiceSample.query.filter_by(
@@ -442,7 +444,10 @@ def voice_summary(speaker, rows=None):
 
 def _user_profiles(user_id, space_id, exclude_speaker_ids=()):
     from src.models import Speaker, SpeakerVoiceSample
-    speakers = Speaker.query.filter_by(user_id=user_id).all()
+    from src.utils.speaker_labels import is_generic_speaker_label
+    # A row named like a diarization label is never a voice-match target.
+    speakers = [sp for sp in Speaker.query.filter_by(user_id=user_id).all()
+                if not is_generic_speaker_label(sp.name)]
     rows_by_speaker = {}
     for row in SpeakerVoiceSample.query.filter_by(user_id=user_id).all():
         rows_by_speaker.setdefault(row.speaker_id, []).append(row)
@@ -666,7 +671,7 @@ def record_label_names(recording, key_to_name):
     recording.speaker_label_map = label_map or None
 
 
-def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source='confirmed'):
+def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source='confirmed', shown_as=None):
     """Train voice profiles from the names given in one save.
 
     key_to_name maps the speaker values the transcript showed before the save
@@ -677,6 +682,11 @@ def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source
     lose their sample. Only the saving user's samples are read or changed:
     each user who can edit a recording keeps their own. Updates the label map and the affected people's summary
     columns. Does not commit.
+
+    shown_as maps speaker values to a diarization label typed in place of a
+    name ("Speaker 1"): the turns are no longer a person's, so the labels
+    behind them lose this user's sample, and the label map records what they
+    show now.
 
     Returns {'stored': n, 'rejected': n, 'skipped_short': n}.
     """
@@ -689,9 +699,11 @@ def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source
     label_map = dict(recording.speaker_label_map or {})
 
     touched = set()
+    named_now = set()
     for key, name in key_to_name.items():
         for label in _labels_for(key, embeddings, label_map):
             label_map[label] = name
+            named_now.add(label)
             if not embeddings.get(label):
                 continue
             seconds = (seconds_by_key or {}).get(key) if seconds_by_key is not None else None
@@ -713,11 +725,28 @@ def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source
                 stats[result] += 1
             touched.add(speaker.id)
 
-    # Labels whose voice no longer appears in the transcript lose their sample.
     try:
         present = {s.get('speaker') for s in json.loads(recording.transcription or '[]') if isinstance(s, dict)}
     except (TypeError, ValueError):
         present = None
+
+    for key, shown in (shown_as or {}).items():
+        # Only when the rename took effect: the transcript shows the label.
+        if present is None or shown not in present:
+            continue
+        for label in _labels_for(key, embeddings, label_map):
+            if shown == label:
+                label_map.pop(label, None)
+            else:
+                label_map[label] = shown
+            old = SpeakerVoiceSample.query.filter_by(user_id=user.id, recording_id=recording.id, label=label).first()
+            if old is not None:
+                touched.add(old.speaker_id)
+                db.session.delete(old)
+    if shown_as:
+        db.session.flush()
+
+    # Labels whose voice no longer appears in the transcript lose their sample.
     # A person renamed since the map was written still counts as present.
     if present is not None:
         from src.models import Speaker as _Speaker
@@ -728,6 +757,17 @@ def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source
                     not (person is not None and person.name in present):
                 touched.add(row.speaker_id)
                 db.session.delete(row)
+            elif row.label not in named_now and row.label in present and shown != row.label and \
+                    shown not in present and not (person is not None and person.name in present):
+                # The name was taken back: the turns show the diarization
+                # label again, so the voice is no longer that person's.
+                touched.add(row.speaker_id)
+                db.session.delete(row)
+                label_map.pop(row.label, None)
+        # A label that shows itself again is not named any more.
+        for label, shown in list(label_map.items()):
+            if shown == label or (label not in named_now and label in present and shown not in present):
+                label_map.pop(label, None)
 
     recording.speaker_label_map = label_map or None
     db.session.flush()

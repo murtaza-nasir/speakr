@@ -176,3 +176,18 @@ describe('mergeSpeakerSegments', () => {
         expect(input[1].speaker).toBe('SPEAKER_03');
     });
 });
+
+describe('buildNameOptions and diarization labels', () => {
+    it('never offers a saved speaker or a voice match whose name is a label', () => {
+        const options = buildNameOptions({
+            voice: [{ name: 'SPEAKER_03', similarity: 91 }, { name: 'Dana Lee', similarity: 84 }],
+            saved: [{ name: 'SPEAKER_00', use_count: 40 }, { name: 'Speaker 2', use_count: 30 }, { name: 'Kim', use_count: 2 }, { name: 'unknown', use_count: 9 }],
+        });
+        expect(options.map((o) => o.name)).toEqual(['Dana Lee', 'Kim']);
+    });
+
+    it('keeps names that only contain the word', () => {
+        const options = buildNameOptions({ saved: [{ name: 'Speaker Johnson' }, { name: 'Guest 1' }, { name: 'A' }] });
+        expect(options.map((o) => o.name)).toEqual(['Speaker Johnson', 'Guest 1', 'A']);
+    });
+});

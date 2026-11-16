@@ -3624,6 +3624,7 @@
       "speaker_map_required": "speaker_map es obligatorio",
       "speaker_name_empty": "El nombre del hablante no puede estar vacío",
       "speaker_name_exists": "Ya existe un hablante llamado \"{{name}}\"",
+      "speaker_name_generic": "Una etiqueta de diarización como SPEAKER_00 no se puede guardar como nombre de hablante",
       "speaker_name_required": "El nombre del hablante es obligatorio",
       "speaker_name_taken": "Ya existe un hablante con este nombre",
       "speaker_not_found": "Hablante no encontrado",

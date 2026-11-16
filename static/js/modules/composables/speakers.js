@@ -4,6 +4,7 @@
  */
 
 import { saveTranscriptWithSpeakers } from '../utils/speaker-save.js';
+import { realSpeakers } from '../utils/speaker-labels.js';
 import { createSummaryFollowUp } from '../utils/summary-follow-up.js';
 
 export function useSpeakers(state, utils, processedTranscription) {
@@ -513,7 +514,7 @@ export function useSpeakers(state, utils, processedTranscription) {
             if (!response.ok) throw new Error('Failed to search speakers');
 
             const speakers = await response.json();
-            newSpeakerSuggestions.value = speakers;
+            newSpeakerSuggestions.value = realSpeakers(speakers);
         } catch (error) {
             console.error('Error searching speakers:', error);
             newSpeakerSuggestions.value = [];

@@ -670,7 +670,9 @@ def update_transcript(recording_id):
         recording.transcription = json.dumps(transcript_data)
         recording.participants = participants_from_segments(transcript_data)
 
-        update_voice_profiles(recording, label_to_name, current_user, seconds_by_key)
+        from src.services.speaker import labels_typed_as_names
+        update_voice_profiles(recording, label_to_name, current_user, seconds_by_key,
+                              shown_as=labels_typed_as_names(speaker_map))
 
         db.session.commit()
 
@@ -1443,12 +1445,18 @@ def get_recordings_paginated():
             # Apply speaker filters
             if speaker_filters:
                 speaker_conditions = []
+                from src.utils.speaker_labels import is_generic_speaker_label
                 for speaker_filter in speaker_filters:
+                    # A diarization label (speaker:SPEAKER_00) names nobody:
+                    # the filter is ignored.
+                    if is_generic_speaker_label(speaker_filter):
+                        continue
                     # Replace underscores back to spaces for matching
                     speaker_name = speaker_filter.replace('_', ' ')
                     speaker_conditions.append(Recording.participants.ilike(
                         contains_pattern(speaker_name), escape=LIKE_ESCAPE))
-                stmt = stmt.where(db.or_(*speaker_conditions))
+                if speaker_conditions:
+                    stmt = stmt.where(db.or_(*speaker_conditions))
 
             # Apply text search
             if text_query:
@@ -1667,7 +1675,8 @@ def save_metadata():
                     recording.title_source = 'user'
                 recording.title = data['title']
             if 'participants' in data:
-                recording.participants = data['participants']
+                from src.utils.speaker_labels import clean_participants
+                recording.participants = clean_participants(data['participants'])
             if 'summary' in data:
                 recording.summary = data['summary']
             if 'meeting_date' in data:

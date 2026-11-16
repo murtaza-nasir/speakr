@@ -446,11 +446,11 @@ def test_chunking_splits_on_size_with_segment_overlap():
 def test_chunking_oversized_single_turn_is_sentence_split():
     from src.services.embeddings import chunk_transcript_segments
     monologue = ('This is a long sentence about the quarterly results. ' * 30).strip()
-    segs = [_seg('Speaker', monologue, 5.0, 300.0)]
+    segs = [_seg('Dana', monologue, 5.0, 300.0)]
     chunks = chunk_transcript_segments(json.dumps(segs), max_chunk_chars=400)
     assert len(chunks) > 1
     for c in chunks:
-        assert c['speaker_name'] == 'Speaker'
+        assert c['speaker_name'] == 'Dana'
         assert c['start_time'] == 5.0 and c['end_time'] == 300.0
 
 

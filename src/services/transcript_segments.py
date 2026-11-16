@@ -66,8 +66,9 @@ def canonical_segments(recording, transcription=None):
     current name when the segment is linked; speaker_label is the
     diarization label, recovered from the label map after a rename.
     """
-    from src.services.speaker_links import (LABEL, _labels_by_name, _sample_speakers, owner_speakers,
+    from src.services.speaker_links import (_labels_by_name, _sample_speakers, owner_speakers,
                                             resolve_id)
+    from src.utils.speaker_labels import is_generic_speaker_label
     import json as _json
     if transcription is None:
         transcription = recording.transcription
@@ -92,7 +93,7 @@ def canonical_segments(recording, transcription=None):
         # A valid stored link wins: the name in the segment may be an older
         # spelling of the same person.
         sid = stored_id if stored_id in by_id else resolve_id(name, None, by_name, by_id, samples, labels_by_name)
-        if name_text and LABEL.match(name_text):
+        if name_text and is_generic_speaker_label(name_text):
             label = name_text
         else:
             labels = labels_by_name.get((name_text or '').lower(), [])

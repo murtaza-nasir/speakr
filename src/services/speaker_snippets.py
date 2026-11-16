@@ -36,6 +36,8 @@ def create_speaker_snippets(recording_id, speaker_map):
     Returns:
         int: Number of snippets created
     """
+    from src.utils.speaker_labels import is_real_speaker_name
+
     recording = db.session.get(Recording, recording_id)
     if not recording or not recording.transcription:
         return 0
@@ -50,8 +52,8 @@ def create_speaker_snippets(recording_id, speaker_map):
     # not the original SPEAKER_XX label. We need to match by name too.
     name_to_info = {}
     for label, info in speaker_map.items():
-        name = info.get('name', '').strip()
-        if name and not name.startswith('SPEAKER_'):
+        name = (info.get('name') or '').strip()
+        if is_real_speaker_name(name):
             name_to_info[name] = info
 
     # Collect candidates per speaker: (speaker_obj, segment_idx, text, timestamp)
@@ -72,7 +74,7 @@ def create_speaker_snippets(recording_id, speaker_map):
         else:
             continue
 
-        if not speaker_name or speaker_name.startswith('SPEAKER_'):
+        if not is_real_speaker_name(speaker_name):
             continue
 
         # Find the speaker in database

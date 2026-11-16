@@ -3624,6 +3624,7 @@
       "speaker_map_required": "speaker_map est requis",
       "speaker_name_empty": "Le nom de l'orateur ne peut pas être vide",
       "speaker_name_exists": "Un orateur nommé \"{{name}}\" existe déjà",
+      "speaker_name_generic": "Une étiquette de diarisation telle que SPEAKER_00 ne peut pas être enregistrée comme nom d'orateur",
       "speaker_name_required": "Le nom de l'orateur est requis",
       "speaker_name_taken": "Un orateur portant ce nom existe déjà",
       "speaker_not_found": "Orateur introuvable",

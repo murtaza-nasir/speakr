@@ -3624,6 +3624,7 @@
       "speaker_map_required": "speaker_map обязательно",
       "speaker_name_empty": "Имя спикера не может быть пустым",
       "speaker_name_exists": "Спикер с именем \"{{name}}\" уже существует",
+      "speaker_name_generic": "Метку диаризации, например SPEAKER_00, нельзя сохранить как имя спикера",
       "speaker_name_required": "Укажите имя спикера",
       "speaker_name_taken": "Спикер с таким именем уже существует",
       "speaker_not_found": "Спикер не найден",

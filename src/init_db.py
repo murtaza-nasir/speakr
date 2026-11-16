@@ -1495,6 +1495,16 @@ def _run_migrations(app, engine):
             db.session.rollback()
             app.logger.warning(f"Stale group share cleanup skipped, retried next start: {e}")
 
+        # Diarization labels (SPEAKER_00) were stored as saved speakers,
+        # participants and Inquire chunk speakers. Counts only in the log.
+        try:
+            from src.utils.generic_speaker_cleanup import remove_generic_speakers
+            run_once(engine, '0008_remove_generic_speaker_labels',
+                     lambda eng: remove_generic_speakers(eng, logger=app.logger), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Diarization label cleanup skipped, retried next start: {e}")
+
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled

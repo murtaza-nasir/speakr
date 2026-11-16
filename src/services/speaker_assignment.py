@@ -23,9 +23,10 @@ def apply_speaker_names(recording, user, speaker_map, regenerate_summary=False):
     queues a summary or rewrites the auto-export. Returns a dict with
     summary_queued, embeddings_updated and snippets_created.
     """
-    from src.services.speaker import (apply_speaker_map, participants_from_segments,
+    from src.services.speaker import (apply_speaker_map, labels_typed_as_names, participants_from_segments,
                                       update_speaker_usage, update_voice_profiles)
     from src.services.voice_profiles import speech_seconds_by_label
+    from src.utils.speaker_labels import is_generic_speaker_label
 
     transcription_text = recording.transcription or ''
     try:
@@ -55,7 +56,8 @@ def apply_speaker_names(recording, user, speaker_map, regenerate_summary=False):
             if name:
                 transcription_text = re.sub(r'\[\s*' + re.escape(label) + r'\s*\]', f'[{name}]',
                                             transcription_text, flags=re.IGNORECASE)
-                if name not in names_used:
+                # A diarization label typed as a name is not a participant.
+                if name not in names_used and not is_generic_speaker_label(name):
                     names_used.append(name)
         recording.transcription = transcription_text
         if names_used:
@@ -63,7 +65,9 @@ def apply_speaker_names(recording, user, speaker_map, regenerate_summary=False):
 
     if names_used:
         update_speaker_usage(names_used)
-    embeddings_updated, snippets_created = update_voice_profiles(recording, label_to_name, user, seconds_by_key) or (0, 0)
+    embeddings_updated, snippets_created = update_voice_profiles(
+        recording, label_to_name, user, seconds_by_key,
+        shown_as=labels_typed_as_names(speaker_map) if is_json else None) or (0, 0)
     db.session.commit()
 
     # The transcript text changed: rebuild the Inquire chunks (background).

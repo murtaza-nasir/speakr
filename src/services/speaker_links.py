@@ -18,15 +18,23 @@ import json
 import re
 
 from src.database import db
+from src.utils.speaker_labels import is_generic_speaker_label
 
+# Kept for importers; the rule itself is src/utils/speaker_labels.py.
 LABEL = re.compile(r'^SPEAKER_\d+$', re.IGNORECASE)
 
 
 def owner_speakers(user_id):
-    """({lowercased name: Speaker}, {id: Speaker}) for one user."""
+    """({lowercased name: Speaker}, {id: Speaker}) for one user.
+
+    A row whose name is a diarization label is left out: such a row is not a
+    saved speaker, and no segment links to it.
+    """
     from src.models import Speaker
     by_name, by_id = {}, {}
     for speaker in Speaker.query.filter_by(user_id=user_id).order_by(Speaker.id):
+        if is_generic_speaker_label(speaker.name):
+            continue
         by_id[speaker.id] = speaker
         by_name.setdefault((speaker.name or '').strip().lower(), speaker)
     return by_name, by_id
@@ -54,7 +62,7 @@ def _labels_by_name(recording):
 
 def resolve_id(name, current_id, by_name, by_id, samples, labels_by_name):
     """The speaker id for one segment name, or None."""
-    if not isinstance(name, str) or not name.strip() or LABEL.match(name.strip()):
+    if not isinstance(name, str) or not name.strip() or is_generic_speaker_label(name):
         return None
     key = name.strip().lower()
     if current_id in by_id and (by_id[current_id].name or '').strip().lower() == key:

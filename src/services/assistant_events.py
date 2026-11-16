@@ -62,6 +62,14 @@ def filters_from_request(data):
                       ('filter_speakers', 'speaker_names'), ('filter_recording_ids', 'recording_ids')):
         if data.get(key):
             filters[name] = data[key]
+    # Diarization labels (SPEAKER_00) name nobody: such values are ignored.
+    if 'speaker_names' in filters:
+        from src.utils.speaker_labels import real_speaker_names
+        names = real_speaker_names(filters['speaker_names'])
+        if names:
+            filters['speaker_names'] = names
+        else:
+            del filters['speaker_names']
     if data.get('filter_date_from'):
         filters['date_from'] = datetime.fromisoformat(data['filter_date_from']).date()
     if data.get('filter_date_to'):

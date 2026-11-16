@@ -15,8 +15,8 @@ All text is kept in the application database (SQLite by default, PostgreSQL as a
 | Data | Table |
 |---|---|
 | Title, participants, notes, transcript, translation, summary, original file name, error text, speaker embeddings, resolved hotwords and initial prompt | `recording` |
-| Transcript passages and their embeddings, when Ask Ambrose is enabled (`ENABLE_INQUIRE_MODE=true`) | `transcript_chunk` |
-| Speaker names, voice embeddings and short quotes of up to 200 characters | `speaker`, `speaker_voice_sample`, `speaker_snippet` |
+| Transcript passages, their embeddings and the name of the main speaker of each passage when that speaker is named, when Ask Ambrose is enabled (`ENABLE_INQUIRE_MODE=true`) | `transcript_chunk` |
+| Names of the speakers a user named, voice embeddings and short quotes of up to 200 characters. Nothing is stored here for an unnamed voice (see [Diarization labels](#diarization-labels)). | `speaker`, `speaker_voice_sample`, `speaker_snippet` |
 | Calendar events extracted from a transcript | `event` |
 | Job parameters (including hotwords and initial prompt) and error text of a job | `processing_job` |
 | Public links and internal shares | `share`, `internal_share` |
@@ -30,6 +30,26 @@ All text is kept in the application database (SQLite by default, PostgreSQL as a
 For the last use of an account, only the time of the last request is kept, in one column of the `user` table. The time is updated at most once every five minutes, and no history of requests, addresses or routes is stored for it. Requests that are sent on a timer from an open tab are not counted. The time is shown to site administrators in the [user list](user-management.md#monitoring-usage-patterns), and it is stored in the same way for requests in incognito mode.
 
 Service keys (LLM, transcription, embeddings, SMTP, SSO) are read from environment variables and are not written to the database.
+
+### Diarization labels
+
+A diarization label is the placeholder of a voice that has not been named, such as `SPEAKER_00`, `Speaker 1`, `spk_0` or `Unknown Speaker`. Labels are kept in the transcript, where an unnamed turn is shown under its label. They are never stored as speaker data: no row in `speaker`, `speaker_voice_sample` or `speaker_snippet` is written for a label, and labels are left out of `recording.participants`, of `transcript_chunk.speaker_name` and of the speaker filters stored in `inquire_session`. The rule is described in `src/utils/speaker_labels.py`.
+
+Earlier releases could store a label in these places. At the first start after the upgrade, such entries are removed once (migration `0008_remove_generic_speaker_labels`):
+
+- Saved speakers whose name is a label are deleted, together with their voice samples and quotes. In transcripts, the link from a segment to such a speaker is cleared; the text and the visible label of the segment are not changed.
+- Labels are removed from the participants of recordings. The `updated_at` of these recordings is set, so that API clients read the new value.
+- The speaker name of transcript passages is cleared where it is a label. The text of the passage is not changed.
+- A saved speaker named like a label is kept when an email address or aliases were entered for it. Such a speaker is not listed anywhere; its id is written to the log, and it can be renamed or deleted through the API by that id.
+
+The log line of the cleanup holds counts and ids, never a name. The counts can be read beforehand with a command that only reads the database:
+
+```bash
+docker compose exec app python scripts/generic_speakers_dry_run.py
+
+# A copy or another database
+python scripts/generic_speakers_dry_run.py --database-uri sqlite:////path/to/copy.db
+```
 
 ### Files
 
