@@ -389,8 +389,8 @@ html[data-ui-theme="cards"] .sidebar { --sb-bg: var(--c-bg); }
 html[data-ui-theme="cards"] .sb-head { padding: 4px 16px 8px; position: relative; }
 html[data-ui-theme="cards"] .sb-title,
 html[data-ui-theme="cards"] .sb-folder-select {
-    font-size: var(--c-fs-xl);
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     letter-spacing: -0.015em;
     color: var(--c-text);
 }

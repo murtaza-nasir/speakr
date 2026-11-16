@@ -577,7 +577,7 @@ html[data-ui-theme="focus"] body .focus-filters button[class*="min-h-"] { border
 html[data-ui-theme="focus"] body .focus-side-title h2,
 html[data-ui-theme="focus"] body .focus-side-title select {
     font-family: var(--f-font-read);
-    font-size: 19px !important;
+    font-size: 16px !important;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--f-text);
