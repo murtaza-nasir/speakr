@@ -4123,6 +4123,11 @@
       "0_10_23": {
         "1": "O editor de transcrição tem uma linha do tempo com a forma de onda. Os segmentos podem ser movidos ou redimensionados clicando e arrastando.",
         "2": "Transcrições longas podem ser pesquisadas com o atalho Ctrl+F."
+      },
+      "0_11_0": {
+        "1": "O layout para celular foi refeito, com um único layout em todos os temas.",
+        "2": "A fila de processamento mostra os trabalhos ativos, em espera e com falha. Trabalhos e envios podem ser cancelados.",
+        "3": "Há atalhos de teclado no computador. As teclas são listadas com ?."
       }
     }
   },

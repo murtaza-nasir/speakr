@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.23--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.0-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -237,7 +237,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.23-alpha)
+## Latest Release (v0.11.0)
+
+- The phone layout is rebuilt, with one layout in every theme.
+- The processing queue shows active, waiting and failed jobs, and jobs and uploads can be canceled.
+- Site admins have an audit log of sign-ins, access to recordings, changes, shares and admin actions.
+- Keyboard shortcuts are available on the desktop.
+- Incognito requests are logged as metadata only, and speaker labels of every transcription service are stored as `SPEAKER_00`, `SPEAKER_01`.
+
+### v0.10.23-alpha
 
 - The segment editor has a timeline with the waveform, undo and redo, and segments can be moved or resized by clicking and dragging.
 - Long transcripts are shown quickly on the recording page, on public share links and in Identify speakers, and can be searched with Ctrl+F.
@@ -253,16 +261,8 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - Tag group changes update the group shares, and empty or over-budget transcriptions send a failure notice.
 - WebM audio (`.weba`) is taken from the watch folder.
 
-### v0.10.21-alpha
 
-- The API can be used with the user's SSO access token from any app that signs users in through the same single sign-on and supports this, such as Open WebUI, without a copied API token.
-- Ambrose finds people by a first name, a surname, an email or another spelling, and searches every name a person appears under.
-- Sharing and permission fixes for group folders, bulk tags, retention, calendar events and API v1 flags (#586, #589, #591, #598 to #600).
-- Job and upload fixes for merges, retries, failure notices, reused ids and repeated tags (#587, #592, #594 to #597, #601), and summaries cut off by reasoning models are reported as failed.
-- Error pages from transcription services are kept only as a short, redacted summary in logs, webhooks and emails (#593).
-
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.23-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.0) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 

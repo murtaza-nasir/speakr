@@ -4123,6 +4123,11 @@
       "0_10_23": {
         "1": "El editor de transcripciones tiene una línea de tiempo con la forma de onda. Los segmentos se pueden mover o redimensionar haciendo clic y arrastrando.",
         "2": "En las transcripciones largas se puede buscar con el atajo Ctrl+F."
+      },
+      "0_11_0": {
+        "1": "El diseño para teléfonos se ha rehecho, con un único diseño en todos los temas.",
+        "2": "La cola de procesamiento muestra los trabajos activos, en espera y fallidos. Los trabajos y las subidas se pueden cancelar.",
+        "3": "En el escritorio hay atajos de teclado. Las teclas se muestran con ?."
       }
     }
   },

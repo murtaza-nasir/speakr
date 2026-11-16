@@ -4123,6 +4123,11 @@
       "0_10_23": {
         "1": "Der Transkript-Editor hat eine Zeitleiste mit der Wellenform. Segmente lassen sich durch Klicken und Ziehen verschieben oder in der Länge ändern.",
         "2": "Lange Transkripte lassen sich mit dem Tastenkürzel Strg+F durchsuchen."
+      },
+      "0_11_0": {
+        "1": "Das Layout für Smartphones ist neu aufgebaut und in jedem Design gleich.",
+        "2": "Die Verarbeitungswarteschlange zeigt aktive, wartende und fehlgeschlagene Aufträge. Aufträge und Uploads lassen sich abbrechen.",
+        "3": "Auf dem Desktop gibt es Tastenkürzel. Die Tasten werden mit ? aufgelistet."
       }
     }
   },

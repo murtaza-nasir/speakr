@@ -4123,6 +4123,11 @@
       "0_10_23": {
         "1": "L'éditeur de transcription a une chronologie avec la forme d'onde. Les segments peuvent être déplacés ou redimensionnés par cliquer-glisser.",
         "2": "La recherche dans les longues transcriptions se fait avec le raccourci Ctrl+F."
+      },
+      "0_11_0": {
+        "1": "La mise en page pour téléphone est refaite, avec une seule mise en page dans tous les thèmes.",
+        "2": "La file de traitement affiche les tâches actives, en attente et en échec. Les tâches et les envois peuvent être annulés.",
+        "3": "Des raccourcis clavier sont disponibles sur ordinateur. Les touches sont listées avec ?."
       }
     }
   },
