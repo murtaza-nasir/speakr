@@ -115,7 +115,6 @@ _ADMIN_ENDPOINTS = [
     ('GET', '/admin/transcription-stats/users', None),
     ('POST', '/admin/auto-deletion/run', None),
     ('GET', '/admin/auto-deletion/stats', None),
-    ('GET', '/admin/auto-deletion/preview', None),
     ('POST', '/api/admin/migrate_recordings', None),
     ('GET', '/admin/auto-process/status', None),
     ('POST', '/admin/auto-process/start', None),
@@ -464,15 +463,6 @@ def test_auto_deletion_stats_ok(admin_client):
     resp = admin_client.get('/admin/auto-deletion/stats')
     assert resp.status_code == 200
     assert 'archived_count' in resp.get_json()
-
-
-def test_auto_deletion_preview_ok(admin_client):
-    """Preview is admin-reachable. Returns 400 when auto-deletion is disabled
-    (default) or 200 with a dry-run payload when enabled in this environment."""
-    resp = admin_client.get('/admin/auto-deletion/preview')
-    assert resp.status_code in (200, 400)
-    if resp.status_code == 200:
-        assert 'would_delete' in resp.get_json()
 
 
 # ---------------------------------------------------------------------------

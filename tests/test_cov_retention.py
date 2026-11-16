@@ -536,27 +536,3 @@ class TestForeignPersonalTag(RetentionTestBase):
             retention.process_auto_deletion()
         self.assertIsNotNone(db.session.get(Recording, rec.id))
         storage.delete.assert_not_called()
-
-    def test_admin_preview_does_not_name_a_foreign_tag(self):
-        import src.api.admin as admin_module
-        admin = User(username=f"reta_{uuid.uuid4().hex[:8]}", email=f"reta_{uuid.uuid4().hex[:8]}@local.test",
-                     password="x", is_admin=True)
-        db.session.add(admin)
-        db.session.commit()
-        try:
-            rec = self.make_recording(deletion_exempt=True)
-            ftag = self.foreign_tag(protect_from_deletion=True)
-            self.tag_recording(rec, ftag)
-            client = app.test_client()
-            with client.session_transaction() as sess:
-                sess["_user_id"] = str(admin.id)
-                sess["_fresh"] = True
-            with patch.object(admin_module, 'ENABLE_AUTO_DELETION', True):
-                body = client.get('/admin/auto-deletion/preview').get_json()
-            row = next(r for r in body['would_exempt'] if r['id'] == rec.id)
-            self.assertEqual(row['exempt_reason'], ['manually_exempted'])
-            self.assertNotIn(ftag.name, row['tags'])
-        finally:
-            db.session.rollback()
-            db.session.delete(db.session.get(User, admin.id))
-            db.session.commit()

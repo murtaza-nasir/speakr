@@ -96,6 +96,7 @@ Rows with `imported` in the details were copied from the table `share_audit_log`
 | `admin.user.role_changed` | The administrator role was given or taken away | `old`, `new` |
 | `admin.setting.changed` | A system setting was saved or cleared | `key`. For settings that hold a switch, a number or a fixed choice: `old` and `new`. For every other setting, only the key. A key that is not a setting of the application is stored as `other`. |
 | `admin.retention.run` | Automatic deletion was started by hand | Counts |
+| `admin.inquire.processed` | An administrator started the processing of recordings for Ask Ambrose on the admin page. The recordings of all accounts are processed. | `processed`, `failed`, `total`, `force` |
 | `group.created`, `group.changed`, `group.deleted` | A group was created, changed or deleted | `fields` |
 | `group.member.added`, `group.member.role_changed`, `group.member.removed` | A member was added to a group, changed in role, or removed | `role`, `old_role` |
 | `audit.viewed`, `audit.exported` | The audit log was read (one row per 30 minutes for each administrator) or exported | `filters`, `count`, `format` |
@@ -118,7 +119,7 @@ One row is written for each incognito upload, also for one that is refused or fa
 - Shares made by a group tag or a group folder
 - A sign-in through the "Remember me" cookie, and a request with an invalid API token
 - The status requests that are sent on a timer from an open page, and the waveform of a recording
-- Two requests of a site administrator in which titles of recordings of other users are returned: the preview of automatic deletion (`GET /admin/auto-deletion/preview`), and the processing of recordings for Ask Ambrose on the admin page, where the titles of recordings that failed are returned
+- The statistics pages of a site administrator. They hold counts and sizes per account, and the five latest failed recordings by id, with the username, the time and the stored error text, without a title or a file name.
 - Text copied or saved in the browser after a recording was opened
 
 ## Settings

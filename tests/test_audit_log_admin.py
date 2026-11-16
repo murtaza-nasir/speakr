@@ -9,7 +9,7 @@ import uuid
 import pytest
 
 from tests.audit_log_support import (  # noqa: E402
-    PASSWORD, app, audit, client_for, db, make_user, max_id, names, remove_users,
+    PASSWORD, app, audit, client_for, db, make_recording, make_user, max_id, names, remove_users,
     reset_audit_settings, rows_after, set_setting,
 )
 from src.models import Group, GroupMembership, LoginFailure, SystemSetting, User  # noqa: E402
@@ -213,6 +213,60 @@ def test_the_manual_retention_run_records_counts(created, monkeypatch):
     assert names(rows) == ['admin.retention.run']
     assert rows[0].details == {'checked': 7, 'deleted_audio_only': 0, 'deleted_full': 2, 'errors': 0}
     assert 'SENTINEL' not in _dump(rows)
+
+
+def test_inquire_processing_answers_ids_without_titles_and_is_recorded(created, monkeypatch):
+    from src.api import admin as admin_module
+    admin = make_user(created, prefix='adm', is_admin=True)
+    owner = make_user(created, prefix='own')
+    good = make_recording(owner, title='SENTINEL good title')
+    bad = make_recording(owner, title='SENTINEL bad title')
+    calls = []
+
+    def chunks(recording_id):
+        calls.append(recording_id)
+        if recording_id == bad.id:
+            raise RuntimeError('SENTINEL transcript passage')
+        return True
+
+    monkeypatch.setattr(admin_module, 'process_recording_chunks', chunks)
+    start = max_id()
+    resp = client_for(admin).post('/admin/inquire/process-recordings', json={'retry_passes': 0})
+    assert resp.status_code == 200, resp.data[:300]
+    assert 'SENTINEL' not in resp.get_data(as_text=True)
+    body = resp.get_json()
+    assert good.id in calls
+    # The id, the kind of the error and the number of attempts: no title, no error text.
+    assert [f for f in body['failed'] if f['id'] == bad.id] == [
+        {'id': bad.id, 'reason': 'RuntimeError length=27', 'attempts': 1}]
+    assert all(set(f) == {'id', 'reason', 'attempts'} for f in body['failed'])
+    rows = rows_after(start)
+    assert names(rows) == ['admin.inquire.processed']
+    assert rows[0].actor_user_id == admin.id and rows[0].recording_id is None
+    assert rows[0].details == {'processed': body['processed'], 'failed': len(body['failed']),
+                               'total': body['total'], 'force': False}
+    assert rows[0].details['failed'] >= 1 and rows[0].details['processed'] >= 1
+    assert 'SENTINEL' not in _dump(rows)
+
+
+def test_the_older_inquire_route_is_recorded_with_counts(created, monkeypatch):
+    from src.api import admin as admin_module
+    admin = make_user(created, prefix='adm', is_admin=True)
+    owner = make_user(created, prefix='own')
+    make_recording(owner, title='SENTINEL title')
+    monkeypatch.setattr(admin_module, 'process_recording_chunks', lambda recording_id: True)
+    start = max_id()
+    resp = client_for(admin).post('/api/admin/migrate_recordings')
+    assert resp.status_code == 200 and 'SENTINEL' not in resp.get_data(as_text=True)
+    body = resp.get_json()
+    rows = rows_after(start)
+    assert names(rows) == ['admin.inquire.processed']
+    assert rows[0].details == {'processed': body['processed'], 'failed': 0, 'total': body['total'], 'force': False}
+
+
+def test_the_auto_deletion_preview_route_is_removed(created):
+    admin = make_user(created, prefix='adm', is_admin=True)
+    assert client_for(admin).get('/admin/auto-deletion/preview').status_code == 404
 
 
 def test_group_lifecycle_never_records_the_group_name(created):

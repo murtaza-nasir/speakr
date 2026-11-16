@@ -189,8 +189,10 @@ def build_overview(days=30, today=None):
     model_rows = sorted(models.values(), key=lambda r: (-r['cost'], -r['tokens'], -r['minutes'], r['model']))
 
     # ---- latest failed recordings
+    # Named by id: the recordings belong to other users, so no title and no
+    # file name is returned to the administrator.
     failed_recent = [
-        {'id': r.id, 'title': r.title or r.original_filename or f'#{r.id}', 'username': username,
+        {'id': r.id, 'username': username,
          'created_at': r.created_at.isoformat() + 'Z' if r.created_at else None,
          'error': (r.error_message or '')[:300]}
         for r, username in db.session.query(Recording, User.username).join(User, User.id == Recording.user_id)

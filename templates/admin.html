@@ -445,7 +445,7 @@
                                     <p class="text-xs font-medium text-[var(--text-muted)] mb-1.5">${t('adminDashboard.statsPage.latestFailures')}</p>
                                     <ul class="space-y-1.5">
                                         <li v-for="f in overview.failed_recent" :key="f.id" class="text-xs min-w-0" :title="f.error">
-                                            <p class="text-[var(--text-primary)] truncate" v-text="f.title"></p>
+                                            <p class="text-[var(--text-primary)] truncate" v-text="'#' + f.id"></p>
                                             <p class="text-[var(--text-muted)] truncate">
                                                 <span v-text="f.username"></span> · <span v-text="formatDate(f.created_at)"></span><span v-if="f.error"> · </span><span v-text="f.error"></span>
                                             </p>
@@ -1278,7 +1278,7 @@ Summarization Instructions:
                                     <p class="text-sm font-medium">${ t('adminDashboard.failedRecordingsLabel') }:</p>
                                     <ul class="text-xs mt-1 space-y-1">
                                         <li v-for="fail in processingResult.failed" :key="fail.id">
-                                            ID ${ fail.id }: ${ fail.title } - ${ fail.reason }
+                                            ID ${ fail.id }: ${ fail.reason }
                                         </li>
                                     </ul>
                                 </div>

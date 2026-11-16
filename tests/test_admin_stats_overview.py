@@ -98,7 +98,10 @@ def test_recordings_by_day_source_and_failure(world):
     assert after["activity"]["created"] - before["activity"]["created"] == 3
     assert after["overview"]["recordings"]["previous"] - before["overview"]["recordings"]["previous"] == 1
     assert after["activity"]["failure_rate"] is not None
-    assert any(r["title"] == "Broken one" and r["error"] == "boom" for r in after["failed_recent"])
+    # A failed recording is named by its id: no title and no file name of another user.
+    assert any(r["error"] == "boom" for r in after["failed_recent"])
+    assert all(set(r) == {"id", "username", "created_at", "error"} for r in after["failed_recent"])
+    assert "Broken one" not in str(after["failed_recent"])
 
 
 def test_tokens_split_by_task_with_embeddings_apart(world):
