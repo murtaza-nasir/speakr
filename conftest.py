@@ -83,6 +83,15 @@ os.environ["ENABLE_INQUIRE_AGENT"] = "false"
 # points at: slow, noisy in the logs, and it bills somebody for a transcription
 # nobody asked for. The check has its own tests, which drive it explicitly.
 os.environ["DISABLE_VOICE_EMBEDDING_CHECK"] = "true"
+
+# The webhook dispatcher thread starts with the application and posts every
+# due delivery on its interval (5 seconds by default). In a test process it
+# would run beside the tests that seed a due delivery and call
+# run_dispatcher_pass themselves: a pass of the thread that reads the same row
+# posts it for real, fails without a network and counts a failure on the
+# webhook. The interval is read once when the thread starts, so a day keeps
+# the thread asleep for the whole run.
+os.environ["WEBHOOK_DISPATCHER_INTERVAL_SECONDS"] = "86400"
 # NB: do NOT force WEBHOOK_GLOBAL_ENABLED=false here — the webhook suite needs
 # delivery enabled (it mocks the actual HTTP POST), so leave the default (true).
 
