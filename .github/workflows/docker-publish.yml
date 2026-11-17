@@ -64,10 +64,12 @@ jobs:
         run: pytest tests/ -q --cov=src --cov-report=term-missing --cov-fail-under=60
 
   smoke-lite:
-    # Build the lite image for amd64 into the local daemon and open every page
-    # of it in a browser (tests/e2e/test_browser_smoke.py) before anything is
-    # pushed. The build jobs below wait for this job, so a broken image is
-    # never published. It shares the GitHub Actions build cache with them.
+    # Build the lite image for amd64 into the local daemon and open its pages
+    # in a browser (tests/e2e/test_image_smoke.py) before anything is pushed.
+    # The build jobs below wait for this job, so a broken image is never
+    # published. The same check runs for every ci/ branch (image-smoke in
+    # test.yml), so a failure is found before a release is tagged. It shares
+    # the GitHub Actions build cache with the build jobs.
     needs: test
     runs-on: ubuntu-latest
 
@@ -117,7 +119,7 @@ jobs:
         env:
           SPEAKR_BROWSER_SMOKE: '1'
           SPEAKR_BASE_URL: http://127.0.0.1:8899
-        run: pytest tests/e2e/test_browser_smoke.py -q -p no:cacheprovider --noconftest -rs
+        run: pytest tests/e2e/test_image_smoke.py -q -p no:cacheprovider --noconftest -rs
 
       - name: Container log
         if: always()

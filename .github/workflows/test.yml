@@ -278,6 +278,66 @@ jobs:
         if: always()
         run: tail -n 200 /tmp/speakr.log || true
 
+  image-smoke:
+    # Builds the lite image for amd64 and opens its pages in a browser
+    # (tests/e2e/test_image_smoke.py), with the example settings and an empty
+    # database. ship.sh waits for this job with the others, so an image that
+    # does not start or lacks a file stops the ship before a release is
+    # tagged. The build cache is shared with the publish workflow.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          sudo docker image prune -af
+          df -h /
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build lite image (amd64, local)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: speakr:smoke
+          cache-from: type=gha,scope=lite-amd64
+          cache-to: type=gha,scope=lite-amd64,mode=max
+          build-args: |
+            PRODUCTION=1
+            LIGHTWEIGHT=1
+
+      - name: Start the image with the example settings
+        run: |
+          python3 tests/e2e/smoke_env.py > smoke.env
+          docker run -d --name speakr-smoke -p 8899:8899 --env-file smoke.env speakr:smoke
+          for i in $(seq 1 90); do curl -fs -o /dev/null http://127.0.0.1:8899/login && break; sleep 2; done
+          curl -fs -o /dev/null http://127.0.0.1:8899/login
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+
+      - name: Install Playwright
+        run: |
+          pip install --require-hashes --no-deps -r requirements-dev.lock
+          python -m playwright install --with-deps chromium
+
+      - name: Browser smoke test against the image
+        env:
+          SPEAKR_BROWSER_SMOKE: '1'
+          SPEAKR_BASE_URL: http://127.0.0.1:8899
+        run: pytest tests/e2e/test_image_smoke.py -q -p no:cacheprovider --noconftest -rs
+
+      - name: Container log
+        if: always()
+        run: docker logs speakr-smoke 2>&1 | tail -n 200 || true
+
   js-tests:
     runs-on: ubuntu-latest
 
