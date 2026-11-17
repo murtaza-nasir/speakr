@@ -48,7 +48,9 @@ def created():
 
 def _seed(actor, target, recording_id, count=12):
     """Rows of several kinds for one recording id, a minute apart, oldest first."""
-    base = datetime.utcnow() - timedelta(days=3)
+    # At noon, so that the twelve minutes never cross midnight UTC and the
+    # tests that filter by day give the same result at every time of day.
+    base = (datetime.utcnow() - timedelta(days=3)).replace(hour=12, minute=0, second=0, microsecond=0)
     ids = []
     for i in range(count):
         kind = i % 4
