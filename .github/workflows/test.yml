@@ -1,6 +1,7 @@
 name: Tests
 
-# Runs the full automated suite on every push and pull request. The existing
+# Runs the full automated suite on every branch push (master excepted) and
+# every pull request. The existing
 # docker-publish.yml only ran two migration tests on release, so nothing
 # guarded day-to-day changes; this workflow gives the ~378 Python tests + the
 # Vitest JS tests real per-commit regression protection.
@@ -11,7 +12,12 @@ name: Tests
 # python-tests-postgres runs the same suite on PostgreSQL.
 
 on:
+  # master and tags are not tested again: master is moved only by ship.sh, to
+  # a commit whose run on a ci/ branch passed, and a release tag is put on
+  # that same commit.
   push:
+    branches-ignore: [master]
+    tags-ignore: ['**']
   pull_request:
   workflow_dispatch:
 
