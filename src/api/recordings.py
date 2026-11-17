@@ -23,6 +23,8 @@ from src.database import db
 from src.services.recording_deletion import delete_recording_completely, cleanup_orphaned_speakers_quietly
 from src.models import *
 from src.utils import *
+from src.utils.request_body import optional_json_object
+from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
 
 
@@ -843,7 +845,7 @@ def reprocess_summary(recording_id):
         # Checks, clearing and job parameters are shared with every reprocess
         # path, including API v1 and the bulk action (#412).
         from src.services.reprocessing import queue_summary_reprocess, ReprocessError
-        data = request.get_json() or {}
+        data = optional_json_object()
         try:
             queue_summary_reprocess(recording, current_user,
                                     custom_prompt=data.get('custom_prompt'),
@@ -866,6 +868,9 @@ def reprocess_summary(recording_id):
             'recording': recording_dict
         })
 
+    except HTTPException:
+        # A body that cannot be read is the client's error (400 or 415), not a 500.
+        raise
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error reprocessing summary for recording {recording_id}: {e}")

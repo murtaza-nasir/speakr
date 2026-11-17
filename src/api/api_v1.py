@@ -21,6 +21,7 @@ from datetime import datetime, date, timedelta, timezone
 from functools import wraps
 
 from src.utils.dates import to_utc_naive
+from src.utils.request_body import optional_json_object
 from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
@@ -2767,7 +2768,7 @@ def add_tags_to_recording(recording_id):
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify(api_error('permission_denied')), 403
 
-    data = request.get_json() or {}
+    data = optional_json_object()
     tag_ids = data.get('tag_ids', [])
     if not tag_ids:
         # Support single tag_id for backward compatibility
@@ -3510,7 +3511,7 @@ def start_transcription(recording_id):
 
     # Same checks, clearing and settings as the web reprocess (#412).
     from src.services.reprocessing import queue_transcription_reprocess, ReprocessError
-    data = request.get_json() or {}
+    data = optional_json_object()
     overrides = {
         'min_speakers': data.get('min_speakers'),
         'max_speakers': data.get('max_speakers'),
@@ -3551,7 +3552,7 @@ def start_summarization(recording_id):
     # Same checks, clearing and parameters as the web reprocess, including
     # prompt_mode and prompt_variables (#412).
     from src.services.reprocessing import queue_summary_reprocess, ReprocessError
-    data = request.get_json() or {}
+    data = optional_json_object()
     try:
         job_id = queue_summary_reprocess(recording, current_user,
                                          custom_prompt=data.get('custom_prompt'),
