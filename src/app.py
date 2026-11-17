@@ -1,4 +1,23 @@
 # Speakr - Audio Transcription and Summarization App
+if __name__ == '__main__':
+    # Started as a script (python src/app.py). The file is loaded once, as the
+    # module src.app. Left to run on as __main__, it would be loaded a second
+    # time as soon as another module imports src.app: a second application
+    # object, a second run of the startup steps and two logger names (app and
+    # src.app) in one log.
+    import argparse as _argparse
+    import os as _os
+    import sys as _sys
+    _parser = _argparse.ArgumentParser()
+    _parser.add_argument('--debug', action='store_true', help='Run in debug mode')
+    _args = _parser.parse_args()
+    _root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    if _root not in _sys.path:
+        _sys.path.insert(0, _root)
+    from src.app import main as _main
+    _main(debug=_args.debug)
+    raise SystemExit(0)
+
 import os
 import sys
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response, make_response, session
@@ -1343,13 +1362,9 @@ def service_worker():
     return response
 
 
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--debug', action='store_true', help='Run in debug mode')
-    args = parser.parse_args()
+def main(debug=False):
+    """The development server, for python src/app.py (see the top of this file).
 
-    # Consider using waitress or gunicorn for production
-    # waitress-serve --host 0.0.0.0 --port 8899 app:app
-    # For development:
-    app.run(host='0.0.0.0', port=8899, debug=args.debug)
+    Production runs gunicorn with src.app:app.
+    """
+    app.run(host='0.0.0.0', port=8899, debug=debug)
