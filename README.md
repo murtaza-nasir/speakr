@@ -293,7 +293,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
     </td>
     <td align="center">
       <img src="docs/assets/images/screenshots/mobile-transcript.png" alt="Mobile transcript" width="220"/>
-      <br><em>On mobile: transcript in bubble view</em>
+      <br><em>On mobile: transcript with speaker names</em>
     </td>
   </tr>
 </table>
