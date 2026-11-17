@@ -24,51 +24,15 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: speakr
-          POSTGRES_PASSWORD: speakr
-          POSTGRES_DB: speakr_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U speakr"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: '3.11'
-
-      - name: Install ffmpeg (needed by stitch / ffprobe tests)
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Install dependencies
-        run: pip install --require-hashes --no-deps -r requirements.lock -r requirements-dev.lock
-
-      - name: Run full test suite (gates the release)
-        env:
-          # App tests run on an isolated SQLite DB (conftest.py);
-          # test_postgres_migrations reads TEST_DATABASE_URI for real PG.
-          TEST_DATABASE_URI: postgresql://speakr:speakr@localhost:5432/speakr_test
-        run: pytest tests/ -q --cov=src --cov-report=term-missing --cov-fail-under=60
-
+  # The Python suite is not run here: the release commit passed it on its
+  # ci/ branch (test.yml), which ship.sh waits for before master is moved.
   smoke-lite:
-    # Build the lite image for amd64 into the local daemon and open every page
-    # of it in a browser (tests/e2e/test_browser_smoke.py) before anything is
-    # pushed. The build jobs below wait for this job, so a broken image is
-    # never published. It shares the GitHub Actions build cache with them.
-    needs: test
+    # Build the lite image for amd64 into the local daemon and open its pages
+    # in a browser (tests/e2e/test_image_smoke.py) before anything is pushed.
+    # The build jobs below wait for this job, so a broken image is never
+    # published. The same check runs for every ci/ branch (image-smoke in
+    # test.yml), so a failure is found before a release is tagged. It shares
+    # the GitHub Actions build cache with the build jobs.
     runs-on: ubuntu-latest
 
     steps:
@@ -117,14 +81,14 @@ jobs:
         env:
           SPEAKR_BROWSER_SMOKE: '1'
           SPEAKR_BASE_URL: http://127.0.0.1:8899
-        run: pytest tests/e2e/test_browser_smoke.py -q -p no:cacheprovider --noconftest -rs
+        run: pytest tests/e2e/test_image_smoke.py -q -p no:cacheprovider --noconftest -rs
 
       - name: Container log
         if: always()
         run: docker logs speakr-smoke 2>&1 | tail -n 200 || true
 
   build:
-    needs: [test, smoke-lite]
+    needs: smoke-lite
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -187,7 +151,7 @@ jobs:
             PRODUCTION=1
 
   build-lite:
-    needs: [test, smoke-lite]
+    needs: smoke-lite
     runs-on: ubuntu-latest
     permissions:
       contents: read
