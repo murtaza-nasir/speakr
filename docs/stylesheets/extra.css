@@ -115,6 +115,31 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
+/* Phone screenshots: shown at phone width, not at the width of the page */
+.md-typeset img[src*="screenshots/mobile-"],
+.md-typeset img[src$="-mobile.png"] {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.screenshot-grid.phones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5em 3em;
+}
+
+.screenshot-grid.phones .screenshot-item {
+  flex: 0 1 300px;
+}
+
+.screenshot-grid.phones .caption {
+  text-align: center;
+}
+
 /* Navigation cards grid */
 .grid.cards {
   display: grid;

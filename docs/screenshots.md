@@ -241,7 +241,7 @@ A tour of Speakr, section by section. Click any image to view it full size.
 
 ## Mobile
 
-<div class="screenshot-grid">
+<div class="screenshot-grid phones">
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/mobile-main.png" alt="Mobile main view" />
     <p class="caption">The recording list on a phone</p>
@@ -253,7 +253,7 @@ A tour of Speakr, section by section. Click any image to view it full size.
   </div>
 </div>
 
-<div class="screenshot-grid">
+<div class="screenshot-grid phones">
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/mobile-transcript.png" alt="Mobile transcript" />
     <p class="caption">The transcript with its pinned bar</p>
@@ -265,7 +265,7 @@ A tour of Speakr, section by section. Click any image to view it full size.
   </div>
 </div>
 
-<div class="screenshot-grid">
+<div class="screenshot-grid phones">
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/mobile-speaker-id.png" alt="Mobile speaker identification" />
     <p class="caption">Identifying speakers on a phone</p>
