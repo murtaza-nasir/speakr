@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.11.0: Phone layout, processing queue, audit log, keyboard shortcuts"
-    The phone layout is rebuilt, the processing queue and notifications are new, site admins have an audit log, and keyboard shortcuts are available on the desktop.
+!!! success "Latest Release: v0.11.1: User table sorting, audit log refresh, file labels in the log"
+    Every column of the user management table can be sorted, the audit log has a Refresh button and snapshot exports, and every file in the log has an identifier.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.0) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.1) for details.
 
 ## Quick Navigation
 
@@ -128,6 +128,11 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.11.1 - User table sorting, audit log refresh, file labels in the log"
+    - **Administration** - Sorting for every column of the user management table, a Refresh button in the audit log, and audit log exports as snapshots.
+    - **Logs** - An identifier for every file, and the recording id where it is known.
+    - **Fixes** - Stored paths with the original file name in error text and tracebacks, and three lines with tag or speaker names.
+
 !!! info "Version 0.11.0 - Phone layout, processing queue, audit log, keyboard shortcuts"
     The audit log is on after the upgrade. Read the Upgrading section of the release notes for the audit log settings, incognito, webhook delivery records and the admin routes.
 
@@ -144,15 +149,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Administration** - Settings for who can create groups and who users can find when sharing, and asynchronous WhisperX jobs.
     - **Fixes** - Shared summaries and notes on public links, voice-match suggestions, and the recording shown after quick selection.
 
-!!! info "Version 0.10.22-alpha - Scope limits per SSO app, themed notifications, layout fixes"
-    Two settings are added at startup without a value, so nothing changes until an admin sets them. Read the Upgrading section of the release notes for the changes to token exchange and webhooks.
-
-    - **Single sign-on** - Scope limits and display names per app, and a refusal code when a person has no Speakr account yet.
-    - **Interface** - Notifications in the interface theme, the recording header on tablets and portrait videos on phones.
-    - **Fixes** - Shares after tag group changes, failure notices for empty and over-budget transcriptions, and `.weba` files in the watch folder.
-
 !!! note "Earlier releases"
-    Release notes for v0.10.21 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.22 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 

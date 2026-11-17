@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.0-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.1-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -238,7 +238,13 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.11.0)
+## Latest Release (v0.11.1)
+
+- Every column of the user management table can be sorted, and the order holds across pages and with a search.
+- The audit log has a Refresh button, and an export is a snapshot up to the newest event at its start.
+- Every file in the log has an identifier, and stored paths with the original file name are removed from error text.
+
+### v0.11.0
 
 - The phone layout is rebuilt, with one layout in every theme.
 - The processing queue shows active, waiting and failed jobs, and jobs and uploads can be canceled.
@@ -254,16 +260,8 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - With the WhisperX ASR service 0.5.0 or later, transcriptions are submitted as asynchronous jobs.
 - A security fix for shared summaries and notes on public share pages is included.
 
-### v0.10.22-alpha
 
-- Each app that uses the same single sign-on can be given its own scope limit, and tokens show the name of the app that created them.
-- Notifications follow the interface theme, errors stay until they are closed, and every notification can be closed.
-- On tablets the recording header fits, and on phones a portrait video no longer fills the screen.
-- Tag group changes update the group shares, and empty or over-budget transcriptions send a failure notice.
-- WebM audio (`.weba`) is taken from the watch folder.
-
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.0) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.1) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
