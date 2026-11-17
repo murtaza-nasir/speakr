@@ -12,6 +12,8 @@ started from source.
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from test_browser_smoke import (  # noqa: E402,F401
@@ -20,3 +22,8 @@ from test_browser_smoke import (  # noqa: E402,F401
     test_main_view,
     test_settings_pages,
 )
+
+# The skip mark of test_browser_smoke.py belongs to that module and does not
+# come along with the imported tests.
+pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
+                                reason="image smoke test; set SPEAKR_BROWSER_SMOKE=1 with Speakr running")
