@@ -1597,6 +1597,8 @@ Ask questions about a recording's content using AI.
 
 `message` is at most 10,000 characters. A longer one answers `400` with `{"code": "invalid_parameter"}` and no model call is made. The same limit applies to the question in the web app's recording chat and on the Ask page.
 
+`conversation_history` is optional: a list of objects, each with a `role` of `user` or `assistant` and a string `content`, oldest first. Any other shape answers `400` with `{"code": "invalid_parameter"}`. Send the whole conversation with each question; the model gets its newest 40 messages, and fewer when their `content` is longer than 60,000 characters together. Older messages are left out without an error, and an answer left first by that cut is left out too, so the kept history starts with a question.
+
 **Response:**
 
 ```json
@@ -1646,6 +1648,7 @@ Answers a question from the recordings you can read, with Inquire's search (and 
 ```
 
 - `question`: at most 10,000 characters after leading and trailing spaces are removed. A longer one answers `400` with `{"code": "invalid_parameter"}` and no model call is made.
+- `history`: the earlier messages of the conversation, in the form and with the limits of `conversation_history` in [Chat with Recording](#chat-with-recording).
 - `mode`: `rag`, `agent` (`403 feature_disabled` when the agent is off) or `auto` (the agent when it is on).
 - `scope`: `own`, `shared` or `all`, as on [List Recordings](#list-recordings).
 - `stream: true` returns the server-sent events of the web app's Inquire (`delta`, `status`, `agent_step`, `agent_summary`, `error`).

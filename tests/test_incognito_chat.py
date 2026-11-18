@@ -85,14 +85,15 @@ def test_incognito_chat_prompt_has_participants_notes_and_history(client):
     assert messages[1:3] == history
 
 
-def test_incognito_chat_ignores_malformed_history(client):
+def test_incognito_chat_refuses_malformed_history(client):
+    """A history that is not a list of messages is a 400, not silently dropped (#633)."""
     with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
          patch("src.api.recordings.chat_client", object()), \
          patch("src.api.recordings.call_chat_completion", return_value=_chunks("ok")) as call:
         r = client.post(URL, json={"transcription": "Text.", "message": "Q?", "message_history": "nope"})
-        r.get_data()
-    assert r.status_code == 200
-    assert len(call.call_args.args[0]) == 2
+    assert r.status_code == 400
+    assert r.get_json()["code"] == "invalid_message_history"
+    call.assert_not_called()
 
 
 def test_incognito_chat_disabled_is_403(client):

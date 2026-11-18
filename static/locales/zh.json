@@ -3571,6 +3571,7 @@
       "invalid_ids_list": "ids 必须是整数列表",
       "invalid_inquire_mode": "mode 必须为 rag、agent 或 auto",
       "invalid_integer_value": "值必须是有效的整数",
+      "invalid_message_history": "对话历史必须是消息列表，每条消息都有角色（user 或 assistant）和文本内容。",
       "invalid_is_archived": "is_archived 必须是布尔值",
       "invalid_json": "无效的 JSON",
       "invalid_limit": "limit 必须在 1 到 500 之间",

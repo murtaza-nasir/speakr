@@ -53,7 +53,7 @@ from src.utils.token_auth import load_user_from_token_value
 from src.utils.localization import api_error, translate
 from src.utils.error_text import log_failure
 from src.utils.metadata_limits import PARTICIPANTS_MAX_CHARS, metadata_error
-from src.utils.assistant_limits import MAX_QUESTION_CHARS, question_error
+from src.utils.assistant_limits import MAX_QUESTION_CHARS, checked_history, question_error
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -480,7 +480,7 @@ OPENAPI_SPEC = {
             "post": {"tags": ["Processing"], "summary": "Queue summarization", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"custom_prompt": {"type": "string"}, "prompt_mode": {"type": "string", "enum": ["replace", "append"], "description": "replace (default): custom_prompt replaces the resolved prompt. append: it is added after the resolved prompt."}, "additional_instructions": {"type": "string", "description": "Added for this run after the prompt that runs."}, "prompt_variables": {"type": "object", "description": "Values for the {{variable}} placeholders; replaces the stored values."}}}}}}, "responses": {"200": {"description": "Job queued"}}}
         },
         "/recordings/{id}/chat": {
-            "post": {"tags": ["Chat"], "summary": "Chat about recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["message"], "properties": {"message": {"type": "string", "maxLength": MAX_QUESTION_CHARS}, "conversation_history": {"type": "array"}}}}}}, "responses": {"200": {"description": "Chat response"}}}
+            "post": {"tags": ["Chat"], "summary": "Chat about recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["message"], "properties": {"message": {"type": "string", "maxLength": MAX_QUESTION_CHARS}, "conversation_history": {"type": "array", "description": "Earlier messages, oldest first. The newest 40 (at most 60,000 characters of content together) reach the model; older ones are left out.", "items": {"type": "object", "required": ["role", "content"], "properties": {"role": {"type": "string", "enum": ["user", "assistant"]}, "content": {"type": "string"}}}}}}}}}, "responses": {"200": {"description": "Chat response"}}}
         },
         "/recordings/{id}/events": {
             "get": {"tags": ["Events"], "summary": "Get calendar events", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "List of events"}}}
@@ -3617,6 +3617,9 @@ def chat_with_recording(recording_id):
     too_long = question_error(data['message'], v1=True)
     if too_long:
         return jsonify(too_long), 400
+    history, bad_history = checked_history(data.get('conversation_history'), v1=True)
+    if bad_history:
+        return jsonify(bad_history), 400
 
     with_sources = data.get('with_sources', False)
     if not isinstance(with_sources, bool):
@@ -3627,7 +3630,7 @@ def chat_with_recording(recording_id):
         return jsonify(api_error('chat_unavailable')), 503
 
     messages, segments = build_chat_messages(recording, current_user, data['message'],
-                                             data.get('conversation_history', []), with_sources=with_sources)
+                                             history, with_sources=with_sources)
     try:
         from src.services.llm_settings import get_temperature
         completion = call_chat_completion(messages, temperature=get_temperature('chat'), user_id=current_user.id)
@@ -3665,6 +3668,9 @@ def inquire_v1():
     too_long = question_error(question, v1=True)
     if too_long:
         return jsonify(too_long), 400
+    history, bad_history = checked_history(body.get('history'), v1=True)
+    if bad_history:
+        return jsonify(bad_history), 400
     mode = body.get('mode', 'auto')
     if mode not in ('rag', 'agent', 'auto'):
         return jsonify({'error': translate('server.apiError.invalid_inquire_mode'), 'code': 'invalid_parameter'}), 400
@@ -3700,7 +3706,7 @@ def inquire_v1():
                         'mode_used': 'rag', 'steps': 0, 'usage': None})
     data = {
         'message': question,
-        'message_history': body.get('history') or [],
+        'message_history': history,
         'filter_recording_ids': allowed,
         'filter_tags': checked['filter_tags'],
         'filter_folders': checked['filter_folders'],

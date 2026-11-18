@@ -18,7 +18,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import translate, api_error
-from src.utils.assistant_limits import question_error
+from src.utils.assistant_limits import checked_history, question_error
 from src.utils.error_text import log_failure, user_error_text
 from src.utils.speaker_labels import real_speaker_names
 from src.services.assistant_events import FilterError, checked_filters, filters_from_request
@@ -211,7 +211,9 @@ def inquire_stream(user, data, mode='auto', tool_names=None):
     (assistant_events.tools_for_surface); None offers them all.
     """
     user_message = data.get('message')
-    message_history = data.get('message_history', [])
+    # The routes refuse a history that is not a list of messages; this bound
+    # also holds for a caller that did not check (#633).
+    message_history = checked_history(data.get('message_history'))[0] or []
     # Build filters from request (the Ask page's filter column)
     from src.services.assistant_events import filters_from_request
     filters = filters_from_request(data)
@@ -888,13 +890,18 @@ def inquire_chat():
             return jsonify(api_error('no_data_provided')), 400
         
         user_message = data.get('message')
-        message_history = data.get('message_history', [])
-        
+
         if not user_message:
             return jsonify(api_error('no_message_provided')), 400
         too_long = question_error(user_message)
         if too_long:
             return jsonify(too_long), 400
+        # A list of {role, content}, else 400; the newest turns within the
+        # limits reach the model (src/utils/assistant_limits.py, #633).
+        message_history, bad_history = checked_history(data.get('message_history'))
+        if bad_history:
+            return jsonify(bad_history), 400
+        data = dict(data, message_history=message_history)
         
         # Check if OpenRouter client is available
         if client is None:

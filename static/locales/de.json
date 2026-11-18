@@ -3571,6 +3571,7 @@
       "invalid_ids_list": "ids muss eine Liste ganzer Zahlen sein",
       "invalid_inquire_mode": "mode muss rag, agent oder auto sein",
       "invalid_integer_value": "Der Wert muss eine gültige ganze Zahl sein",
+      "invalid_message_history": "Der Gesprächsverlauf muss eine Liste von Nachrichten sein, jede mit einer Rolle (user oder assistant) und Textinhalt.",
       "invalid_is_archived": "is_archived muss ein boolescher Wert sein",
       "invalid_json": "Ungültiges JSON",
       "invalid_limit": "limit muss zwischen 1 und 500 liegen",

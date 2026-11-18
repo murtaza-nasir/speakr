@@ -3571,6 +3571,7 @@
       "invalid_ids_list": "ids должен быть списком целых чисел",
       "invalid_inquire_mode": "mode должно быть rag, agent или auto",
       "invalid_integer_value": "Значение должно быть допустимым целым числом",
+      "invalid_message_history": "История разговора должна быть списком сообщений, у каждого из которых есть роль (user или assistant) и текстовое содержимое.",
       "invalid_is_archived": "is_archived должно быть логическим значением",
       "invalid_json": "Недопустимый JSON",
       "invalid_limit": "limit должно быть от 1 до 500",
