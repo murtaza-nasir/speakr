@@ -10,7 +10,8 @@ from sqlalchemy import func
 
 from src.database import db
 from src.models import Speaker
-from src.utils.speaker_labels import is_generic_speaker_label, is_real_speaker_name
+from src.utils.speaker_labels import (MAX_SPEAKER_NAME_LENGTH, is_generic_speaker_label, is_real_speaker_name,
+                                      join_participants, speaker_name_too_long)
 
 
 # Kept for importers; the rule itself is src/utils/speaker_labels.py.
@@ -88,12 +89,13 @@ def labels_typed_as_names(speaker_map):
 
 
 def participants_from_segments(segments):
-    """Comma-separated real speaker names, leaving out diarization labels."""
+    """Comma-separated real speaker names, leaving out diarization labels,
+    within the width of the participants column (join_participants)."""
     names = {
         str(seg.get('speaker')).strip() for seg in segments
         if isinstance(seg, dict) and is_real_speaker_name(str(seg.get('speaker') or ''))
     }
-    return ', '.join(sorted(names))
+    return join_participants(sorted(names))
 
 
 def update_voice_profiles(recording, label_to_name, user, seconds_by_key=None, shown_as=None):
@@ -163,6 +165,13 @@ def update_speaker_usage(speaker_names):
             name = name.strip()
             # A diarization label is not a person: no saved speaker for it.
             if not is_real_speaker_name(name):
+                continue
+            # The routes refuse such a name (#636); one that still arrives
+            # gets no saved speaker rather than failing the save.
+            if speaker_name_too_long(name):
+                current_app.logger.warning(
+                    f"Speaker name of {len(name)} characters not saved as a speaker "
+                    f"(at most {MAX_SPEAKER_NAME_LENGTH})")
                 continue
 
             speaker = find_user_speaker(current_user.id, name)

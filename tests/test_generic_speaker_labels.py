@@ -551,3 +551,158 @@ def test_a_label_for_a_value_the_transcript_does_not_show_changes_nothing(world)
     assert db.session.get(Recording, rec.id).speaker_label_map == {'SPEAKER_00': 'Dana Lee'}
     assert db.session.get(Recording, rec.id).participants == 'Dana Lee'
     assert _names(user) == ['Dana Lee']
+
+
+# ------------------------------------------------- name length (#636)
+# Speaker.name and TranscriptChunk.speaker_name are VARCHAR(100), participants
+# VARCHAR(500). PostgreSQL refuses a longer value at flush and SQLite stores
+# it, so the routes refuse it first and both databases answer alike.
+
+def _speaker_routes(user):
+    dana = Speaker(name='Dana Lee', user_id=user.id, use_count=1)
+    db.session.add(dana)
+    db.session.commit()
+    return dana
+
+
+@pytest.mark.parametrize('method,path,code', [
+    ('post', '/speakers', 'speaker_name_too_long'),
+    ('put', '/speakers/{id}', 'speaker_name_too_long'),
+    ('post', '/api/v1/speakers', 'invalid_parameter'),
+    ('put', '/api/v1/speakers/{id}', 'invalid_parameter'),
+])
+def test_a_name_past_the_column_width_is_refused_on_every_route(world, method, path, code):
+    user = world['user']
+    dana = _speaker_routes(user)
+    client = _client(user)
+    resp = getattr(client, method)(path.format(id=dana.id), json={'name': 'N' * 101})
+    assert resp.status_code == 400, resp.data
+    body = resp.get_json()
+    assert body['code'] == code
+    assert '100' in body['error']
+    db.session.expire_all()
+    assert _names(user) == ['Dana Lee']
+
+
+def test_a_name_of_the_column_width_is_accepted_and_still_cascades(world):
+    user = world['user']
+    dana = _speaker_routes(user)
+    rec = world['recording']([{'speaker': 'Dana Lee', 'sentence': 'Hello there.', 'start_time': 0.0,
+                               'end_time': 5.0}], embeddings=False, participants='Dana Lee')
+    db.session.add(TranscriptChunk(recording_id=rec.id, user_id=user.id, chunk_index=0,
+                                   content='Dana Lee spoke.', speaker_name='Dana Lee'))
+    db.session.commit()
+    client = _client(user)
+    with patch('src.api.recordings.reindex_recording_chunks_async'), \
+            patch('src.file_exporter.ENABLE_AUTO_EXPORT', False):
+        resp = client.put(f'/speakers/{dana.id}', json={'name': 'M' * 100})
+    assert resp.status_code == 200, resp.data
+    db.session.expire_all()
+    assert _names(user) == ['M' * 100]
+    assert db.session.get(Recording, rec.id).participants == 'M' * 100
+    assert TranscriptChunk.query.filter_by(recording_id=rec.id).one().speaker_name == 'M' * 100
+    assert [s['speaker'] for s in _segments(rec)] == ['M' * 100]
+
+
+@pytest.mark.parametrize('route', ['update_speakers', 'update_transcript', 'api_v1'])
+def test_assigning_an_overlong_speaker_name_is_refused(world, route):
+    user, rec = world['user'], world['recording']()
+    client = _client(user)
+    if route == 'api_v1':
+        resp = client.put(f'/api/v1/recordings/{rec.id}/speakers/assign',
+                          json={'speaker_map': {'SPEAKER_00': 'X' * 101}})
+        assert resp.status_code == 400, resp.data
+        assert resp.get_json()['code'] == 'invalid_parameter'
+    else:
+        resp = _save(client, rec, {'SPEAKER_00': {'name': 'X' * 101, 'isMe': False}}, route)
+        assert resp.status_code == 400, resp.data
+        assert resp.get_json()['code'] == 'speaker_name_too_long'
+    assert _names(user) == []
+    assert [s['speaker'] for s in _segments(rec)] == ['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_00', 'SPEAKER_01']
+    assert not db.session.get(Recording, rec.id).participants
+
+
+def test_a_transcript_edit_that_types_an_overlong_speaker_is_refused(world):
+    user, rec = world['user'], world['recording']()
+    client = _client(user)
+    edited = _segments(rec)
+    edited[0]['speaker'] = 'Y' * 101
+    resp = _save(client, rec, {}, 'update_transcript', transcript=edited)
+    assert resp.status_code == 400 and resp.get_json()['code'] == 'speaker_name_too_long'
+    assert _segments(rec)[0]['speaker'] == 'SPEAKER_00'
+
+
+def test_a_long_speaker_the_stored_transcript_already_shows_does_not_block_a_save(world):
+    long_name = 'Z' * 150
+    user = world['user']
+    rec = world['recording']([{'speaker': long_name, 'sentence': 'First.', 'start_time': 0.0, 'end_time': 5.0},
+                              {'speaker': 'SPEAKER_01', 'sentence': 'Second.', 'start_time': 5.0, 'end_time': 9.0}],
+                             embeddings=False)
+    client = _client(user)
+    edited = _segments(rec)
+    edited[1]['sentence'] = 'Second, corrected.'
+    with patch('src.api.recordings.reindex_recording_chunks_async'):
+        resp = _save(client, rec, {}, 'update_transcript', transcript=edited)
+    assert resp.status_code == 200, resp.data
+    # Participants keep to the column: the stored name is clipped there.
+    assert db.session.get(Recording, rec.id).participants == 'Z' * 100
+    assert _names(user) == []
+
+
+def test_saved_speaker_usage_skips_an_overlong_name(world):
+    from src.services.speaker import update_speaker_usage
+    user = world['user']
+    with app.test_request_context():
+        from flask_login import login_user
+        login_user(user)
+        update_speaker_usage(['W' * 101, 'Dana Lee'])
+    assert _names(user) == ['Dana Lee']
+
+
+def test_participants_built_from_names_stay_within_the_column():
+    from src.services.speaker import participants_from_segments
+    from src.utils.speaker_labels import MAX_PARTICIPANTS_LENGTH, join_participants
+    names = [f'Person {i:02d} ' + 'q' * 80 for i in range(12)]
+    joined = join_participants(names)
+    assert len(joined) <= MAX_PARTICIPANTS_LENGTH
+    # Whole names only, in order: no name is cut at the end.
+    assert joined.split(', ') == names[:len(joined.split(', '))]
+    assert len(joined.split(', ')) == 5
+    segments = [{'speaker': n, 'sentence': 's'} for n in names]
+    assert len(participants_from_segments(segments)) <= MAX_PARTICIPANTS_LENGTH
+    assert join_participants(['Dana', '', 'Kim']) == 'Dana, Kim'
+    assert join_participants([]) == ''
+    assert join_participants(['a' * 300]) == 'a' * 100
+
+
+def test_a_name_from_the_model_is_clipped_not_refused():
+    from src.services.speaker_identification import _sanitize_identified_map
+    with app.app_context():
+        out = _sanitize_identified_map({'SPEAKER_00': 'Dana ' + 'x' * 200, 'SPEAKER_01': 'Kim'},
+                                       ['SPEAKER_00', 'SPEAKER_01'])
+    assert len(out['SPEAKER_00']) == 100 and out['SPEAKER_00'].startswith('Dana x')
+    assert out['SPEAKER_01'] == 'Kim'
+
+
+def test_automatic_labels_are_clipped_to_the_column(world):
+    from src.services.speaker_embedding_matcher import apply_speaker_names_to_transcription
+    rec = world['recording'](embeddings=False)
+    assert apply_speaker_names_to_transcription(rec, {'SPEAKER_00': 'V' * 140}) is True
+    assert {s['speaker'] for s in _segments(rec)} == {'V' * 100, 'SPEAKER_01'}
+    assert db.session.get(Recording, rec.id).participants == 'V' * 100
+
+
+@pytest.mark.parametrize('method,path', [('get', '/speakers'), ('post', '/speakers'), ('put', '/speakers/{id}')])
+def test_a_server_fault_on_a_speaker_route_answers_a_generic_error(world, method, path):
+    user = world['user']
+    dana = _speaker_routes(user)
+    client = _client(user)
+    secret = 'value too long for type character varying(100)'
+    import src.api.speakers as sp
+    with patch.object(sp.db.session, 'commit', side_effect=RuntimeError(secret)), \
+            patch.object(sp, 'is_generic_speaker_label', side_effect=RuntimeError(secret)):
+        resp = getattr(client, method)(path.format(id=dana.id), json={'name': 'Kim Park'})
+    assert resp.status_code == 500
+    body = resp.get_json()
+    assert body['code'] == 'unexpected_error'
+    assert secret not in resp.get_data(as_text=True)

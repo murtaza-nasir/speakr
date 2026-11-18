@@ -28,7 +28,8 @@ from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
 from src.utils.token_auth import public_route, require_scope, token_rate_key
 from src.services import audit
-from src.utils.speaker_labels import clean_participants, is_generic_speaker_label, real_speaker_names
+from src.utils.speaker_labels import (MAX_SPEAKER_NAME_LENGTH, clean_participants, is_generic_speaker_label,
+                                      real_speaker_names, speaker_map_name_too_long, speaker_name_too_long)
 from sqlalchemy import func, extract, or_, and_
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -3210,6 +3211,9 @@ def create_speaker():
     name = data['name'].strip()
     if is_generic_speaker_label(name):
         return jsonify({'error': translate('server.apiError.speaker_name_generic'), 'code': 'invalid_parameter'}), 400
+    if speaker_name_too_long(name):
+        return jsonify({'error': translate('server.apiError.speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH),
+                        'code': 'invalid_parameter'}), 400
 
     # Check if already exists
     existing = Speaker.query.filter_by(user_id=current_user.id, name=name).first()
@@ -3264,6 +3268,10 @@ def update_speaker(speaker_id):
         if is_generic_speaker_label(new_name):
             db.session.rollback()
             return jsonify({'error': translate('server.apiError.speaker_name_generic'), 'code': 'invalid_parameter'}), 400
+        if speaker_name_too_long(new_name):
+            db.session.rollback()
+            return jsonify({'error': translate('server.apiError.speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH),
+                            'code': 'invalid_parameter'}), 400
         if new_name != speaker.name:
             clash = Speaker.query.filter_by(user_id=current_user.id, name=new_name).first()
             if clash and clash.id != speaker.id:
@@ -3434,6 +3442,9 @@ def assign_speakers(recording_id):
                 }
             else:
                 return jsonify(api_error('invalid_speaker_value_type', label=label)), 400
+        if speaker_map_name_too_long(speaker_map):
+            return jsonify({'error': translate('server.apiError.speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH),
+                            'code': 'invalid_parameter'}), 400
 
         # Same rename and follow-up steps as the web update_speakers (#412).
         from src.services.speaker_assignment import apply_speaker_names

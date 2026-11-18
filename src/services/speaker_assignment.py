@@ -61,7 +61,8 @@ def apply_speaker_names(recording, user, speaker_map, regenerate_summary=False):
                     names_used.append(name)
         recording.transcription = transcription_text
         if names_used:
-            recording.participants = ', '.join(names_used)
+            from src.utils.speaker_labels import join_participants
+            recording.participants = join_participants(names_used)
 
     if names_used:
         update_speaker_usage(names_used)

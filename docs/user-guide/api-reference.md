@@ -1420,7 +1420,7 @@ POST /api/v1/speakers
 }
 ```
 
-`email` and `aliases` are optional. A diarization label as `name` gives `400` with the code `invalid_parameter`.
+`email` and `aliases` are optional. A diarization label as `name`, or a `name` of more than 100 characters, gives `400` with the code `invalid_parameter`.
 
 ### Update Speaker
 
@@ -1430,7 +1430,7 @@ PUT /api/v1/speakers/{id}
 
 **Scope:** `write`
 
-Changes the name, email or aliases; send only what changes. A new name appears in every recording the speaker is in (transcript, participants, search). `email` must be an address (stored in lower case); `null` or `""` removes it. `aliases`: at most 20 names of at most 100 characters, trimmed, duplicates (any case) dropped; `[]` removes them. A name another of your speakers has gives `409`. A diarization label as `name` gives `400` with the code `invalid_parameter`.
+Changes the name, email or aliases; send only what changes. A new name appears in every recording the speaker is in (transcript, participants, search). `email` must be an address (stored in lower case); `null` or `""` removes it. `aliases`: at most 20 names of at most 100 characters, trimmed, duplicates (any case) dropped; `[]` removes them. A name another of your speakers has gives `409`. A diarization label as `name`, or a `name` of more than 100 characters, gives `400` with the code `invalid_parameter`.
 
 **Request Body:**
 

@@ -129,6 +129,7 @@
                                 <div class="relative">
                                     <input type="text"
                                            v-model="speakerMap[entry.id].name"
+                                           maxlength="100"
                                            @focus="onNameFocus(entry.id)"
                                            @input="onNameInput(entry.id)"
                                            @blur="onNameBlur()"

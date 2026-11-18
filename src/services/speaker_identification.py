@@ -315,7 +315,9 @@ def _sanitize_identified_map(identified_map, speaker_labels, candidate_names=Non
             sanitized[speaker_label] = ""
             continue
 
-        sanitized[speaker_label] = name
+        # A model may answer with a sentence; the columns hold 100 (#636).
+        from src.utils.speaker_labels import clip_speaker_name
+        sanitized[speaker_label] = clip_speaker_name(name)
 
     return sanitized
 

@@ -61,6 +61,7 @@ from src.services.recording_filters import (
     needs_speakers_condition,
 )
 from src.utils.localization import api_error, format_number, translate
+from src.utils.speaker_labels import MAX_SPEAKER_NAME_LENGTH
 from src.utils.incognito_logging import incognito_route, incognito_log, describe_error, short_code
 from src.utils.error_text import log_failure, user_error_text
 from src.utils.metadata_limits import metadata_error
@@ -627,6 +628,9 @@ def update_speakers(recording_id):
 
         if speaker_map is None:
             return jsonify(api_error('no_speaker_map')), 400
+        from src.utils.speaker_labels import speaker_map_name_too_long
+        if speaker_map_name_too_long(speaker_map):
+            return jsonify(api_error('speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH)), 400
 
         # Same rename and follow-up steps as API v1 /speakers/assign (#412).
         from src.services.speaker_assignment import apply_speaker_names
@@ -646,8 +650,32 @@ def update_speakers(recording_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error updating speakers for recording {recording_id}: {e}", exc_info=True)
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
+
+
+def _overlong_speaker_name(transcript_data, speaker_map, recording):
+    """True when the speaker map, or a segment of a transcript a person
+    edited, gives a name past the width of the speaker columns (#636). A
+    segment speaker the stored transcript already shows is accepted, so an
+    older transcript can still be saved."""
+    from src.utils.speaker_labels import speaker_map_name_too_long, speaker_name_too_long
+    if speaker_map_name_too_long(speaker_map):
+        return True
+    stored = None
+    for segment in transcript_data:
+        speaker = segment.get('speaker') if isinstance(segment, dict) else None
+        if not speaker_name_too_long(speaker):
+            continue
+        if stored is None:
+            try:
+                old = json.loads(recording.transcription or '')
+            except (json.JSONDecodeError, TypeError):
+                old = None
+            stored = {s.get('speaker') for s in old if isinstance(s, dict)} if isinstance(old, list) else set()
+        if speaker not in stored:
+            return True
+    return False
 
 
 @recordings_bp.route('/recording/<int:recording_id>/update_transcript', methods=['POST'])
@@ -670,6 +698,8 @@ def update_transcript(recording_id):
 
         if not transcript_data or not isinstance(transcript_data, list):
             return jsonify(api_error('invalid_transcript_data')), 400
+        if _overlong_speaker_name(transcript_data, speaker_map, recording):
+            return jsonify(api_error('speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH)), 400
 
         # Apply the names exactly as update_speakers does, including the voice
         # profiles and snippets: this route saves the names whenever the user
@@ -729,7 +759,7 @@ def update_transcript(recording_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error updating transcript for recording {recording_id}: {e}", exc_info=True)
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 

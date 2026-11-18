@@ -3742,6 +3742,7 @@
       "speaker_name_generic": "A diarization label such as SPEAKER_00 cannot be saved as a speaker name",
       "speaker_name_required": "Speaker name is required",
       "speaker_name_taken": "Speaker with this name already exists",
+      "speaker_name_too_long": "Speaker name must be at most {{max}} characters",
       "speaker_not_found": "Speaker not found",
       "speaker_nothing_to_change": "Nothing to change: give name, email or aliases",
       "speakers_not_found_or_not_owned": "Some speakers don't exist or don't belong to user",

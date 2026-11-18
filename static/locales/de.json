@@ -3742,6 +3742,7 @@
       "speaker_name_generic": "Ein Diarisierungslabel wie SPEAKER_00 kann nicht als Sprechername gespeichert werden",
       "speaker_name_required": "Der Sprechername ist erforderlich",
       "speaker_name_taken": "Ein Sprecher mit diesem Namen existiert bereits",
+      "speaker_name_too_long": "Der Sprechername darf höchstens {{max}} Zeichen lang sein",
       "speaker_not_found": "Sprecher nicht gefunden",
       "speaker_nothing_to_change": "Nichts zu ändern: Geben Sie Name, E-Mail oder Aliasse an",
       "speakers_not_found_or_not_owned": "Einige Sprecher existieren nicht oder gehören nicht zu Ihrem Konto",

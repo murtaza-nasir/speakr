@@ -3742,6 +3742,7 @@
       "speaker_name_generic": "Um rótulo de diarização como SPEAKER_00 não pode ser salvo como nome de orador",
       "speaker_name_required": "O nome do orador é obrigatório",
       "speaker_name_taken": "Já existe um orador com este nome",
+      "speaker_name_too_long": "O nome do orador deve ter no máximo {{max}} caracteres",
       "speaker_not_found": "Orador não encontrado",
       "speaker_nothing_to_change": "Nada a alterar: informe nome, e-mail ou apelidos",
       "speakers_not_found_or_not_owned": "Alguns oradores não existem ou não pertencem à sua conta",

@@ -3742,6 +3742,7 @@
       "speaker_name_generic": "不能将 SPEAKER_00 这样的说话人分离标签保存为发言人姓名",
       "speaker_name_required": "发言人姓名为必填项",
       "speaker_name_taken": "已存在同名发言人",
+      "speaker_name_too_long": "发言人姓名最多 {{max}} 个字符",
       "speaker_not_found": "未找到发言人",
       "speaker_nothing_to_change": "没有需要更改的内容：请提供姓名、邮箱或别名",
       "speakers_not_found_or_not_owned": "部分发言人不存在或不属于您的账户",

@@ -159,7 +159,8 @@ def rename_speaker_in_recordings(user_id, old_name, new_name, speaker_id=None, n
                     p = new_name if _same_name(p, old_name) else p
                     if not any(_same_name(p, m) for m in merged):
                         merged.append(p)
-                recording.participants = ', '.join(merged)
+                from src.utils.speaker_labels import join_participants
+                recording.participants = join_participants(merged)
                 fields.add('participants')
 
         if recording.transcription:

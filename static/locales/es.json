@@ -3742,6 +3742,7 @@
       "speaker_name_generic": "Una etiqueta de diarización como SPEAKER_00 no se puede guardar como nombre de hablante",
       "speaker_name_required": "El nombre del hablante es obligatorio",
       "speaker_name_taken": "Ya existe un hablante con este nombre",
+      "speaker_name_too_long": "El nombre del hablante debe tener como máximo {{max}} caracteres",
       "speaker_not_found": "Hablante no encontrado",
       "speaker_nothing_to_change": "Nada que cambiar: indique nombre, correo electrónico o alias",
       "speakers_not_found_or_not_owned": "Algunos hablantes no existen o no pertenecen a su cuenta",
