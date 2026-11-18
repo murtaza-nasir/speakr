@@ -807,16 +807,21 @@ html body .ph-search input, html body .ph-search input:focus {
 
     /* Selection mode: the bulk actions as a bar at the bottom edge */
     html body .bulk-bar {
-        position: fixed;
+        top: auto;
         left: max(8px, var(--ph-safe-l));
         right: max(8px, var(--ph-safe-r));
         bottom: calc(10px + var(--ph-safe-b));
-        margin: 0;
+        transform: none;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px;
+        border-left: var(--border-hairline) solid var(--border-primary);
         border-radius: 14px;
         z-index: 47;
     }
-    html body .bulk-bar .bulk-act { min-height: 52px; }
-    html body .bulk-bar__close { width: 44px; height: 36px; }
+    html body .bulk-bar__sep { align-self: stretch; width: var(--border-hairline); height: auto; margin: 6px 2px; }
+    html body .bulk-bar .bulk-act { width: 44px; height: 44px; }
 }
 @media (max-width: 767px) and (prefers-reduced-motion: reduce) {
     html body aside.sidebar.ph-list, html body aside.sidebar.ph-list.collapsed { transition: none; }

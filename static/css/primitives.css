@@ -2896,101 +2896,69 @@ select.field.option-folder-select { padding-left: 2rem !important; }
 }
 .btn .record-dot { font-size: 8px !important; }
 
-
 /* ---- Bulk actions (selection mode) ---------------------------------------
-   A panel at the foot of the recording list: the count and a close button,
-   then the actions as a grid of icon-over-label buttons. Colors come from
-   the theme tokens only; Delete is the one action in the danger color. */
+   A vertical bar that floats to the right of the sidebar: the count, then
+   groups of icon buttons with hairline separators. Colors come from the
+   theme tokens only; Delete is the one action in the danger color. */
 .bulk-bar {
-    flex: none;
-    margin: var(--sp-2);
-    padding: var(--sp-2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px;
     background: var(--bg-secondary);
     color: var(--text-primary);
     border: var(--border-hairline) solid var(--border-primary);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md, 0 6px 18px rgba(0, 0, 0, 0.18));
-}
-.bulk-bar__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-2);
-    padding: 0 var(--sp-1) var(--sp-2) var(--sp-2);
+    border-left: none;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    box-shadow: var(--shadow-lg, 0 10px 28px rgba(0, 0, 0, 0.28));
 }
 .bulk-bar__count {
-    font-size: var(--fs-meta);
-    font-weight: 600;
+    min-width: 28px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: var(--bg-accent);
     color: var(--text-accent);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
 }
-.bulk-bar__close {
+.bulk-bar__sep {
+    align-self: stretch;
+    height: var(--border-hairline);
+    margin: 4px 4px;
+    background: var(--border-primary);
+}
+.bulk-act {
     appearance: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
-    color: var(--text-muted);
-    cursor: pointer;
-}
-.bulk-bar__close:hover { background: var(--bg-tertiary); color: var(--text-primary); }
-.bulk-bar__grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--sp-1);
-}
-.bulk-act {
-    appearance: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    min-width: 0;
-    min-height: 48px;
-    padding: var(--sp-2) 2px;
+    width: 36px;
+    height: 36px;
     background: transparent;
     border: var(--border-hairline) solid transparent;
     border-radius: var(--radius-md);
-    font-family: inherit;
-    font-size: 11px;
-    line-height: 1.2;
     color: var(--text-secondary);
+    font-size: 14px;
     cursor: pointer;
     transition: background var(--t-fast) ease, color var(--t-fast) ease, border-color var(--t-fast) ease;
-}
-.bulk-act > i { font-size: 14px; color: var(--text-muted); transition: color var(--t-fast) ease; }
-.bulk-act > span {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 .bulk-act:hover:not(:disabled) {
     background: var(--bg-tertiary);
     border-color: var(--border-secondary, var(--border-primary));
-    color: var(--text-primary);
+    color: var(--text-accent);
 }
-.bulk-act:hover:not(:disabled) > i { color: var(--text-accent); }
-.bulk-act:focus-visible,
-.bulk-bar__close:focus-visible {
+.bulk-act:focus-visible {
     outline: 2px solid var(--border-focus);
     outline-offset: -2px;
 }
-.bulk-act:disabled { opacity: 0.4; cursor: not-allowed; }
-.bulk-act--danger,
-.bulk-act--danger > i { color: var(--text-danger, #dc2626); }
-.bulk-act--danger:hover:not(:disabled),
-.bulk-act--danger:hover:not(:disabled) > i { color: var(--text-danger, #dc2626); }
-.bulk-act--danger:hover:not(:disabled) { border-color: var(--border-danger, var(--text-danger, #dc2626)); }
-.bulk-dock-enter-active,
-.bulk-dock-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.bulk-dock-enter-from,
-.bulk-dock-leave-to { opacity: 0; transform: translateY(8px); }
-@media (prefers-reduced-motion: reduce) {
-    .bulk-dock-enter-active,
-    .bulk-dock-leave-active { transition: none; }
+.bulk-act:disabled { opacity: 0.35; cursor: not-allowed; }
+.bulk-act--danger { color: var(--text-danger, #dc2626); }
+.bulk-act--danger:hover:not(:disabled) {
+    color: var(--text-danger, #dc2626);
+    border-color: var(--border-danger, var(--text-danger, #dc2626));
 }
+.bulk-act--quiet { color: var(--text-muted); }
+.bulk-act--quiet:hover:not(:disabled) { color: var(--text-primary); }
