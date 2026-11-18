@@ -218,7 +218,7 @@ def run_once(engine, migration_id, migration, logger=None):
     return True
 
 
-def add_column_if_not_exists(engine, table_name, column_name, column_type):
+def add_column_if_not_exists(engine, table_name, column_name, column_type, logger=None):
     """
     Add a column to a table if it doesn't already exist.
 
@@ -227,6 +227,9 @@ def add_column_if_not_exists(engine, table_name, column_name, column_type):
         table_name: Name of the table
         column_name: Name of the column to add
         column_type: SQL type definition for the column
+        logger: Optional logger that records the addition. The message is the
+            same one the migrations used to write by hand, so passing a logger
+            and dropping the per-call line leaves the log identical.
 
     Returns:
         bool: True if column was added, False if it already existed
@@ -266,6 +269,8 @@ def add_column_if_not_exists(engine, table_name, column_name, column_type):
                 else:
                     conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{column_name}" {column_type}'))
             conn.commit()
+        if logger is not None:
+            logger.info(f"Added {column_name} column to {table_name} table")
         return True
     return False
 
