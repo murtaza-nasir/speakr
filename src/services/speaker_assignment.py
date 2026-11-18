@@ -79,8 +79,9 @@ def apply_speaker_names(recording, user, speaker_map, regenerate_summary=False):
     summary_queued = False
     if regenerate_summary:
         from src.services.job_queue import job_queue
+        from src.services.reprocessing import follow_up_summary_params
         job_queue.enqueue(user_id=user.id, recording_id=recording.id, job_type='summarize',
-                          params={'user_id': user.id})
+                          params=follow_up_summary_params(recording, user))
         summary_queued = True
     else:
         # Without a new summary, rewrite the export now so it shows the names.

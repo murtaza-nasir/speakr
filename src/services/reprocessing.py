@@ -159,6 +159,26 @@ def summary_prompt_used(recording, user, custom_prompt=None, prompt_mode='replac
     return {'prompt': text if replacing else base, 'source': kind, 'name': name}
 
 
+def follow_up_summary_params(recording, user):
+    """Job parameters of the summary that follows a change of the transcript
+    (new speaker names, an edited transcript).
+
+    A custom prompt that produced the current summary in a run of this user
+    is run again, so that the new summary has the same form (#584). In every
+    other case only the user id is passed and the summary task resolves the
+    owner's prompt, as it does after an upload.
+    """
+    params = {'user_id': user.id}
+    stored = (recording.summary_prompt_used or '').strip()
+    if (stored and recording.summary_prompt_source == 'custom'
+            and recording.summary_prompt_user_id == user.id
+            and (recording.summary or '').strip()):
+        params.update(
+            custom_prompt=recording.summary_prompt_used, custom_prompt_append=False,
+            prompt_used={'prompt': recording.summary_prompt_used, 'source': 'custom', 'name': None})
+    return params
+
+
 def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='replace',
                             prompt_variables=None, job_type='reprocess_summary',
                             additional_instructions=None):

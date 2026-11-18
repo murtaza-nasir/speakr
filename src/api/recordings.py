@@ -702,11 +702,12 @@ def update_transcript(recording_id):
         summary_queued = False
         if regenerate_summary:
             current_app.logger.info(f"Queueing summary regeneration for recording {recording_id} after transcript update.")
+            from src.services.reprocessing import follow_up_summary_params
             job_queue.enqueue(
                 user_id=current_user.id,
                 recording_id=recording.id,
                 job_type='summarize',
-                params={'user_id': current_user.id}
+                params=follow_up_summary_params(recording, current_user)
             )
             summary_queued = True
             # Export will happen after summary regenerates

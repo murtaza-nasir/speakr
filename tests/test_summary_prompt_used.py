@@ -397,3 +397,68 @@ def test_the_columns_are_added_to_an_existing_database():
     source = pyinspect.getsource(init_db)
     for field in FIELDS:
         assert f"'{field}'" in source
+
+
+# --- The summary after new speaker names or an edited transcript ---------------
+
+def _follow_up(ids, who):
+    from src.services.reprocessing import follow_up_summary_params
+    db.session.expire_all()
+    return follow_up_summary_params(db.session.get(Recording, ids["rec"]), _user(ids, who))
+
+
+def test_the_follow_up_summary_runs_the_users_custom_prompt_again(world):
+    with app.app_context():
+        _attach(world, "owner")
+        _run(world, _queue(world, "owner", {"custom_prompt": "MY FORM for {{client}}", "prompt_mode": "replace",
+                                            "additional_instructions": "ONE RUN ONLY"}))
+        params = _follow_up(world, "owner")
+        assert params["custom_prompt"] == "MY FORM for {{client}}" and params["custom_prompt_append"] is False
+        sent = _run(world, params)
+        assert "MY FORM" in sent and "OWNER TAG" not in sent and "ONE RUN ONLY" not in sent
+        prompt, source, _name, user_id = _stored(world)
+        assert (prompt, source, user_id) == ("MY FORM for {{client}}", "custom", world["owner"])
+        assert _prompt_info(world, "owner")["used"]["prompt"] == "MY FORM for {{client}}"
+
+
+def test_the_follow_up_summary_of_a_resolved_prompt_resolves_it_again(world):
+    with app.app_context():
+        _attach(world, "owner")
+        _run(world)
+        assert _stored(world)[1] == "tag"
+        assert _follow_up(world, "owner") == {"user_id": world["owner"]}
+
+
+def test_the_follow_up_summary_does_not_run_another_users_custom_prompt(world):
+    with app.app_context():
+        _attach(world, "owner")
+        _run(world, _queue(world, "editor", {"custom_prompt": "EDITOR SECRET", "prompt_mode": "replace"}))
+        assert _stored(world)[0] == "EDITOR SECRET"
+        assert _follow_up(world, "owner") == {"user_id": world["owner"]}
+        assert _follow_up(world, "editor")["custom_prompt"] == "EDITOR SECRET"
+
+
+def test_the_follow_up_summary_without_a_summary_has_no_custom_prompt(world):
+    with app.app_context():
+        _attach(world, "owner")
+        _store(world, "LEFTOVER", "custom", None, "owner")
+        rec = db.session.get(Recording, world["rec"])
+        rec.summary = ""
+        db.session.commit()
+        assert _follow_up(world, "owner") == {"user_id": world["owner"]}
+
+
+def test_new_speaker_names_queue_the_summary_with_the_custom_prompt(world):
+    from src.services import speaker_assignment
+    with app.app_context():
+        _attach(world, "owner")
+        _run(world, _queue(world, "owner", {"custom_prompt": "MY FORM", "prompt_mode": "replace"}))
+        rec = db.session.get(Recording, world["rec"])
+        import src.api.recordings as recordings_module
+        with patch.object(job_queue, "enqueue", return_value=1) as enq, \
+                patch.object(recordings_module, "reindex_recording_chunks_async"), \
+                patch("src.services.speaker.update_voice_profiles", return_value=(0, 0)):
+            result = speaker_assignment.apply_speaker_names(rec, _user(world, "owner"), {}, True)
+        assert result["summary_queued"] is True
+        params = enq.call_args.kwargs["params"]
+        assert params["custom_prompt"] == "MY FORM" and params["prompt_used"]["source"] == "custom"
