@@ -322,6 +322,8 @@ def test_patch_takes_null_and_a_clipped_title(world):
     assert resp.status_code == 200 and len(resp.get_json()["recording"]["title"]) == 200
 
 
+@pytest.mark.skipif(os.environ.get("PYTEST_DATABASE_URI", "").startswith("postgresql"),
+                    reason="participants is VARCHAR(500): PostgreSQL refuses a longer value, SQLite stores it")
 def test_an_unchanged_stored_value_does_not_block_a_patch(world):
     # The pipeline may store a longer participant list than a client may write.
     with app.app_context():

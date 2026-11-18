@@ -33,6 +33,14 @@ from src.services.job_queue import (
     QUEUES,
 )
 
+# PostgreSQL enforces the foreign key of processing_job.recording_id and
+# cascades a deleted recording to its jobs, so a job of a missing recording
+# cannot exist there; the orphans these tests set up are SQLite-only (#625).
+sqlite_only = pytest.mark.skipif(
+    os.environ.get("PYTEST_DATABASE_URI", "").startswith("postgresql"),
+    reason="PostgreSQL enforces the foreign key, so no orphan job can be made")
+
+
 
 # --------------------------------------------------------------------------
 # Fixtures / helpers
@@ -815,6 +823,7 @@ def test_recover_orphaned_jobs(track):
     assert refreshed.started_at is None
 
 
+@sqlite_only
 def test_recover_orphaned_jobs_purges_missing_recordings(track):
     uid = _make_user(); track.user_ids.append(uid)
     job = ProcessingJob(user_id=uid, recording_id=987654321, job_type="transcribe",
@@ -830,6 +839,7 @@ def test_recover_orphaned_jobs_purges_missing_recordings(track):
     assert ProcessingJob.query.filter_by(recording_id=987654321, status="queued").count() == 0
 
 
+@sqlite_only
 def test_recover_orphaned_jobs_still_requeues_live_job(track):
     uid = _make_user(); track.user_ids.append(uid)
     rid = _make_recording(uid); track.recording_ids.append(rid)
@@ -850,6 +860,7 @@ def test_recover_orphaned_jobs_still_requeues_live_job(track):
     assert db.session.get(ProcessingJob, dead_id) is None
 
 
+@sqlite_only
 def test_purge_orphaned_jobs_removes_every_status(track):
     uid = _make_user(); track.user_ids.append(uid)
     statuses = ("queued", "processing", "completed", "failed")
@@ -870,6 +881,7 @@ def test_purge_orphaned_jobs_removes_every_status(track):
     assert all(db.session.get(ProcessingJob, jid) is not None for jid in live_ids)
 
 
+@sqlite_only
 def test_cleanup_old_jobs_removes_orphans_of_any_age(track):
     uid = _make_user(); track.user_ids.append(uid)
     rid = _make_recording(uid); track.recording_ids.append(rid)
