@@ -20,6 +20,7 @@ from src.utils import *
 from src.utils.localization import translate, api_error
 from src.utils.error_text import log_failure, user_error_text
 from src.utils.speaker_labels import real_speaker_names
+from src.services.assistant_events import FilterError, checked_filters, filters_from_request
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
 from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
 
@@ -29,6 +30,11 @@ inquire_bp = Blueprint('inquire', __name__)
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
+
+# Most chunks POST /api/inquire/search returns (#628)
+INQUIRE_SEARCH_MAX_TOP_K = 50
+# InquireSession.session_name is a String(200) (#629)
+INQUIRE_SESSION_NAME_MAX_CHARS = 200
 
 # Global helpers (will be injected from app)
 has_recording_access = None
@@ -104,32 +110,52 @@ def create_inquire_session():
         data = request.json
         if not data:
             return jsonify(api_error('no_data_provided')), 400
-        
+
+        try:
+            checked = checked_filters(data)
+        except FilterError as e:
+            return jsonify(api_error(e.code)), 400
+        # The column holds 200 characters (#629)
+        name = data.get('session_name')
+        if name is not None and (not isinstance(name, str) or len(name) > INQUIRE_SESSION_NAME_MAX_CHARS):
+            return jsonify(api_error('invalid_session_name', max=INQUIRE_SESSION_NAME_MAX_CHARS)), 400
+        # A session is not saved around a recording the caller cannot search:
+        # the filter would match nothing. Refused, never silently narrowed (#629).
+        if checked['filter_recording_ids']:
+            allowed = set(get_accessible_recording_ids(current_user.id))
+            if any(rid not in allowed for rid in checked['filter_recording_ids']):
+                return jsonify(api_error('invalid_recording_ids')), 400
+
         session = InquireSession(
             user_id=current_user.id,
-            session_name=data.get('session_name'),
-            filter_tags=json.dumps(data.get('filter_tags', [])),
-            filter_speakers=json.dumps(real_speaker_names(data.get('filter_speakers', []))),
-            filter_date_from=datetime.fromisoformat(data['filter_date_from']).date() if data.get('filter_date_from') else None,
-            filter_date_to=datetime.fromisoformat(data['filter_date_to']).date() if data.get('filter_date_to') else None,
-            filter_recording_ids=json.dumps(data.get('filter_recording_ids', []))
+            session_name=name,
+            filter_tags=json.dumps(checked['filter_tags']),
+            filter_speakers=json.dumps(real_speaker_names(checked['filter_speakers'])),
+            filter_date_from=checked['filter_date_from'],
+            filter_date_to=checked['filter_date_to'],
+            filter_recording_ids=json.dumps(checked['filter_recording_ids'])
         )
-        
+
         db.session.add(session)
         db.session.commit()
-        
+
         return jsonify(session.to_dict()), 201
-        
+
     except Exception as e:
-        current_app.logger.error(f"Error creating inquire session: {e}")
-        return jsonify({'error': str(e)}), 500
+        db.session.rollback()
+        log_failure(current_app.logger, 'error', "Error creating inquire session", e)
+        return jsonify(api_error('unexpected_error')), 500
 
 
 
 @inquire_bp.route('/api/inquire/search', methods=['POST'])
 @login_required
 def inquire_search():
-    """Perform semantic search within filtered transcriptions."""
+    """Perform semantic search within filtered transcriptions.
+
+    top_k: the number of chunks to return, 1 to 50 (default 5); any other
+    value is refused with 400.
+    """
     if not ENABLE_INQUIRE_MODE:
         return jsonify(api_error('inquire_disabled')), 403
     try:
@@ -141,24 +167,19 @@ def inquire_search():
         if not query:
             return jsonify(api_error('no_query_provided')), 400
         
-        # Build filters from request
-        filters = {}
-        if data.get('filter_tags'):
-            filters['tag_ids'] = data['filter_tags']
-        if data.get('filter_folders'):
-            filters['folder_ids'] = data['filter_folders']
-        # Diarization labels (SPEAKER_00) name nobody: such values are ignored.
-        if real_speaker_names(data.get('filter_speakers')):
-            filters['speaker_names'] = real_speaker_names(data['filter_speakers'])
-        if data.get('filter_recording_ids'):
-            filters['recording_ids'] = data['filter_recording_ids']
-        if data.get('filter_date_from'):
-            filters['date_from'] = datetime.fromisoformat(data['filter_date_from']).date()
-        if data.get('filter_date_to'):
-            filters['date_to'] = datetime.fromisoformat(data['filter_date_to']).date()
-        
-        # Perform semantic search
+        # Build filters from request: the same filters, and the same checks,
+        # as the chat route (diarization labels as speakers are ignored)
+        try:
+            filters = filters_from_request(data)
+        except FilterError as e:
+            return jsonify(api_error(e.code)), 400
+
+        # Perform semantic search: top_k is a whole number from 1 to 50 (#628)
         top_k = data.get('top_k', 5)
+        if isinstance(top_k, bool) or not isinstance(top_k, int):
+            return jsonify(api_error('invalid_integer_value')), 400
+        if not 1 <= top_k <= INQUIRE_SEARCH_MAX_TOP_K:
+            return jsonify(api_error('invalid_top_k', max=INQUIRE_SEARCH_MAX_TOP_K)), 400
         chunk_results = semantic_search_chunks(current_user.id, query, filters, top_k)
         
         # Format results
@@ -171,10 +192,10 @@ def inquire_search():
             results.append(result)
         
         return jsonify({'results': results})
-        
+
     except Exception as e:
-        current_app.logger.error(f"Error in inquire search: {e}")
-        return jsonify({'error': str(e)}), 500
+        log_failure(current_app.logger, 'error', "Error in inquire search", e)
+        return jsonify(api_error('unexpected_error')), 500
 
 
 
@@ -879,12 +900,12 @@ def inquire_chat():
         # steps too, labelled in the user's language (assistant_events).
         from src.services.assistant_events import filters_from_request, library_events, tools_for_surface
         from src.utils.localization import request_language
-        # A filter date that does not parse is refused, never dropped
+        # A filter that cannot be used is refused, never dropped
         # (the stream would otherwise fail after it starts).
         try:
             filters_from_request(data)
-        except ValueError:
-            return jsonify(api_error('invalid_filter_date')), 400
+        except FilterError as e:
+            return jsonify(api_error(e.code)), 400
         stream = inquire_stream(current_user, data, tool_names=tools_for_surface('ask'))
         return Response(library_events(stream, request_language()), mimetype='text/event-stream')
 

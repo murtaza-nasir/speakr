@@ -52,6 +52,7 @@ from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.token_auth import load_user_from_token_value
 from src.utils.localization import api_error, translate
 from src.utils.error_text import log_failure
+from src.utils.metadata_limits import PARTICIPANTS_MAX_CHARS, metadata_error
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -2209,6 +2210,13 @@ def update_recording(recording_id):
             **api_error('keep_audio_only_immutable')
         }), 400
 
+    # Wrong types and over-long values are refused before any change (#624)
+    error = metadata_error(data, {'title': recording.title, 'participants': recording.participants,
+                                  'notes': recording.get_user_notes(current_user),
+                                  'summary': recording.summary})
+    if error:
+        return jsonify(error), 400
+
     # Update fields if provided
     if 'title' in data:
         if data['title'] != recording.title:
@@ -2310,6 +2318,9 @@ def replace_notes(recording_id):
     data = request.get_json()
     if not data or 'notes' not in data:
         return jsonify(api_error('notes_field_required')), 400
+    error = metadata_error({'notes': data['notes']}, {'notes': recording.get_user_notes(current_user)})
+    if error:
+        return jsonify(error), 400
 
     from src.services.recording_state import set_user_notes
     set_user_notes(recording, current_user, data['notes'])
@@ -2336,6 +2347,9 @@ def replace_summary(recording_id):
     data = request.get_json()
     if not data or 'summary' not in data:
         return jsonify(api_error('summary_field_required')), 400
+    error = metadata_error({'summary': data['summary']}, {'summary': recording.summary})
+    if error:
+        return jsonify(error), 400
 
     recording.summary = data['summary']
     # Text from outside replaces the summary: no stored prompt produced it.
@@ -3655,10 +3669,24 @@ def inquire_v1():
     filters = body.get('filters') or {}
     if not isinstance(filters, dict):
         return jsonify({'error': translate('server.apiError.invalid_filters'), 'code': 'invalid_parameter'}), 400
+    # The filters in the form of the web routes, with the same checks (#627)
+    # recording_ids may hold digit strings: they only narrow the scope below.
+    from src.services.assistant_events import FilterError, checked_filters, filter_list
+    try:
+        wanted_ids = filter_list(filters.get('recording_ids'), 'invalid_recording_ids_list')
+        checked = checked_filters({
+            'filter_tags': filters.get('tag_ids'),
+            'filter_folders': filters.get('folder_ids'),
+            'filter_speakers': filters.get('speakers'),
+            'filter_date_from': filters.get('date_from'),
+            'filter_date_to': filters.get('date_to'),
+        })
+    except FilterError as e:
+        return jsonify(api_error(e.code)), 400
 
     allowed = [rid for (rid,) in db.session.query(Recording.id).filter(scope_condition(current_user.id, scope))]
-    if filters.get('recording_ids'):
-        wanted = {int(r) for r in filters['recording_ids'] if str(r).isdigit()}
+    if wanted_ids:
+        wanted = {int(r) for r in wanted_ids if str(r).isdigit()}
         allowed = [rid for rid in allowed if rid in wanted]
     if not allowed:
         return jsonify({'answer': 'There are no recordings to search with these filters.', 'citations': [],
@@ -3667,14 +3695,17 @@ def inquire_v1():
         'message': question,
         'message_history': body.get('history') or [],
         'filter_recording_ids': allowed,
-        'filter_tags': filters.get('tag_ids') or [],
-        'filter_folders': filters.get('folder_ids') or [],
-        'filter_speakers': real_speaker_names(filters.get('speakers')),
+        'filter_tags': checked['filter_tags'],
+        'filter_folders': checked['filter_folders'],
+        'filter_speakers': real_speaker_names(checked['filter_speakers']),
         'filter_date_from': filters.get('date_from'),
         'filter_date_to': filters.get('date_to'),
     }
     mode_used = 'agent' if (mode != 'rag' and agent_enabled()) else 'rag'
-    stream = inquire_stream(current_user, data, mode=mode)
+    try:
+        stream = inquire_stream(current_user, data, mode=mode)
+    except FilterError as e:
+        return jsonify(api_error(e.code)), 400
     if body.get('stream'):
         return Response(stream_with_context(stream), mimetype='text/event-stream')
 
@@ -4250,7 +4281,7 @@ def upload_recording():
     form = request.form
 
     participants = form.get('participants')
-    if participants is not None and len(participants) > 500:
+    if participants is not None and len(participants) > PARTICIPANTS_MAX_CHARS:
         return jsonify({'error': translate('server.apiError.participants_too_long'), 'code': 'invalid_parameter'}), 400
     clean_refs = []
     if form.get('external_refs'):

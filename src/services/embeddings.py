@@ -475,6 +475,9 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
     Uses simple text matching instead of semantic search.
     Searches across user's own recordings and recordings shared with them.
     """
+    if isinstance(top_k, bool) or not isinstance(top_k, int) or top_k < 1:
+        # A negative index would widen the result to the whole library (#628)
+        raise ValueError("top_k must be a positive integer")
     try:
         # Get all accessible recording IDs (own + shared)
         accessible_recording_ids = get_accessible_recording_ids(user_id)
@@ -626,6 +629,9 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
     Returns:
         list: List of relevant chunks with similarity scores
     """
+    if isinstance(top_k, bool) or not isinstance(top_k, int) or top_k < 1:
+        # A negative index would widen the result to the whole library (#628)
+        raise ValueError("top_k must be a positive integer")
     try:
         # If embeddings are not available, fall back to basic text search
         if not EMBEDDINGS_AVAILABLE:

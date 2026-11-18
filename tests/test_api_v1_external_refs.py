@@ -273,3 +273,70 @@ def test_bad_upload_fields(world, fields):
     with _no_media_tools():
         resp = _upload(world, **fields)
     assert resp.status_code == 400 and resp.get_json()["code"] == "invalid_parameter"
+
+
+# ------------------------------------------------------------ metadata limits (#624)
+
+from src.utils.metadata_limits import NOTES_MAX_CHARS, PARTICIPANTS_MAX_CHARS, SUMMARY_MAX_CHARS
+
+
+def _patch(world, body):
+    with app.test_client() as c:
+        return c.patch(f"/api/v1/recordings/{world['rec']}", json=body, headers=_h(world))
+
+
+def _stored(world):
+    with app.app_context():
+        r = db.session.get(Recording, world["rec"])
+        return r.participants, r.notes, r.summary
+
+
+def test_patch_rejects_oversized_participants(world):
+    assert _patch(world, {"participants": "Dana, Omar"}).status_code == 200
+    resp = _patch(world, {"participants": "x" * (PARTICIPANTS_MAX_CHARS + 1)})
+    assert resp.status_code == 400 and resp.get_json()["code"] == "invalid_parameter"
+    assert "participants" in resp.get_json()["error"]
+    assert _stored(world)[0] == "Dana, Omar"
+    assert _patch(world, {"participants": "x" * PARTICIPANTS_MAX_CHARS}).status_code == 200
+    assert _stored(world)[0] == "x" * PARTICIPANTS_MAX_CHARS
+
+
+@pytest.mark.parametrize("field,limit", [("notes", NOTES_MAX_CHARS), ("summary", SUMMARY_MAX_CHARS)])
+def test_patch_rejects_oversized_text_fields(world, field, limit):
+    resp = _patch(world, {field: "x" * (limit + 1)})
+    assert resp.status_code == 400 and resp.get_json()["code"] == "invalid_parameter"
+    assert _stored(world)[1:] == (None, None)
+    assert _patch(world, {field: "x" * limit}).status_code == 200
+
+
+@pytest.mark.parametrize("body", [{"title": {"a": 1}}, {"summary": ["a"]}, {"notes": 123}, {"participants": 5}])
+def test_patch_rejects_non_string_metadata(world, body):
+    resp = _patch(world, body)
+    assert resp.status_code == 400 and resp.is_json and resp.get_json()["code"] == "invalid_parameter"
+    with app.app_context():
+        assert db.session.get(Recording, world["rec"]).title == "Sync"
+
+
+def test_patch_takes_null_and_a_clipped_title(world):
+    resp = _patch(world, {"title": "t" * 300, "notes": None, "summary": None, "participants": None})
+    assert resp.status_code == 200 and len(resp.get_json()["recording"]["title"]) == 200
+
+
+def test_an_unchanged_stored_value_does_not_block_a_patch(world):
+    # The pipeline may store a longer participant list than a client may write.
+    with app.app_context():
+        db.session.get(Recording, world["rec"]).participants = "p" * 600
+        db.session.commit()
+    assert _patch(world, {"participants": "p" * 600, "notes": "n"}).status_code == 200
+
+
+def test_put_notes_and_summary_are_bounded(world):
+    with app.test_client() as c:
+        base = f"/api/v1/recordings/{world['rec']}"
+        for field, limit in (("notes", NOTES_MAX_CHARS), ("summary", SUMMARY_MAX_CHARS)):
+            resp = c.put(f"{base}/{field}", json={field: "x" * (limit + 1)}, headers=_h(world))
+            assert resp.status_code == 400 and resp.get_json()["code"] == "invalid_parameter"
+            resp = c.put(f"{base}/{field}", json={field: ["x"]}, headers=_h(world))
+            assert resp.status_code == 400 and resp.get_json()["code"] == "invalid_parameter"
+            assert c.put(f"{base}/{field}", json={field: "fine"}, headers=_h(world)).status_code == 200
+    assert _stored(world)[1:] == ("fine", "fine")

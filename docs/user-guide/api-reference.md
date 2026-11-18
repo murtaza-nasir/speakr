@@ -1028,7 +1028,7 @@ PATCH /api/v1/recordings/{id}
 }
 ```
 
-All fields are optional. Set `folder_id` to an integer to move the recording into that folder (you must have access to the target folder), or to `null` to remove it from any folder. `folder_id` requires folders to be enabled.
+All fields are optional. `title`, `participants`, `notes` and `summary` are strings or `null`. `participants` is at most 500 characters, `notes` and `summary` at most 200,000 each; a longer `title` is cut to 200. A value of another type, or a longer one, gives `400` with the code `invalid_parameter` and changes nothing. The same limits apply to Replace Notes and Replace Summary. Set `folder_id` to an integer to move the recording into that folder (you must have access to the target folder), or to `null` to remove it from any folder. `folder_id` requires folders to be enabled.
 
 On a recording shared with you, `is_inbox`, `is_highlighted` and `is_archived` are your own values: setting them changes them for you only, and the owner's values stay as they are. The response and `GET /api/v1/recordings/{id}` show your values.
 

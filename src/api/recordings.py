@@ -63,6 +63,7 @@ from src.services.recording_filters import (
 from src.utils.localization import api_error, format_number, translate
 from src.utils.incognito_logging import incognito_route, incognito_log, describe_error, short_code
 from src.utils.error_text import log_failure, user_error_text
+from src.utils.metadata_limits import metadata_error
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
@@ -1658,6 +1659,13 @@ def save_metadata():
         # Check if user has at least view access
         if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
+
+        # Wrong types and over-long values are refused before any change (#624)
+        error = metadata_error(data, {'title': recording.title, 'participants': recording.participants,
+                                      'notes': recording.get_user_notes(current_user),
+                                      'summary': recording.summary})
+        if error:
+            return jsonify(error), 400
 
         # Handle notes separately - no edit permission required (user-specific)
         if 'notes' in data:
