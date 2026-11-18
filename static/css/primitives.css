@@ -2787,4 +2787,4 @@ select.field.option-folder-select { padding-left: 2rem !important; }
     font-size: 11px;
     color: var(--text-muted);
 }
-.btn .record-dot { font-size: 8px; }
+.btn .record-dot { font-size: 8px !important; }
