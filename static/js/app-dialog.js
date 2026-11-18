@@ -70,7 +70,9 @@
             value: type === 'prompt' ? text(given.value) : '',
             placeholder: type === 'prompt' ? text(given.placeholder) : '',
             content: type === 'alert' && given.content && typeof given.content === 'object' ? given.content : null,
-            size: type === 'alert' && (given.size === 'md' || given.size === 'lg') ? given.size : 'sm',
+            // A confirmation with a second answer has three buttons: wider.
+            size: type === 'alert' && (given.size === 'md' || given.size === 'lg') ? given.size
+                : (type === 'confirm' && text(given.alternateLabel) ? 'md' : 'sm'),
         };
     }
 

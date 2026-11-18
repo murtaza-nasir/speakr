@@ -1223,7 +1223,10 @@ html.dark .modal-overlay {
     overflow-wrap: anywhere;
 }
 .app-dialog__input { margin-top: var(--sp-3); }
-.app-dialog .modal-footer .btn { min-width: 5rem; justify-content: center; }
+/* Three long labels (a confirmation with a second answer, in Russian or
+   French) take a second row; a label is never cut. */
+.app-dialog .modal-footer { flex-wrap: wrap; }
+.app-dialog .modal-footer .btn { min-width: 5rem; justify-content: center; flex-shrink: 0; max-width: 100%; }
 @media (max-width: 640px) {
     .app-dialog .modal-footer .btn { flex: 1 1 0; min-height: 44px; }
 }
