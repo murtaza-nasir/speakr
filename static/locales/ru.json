@@ -1859,7 +1859,9 @@
     "numberOfSpeakers": "Число говорящих",
     "selectDateTime": "Выберите дату и время…",
     "textContent": "Текст",
-    "transcriptTextPlaceholder": "Введите текст транскрипта…"
+    "transcriptTextPlaceholder": "Введите текст транскрипта…",
+    "minShort": "Мин.",
+    "maxShort": "Макс."
   },
   "groups": {
     "addMembers": "Добавить участников…",
@@ -1985,9 +1987,7 @@
     "completedFiles": "Завершённые файлы",
     "confirmReprocessingTitle": "Подтвердите перегенерацию",
     "copyMessage": "Копировать сообщение",
-    "createFolders": "Создать папки",
     "createPublicLink": "Создайте публичную ссылку на эту запись. Публичные ссылки работают только через HTTPS.",
-    "createTags": "Создайте теги",
     "defaultHotwordsHelp": "Слова или фразы через запятую, которые должны распознаваться надёжнее, например названия брендов, аббревиатуры и технические термины.",
     "defaultInitialPromptHelp": "Предложение о теме ваших записей, которое задаёт стиль и словарь транскрипта.",
     "deleteSegment": "Удалить сегмент",
@@ -2065,7 +2065,6 @@
     "tagManagement": "Управление тегами",
     "thisActionCannotBeUndone": "Это нельзя отменить.",
     "toCaptureAudioFromMeetings": "Чтобы записать встречу или другое приложение, поделитесь экраном или вкладкой браузера.",
-    "toOrganizeRecordings": "для организации записей",
     "transcriptUpdated": "Транскрипт сохранён",
     "troubleshooting": "Устранение неполадок",
     "tryAdjustingSearch": "Попробуйте скорректировать поиск или",
@@ -2605,10 +2604,8 @@
     "duration": "Длительность",
     "grantMicPermissionHint": "Разрешите доступ к микрофону один раз, чтобы увидеть имена устройств.",
     "howToEnableFullSystemAudio": "как включить полный системный звук",
-    "inputDevices": "Устройства ввода",
     "linuxMonitorHintPrefix": "Не видите записи \"Monitor of …\"? Chrome на Linux их фильтрует. В разделе руководства Linux → Вариант C показана однострочная команда",
     "linuxMonitorHintSuffix": ", которая показывает Pulse monitor как обычный источник, видимый для Chrome.",
-    "micPlusSys": "Микр. + Сис.",
     "microphone": "Микрофон",
     "microphoneAndSystem": "Микрофон + система",
     "microphonePermissionDenied": "Доступ к микрофону запрещён. Разрешите его в настройках браузера и повторите попытку.",
@@ -2668,7 +2665,9 @@
     "keepAppVisibleHint": "Запись приостанавливается при сворачивании или блокировке экрана.",
     "notesLabel": "Заметки",
     "notesMarkdownLabel": "Заметки (Markdown)",
-    "uploadSettings": "Параметры загрузки"
+    "uploadSettings": "Параметры загрузки",
+    "source": "Источник",
+    "moreInputSettings": "Другие настройки ввода"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "Аудио будет транскрибировано заново, с новым заголовком и резюме.",
@@ -3231,7 +3230,6 @@
     "maxFileSize": "Максимальный размер файла",
     "queued": "В очереди",
     "selectFiles": "Выбрать файлы",
-    "settingsApplyToAll": "Настройки применяются ко всем файлам в этой сессии",
     "summarizing": "Резюмирование…",
     "supportedFormats": "MP3, WAV, M4A, MP4, MOV, AVI, AMR и другие",
     "title": "Загрузка",
@@ -3249,7 +3247,6 @@
     "keepAudioOnlyLargerAllowed": "Допустимы более крупные загрузки",
     "largeVideoNotice": "Большой видеофайл. Транскрипция может занять больше времени.",
     "options": "Параметры",
-    "transcriptionOptions": "Параметры транскрипции",
     "uploadAndAddMore": "Загрузить и добавить ещё",
     "joinModeLabel": "Как добавить эти файлы",
     "joinSeparate": "Отдельные записи",
@@ -3263,13 +3260,12 @@
     "joinVideoHint": "В объединённой записи сохраняется только звук.",
     "uploadAndJoin": "Загрузить и объединить файлы: {{count}}",
     "joinFailed": "Объединение остановлено: файл {{name}} не загрузился. Добавьте файлы ещё раз, чтобы повторить.",
-    "clearFolder": "Убрать папку",
-    "clearLanguage": "Сбросить язык",
-    "clearSpeakers": "Сбросить число спикеров",
-    "clearTags": "Убрать теги",
     "currentCopy": "(текущая)",
-    "tagCount": "Тегов: {{count}}",
-    "tagCountPlural": "Тегов: {{count}}"
+    "dialogTitle": "Новая запись",
+    "tabUpload": "Загрузка файлов",
+    "tabRecord": "Запись",
+    "optionsForAll": "Параметры для всех файлов",
+    "advanced": "Дополнительно"
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"

@@ -1859,7 +1859,9 @@
     "numberOfSpeakers": "Número de falantes",
     "selectDateTime": "Selecionar data e hora…",
     "textContent": "Conteúdo do texto",
-    "transcriptTextPlaceholder": "Digite o texto da transcrição…"
+    "transcriptTextPlaceholder": "Digite o texto da transcrição…",
+    "minShort": "Mín.",
+    "maxShort": "Máx."
   },
   "groups": {
     "addMembers": "Adicionar membros…",
@@ -1985,9 +1987,7 @@
     "completedFiles": "Arquivos concluídos",
     "confirmReprocessingTitle": "Confirmar reprocessamento",
     "copyMessage": "Copiar mensagem",
-    "createFolders": "Criar pastas",
     "createPublicLink": "Crie um link público para esta gravação. Links públicos só funcionam via HTTPS.",
-    "createTags": "Criar etiquetas",
     "defaultHotwordsHelp": "Palavras ou frases separadas por vírgula para reconhecer com mais confiabilidade, como nomes de marcas, siglas e termos técnicos.",
     "defaultInitialPromptHelp": "Uma frase sobre o tema das suas gravações, usada para orientar o estilo e o vocabulário da transcrição.",
     "deleteSegment": "Deletar segmento",
@@ -2065,7 +2065,6 @@
     "tagManagement": "Gerenciamento de etiquetas",
     "thisActionCannotBeUndone": "Isso não pode ser desfeito.",
     "toCaptureAudioFromMeetings": "Para gravar uma reunião ou outro app, compartilhe sua tela ou uma aba do navegador.",
-    "toOrganizeRecordings": "para organizar suas gravações",
     "transcriptUpdated": "Transcrição salva",
     "troubleshooting": "Solução de Problemas",
     "tryAdjustingSearch": "Tente ajustar sua pesquisa ou",
@@ -2605,10 +2604,8 @@
     "duration": "Duração",
     "grantMicPermissionHint": "Permita o acesso ao microfone uma vez para ver os nomes dos dispositivos.",
     "howToEnableFullSystemAudio": "como ativar o áudio completo do sistema",
-    "inputDevices": "Dispositivos de entrada",
     "linuxMonitorHintPrefix": "Não vê entradas \"Monitor of …\"? O Chrome no Linux as filtra. A seção Linux → Opção C do guia mostra um comando",
     "linuxMonitorHintSuffix": "de uma linha para expor um monitor do Pulse como uma fonte comum que o Chrome irá listar.",
-    "micPlusSys": "Mic + Sis",
     "microphone": "Microfone",
     "microphoneAndSystem": "Microfone + sistema",
     "microphonePermissionDenied": "O acesso ao microfone foi negado. Permita-o nas configurações do navegador e tente novamente.",
@@ -2668,7 +2665,9 @@
     "keepAppVisibleHint": "A gravação pausa se o app for minimizado ou a tela for bloqueada.",
     "notesLabel": "Notas",
     "notesMarkdownLabel": "Notas (Markdown)",
-    "uploadSettings": "Configurações de envio"
+    "uploadSettings": "Configurações de envio",
+    "source": "Fonte",
+    "moreInputSettings": "Mais configurações de entrada"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "O áudio é transcrito novamente, com novo título e resumo.",
@@ -3231,7 +3230,6 @@
     "maxFileSize": "Tamanho máximo de arquivo",
     "queued": "Enfileirado",
     "selectFiles": "Selecionar arquivos",
-    "settingsApplyToAll": "As configurações se aplicam a todos os arquivos nesta sessão",
     "summarizing": "Resumindo…",
     "supportedFormats": "MP3, WAV, M4A, MP4, MOV, AVI, AMR e outros",
     "title": "Enviar",
@@ -3249,7 +3247,6 @@
     "keepAudioOnlyLargerAllowed": "Envios maiores permitidos",
     "largeVideoNotice": "Vídeo grande. A transcrição pode demorar mais.",
     "options": "Opções",
-    "transcriptionOptions": "Opções de transcrição",
     "uploadAndAddMore": "Enviar e adicionar mais",
     "joinModeLabel": "Como adicionar estes arquivos",
     "joinSeparate": "Gravações separadas",
@@ -3263,13 +3260,12 @@
     "joinVideoHint": "A gravação unida mantém apenas o áudio.",
     "uploadAndJoin": "Enviar e unir {{count}} arquivos",
     "joinFailed": "A união foi interrompida porque {{name}} não foi enviado. Adicione os arquivos novamente para tentar outra vez.",
-    "clearFolder": "Limpar pasta",
-    "clearLanguage": "Limpar idioma",
-    "clearSpeakers": "Limpar oradores",
-    "clearTags": "Limpar etiquetas",
     "currentCopy": "(atual)",
-    "tagCount": "{{count}} etiqueta",
-    "tagCountPlural": "{{count}} etiquetas"
+    "dialogTitle": "Nova gravação",
+    "tabUpload": "Enviar arquivos",
+    "tabRecord": "Gravar",
+    "optionsForAll": "Opções para todos os arquivos",
+    "advanced": "Avançado"
   },
   "uploadProgress": {
     "title": "Progresso do envio"

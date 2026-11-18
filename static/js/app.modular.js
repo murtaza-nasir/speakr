@@ -2749,6 +2749,50 @@ document.addEventListener('DOMContentLoaded', async () => {
                     },
                 });
             };
+            // --- New-recording dialog: tab, record source, tag combobox ---
+            // The last-used tab and record source are remembered per browser.
+            const _stored = (key, allowed, fallback) => {
+                try {
+                    const v = localStorage.getItem(key);
+                    return allowed.includes(v) ? v : fallback;
+                } catch (_) { return fallback; }
+            };
+            const uploadDialogTab = ref(_stored('uploadDialogTab', ['upload', 'record'], 'upload'));
+            watch(uploadDialogTab, (v) => {
+                try { localStorage.setItem('uploadDialogTab', v); } catch (_) {}
+            });
+            const recordSource = ref(_stored('recordSource', ['microphone', 'system', 'both'], 'microphone'));
+            watch(recordSource, (v) => {
+                try { localStorage.setItem('recordSource', v); } catch (_) {}
+            });
+            // Files dropped or chosen always belong to the Upload tab.
+            watch(() => uploadQueue.value.filter(item => item.status === 'queued').length, (n, old) => {
+                if (n > (old || 0)) uploadDialogTab.value = 'upload';
+            });
+            const showUploadTagMenu = ref(false);
+            // Enter in the tag field: the first match, or the create dialog
+            // when nothing matches the text.
+            const pickFirstUploadTag = () => {
+                const matches = uploadComposable.filteredAvailableTagsForUpload.value;
+                if (!(uploadTagSearchFilter.value || '').trim()) return;
+                if (matches.length > 0) {
+                    uploadComposable.addTagToSelection(matches[0].id);
+                    uploadTagSearchFilter.value = '';
+                } else {
+                    showUploadTagMenu.value = false;
+                    createTagFromUploadSearch();
+                }
+            };
+            // The folder select ends with a "New folder" option.
+            const onUploadFolderChange = (event) => {
+                const value = event.target.value;
+                if (value === '__new__') {
+                    event.target.value = selectedFolderId.value == null ? '' : String(selectedFolderId.value);
+                    createFolderFromUpload();
+                    return;
+                }
+                selectedFolderId.value = value === '' ? null : Number(value);
+            };
             // Upload disclaimer handlers
             const acceptUploadDisclaimer = () => {
                 showUploadDisclaimerModal.value = false;
@@ -5138,6 +5182,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Inline tag/folder creation (upload dialog)
                 createTagFromUploadSearch,
                 createFolderFromUpload,
+                uploadDialogTab, recordSource, showUploadTagMenu,
+                pickFirstUploadTag, onUploadFolderChange,
 
                 // Translation
                 generateTranslation,

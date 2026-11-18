@@ -1859,7 +1859,9 @@
     "numberOfSpeakers": "Número de hablantes",
     "selectDateTime": "Seleccionar fecha y hora…",
     "textContent": "Contenido del texto",
-    "transcriptTextPlaceholder": "Introduzca el texto de la transcripción…"
+    "transcriptTextPlaceholder": "Introduzca el texto de la transcripción…",
+    "minShort": "Mín.",
+    "maxShort": "Máx."
   },
   "groups": {
     "addMembers": "Añadir miembros…",
@@ -1985,9 +1987,7 @@
     "completedFiles": "Archivos completados",
     "confirmReprocessingTitle": "Confirmar reprocesamiento",
     "copyMessage": "Copiar mensaje",
-    "createFolders": "Crear carpetas",
     "createPublicLink": "Crea un enlace público a esta grabación. Los enlaces públicos solo funcionan con HTTPS.",
-    "createTags": "Crear etiquetas",
     "defaultHotwordsHelp": "Palabras o frases separadas por comas que se deben reconocer con más fiabilidad, como marcas, acrónimos y términos técnicos.",
     "defaultInitialPromptHelp": "Una frase sobre el tema de sus grabaciones, que sirve para orientar el estilo y el vocabulario de la transcripción.",
     "deleteSegment": "Eliminar segmento",
@@ -2065,7 +2065,6 @@
     "tagManagement": "Gestión de etiquetas",
     "thisActionCannotBeUndone": "Esta acción no se puede deshacer.",
     "toCaptureAudioFromMeetings": "Para grabar una reunión u otra aplicación, comparte tu pantalla o una pestaña del navegador.",
-    "toOrganizeRecordings": "para organizar sus grabaciones",
     "transcriptUpdated": "Transcripción guardada",
     "troubleshooting": "Solución de Problemas",
     "tryAdjustingSearch": "Intenta ajustar tu búsqueda o",
@@ -2605,10 +2604,8 @@
     "duration": "Duración",
     "grantMicPermissionHint": "Permite el acceso al micrófono una vez para ver los nombres de los dispositivos.",
     "howToEnableFullSystemAudio": "cómo habilitar el audio completo del sistema",
-    "inputDevices": "Dispositivos de entrada",
     "linuxMonitorHintPrefix": "¿No ves las entradas \"Monitor of …\"? Chrome en Linux las filtra. La sección Linux → Opción C de la guía muestra un comando",
     "linuxMonitorHintSuffix": "que expone un monitor de Pulse como una fuente normal que Chrome sí listará.",
-    "micPlusSys": "Micro + Sis",
     "microphone": "Micrófono",
     "microphoneAndSystem": "Micrófono + sistema",
     "microphonePermissionDenied": "Se denegó el acceso al micrófono. Permítalo en la configuración del navegador e inténtelo de nuevo.",
@@ -2668,7 +2665,9 @@
     "keepAppVisibleHint": "La grabación se pausa si se minimiza o se bloquea la pantalla.",
     "notesLabel": "Notas",
     "notesMarkdownLabel": "Notas (Markdown)",
-    "uploadSettings": "Configuración de subida"
+    "uploadSettings": "Configuración de subida",
+    "source": "Fuente",
+    "moreInputSettings": "Más ajustes de entrada"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "El audio se transcribirá de nuevo, con un título y un resumen nuevos.",
@@ -3231,7 +3230,6 @@
     "maxFileSize": "Tamaño máximo de archivo",
     "queued": "En cola",
     "selectFiles": "Seleccionar archivos",
-    "settingsApplyToAll": "Los ajustes se aplican a todos los archivos de esta sesión",
     "summarizing": "Resumiendo…",
     "supportedFormats": "MP3, WAV, M4A, MP4, MOV, AVI, AMR y más",
     "title": "Subir",
@@ -3249,7 +3247,6 @@
     "keepAudioOnlyLargerAllowed": "Se permiten subidas más grandes",
     "largeVideoNotice": "Vídeo grande. La transcripción puede tardar más.",
     "options": "Opciones",
-    "transcriptionOptions": "Opciones de transcripción",
     "uploadAndAddMore": "Subir y añadir más",
     "joinModeLabel": "Cómo añadir estos archivos",
     "joinSeparate": "Grabaciones separadas",
@@ -3263,13 +3260,12 @@
     "joinVideoHint": "La grabación unida conserva solo el audio.",
     "uploadAndJoin": "Subir y unir {{count}} archivos",
     "joinFailed": "La unión se detuvo porque {{name}} no se subió. Vuelva a añadir los archivos para intentarlo de nuevo.",
-    "clearFolder": "Quitar carpeta",
-    "clearLanguage": "Quitar idioma",
-    "clearSpeakers": "Quitar hablantes",
-    "clearTags": "Quitar etiquetas",
     "currentCopy": "(actual)",
-    "tagCount": "{{count}} etiqueta",
-    "tagCountPlural": "{{count}} etiquetas"
+    "dialogTitle": "Nueva grabación",
+    "tabUpload": "Subir archivos",
+    "tabRecord": "Grabar",
+    "optionsForAll": "Opciones para todos los archivos",
+    "advanced": "Avanzado"
   },
   "uploadProgress": {
     "title": "Progreso de carga"

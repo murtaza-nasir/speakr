@@ -10,7 +10,7 @@ Record your microphone, your system audio, or a mix of both — with platform-aw
 
 ### Multi-Input Recording (Mic + Secondary Device)
 
-A new Input devices picker in the upload modal lets you pick a primary microphone AND an optional secondary device (a Pulse monitor source, BlackHole, VB-Cable, etc.). Speakr captures both streams in parallel and mixes them via Web Audio into a single track — the canonical solution for capturing **both sides of a meeting** on macOS or Linux where the browser can't capture full system audio natively. Virtual / monitor devices are detected and badged in the picker. A separate toggle disables Chrome's echo cancellation / noise suppression / auto-gain — necessary for monitor-source capture because the suppressor otherwise gates sustained speech to silence.
+The **Record** tab of the New recording dialog lets you pick a primary microphone AND an optional secondary device (a Pulse monitor source, BlackHole, VB-Cable, etc.). Speakr captures both streams in parallel and mixes them via Web Audio into a single track — the canonical solution for capturing **both sides of a meeting** on macOS or Linux where the browser can't capture full system audio natively. Virtual / monitor devices are detected and badged in the picker. A separate toggle disables Chrome's echo cancellation / noise suppression / auto-gain — necessary for monitor-source capture because the suppressor otherwise gates sustained speech to silence.
 
 ### Recording Stats
 
