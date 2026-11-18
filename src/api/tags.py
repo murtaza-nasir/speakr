@@ -26,8 +26,6 @@ from src.utils.localization import api_error
 tags_bp = Blueprint('tags', __name__)
 
 # Configuration from environment
-ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_AUTO_PROCESSING = os.environ.get('ENABLE_AUTO_PROCESSING', 'false').lower() == 'true'
 
 # Tag colors are stored verbatim and interpolated into HTML style attributes on

@@ -325,10 +325,10 @@ class TestSectionIsolation:
 
         real_add = init_db.add_column_if_not_exists
 
-        def poisoned(engine, table, column, column_type):
+        def poisoned(engine, table, column, column_type, logger=None):
             if column == "mime_type":  # first statement of its section
                 raise RuntimeError("poisoned migration")
-            return real_add(engine, table, column, column_type)
+            return real_add(engine, table, column, column_type, logger=logger)
 
         monkeypatch.setattr(init_db, "add_column_if_not_exists", poisoned)
 
@@ -406,10 +406,10 @@ class TestSectionIsolation:
 
         real_add = init_db.add_column_if_not_exists
 
-        def poisoned(engine, table, column, column_type):
+        def poisoned(engine, table, column, column_type, logger=None):
             if column == "mime_type":
                 raise RuntimeError("poisoned migration")
-            return real_add(engine, table, column, column_type)
+            return real_add(engine, table, column, column_type, logger=logger)
 
         monkeypatch.setattr(init_db, "add_column_if_not_exists", poisoned)
         app = _fixture_app(old_db)

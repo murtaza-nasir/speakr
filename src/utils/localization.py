@@ -394,10 +394,3 @@ def format_file_size(size, language: Optional[str] = None) -> str:
     # No grouping, as in the browser: German "1.023 B" reads as 1.023.
     count = format_number(size / 1024 ** unit, language, max_fraction_digits=1, grouping=False)
     return translate(f'fileSize.{_FILE_SIZE_UNITS[unit]}', language, count=count)
-
-
-def clear_locale_cache():
-    """Clear the locale cache (useful for testing or hot-reloading)."""
-    global _locale_cache
-    _locale_cache = {}
-    available_languages.cache_clear()

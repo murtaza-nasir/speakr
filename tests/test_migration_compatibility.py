@@ -143,8 +143,10 @@ class TestMigrationCompatibility(unittest.TestCase):
         direct_pattern = r"conn\.execute\s*\(\s*text\s*\(['\"][^'\"]*ALTER\s+TABLE[^'\"]*ADD\s+COLUMN"
         direct_matches = re.findall(direct_pattern, self.content, re.IGNORECASE)
 
-        # Count uses of add_column_if_not_exists
-        utility_pattern = r"add_column_if_not_exists\s*\("
+        # Count uses of the column-adding helper. In the migrations the
+        # engine and the application logger are bound once, so the call sites
+        # read add_column(...); both spellings count as utility usage.
+        utility_pattern = r"add_column(?:_if_not_exists)?\s*\("
         utility_matches = re.findall(utility_pattern, self.content)
 
         # We expect most ADD COLUMN operations to use the utility
@@ -184,7 +186,7 @@ class TestMigrationCompatibility(unittest.TestCase):
         # Verify that add_column_if_not_exists calls using these types exist
         # (confirming they go through the utility which handles conversion)
         for sql_type in incompatible_types:
-            pattern = rf"add_column_if_not_exists\s*\([^)]*['\"]({sql_type})['\"]"
+            pattern = rf"add_column(?:_if_not_exists)?\s*\([^)]*['\"]({sql_type})['\"]"
             matches = re.findall(pattern, self.content, re.IGNORECASE)
             # Just informational - these are fine because the utility converts them
 

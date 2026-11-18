@@ -266,30 +266,3 @@ def get_orphaned_speakers(user_id=None):
             )
 
     return orphaned_ids
-
-
-def get_speaker_cleanup_statistics():
-    """
-    Get statistics about speaker data for monitoring.
-
-    Returns:
-        dict: Statistics about speakers
-            {
-                'total_speakers': int,
-                'speakers_with_snippets': int,
-                'speakers_with_embeddings': int,
-                'potential_orphans': int
-            }
-    """
-    stats = {
-        'total_speakers': Speaker.query.count(),
-        'speakers_with_snippets': db.session.query(Speaker.id).join(
-            SpeakerSnippet, Speaker.id == SpeakerSnippet.speaker_id
-        ).distinct().count(),
-        'speakers_with_embeddings': Speaker.query.filter(
-            Speaker.average_embedding.isnot(None)
-        ).count(),
-        'potential_orphans': len(get_orphaned_speakers())
-    }
-
-    return stats

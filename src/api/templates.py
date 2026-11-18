@@ -4,7 +4,6 @@ Transcript template management.
 This blueprint was auto-generated from app.py route extraction.
 """
 
-import os
 import json
 import time
 from datetime import datetime, timedelta
@@ -19,10 +18,6 @@ from src.utils.localization import api_error, translate
 
 # Create blueprint
 templates_bp = Blueprint('templates', __name__)
-
-# Configuration from environment
-ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 
 # Global helpers (will be injected from app)
 has_recording_access = None
