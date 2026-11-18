@@ -986,6 +986,18 @@ def ingest(
                 response_data['idempotent_replay'] = True
                 return jsonify(response_data), success_status
 
+        # A retry of an upload whose answer was lost gets the recording the
+        # first request stored (#626): nothing is staged, stored or queued.
+        from src.services.upload_cancel import already_stored_upload, client_upload_id_from
+        client_upload_id = None if join else client_upload_id_from(form)
+        if client_upload_id:
+            already = already_stored_upload(owner.id, client_upload_id)
+            if already is not None:
+                current_app.logger.info(f"Upload replay for user {owner.id}: recording {already.id}")
+                response_data = already.to_dict(viewer_user=owner)
+                response_data['idempotent_replay'] = True
+                return jsonify(response_data), success_status
+
         safe_filename = shorten_filename(secure_filename(original_filename))
         storage = get_storage_service()
         staging_dir = storage.get_staging_dir()
@@ -1030,8 +1042,7 @@ def ingest(
 
         # The browser aborted this upload and said so (POST /upload/cancel)
         # while the body was still arriving: nothing is probed or converted.
-        from src.services.upload_cancel import client_upload_id_from, is_canceled, register_recording
-        client_upload_id = None if join else client_upload_id_from(form)
+        from src.services.upload_cancel import is_canceled, register_recording
         if client_upload_id and is_canceled(owner.id, client_upload_id):
             current_app.logger.info(f"Upload of user {owner.id} was canceled; the file is discarded")
             _discard_staging(filepath)

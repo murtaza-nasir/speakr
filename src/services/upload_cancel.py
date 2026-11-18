@@ -83,11 +83,44 @@ def is_canceled(user_id, client_upload_id):
         return False
 
 
+def _stored_recording(row, user_id):
+    """The recording the row points to, while it still exists and is this upload's."""
+    if row is None or not row.recording_id:
+        return None
+    recording = db.session.get(Recording, row.recording_id)
+    if (recording is None or recording.user_id != user_id
+            or recording.created_at != row.recording_created_at):
+        return None
+    return recording
+
+
+def already_stored_upload(user_id, client_upload_id):
+    """The recording an earlier request of this upload stored, or None.
+
+    The browser sends the same client_upload_id again when it retries an
+    upload whose answer was lost (#626). The retry is answered with that
+    recording, within ROW_TTL like the idempotency_key of API v1, unless the
+    upload was canceled or the recording has been deleted since.
+    """
+    cutoff = datetime.utcnow() - ROW_TTL
+    row = ClientUpload.query.filter_by(user_id=user_id, client_upload_id=client_upload_id).first()
+    if row is None or row.canceled_at is not None or row.created_at < cutoff:
+        return None
+    return _stored_recording(row, user_id)
+
+
 def register_recording(user_id, client_upload_id, recording):
-    """Note the recording this upload stored. True when the upload was canceled."""
+    """Note the recording this upload stored. True when the upload was canceled.
+
+    A row that already points to a recording of this upload keeps it, so a
+    second copy cannot take the cancel away from the first.
+    """
     try:
         cutoff = datetime.utcnow() - ROW_TTL
         ClientUpload.query.filter(ClientUpload.created_at < cutoff).delete(synchronize_session=False)
+        row = ClientUpload.query.filter_by(user_id=user_id, client_upload_id=client_upload_id).first()
+        if _stored_recording(row, user_id) is not None:
+            return row.canceled_at is not None
         recording_id, created_at = recording.id, recording.created_at
         row = _write(user_id, client_upload_id, recording_id=recording_id, recording_created_at=created_at)
         return bool(row is not None and row.canceled_at is not None)
@@ -128,11 +161,8 @@ def cancel_upload(user, client_upload_id):
     """
     row = _write(user.id, client_upload_id, canceled_at=datetime.utcnow())
     result = {'recording_deleted': False, 'recording_kept': False}
-    if row is None or not row.recording_id:
-        return result
-    recording = db.session.get(Recording, row.recording_id)
-    if (recording is None or recording.user_id != user.id
-            or recording.created_at != row.recording_created_at):
+    recording = _stored_recording(row, user.id)
+    if recording is None:
         return result
     if recording.status == 'COMPLETED' or datetime.utcnow() - row.created_at > CANCEL_WINDOW:
         result['recording_kept'] = True

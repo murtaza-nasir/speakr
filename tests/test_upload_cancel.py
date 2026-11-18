@@ -304,3 +304,101 @@ def test_old_rows_are_removed_with_the_next_upload(user):
     assert _upload(user, _upload_id())[0].status_code == 202
     assert ClientUpload.query.filter_by(user_id=user, client_upload_id=stale_upload_id).count() == 0
     assert ClientUpload.query.filter_by(user_id=user).count() == 1
+
+
+# --- a retried upload (#626) --------------------------------------------------------
+
+def test_retry_with_same_client_upload_id_replays_the_first_recording(user):
+    upload_id = _upload_id()
+    first, _ = _upload(user, upload_id)
+    assert first.status_code == 202
+    before = _files_on_disk()
+    again, webhook = _upload(user, upload_id)
+    assert again.status_code == 202, again.get_data(as_text=True)[:300]
+    body = again.get_json()
+    assert body['id'] == first.get_json()['id']
+    assert body['idempotent_replay'] is True
+    assert len(_recordings(user)) == 1
+    assert _jobs(user) == 1
+    assert _files_on_disk() == before                # nothing staged or stored again
+    assert _events(webhook) == []                    # no second recording.created
+    row = ClientUpload.query.filter_by(user_id=user, client_upload_id=upload_id).one()
+    assert row.recording_id == body['id']
+
+
+def test_retry_replay_expires_after_a_day(user):
+    upload_id = _upload_id()
+    first_id = _upload(user, upload_id)[0].get_json()['id']
+    row = ClientUpload.query.filter_by(user_id=user, client_upload_id=upload_id).one()
+    row.created_at = datetime.utcnow() - timedelta(hours=25)
+    row.recording_created_at = row.recording_created_at - timedelta(hours=25)
+    db.session.commit()
+    db.session.expunge_all()
+    again = _upload(user, upload_id)[0]
+    assert again.status_code == 202
+    assert again.get_json()['id'] != first_id
+    assert not again.get_json().get('idempotent_replay')
+    assert len(_recordings(user)) == 2
+
+
+def test_two_queue_items_with_the_same_file_still_store_two_recordings(user):
+    first = _upload(user, _upload_id())[0]
+    second = _upload(user, _upload_id())[0]
+    assert first.status_code == 202 and second.status_code == 202
+    assert first.get_json()['id'] != second.get_json()['id']
+    assert len(_recordings(user)) == 2
+    assert _jobs(user) == 2
+    assert second.get_json().get('duplicate_warning')
+    assert not second.get_json().get('idempotent_replay')
+
+
+def test_a_retry_after_deleting_the_recording_stores_a_new_one(user):
+    from src.services.recording_deletion import delete_recording_completely
+    upload_id = _upload_id()
+    first_id = _upload(user, upload_id)[0].get_json()['id']
+    with patch('src.services.webhook_dispatch.emit_webhook_event'):
+        delete_recording_completely(db.session.get(Recording, first_id))
+    again = _upload(user, upload_id)[0]
+    assert again.status_code == 202
+    new_id = again.get_json()['id']
+    assert not again.get_json().get('idempotent_replay')
+    assert [r.id for r in _recordings(user)] == [new_id]
+    assert _jobs(user) == 1
+    row = ClientUpload.query.filter_by(user_id=user, client_upload_id=upload_id).one()
+    assert row.recording_id == new_id                # the cancel reaches the new recording
+
+
+def test_a_retry_after_a_cancel_is_refused(user):
+    upload_id = _upload_id()
+    recording_id = _upload(user, upload_id)[0].get_json()['id']
+    recording = db.session.get(Recording, recording_id)
+    recording.status = 'COMPLETED'
+    db.session.commit()
+    assert _cancel(user, upload_id).get_json()['recording_kept'] is True
+    again = _upload(user, upload_id)[0]
+    assert again.status_code == 409
+    assert [r.id for r in _recordings(user)] == [recording_id]
+
+
+def test_the_id_of_another_user_replays_nothing(user):
+    upload_id = _upload_id()
+    first_id = _upload(user, upload_id)[0].get_json()['id']
+    suffix = uuid.uuid4().hex[:10]
+    other = User(username=f"uc_{suffix}", email=f"uc_{suffix}@local.test", password='x')
+    db.session.add(other)
+    db.session.commit()
+    other_id = other.id
+    try:
+        answer = _upload(other_id, upload_id)[0]
+        assert answer.status_code == 202
+        assert answer.get_json()['id'] != first_id
+        assert not answer.get_json().get('idempotent_replay')
+    finally:
+        storage = get_storage_service()
+        for rec in Recording.query.filter_by(user_id=other_id).all():
+            storage.delete(rec.audio_path, missing_ok=True)
+        ProcessingJob.query.filter_by(user_id=other_id).delete(synchronize_session=False)
+        Recording.query.filter_by(user_id=other_id).delete(synchronize_session=False)
+        ClientUpload.query.filter_by(user_id=other_id).delete(synchronize_session=False)
+        db.session.delete(db.session.get(User, other_id))
+        db.session.commit()
