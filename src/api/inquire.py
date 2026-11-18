@@ -301,7 +301,7 @@ Examples:
 User request: "{user_message}"
 
 Previous conversation context (if relevant):
-{json.dumps(message_history[-2:] if message_history else [])}
+{json.dumps([{'role': m['role'], 'content': m['content']} for m in message_history[-2:]] if message_history else [])}
 
 Use proper markdown formatting including headings (##), bold (**text**), bullet points (-), etc."""
 
@@ -696,7 +696,9 @@ Order your response with notes from the most recent meetings first. Always use p
             # Prepare messages array
             messages = [{"role": "system", "content": system_prompt}]
             if message_history:
-                messages.extend(message_history)
+                # Only the role and text reach the model: the Ask page keeps
+                # its activity and sources on each entry for its own display.
+                messages.extend({'role': m['role'], 'content': m['content']} for m in message_history)
             messages.append({"role": "user", "content": user_message})
 
             # Enable streaming
@@ -760,7 +762,7 @@ Order your response with notes from the most recent meetings first. Always use p
                                         # Create new messages with updated context
                                         updated_messages = [{"role": "system", "content": updated_system_prompt}]
                                         if message_history:
-                                            updated_messages.extend(message_history)
+                                            updated_messages.extend({'role': m['role'], 'content': m['content']} for m in message_history)
                                         updated_messages.append({"role": "user", "content": user_message})
                                         
                                         # Generate new response with full context
