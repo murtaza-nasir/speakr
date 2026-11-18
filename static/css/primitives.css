@@ -2901,6 +2901,7 @@ select.field.option-folder-select { padding-left: 2rem !important; }
    groups of icon buttons with hairline separators. Colors come from the
    theme tokens only; Delete is the one action in the danger color. */
 .bulk-bar {
+    left: var(--bulk-bar-left, 20rem);
     display: flex;
     flex-direction: column;
     align-items: center;

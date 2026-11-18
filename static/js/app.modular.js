@@ -640,6 +640,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- Bulk Selection State ---
             const selectionMode = ref(false);
+            // The floating bulk bar sits against the right edge of the
+            // sidebar, whose width differs per theme: the edge is measured
+            // into --bulk-bar-left while selection mode is on.
+            const placeBulkBar = () => {
+                const side = document.querySelector('aside.sidebar');
+                if (!side) return;
+                const right = Math.round(side.getBoundingClientRect().right);
+                document.documentElement.style.setProperty('--bulk-bar-left', right + 'px');
+            };
+            watch(selectionMode, (on) => {
+                const fn = on ? 'addEventListener' : 'removeEventListener';
+                window[fn]('resize', placeBulkBar);
+                if (on) nextTick(placeBulkBar);
+            });
             const selectedRecordingIds = ref(new Set());
             const bulkActionInProgress = ref(false);
 

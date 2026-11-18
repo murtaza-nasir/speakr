@@ -168,7 +168,7 @@
      along the bottom edge (phone.css). -->
 <transition name="slide-right">
     <div v-if="selectionMode && selectedCount > 0 && (isMobile ? phoneListOpen : !isSidebarCollapsed)"
-         data-bulk-bar class="bulk-bar fixed top-1/2 -translate-y-1/2 left-80 z-50" role="toolbar"
+         data-bulk-bar class="bulk-bar fixed top-1/2 -translate-y-1/2 z-50" role="toolbar"
          :aria-label="t('bulkActions.selectedCount', { count: selectedCount })">
         <div class="bulk-bar__count" :title="t('bulkActions.selectedCount', { count: selectedCount })" v-text="selectedCount"></div>
         <div class="bulk-bar__sep" aria-hidden="true"></div>
