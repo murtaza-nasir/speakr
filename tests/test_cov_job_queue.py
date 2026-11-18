@@ -623,11 +623,9 @@ def test_process_job_missing_recording_fails(track):
         job_queue._process_job(job)
 
     db.session.expire_all()
-    refreshed = db.session.get(ProcessingJob, jid)
-    # A recording that no longer exists is not retried (#432)
-    assert refreshed.status == "failed"
-    assert refreshed.retry_count == 0
-    assert "deleted" in refreshed.error_message.lower()
+    # A recording that no longer exists is not retried (#432), and its job
+    # is removed so it cannot be claimed again (#625).
+    assert db.session.get(ProcessingJob, jid) is None
 
 
 # --------------------------------------------------------------------------
@@ -815,6 +813,79 @@ def test_recover_orphaned_jobs(track):
     refreshed = db.session.get(ProcessingJob, job.id)
     assert refreshed.status == "queued"
     assert refreshed.started_at is None
+
+
+def test_recover_orphaned_jobs_purges_missing_recordings(track):
+    uid = _make_user(); track.user_ids.append(uid)
+    job = ProcessingJob(user_id=uid, recording_id=987654321, job_type="transcribe",
+                        status="processing", started_at=datetime.utcnow())
+    db.session.add(job); db.session.commit()
+    jid = job.id
+    track.job_ids.append(jid)
+
+    job_queue.recover_orphaned_jobs()
+
+    db.session.expire_all()
+    assert db.session.get(ProcessingJob, jid) is None
+    assert ProcessingJob.query.filter_by(recording_id=987654321, status="queued").count() == 0
+
+
+def test_recover_orphaned_jobs_still_requeues_live_job(track):
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid); track.recording_ids.append(rid)
+    live = ProcessingJob(user_id=uid, recording_id=rid, job_type="transcribe",
+                         status="processing", started_at=datetime.utcnow())
+    dead = ProcessingJob(user_id=uid, recording_id=987654322, job_type="transcribe",
+                         status="processing", started_at=datetime.utcnow())
+    db.session.add_all([live, dead]); db.session.commit()
+    live_id, dead_id = live.id, dead.id
+    track.job_ids.extend([live_id, dead_id])
+
+    job_queue.recover_orphaned_jobs()
+
+    db.session.expire_all()
+    refreshed = db.session.get(ProcessingJob, live_id)
+    assert refreshed.status == "queued"
+    assert refreshed.started_at is None
+    assert db.session.get(ProcessingJob, dead_id) is None
+
+
+def test_purge_orphaned_jobs_removes_every_status(track):
+    uid = _make_user(); track.user_ids.append(uid)
+    statuses = ("queued", "processing", "completed", "failed")
+    rids = [_make_recording(uid) for _ in statuses]
+    track.recording_ids.extend(rids)
+    dead = [ProcessingJob(user_id=uid, recording_id=987654330 + i, job_type="transcribe", status=status)
+            for i, status in enumerate(statuses)]
+    live = [ProcessingJob(user_id=uid, recording_id=rid, job_type="transcribe", status=status)
+            for rid, status in zip(rids, statuses)]
+    db.session.add_all(dead + live); db.session.commit()
+    dead_ids, live_ids = [j.id for j in dead], [j.id for j in live]
+    track.job_ids.extend(dead_ids + live_ids)
+
+    assert job_queue.purge_orphaned_jobs() >= len(dead_ids)
+
+    db.session.expire_all()
+    assert all(db.session.get(ProcessingJob, jid) is None for jid in dead_ids)
+    assert all(db.session.get(ProcessingJob, jid) is not None for jid in live_ids)
+
+
+def test_cleanup_old_jobs_removes_orphans_of_any_age(track):
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid); track.recording_ids.append(rid)
+    orphan = ProcessingJob(user_id=uid, recording_id=987654324, job_type="transcribe",
+                           status="failed", completed_at=datetime.utcnow())
+    kept = ProcessingJob(user_id=uid, recording_id=rid, job_type="transcribe",
+                         status="failed", completed_at=datetime.utcnow())
+    db.session.add_all([orphan, kept]); db.session.commit()
+    orphan_id, kept_id = orphan.id, kept.id
+    track.job_ids.extend([orphan_id, kept_id])
+
+    job_queue.cleanup_old_jobs(max_age_hours=24)
+
+    db.session.expire_all()
+    assert db.session.get(ProcessingJob, orphan_id) is None
+    assert db.session.get(ProcessingJob, kept_id) is not None
 
 
 def test_cleanup_old_jobs(track):

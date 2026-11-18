@@ -256,3 +256,15 @@ def test_daily_run_cleans_up_when_auto_deletion_fails(monkeypatch):
     monkeypatch.setattr(ownerless_cleanup, 'run_ownerless_cleanup', lambda: calls.append('cleanup'))
     startup.run_daily_maintenance(app)
     assert calls == ['cleanup']
+
+
+def test_daily_run_cleans_up_old_jobs(monkeypatch):
+    from src.config import startup
+    from src.services.job_queue import job_queue
+    calls = []
+    monkeypatch.setattr(startup, 'scheduled_deletion_due', lambda: False)
+    monkeypatch.setattr(ownerless_cleanup, 'run_ownerless_cleanup', lambda: None)
+    monkeypatch.setattr(job_queue, 'cleanup_old_jobs', lambda max_age_hours: calls.append(max_age_hours))
+    startup.run_daily_maintenance(app)
+    # A week: the admin overview counts the failed jobs of the last 7 days.
+    assert calls == [7 * 24]

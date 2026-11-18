@@ -891,9 +891,11 @@ export function useUpload(state, utils) {
                 }
             }
 
-            // Add to recordings list
-            recordings.value.unshift(data);
-            totalRecordings.value++;
+            // Add to recordings list (a replayed retry may be listed already)
+            if (!recordings.value.some(r => r.id === data.id)) {
+                recordings.value.unshift(data);
+                totalRecordings.value++;
+            }
 
             // Remember the upload-form choices so the NEXT modal open
             // can pre-fill them. Most users follow a routine (same
