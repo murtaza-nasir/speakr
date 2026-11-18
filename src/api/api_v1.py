@@ -2221,6 +2221,9 @@ def update_recording(recording_id):
         set_user_notes(recording, current_user, data['notes'])
     if 'summary' in data:
         recording.summary = data['summary']
+        # An edited summary keeps its prompt; an emptied one has none.
+        if not (data['summary'] or '').strip():
+            recording.clear_summary_prompt_used()
     if 'meeting_date' in data:
         try:
             if data['meeting_date']:
@@ -2335,6 +2338,8 @@ def replace_summary(recording_id):
         return jsonify(api_error('summary_field_required')), 400
 
     recording.summary = data['summary']
+    # Text from outside replaces the summary: no stored prompt produced it.
+    recording.clear_summary_prompt_used()
     audit.edited(recording, ['summary'])
     db.session.commit()
 

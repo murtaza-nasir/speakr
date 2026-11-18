@@ -649,6 +649,13 @@ def admin_delete_user(user_id):
     from src.models import ShareAuditLog
     ShareAuditLog.query.filter_by(target_user_id=user_id).delete(synchronize_session=False)
 
+    # Summaries this user generated on other users' recordings: the stored
+    # prompt was theirs alone, and their id may be given to a new account.
+    Recording.query.filter_by(summary_prompt_user_id=user_id).update({
+        'summary_prompt_used': None, 'summary_prompt_source': None,
+        'summary_prompt_source_name': None, 'summary_prompt_user_id': None,
+    }, synchronize_session=False)
+
     # Groups the user created keep existing without a creator (#576)
     Group.query.filter_by(created_by=user_id).update({'created_by': None}, synchronize_session=False)
 

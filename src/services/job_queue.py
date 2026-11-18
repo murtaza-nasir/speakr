@@ -645,8 +645,10 @@ class FairJobQueue:
                                 # and error_message (#583); keep them.
                                 if e.stored_summary:
                                     recording.summary = e.stored_summary
+                                    recording.clear_summary_prompt_used()
                             elif job_type in ('summarize', 'reprocess_summary'):
                                 recording.summary = format_error_for_storage(error_str)
+                                recording.clear_summary_prompt_used()
                             else:
                                 recording.transcription = format_error_for_storage(error_str)
                             if not isinstance(e, SummaryStepFailed):
@@ -763,7 +765,8 @@ class FairJobQueue:
             recording.id,
             custom_prompt_override=params.get('custom_prompt'),
             custom_prompt_append=params.get('custom_prompt_append', False),
-            user_id=params.get('user_id')
+            user_id=params.get('user_id'),
+            prompt_used=params.get('prompt_used'),
         )
 
     def _run_reprocess_summary(self, job, recording, params, job_type=None):
@@ -776,7 +779,8 @@ class FairJobQueue:
             recording.id,
             custom_prompt_override=params.get('custom_prompt'),
             custom_prompt_append=params.get('custom_prompt_append', False),
-            user_id=params.get('user_id')
+            user_id=params.get('user_id'),
+            prompt_used=params.get('prompt_used'),
         )
 
     def _run_stitch(self, job, recording, params, job_type=None):

@@ -8,6 +8,11 @@ here returns another user's personal default or personal tag prompts.
 The Regenerate summary dialog reads describe_summary_prompt() to fill its
 prompt and its Start from menu, and calls save_summary_prompt() when the user
 saves an edited prompt back to a tag, folder or their own default.
+
+The prompt that produced the current summary is stored with the recording
+(Recording.summary_prompt_used). It is returned only to the user whose run
+it was: an editor's custom prompt is not shown to the owner, nor the owner's
+to an editor.
 """
 
 from sqlalchemy import and_, false, or_
@@ -73,11 +78,59 @@ def _option(kind, prompt, applies, name=None, target_id=None, can_save=False):
     }
 
 
+def prompt_source(source, supplier):
+    """(kind, name, key) of a prompt resolved by resolve_summary_prompt_detail.
+
+    kind is the source, or 'tags' when several tag prompts were joined; name
+    is the tag or folder names; key is the Start from key of the one place
+    that holds the prompt ('tags' when no single place does).
+    """
+    if source == 'tag':
+        name = ', '.join(tag.name for tag in supplier)
+        if len(supplier) == 1:
+            return 'tag', name, f'tag:{supplier[0].id}'
+        return 'tags', name, 'tags'
+    if source == 'folder':
+        return 'folder', supplier.name, f'folder:{supplier.id}'
+    return source, None, source
+
+
+def same_prompt(a, b):
+    """Two prompts are the same text, apart from line ends and outer space."""
+    def clean(text):
+        return (text or '').replace('\r\n', '\n').replace('\r', '\n').strip()
+    return clean(a) == clean(b)
+
+
+def used_prompt_option(recording, viewer):
+    """The Start from entry of the prompt that produced the current summary.
+
+    None unless the viewer's own run produced the summary: the stored text
+    can be another user's custom prompt. None also for summaries from before
+    the prompt was stored.
+    """
+    if (not _has_prompt(recording.summary) or not _has_prompt(recording.summary_prompt_used)
+            or recording.summary_prompt_user_id != viewer.id):
+        return None
+    return {
+        'key': 'used',
+        'kind': 'used',
+        'source': recording.summary_prompt_source or 'custom',
+        'name': recording.summary_prompt_source_name,
+        'id': None,
+        'prompt': recording.summary_prompt_used,
+        'applies': True,
+        # An edit of it can be saved as the viewer's default, like the defaults.
+        'save_target': {'kind': 'user', 'id': None, 'name': None},
+    }
+
+
 def describe_summary_prompt(recording, viewer):
     """The viewer's resolved prompt and the prompts they can start from.
 
     Returns {prompt, source, source_name, source_key, is_owner, save_target,
-    start_from}. start_from lists first the prompts that apply to this
+    start_from, used}. used is the prompt that produced the current summary
+    (used_prompt_option), or None. start_from lists first the prompts that apply to this
     recording (its tags with prompts the viewer can see, its folder when the
     viewer owns the recording), then the viewer's default, the admin or
     shipped default and the viewer's other tags with prompts.
@@ -113,13 +166,7 @@ def describe_summary_prompt(recording, viewer):
             options.append(_option('tag', tag.custom_prompt.strip(), False, tag.name, tag.id,
                                    can_save=can_edit_tag(tag, viewer)))
 
-    if source == 'tag':
-        source_name = ', '.join(tag.name for tag in supplier)
-        source_key = f'tag:{supplier[0].id}' if len(supplier) == 1 else 'tags'
-    elif source == 'folder':
-        source_name, source_key = supplier.name, f'folder:{supplier.id}'
-    else:
-        source_name, source_key = None, source
+    _kind, source_name, source_key = prompt_source(source, supplier)
     resolved = next((o for o in options if o['key'] == source_key), None)
 
     return {
@@ -131,6 +178,7 @@ def describe_summary_prompt(recording, viewer):
         # Several tag prompts are joined into one, so no single place holds it.
         'save_target': resolved['save_target'] if resolved else None,
         'start_from': options,
+        'used': used_prompt_option(recording, viewer),
     }
 
 
