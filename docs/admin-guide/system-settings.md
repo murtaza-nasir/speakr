@@ -409,7 +409,7 @@ Speakr uses separate job queues for transcription and summarization to prevent s
 
 **JOB_MAX_RETRIES**: How many times a failed job will be retried before being marked as failed. Default: `3`.
 
-**DISABLE_TRANSCRIPT_UNICODE_REWRITE**: Set to `true` to skip the one-time rewrite that stores transcripts saved before v0.11.2 without `\u` escapes, so non-Latin words are found by search. Default: `false`.
+**DISABLE_TRANSCRIPT_UNICODE_REWRITE**: Set to `true` to skip the one-time rewrite that stores older transcripts without `\u` escapes, so non-Latin words are found by search. Default: `false`.
 
 **TRANSCRIPT_UNICODE_REWRITE_DELAY_SECONDS**: Seconds after startup before that rewrite starts. Default: `30`.
 
