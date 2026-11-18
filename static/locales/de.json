@@ -1859,7 +1859,9 @@
     "numberOfSpeakers": "Anzahl der Sprecher",
     "selectDateTime": "Datum und Uhrzeit auswählen…",
     "textContent": "Textinhalt",
-    "transcriptTextPlaceholder": "Transkripttext eingeben…"
+    "transcriptTextPlaceholder": "Transkripttext eingeben…",
+    "minShort": "Min.",
+    "maxShort": "Max."
   },
   "groups": {
     "addMembers": "Mitglieder hinzufügen…",
@@ -1985,9 +1987,7 @@
     "completedFiles": "Abgeschlossene Dateien",
     "confirmReprocessingTitle": "Neu-Verarbeitung bestätigen",
     "copyMessage": "Nachricht kopieren",
-    "createFolders": "Ordner erstellen",
     "createPublicLink": "Einen öffentlichen Link zu dieser Aufnahme erstellen. Öffentliche Links funktionieren nur über HTTPS.",
-    "createTags": "Tags erstellen",
     "defaultHotwordsHelp": "Kommagetrennte Wörter oder Phrasen, die zuverlässiger erkannt werden sollen, etwa Markennamen, Abkürzungen und Fachbegriffe.",
     "defaultInitialPromptHelp": "Ein Satz zum Thema Ihrer Aufnahmen, der Stil und Vokabular des Transkripts lenkt.",
     "deleteSegment": "Segment löschen",
@@ -2065,7 +2065,6 @@
     "tagManagement": "Tag-Verwaltung",
     "thisActionCannotBeUndone": "Dies kann nicht rückgängig gemacht werden.",
     "toCaptureAudioFromMeetings": "Um ein Meeting oder eine andere App aufzunehmen, geben Sie Ihren Bildschirm oder einen Browser-Tab frei.",
-    "toOrganizeRecordings": "um Ihre Aufnahmen zu organisieren",
     "transcriptUpdated": "Transkript gespeichert",
     "troubleshooting": "Fehlerbehebung",
     "tryAdjustingSearch": "Versuchen Sie Ihre Suche anzupassen oder",
@@ -2605,10 +2604,8 @@
     "duration": "Dauer",
     "grantMicPermissionHint": "Erlauben Sie einmal den Mikrofonzugriff, um Gerätenamen zu sehen.",
     "howToEnableFullSystemAudio": "so aktivieren Sie das volle System-Audio",
-    "inputDevices": "Eingabegeräte",
     "linuxMonitorHintPrefix": "\"Monitor of …\"-Einträge nicht zu sehen? Chrome unter Linux filtert diese heraus. Linux → Option C im Hilfeleitfaden zeigt einen einzeiligen",
     "linuxMonitorHintSuffix": "-Befehl, um einen Pulse-Monitor als reguläre Quelle bereitzustellen, die Chrome auflistet.",
-    "micPlusSys": "Mikro + System",
     "microphone": "Mikrofon",
     "microphoneAndSystem": "Mikrofon + System",
     "microphonePermissionDenied": "Der Mikrofonzugriff wurde verweigert. Erlauben Sie ihn in den Browsereinstellungen und versuchen Sie es erneut.",
@@ -2668,7 +2665,9 @@
     "keepAppVisibleHint": "Die Aufnahme pausiert, wenn die App minimiert oder der Bildschirm gesperrt wird.",
     "notesLabel": "Notizen",
     "notesMarkdownLabel": "Notizen (Markdown)",
-    "uploadSettings": "Upload-Einstellungen"
+    "uploadSettings": "Upload-Einstellungen",
+    "source": "Quelle",
+    "moreInputSettings": "Weitere Eingabeeinstellungen"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "Das Audio wird erneut transkribiert, mit neuem Titel und neuer Zusammenfassung.",
@@ -3231,7 +3230,6 @@
     "maxFileSize": "Maximale Dateigröße",
     "queued": "In Warteschlange",
     "selectFiles": "Dateien auswählen",
-    "settingsApplyToAll": "Einstellungen gelten für alle Dateien in dieser Sitzung",
     "summarizing": "Zusammenfasse…",
     "supportedFormats": "MP3, WAV, M4A, MP4, MOV, AVI, AMR und mehr",
     "title": "Hochladen",
@@ -3249,7 +3247,6 @@
     "keepAudioOnlyLargerAllowed": "Größere Uploads erlaubt",
     "largeVideoNotice": "Großes Video. Die Transkription kann länger dauern.",
     "options": "Optionen",
-    "transcriptionOptions": "Transkriptionsoptionen",
     "uploadAndAddMore": "Hochladen & weitere hinzufügen",
     "joinModeLabel": "Wie diese Dateien hinzugefügt werden",
     "joinSeparate": "Einzelne Aufnahmen",
@@ -3263,13 +3260,12 @@
     "joinVideoHint": "Die zusammengefügte Aufnahme behält nur den Ton.",
     "uploadAndJoin": "{{count}} Dateien hochladen und zusammenfügen",
     "joinFailed": "Das Zusammenfügen wurde abgebrochen, weil {{name}} nicht hochgeladen wurde. Fügen Sie die Dateien erneut hinzu, um es noch einmal zu versuchen.",
-    "clearFolder": "Ordner entfernen",
-    "clearLanguage": "Sprache entfernen",
-    "clearSpeakers": "Sprecheranzahl entfernen",
-    "clearTags": "Tags entfernen",
     "currentCopy": "(aktuell)",
-    "tagCount": "{{count}} Tag",
-    "tagCountPlural": "{{count}} Tags"
+    "dialogTitle": "Neue Aufnahme",
+    "tabUpload": "Dateien hochladen",
+    "tabRecord": "Aufnehmen",
+    "optionsForAll": "Optionen für alle Dateien",
+    "advanced": "Erweitert"
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"

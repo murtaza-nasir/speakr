@@ -1859,7 +1859,9 @@
     "numberOfSpeakers": "Nombre de locuteurs",
     "selectDateTime": "Sélectionner la date et l’heure…",
     "textContent": "Contenu du texte",
-    "transcriptTextPlaceholder": "Saisissez le texte de la transcription…"
+    "transcriptTextPlaceholder": "Saisissez le texte de la transcription…",
+    "minShort": "Min",
+    "maxShort": "Max"
   },
   "groups": {
     "addMembers": "Ajouter des membres…",
@@ -1985,9 +1987,7 @@
     "completedFiles": "Fichiers terminés",
     "confirmReprocessingTitle": "Confirmer le retraitement",
     "copyMessage": "Copier le message",
-    "createFolders": "Créer des dossiers",
     "createPublicLink": "Créer un lien public vers cet enregistrement. Les liens publics ne fonctionnent qu'en HTTPS.",
-    "createTags": "Créer des étiquettes",
     "defaultHotwordsHelp": "Mots ou expressions, séparés par des virgules, à reconnaître de façon plus fiable, comme des noms de marque, des acronymes ou des termes techniques.",
     "defaultInitialPromptHelp": "Une phrase sur le sujet de vos enregistrements, qui sert à orienter le style et le vocabulaire de la transcription.",
     "deleteSegment": "Supprimer le segment",
@@ -2065,7 +2065,6 @@
     "tagManagement": "Gestion des étiquettes",
     "thisActionCannotBeUndone": "Cette action est irréversible.",
     "toCaptureAudioFromMeetings": "Pour enregistrer une réunion ou une autre application, partagez votre écran ou un onglet du navigateur.",
-    "toOrganizeRecordings": "pour organiser vos enregistrements",
     "transcriptUpdated": "Transcription enregistrée",
     "troubleshooting": "Dépannage",
     "tryAdjustingSearch": "Essayez d'ajuster votre recherche ou",
@@ -2605,10 +2604,8 @@
     "duration": "Durée",
     "grantMicPermissionHint": "Autorisez une fois l'accès au microphone pour voir les noms des périphériques.",
     "howToEnableFullSystemAudio": "comment activer l'audio système complet",
-    "inputDevices": "Périphériques d'entrée",
     "linuxMonitorHintPrefix": "Vous ne voyez pas les entrées \"Monitor of …\" ? Chrome sous Linux les filtre. La section Linux → Option C du guide montre une commande",
     "linuxMonitorHintSuffix": "d'une seule ligne pour exposer un monitor Pulse comme une source normale que Chrome listera.",
-    "micPlusSys": "Micro + Sys",
     "microphone": "Microphone",
     "microphoneAndSystem": "Microphone + système",
     "microphonePermissionDenied": "L'accès au micro a été refusé. Autorisez-le dans les paramètres du navigateur, puis réessayez.",
@@ -2668,7 +2665,9 @@
     "keepAppVisibleHint": "L’enregistrement se met en pause si l’application est réduite ou l’écran verrouillé.",
     "notesLabel": "Notes",
     "notesMarkdownLabel": "Notes (Markdown)",
-    "uploadSettings": "Paramètres d’envoi"
+    "uploadSettings": "Paramètres d’envoi",
+    "source": "Source",
+    "moreInputSettings": "Autres réglages d’entrée"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "L'audio est transcrit de nouveau, avec un nouveau titre et un nouveau résumé.",
@@ -3231,7 +3230,6 @@
     "maxFileSize": "Taille maximale du fichier",
     "queued": "En file d'attente",
     "selectFiles": "Sélectionner des fichiers",
-    "settingsApplyToAll": "Les paramètres s’appliquent à tous les fichiers de cette session",
     "summarizing": "Résumé…",
     "supportedFormats": "MP3, WAV, M4A, MP4, MOV, AVI, AMR et plus",
     "title": "Importer",
@@ -3249,7 +3247,6 @@
     "keepAudioOnlyLargerAllowed": "Envois plus volumineux autorisés",
     "largeVideoNotice": "Vidéo volumineuse. La transcription peut prendre plus de temps.",
     "options": "Options",
-    "transcriptionOptions": "Options de transcription",
     "uploadAndAddMore": "Téléverser et ajouter plus",
     "joinModeLabel": "Comment ajouter ces fichiers",
     "joinSeparate": "Enregistrements séparés",
@@ -3263,13 +3260,12 @@
     "joinVideoHint": "L’enregistrement assemblé ne conserve que l’audio.",
     "uploadAndJoin": "Téléverser et assembler {{count}} fichiers",
     "joinFailed": "L’assemblage a été interrompu, car {{name}} n’a pas été téléversé. Ajoutez de nouveau les fichiers pour réessayer.",
-    "clearFolder": "Retirer le dossier",
-    "clearLanguage": "Retirer la langue",
-    "clearSpeakers": "Retirer les orateurs",
-    "clearTags": "Retirer les étiquettes",
     "currentCopy": "(actuel)",
-    "tagCount": "{{count}} étiquette",
-    "tagCountPlural": "{{count}} étiquettes"
+    "dialogTitle": "Nouvel enregistrement",
+    "tabUpload": "Importer des fichiers",
+    "tabRecord": "Enregistrer",
+    "optionsForAll": "Options pour tous les fichiers",
+    "advanced": "Avancé"
   },
   "uploadProgress": {
     "title": "Progression de l'envoi"

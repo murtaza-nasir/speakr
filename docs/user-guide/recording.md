@@ -91,17 +91,17 @@ The colors of the four types are the same in every theme and color scheme. On a 
 
 ## Recording Live Audio
 
-The upload modal includes three recording buttons under the drag-and-drop file area. **Microphone** sits as the full-width primary button (the everyday case); **System audio** and **Mic + System** sit on a secondary tier with smaller buttons and coloured icon accents. A small amber dot appears on the System Audio / Mic + System buttons when full system audio isn't expected to work on the platform Speakr detected (more on this in the [platform matrix](#platform-support-matrix) below) — clicking the button still works for tab audio in that case, with a help-modal link explaining the workaround.
+The **New recording** dialog has two tabs, **Upload files** and **Record**. The tab that was used last is opened the next time. On the **Record** tab, choose the source (**Microphone**, **System audio** or **Microphone + system**) and press **Start recording**. The source is remembered as well. Where the browser can only capture tab audio on the detected platform (see the [platform matrix](#platform-support-matrix) below), a note under the source control links to the help guide. In browsers without display audio capture, the two system sources are disabled.
 
 ![Recording Options](../assets/images/screenshots/recording-single-source.png)
 
 ### Microphone Recording
 
-Captures audio from your selected microphone. Perfect for in-person meetings, personal voice notes, and interviews. The browser will prompt for microphone permission the first time. By default Speakr uses your operating system's default input; pick a specific device via the **Input devices** picker (described below) if you want a USB headset, a virtual audio device, or a Pulse monitor source instead.
+Captures audio from your selected microphone. Perfect for in-person meetings, personal voice notes, and interviews. The browser will prompt for microphone permission the first time. By default Speakr uses your operating system's default input; pick a specific device under **Primary input** (described below) if you want a USB headset, a virtual audio device, or a Pulse monitor source instead.
 
 ### System Audio Recording
 
-Captures audio playing through your computer (or a specific browser tab) via the browser's screen-share API. Ideal for recording online meetings when you're primarily listening, webinars, online presentations, podcasts, or any audio playing locally. When you click the button, the browser shows its share dialog — pick **Entire Screen**, a **Window**, or a **Tab**, then tick the **Share system audio** / **Share tab audio** checkbox in the dialog. The checkbox is the critical step; without it the recording will be silent.
+Captures audio playing through your computer (or a specific browser tab) via the browser's screen-share API. Ideal for recording online meetings when you're primarily listening, webinars, online presentations, podcasts, or any audio playing locally. When you press **Start recording**, the browser shows its share dialog — pick **Entire Screen**, a **Window**, or a **Tab**, then tick the **Share system audio** / **Share tab audio** checkbox in the dialog. The checkbox is the critical step; without it the recording will be silent.
 
 ### Combined Recording (Microphone + System)
 
@@ -109,7 +109,7 @@ Records both your microphone AND system audio simultaneously, mixed into a singl
 
 ### Recording the Video Too (optional)
 
-When the server has video retention enabled (`VIDEO_RETENTION=true`), the two display-capture modes gain an **Also record video** checkbox under the recording buttons. With it ticked, Speakr keeps the shared tab, window, or screen as a video recording alongside the audio — useful for capturing screen shares in meetings without a separate screen recorder.
+When the server has video retention enabled (`VIDEO_RETENTION=true`), an **Also record video** checkbox appears under the source control when one of the two display-capture sources is selected. With it ticked, Speakr keeps the shared tab, window, or screen as a video recording alongside the audio — useful for capturing screen shares in meetings without a separate screen recorder.
 
 - The recording view shows a live preview of the captured surface while recording, and the finished recording plays back with the docked video player (the same one used for uploaded video files).
 - Transcription always uses only the audio track; the video changes nothing about transcripts, summaries, or chat.
@@ -191,28 +191,28 @@ Or use `qpwgraph` / `helvum` to wire it visually.
 
 ## Input Device Picker & Multi-Input Recording
 
-Under the recording buttons is a collapsible **Input devices** section. Expanded, it shows two dropdowns:
+The **Record** tab shows the **Primary input** select for the two microphone sources. **More input settings** beneath it holds the second input and the audio processing switch:
 
 ![Input device picker](../assets/images/screenshots/recording-input-device-picker.png)
 
 - **Primary input** — defaults to your OS's default microphone. Pick a specific input here if you want a USB headset, wireless receiver, audio interface, BlackHole, VB-Cable, or a Pulse / PipeWire monitor source as your primary capture device. Virtual / monitor entries are badged. The primary selection is used by both **Microphone** and **Mic + System** recording.
-- **Also mix in (optional)** — pick a second input device and Speakr will capture both streams in parallel and mix them via Web Audio into one MediaRecorder track. This is the canonical solution for **capturing both sides of a meeting** on macOS or Linux where the browser can't capture full system audio natively — set your real mic as Primary, set BlackHole / `speakr_loopback` / VB-Cable as the secondary, and one recording captures your voice plus the remote participants.
+- **Also mix in (optional)** (under **More input settings**) — pick a second input device and Speakr will capture both streams in parallel and mix them via Web Audio into one MediaRecorder track. This is the canonical solution for **capturing both sides of a meeting** on macOS or Linux where the browser can't capture full system audio natively — set your real mic as Primary, set BlackHole / `speakr_loopback` / VB-Cable as the secondary, and one recording captures your voice plus the remote participants.
 
-Opening **New recording** does not request microphone permission. Device labels are normally blank until permission is granted. You can expand the picker and click **Request microphone permission**, or simply press **Microphone** and respond to the browser's normal permission prompt.
+Opening **New recording** does not request microphone permission. Device labels are normally blank until permission is granted. You can click **Request microphone permission** on the **Record** tab, or press **Start recording** and respond to the browser's normal permission prompt.
 
-On mobile, after permission is granted, Speakr checks the labeled inputs. If a likely separate physical microphone is available and you have not already selected one, the existing **Input devices** section expands with an **Another microphone is available** notice before recording starts. Choose the input and continue, or keep the system default. When only the built-in/default microphone is present, recording starts immediately with no extra Speakr prompt. Detection is deliberately conservative: it only triggers on devices whose labels clearly indicate an external input (USB receivers, wireless and headset microphones, webcams, audio interfaces), so a device the browser exposes without a recognisable label starts no prompt — you can still select it manually from the picker. The prompt also never appears when a recording is being resumed after an interruption; a continued session always keeps its original input.
+On mobile, after permission is granted, Speakr checks the labeled inputs. If a likely separate physical microphone is available and you have not already selected one, an **Another microphone is available** notice appears above **Primary input** before recording starts. Choose the input and press **Start recording** again, or keep the system default. When only the built-in/default microphone is present, recording starts immediately with no extra Speakr prompt. Detection is deliberately conservative: it only triggers on devices whose labels clearly indicate an external input (USB receivers, wireless and headset microphones, webcams, audio interfaces), so a device the browser exposes without a recognisable label starts no prompt — you can still select it manually from the picker. The prompt also never appears when a recording is being resumed after an interruption; a continued session always keeps its original input.
 
 ![Mobile external microphone choice](../assets/images/screenshots/recording-external-microphone-mobile.png)
 
-Desktop browsers already provide their own microphone chooser, so Speakr does not automatically open a second selection step there. The collapsed **Input devices** picker remains available for an explicit device choice or multi-input mixing, and any microphone chosen in the browser's permission dialog remains active unless you deliberately override it in Speakr.
+Desktop browsers already provide their own microphone chooser, so Speakr does not automatically open a second selection step there. The **Primary input** select remains available for an explicit device choice or multi-input mixing, and any microphone chosen in the browser's permission dialog remains active unless you deliberately override it in Speakr.
 
-Automatic mobile detection is deliberately conservative. If your browser hides labels or grouping metadata, open **Input devices** and select the device manually. Speakr refreshes the list when the browser reports a device change and again when recording starts. A previously selected device that has been disconnected falls back to the system default with a warning.
+Automatic mobile detection is deliberately conservative. If your browser hides labels or grouping metadata, select the device under **Primary input** manually. Speakr refreshes the list when the browser reports a device change and again when recording starts. A previously selected device that has been disconnected falls back to the system default with a warning.
 
 **Persistence**: the primary + secondary device choices are saved in `localStorage` so you configure them once and they survive across sessions. Choosing to keep the default when Speakr offers another microphone is remembered only for the current browser session and is reconsidered when the candidate device set changes.
 
 ### Disable echo cancellation, noise suppression & auto-gain
 
-A small checkbox below the recording buttons disables Chrome's default audio processing trio:
+A checkbox under **More input settings** disables Chrome's default audio processing trio:
 
 ```
 [ ] Disable echo cancellation, noise suppression & auto-gain
@@ -268,17 +268,15 @@ Common use cases for live notes include capturing action items and deadlines dur
 
 ## Finalizing Your Recording
 
-After stopping a recording or dropping a file, the upload modal stays open so you can review and configure before committing. The modal has four main regions:
+After stopping a recording or dropping a file, the dialog stays open so you can review and configure before committing. The **Upload files** tab has three regions:
 
-**1. File picker / queue.** The drag-and-drop file area at the top, plus the queued files list. Each queued file shows its **name**, **size**, and **duration** (probed asynchronously from the container header so it appears within a fraction of a second — no full payload read). Video files get a sky-blue video glyph instead of the audio one so you can tell which files in the queue are video at a glance.
+**1. File picker / queue.** The drag-and-drop file area at the top, plus the queued files list. Each queued file shows its **name**, **size**, and **duration** (probed asynchronously from the container header so it appears within a fraction of a second — no full payload read). Video files get a sky-blue video glyph instead of the audio one so you can tell which files in the queue are video at a glance. Dropping or choosing files switches the dialog to this tab.
 
-**2. Recording buttons + Input devices + processing toggle.** Hidden when files are queued (since you're uploading, not recording). Otherwise: the three recording buttons (Microphone, System Audio, Mic + System), the collapsible Input devices picker, the "Disable echo cancellation" toggle, and platform-aware hints.
+**2. Options.** Folder, tags, transcription language and speakers are always visible in one grid. The last entry of the folder list is **New folder**. The tags field is a search field: selected tags appear in the field, typing narrows the list, and the last row of the list creates a tag. Model, saved template, initial prompt and hotwords are under **Advanced**. With more than one file queued, the heading reads **Options for all files**.
 
-**3. Options group (progressive disclosure).** Folder, tags, prompt variables, and advanced ASR options are tucked behind a single collapsible **Options** row with a **chip summary** of what's currently set. Chips show the folder pill in its colour, an "N tags" count, a language code if set, and a speaker-count chip if min/max are set — each with an inline × to clear individual selections without expanding the editor. Defaults to collapsed because most uploads inherit your last-used selections (see "Last-used defaults auto-restore" below); click the row to expand for editing.
+**3. Sticky modal footer.** Cancel on the left, the action of the active tab on the right. On **Upload files**, the Upload button is disabled until at least one file is queued, then shows "Upload N files", and **Upload & add more** appears beside it. On **Record**, the button is **Start recording**.
 
-**4. Sticky modal footer.** Cancel on the left, Upload on the right. The Upload button is disabled until at least one file is queued, then shows "Upload N files" — always reachable while scrolling through long queues or the expanded Options group.
-
-**Last-used defaults auto-restore**: after every successful upload, your form choices (tag IDs, folder, language, min/max speakers) are memo-ed to `localStorage`. The next time you add a file to the queue, those values restore automatically — only filling slots you haven't already set this session. Each chip's × clears that selection if you want different ones this time.
+**Last-used defaults auto-restore**: after every successful upload, your form choices (tag IDs, folder, language, min/max speakers) are memo-ed to `localStorage`. The next time you add a file to the queue, those values restore automatically — only filling slots you haven't already set this session. Change or clear them in the Options grid if you want different ones this time.
 
 ### Adding Tags
 
@@ -345,7 +343,7 @@ On phones the modal becomes a **bottom sheet** that slides up from the bottom of
 - Can be **dragged down to dismiss** — pull the header down past 120 px (or 25 % of viewport height) and the sheet animates fully off-screen
 - Has a sticky Cancel / Upload footer that sits right above the thumb's natural rest position
 
-The recording buttons, Input devices picker, and Options chip summary all behave identically on mobile and desktop.
+The tabs, the source control and the options behave identically on mobile and desktop. On narrow screens the three sources are stacked and the options take one column.
 
 ## Crash Recovery (v0.6.2+)
 

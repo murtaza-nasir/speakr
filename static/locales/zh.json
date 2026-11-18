@@ -1859,7 +1859,9 @@
     "numberOfSpeakers": "说话人数量",
     "selectDateTime": "选择日期和时间…",
     "textContent": "文本内容",
-    "transcriptTextPlaceholder": "输入转录文本…"
+    "transcriptTextPlaceholder": "输入转录文本…",
+    "minShort": "最少",
+    "maxShort": "最多"
   },
   "groups": {
     "addMembers": "添加成员…",
@@ -1985,9 +1987,7 @@
     "completedFiles": "已完成文件",
     "confirmReprocessingTitle": "确认重新处理",
     "copyMessage": "复制消息",
-    "createFolders": "创建文件夹",
     "createPublicLink": "为此录音创建公开链接。公开链接仅在 HTTPS 下可用。",
-    "createTags": "创建标签",
     "defaultHotwordsHelp": "用逗号分隔的词或短语，用于更可靠地识别，例如品牌名称、缩写和技术术语。",
     "defaultInitialPromptHelp": "一句介绍录音主题的话，用于引导转录文本的风格和词汇。",
     "deleteSegment": "删除片段",
@@ -2065,7 +2065,6 @@
     "tagManagement": "标签管理",
     "thisActionCannotBeUndone": "此操作无法撤销。",
     "toCaptureAudioFromMeetings": "要录制会议或其他应用，请共享您的屏幕或浏览器标签页。",
-    "toOrganizeRecordings": "以便整理您的录音",
     "transcriptUpdated": "转录文本已保存",
     "troubleshooting": "故障排除",
     "tryAdjustingSearch": "尝试调整您的搜索或",
@@ -2605,10 +2604,8 @@
     "duration": "时长",
     "grantMicPermissionHint": "授予一次麦克风权限即可显示设备名称。",
     "howToEnableFullSystemAudio": "如何启用完整的系统音频",
-    "inputDevices": "输入设备",
     "linuxMonitorHintPrefix": "没有看到 \"Monitor of …\" 条目?Linux 上的 Chrome 会过滤掉它们。帮助指南 Linux → 选项 C 中展示了一行",
     "linuxMonitorHintSuffix": "命令,可将 Pulse monitor 暴露为 Chrome 可识别的普通源。",
-    "micPlusSys": "麦克风 + 系统",
     "microphone": "麦克风",
     "microphoneAndSystem": "麦克风 + 系统",
     "microphonePermissionDenied": "麦克风访问被拒绝。在浏览器设置中允许访问后重试。",
@@ -2668,7 +2665,9 @@
     "keepAppVisibleHint": "最小化或锁屏时录音会暂停。",
     "notesLabel": "笔记",
     "notesMarkdownLabel": "笔记（Markdown）",
-    "uploadSettings": "上传设置"
+    "uploadSettings": "上传设置",
+    "source": "来源",
+    "moreInputSettings": "更多输入设置"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "音频将重新转录，并生成新的标题和摘要。",
@@ -3231,7 +3230,6 @@
     "maxFileSize": "最大文件大小",
     "queued": "排队中",
     "selectFiles": "选择文件",
-    "settingsApplyToAll": "本次会话中所有文件都将应用这些设置",
     "summarizing": "生成摘要中…",
     "supportedFormats": "MP3、WAV、M4A、MP4、MOV、AVI、AMR 等",
     "title": "上传",
@@ -3249,7 +3247,6 @@
     "keepAudioOnlyLargerAllowed": "允许更大文件",
     "largeVideoNotice": "视频较大，转录可能耗时更长。",
     "options": "选项",
-    "transcriptionOptions": "转录选项",
     "uploadAndAddMore": "上传并继续添加",
     "joinModeLabel": "如何添加这些文件",
     "joinSeparate": "分别作为录音",
@@ -3263,13 +3260,12 @@
     "joinVideoHint": "合并后的录音仅保留音频。",
     "uploadAndJoin": "上传并合并 {{count}} 个文件",
     "joinFailed": "由于 {{name}} 未能上传，合并已停止。请重新添加这些文件后再试。",
-    "clearFolder": "清除文件夹",
-    "clearLanguage": "清除语言",
-    "clearSpeakers": "清除发言人设置",
-    "clearTags": "清除标签",
     "currentCopy": "（当前）",
-    "tagCount": "{{count}} 个标签",
-    "tagCountPlural": "{{count}} 个标签"
+    "dialogTitle": "新建录音",
+    "tabUpload": "上传文件",
+    "tabRecord": "录制",
+    "optionsForAll": "所有文件的选项",
+    "advanced": "高级"
   },
   "uploadProgress": {
     "title": "上传进度"

@@ -1687,3 +1687,7 @@ html[data-ui-theme="workspace"] .ph-player { background: var(--bg-primary); }
 html[data-ui-theme="workspace"] .ph-tabs__icon { width: 48px; border-radius: 6px; }
 html[data-ui-theme="workspace"] .ph-fab { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); }
 html[data-ui-theme="workspace"] .ph-acct__avatar { border-radius: 6px; }
+
+/* New-recording dialog: the pill tab bar sits under the header with the
+   body inset. */
+html[data-ui-theme="workspace"] .upload-tabs { margin: 12px 16px 0; padding: 2px; }

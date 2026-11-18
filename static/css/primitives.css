@@ -2158,37 +2158,7 @@ textarea:focus-visible {
 }
 
 
-/* ---- Upload modal: progressive-disclosure Options group ------------------
-   The .upload-options-group <details> wraps Folder / Tags / Prompt vars /
-   Advanced ASR. The chevron-down icon inside flips up when the group is
-   expanded so users have a clear visual indicator. */
-.upload-options-group[open] .upload-options-chevron {
-    transform: rotate(180deg);
-}
-
-/* When expanded, the whole group reads as ONE contained card: the
-   summary becomes the card header (connected to the body, no gap) and
-   the body sits visibly INSIDE the bordered box. Closed, it's just the
-   summary chip. The card border/background + radius are declared (and
-   transitioned) in the Expand/collapse animation section below, shared
-   with .disclosure-card. */
-
-/* Summary as the card header: square off its bottom corners and add a
-   divider so it reads as attached to the body below. Specificity
-   (class + [attr] + element) beats the inline Tailwind rounded-md. */
-.upload-options-group[open] > summary {
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    border-bottom: 1px solid var(--border-secondary);
-}
-
-/* Body padded inside the card; first section loses its top margin so
-   it doesn't double up with the card padding. */
-.upload-options-group[open] > .upload-options-body {
-    padding: var(--sp-2) var(--sp-4) var(--sp-4);
-}
-.upload-options-group[open] > .upload-options-body > div:first-child {
-    margin-top: 0;
-}
+/* ---- Nested disclosures ------------------------------------------------ */
 
 /* Nested disclosure (Advanced ASR / Prompt variables) inside the
    Options card: connect each trigger to its panel so the pair reads as
@@ -2261,7 +2231,7 @@ input[type="checkbox"].checkbox:disabled {
 
 
 /* ---- Generic <details> disclosure card ---------------------------------
-   Same idea as .upload-options-group but reusable on any <details>:
+   Reusable on any <details>:
    when open the whole element is one bordered card with the summary as
    its header and the body padded inside. Put .disclosure-card on the
    <details> and .disclosure-card-body on the body wrapper. The card
@@ -2287,7 +2257,7 @@ details.disclosure-card[open] > .disclosure-card-body > *:first-child {
  * automatically, so the whole panel resize looks smooth without animating
  * the modal itself.
  *
- * (A) Native <details> (.upload-options-group, .disclosure-card):
+ * (A) Native <details> (.disclosure-card):
  *     animate the ::details-content box. interpolate-size lets height
  *     transition to/from the `auto` keyword; content-visibility with
  *     allow-discrete keeps the content painted through the collapse.
@@ -2305,18 +2275,15 @@ details.disclosure-card[open] > .disclosure-card-body > *:first-child {
  */
 /* Scoped to the disclosure elements (not :root) so enabling keyword
    interpolation doesn't affect height transitions elsewhere. */
-.upload-options-group,
 details.disclosure-card {
     interpolate-size: allow-keywords;
 }
 
-.upload-options-group::details-content,
 details.disclosure-card::details-content {
     block-size: 0;
     overflow: clip;
     transition: block-size 0.25s ease, content-visibility 0.25s allow-discrete;
 }
-.upload-options-group[open]::details-content,
 details.disclosure-card[open]::details-content {
     block-size: auto;
 }
@@ -2324,13 +2291,11 @@ details.disclosure-card[open]::details-content {
 /* Transition the card chrome so it fades with the height rather than
    snapping when [open] toggles. Resting border is transparent (keeps the
    closed chip the same size; no layout shift). */
-.upload-options-group,
 details.disclosure-card {
     border: 1px solid transparent;
     border-radius: var(--radius-md);
     transition: border-color 0.25s ease, background-color 0.25s ease;
 }
-.upload-options-group[open],
 details.disclosure-card[open] {
     border-color: var(--border-secondary);
     background: var(--bg-secondary);
@@ -2352,9 +2317,7 @@ details.disclosure-card[open] {
 
 /* Respect users who ask for reduced motion: snap instead of animate. */
 @media (prefers-reduced-motion: reduce) {
-    .upload-options-group::details-content,
     details.disclosure-card::details-content,
-    .upload-options-group,
     details.disclosure-card,
     .disclosure-anim {
         transition: none !important;
@@ -2559,3 +2522,269 @@ th[aria-sort] > .sort-header .sort-header__icon {
         margin-bottom: 0.75rem;
     }
 }
+
+
+/* ---- Option form: flat field grid ----------------------------------------
+   Used by the new-recording dialog and the recording view's Upload
+   settings (shared partials folder-tag-picker.html and asr-options.html).
+   Fields flow into two columns where the container is wide enough and one
+   column otherwise; no field has a box of its own. */
+.option-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    gap: var(--sp-3) var(--sp-4);
+}
+.option-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    min-width: 0;
+}
+.option-field--wide { grid-column: 1 / -1; }
+.option-label {
+    font-size: var(--fs-meta);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+input.field.option-number { width: 4.75rem; }
+.option-notes {
+    gap: 2px;
+    font-size: 11px;
+    line-height: var(--lh-snug);
+    color: var(--text-muted);
+}
+select.field.option-folder-select { padding-left: 2rem !important; }
+.option-folder-icon {
+    position: absolute;
+    left: 0.625rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    pointer-events: none;
+}
+
+/* ---- Segmented control ---------------------------------------------------
+     <div class="seg" role="radiogroup">
+       <button class="seg__item is-active" role="radio">A</button>
+       <button class="seg__item" role="radio">B</button>
+     </div> */
+.seg {
+    display: inline-flex;
+    border: var(--border-hairline) solid var(--border-secondary, var(--border-primary));
+    border-radius: var(--radius-md);
+    background: transparent;
+    overflow: hidden;
+}
+.seg__item {
+    appearance: none;
+    background: transparent;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    min-height: 36px;
+    padding: var(--sp-2) var(--sp-3);
+    font-size: var(--fs-body);
+    font-family: inherit;
+    color: var(--text-muted);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--t-fast) ease, color var(--t-fast) ease;
+}
+.seg__item + .seg__item {
+    border-left: var(--border-hairline) solid var(--border-secondary, var(--border-primary));
+}
+.seg__item:hover:not(:disabled):not(.is-active) {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+.seg__item.is-active {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    font-weight: 600;
+}
+.seg__item:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.seg__item:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
+}
+.seg--sm .seg__item {
+    min-height: 28px;
+    padding: 2px var(--sp-2);
+    font-size: var(--fs-meta);
+}
+.seg--block { display: flex; }
+.seg--block .seg__item { flex: 1 1 0; min-width: 0; }
+@media (max-width: 480px) {
+    .seg--block { flex-direction: column; }
+    .seg--block .seg__item + .seg__item {
+        border-left: none;
+        border-top: var(--border-hairline) solid var(--border-secondary, var(--border-primary));
+    }
+}
+
+/* ---- Tag combobox --------------------------------------------------------
+   Selected tags are chips inside the field; the text input filters the
+   list beneath, whose last row creates a tag. */
+/* The field takes the height of its grid row, so it matches a select
+   beside it in every theme. */
+.tag-combo { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; }
+.tag-combo > .tag-combo__field { flex: 1 1 auto; }
+.tag-combo__field {
+    /* Also has .field, so each theme's input look applies. */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    cursor: text;
+}
+.tag-combo__field:focus-within {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--ring-focus);
+}
+.tag-combo__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+.tag-combo input.tag-combo__input {
+    flex: 1 1 80px;
+    min-width: 60px;
+    padding: 1px 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    font-size: var(--fs-meta);
+    color: var(--text-primary);
+}
+.tag-combo__menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 30;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 4px;
+    background: var(--bg-secondary);
+    border: var(--border-hairline) solid var(--border-primary);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+.tag-combo__option {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    width: 100%;
+    padding: 6px var(--sp-2);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-meta);
+    font-family: inherit;
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+}
+.tag-combo__option:hover,
+.tag-combo__option:focus-visible {
+    background: var(--bg-tertiary);
+    outline: none;
+}
+.tag-combo__option--create { color: var(--text-accent); }
+.tag-combo__empty {
+    padding: 6px var(--sp-2);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* ---- New-recording dialog ------------------------------------------------
+   Header without its rule (the tab bar beneath has one), the tab bar, the
+   options section of the Upload tab and the Record tab. */
+.modal-header--tabs {
+    border-bottom: none;
+    padding-bottom: var(--sp-1);
+}
+.upload-tabs {
+    flex: 0 0 auto;
+    padding: 0 var(--sp-5);
+}
+.upload-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    margin-top: var(--sp-5);
+}
+.upload-options__title {
+    margin: 0;
+    font-size: var(--fs-meta);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+}
+.upload-advanced > summary {
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-1) 0;
+    font-size: var(--fs-meta);
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.upload-advanced > summary::-webkit-details-marker { display: none; }
+.upload-advanced > summary:hover { color: var(--text-primary); }
+.upload-advanced > summary > .fa-chevron-right {
+    font-size: 9px;
+    transition: transform var(--t-fast) ease;
+}
+.upload-advanced[open] > summary > .fa-chevron-right { transform: rotate(90deg); }
+.upload-advanced__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding-top: var(--sp-2);
+}
+.record-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+.record-hint {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-1);
+    margin: 0;
+    font-size: 11px;
+    line-height: var(--lh-snug);
+    color: var(--text-muted);
+}
+.record-hint--warn { color: var(--text-warning, #b45309); }
+.record-check {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    font-size: var(--fs-meta);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.record-check > .checkbox { margin-top: 2px; flex: none; }
+.record-check__help {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.btn .record-dot { font-size: 8px !important; }
