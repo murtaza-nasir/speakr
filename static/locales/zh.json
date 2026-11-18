@@ -3617,6 +3617,7 @@
       "invalid_with_sources": "with_sources 必须为 true 或 false",
       "job_not_found": "未找到任务",
       "upload_canceled": "上传已取消",
+      "upload_in_progress": "先前的请求仍在保存此上传，请稍后重试。",
       "invalid_client_upload_id": "client_upload_id 无效",
       "job_not_cancelable": "此任务无法取消",
       "job_already_finished": "任务已结束",

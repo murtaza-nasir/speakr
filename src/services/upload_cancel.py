@@ -14,12 +14,25 @@ POST /upload/cancel, and both sides meet in the client_upload table:
   ingestion has already stored is deleted like any recording.
 
 Each side writes before it reads, so whichever comes second sees the other.
+
+A retry the browser sends while the first request is still at work has the
+same client_upload_id (#626). Before anything is staged, the request claims
+the row (claim_upload): an INSERT that the unique constraint lets through
+once, or else an UPDATE that only succeeds while no other request holds a
+fresh claim. Both are single statements, so only one request holds the
+claim, on SQLite and PostgreSQL and across workers. The other request waits
+a few seconds for the recording of the first and is answered with it, or
+with 409 upload_in_progress. The claim goes when the recording is
+registered or the request ends without one; a claim left by a request that
+died expires after CLAIM_STALE.
 """
 
 import logging
 import re
+import time
 from datetime import datetime, timedelta
 
+from sqlalchemy import delete, insert, or_, update
 from sqlalchemy.exc import IntegrityError
 
 from src.database import db
@@ -30,6 +43,12 @@ logger = logging.getLogger(__name__)
 # How long after its upload a recording can be discarded by a cancel.
 CANCEL_WINDOW = timedelta(minutes=15)
 ROW_TTL = timedelta(hours=24)
+# A claim without a recording this old was left by a request that died.
+CLAIM_STALE = timedelta(minutes=15)
+# How long a second request waits for the recording of the first, and how
+# often it looks.
+CLAIM_WAIT_SECONDS = 4.0
+CLAIM_POLL_SECONDS = 0.25
 
 _ID_RE = re.compile(r'^[A-Za-z0-9_-]{8,80}$')
 
@@ -109,11 +128,92 @@ def already_stored_upload(user_id, client_upload_id):
     return _stored_recording(row, user_id)
 
 
+def _take_claim(user_id, client_upload_id):
+    """Claim the row of this upload for the calling request. Commits.
+
+    Returns the claim's timestamp, which identifies it on release, or None
+    when another request holds a claim that has not gone stale.
+    """
+    table = ClientUpload.__table__
+    now = datetime.utcnow()
+    mine = (table.c.user_id == user_id) & (table.c.client_upload_id == client_upload_id)
+    # A row past ROW_TTL is forgotten, as register_recording does for all.
+    db.session.execute(delete(table).where(mine, table.c.created_at < now - ROW_TTL))
+    db.session.commit()
+    try:
+        db.session.execute(insert(table).values(
+            user_id=user_id, client_upload_id=client_upload_id, created_at=now, claimed_at=now))
+        db.session.commit()
+        return now
+    except IntegrityError:
+        # The row exists: written by a cancel, an earlier request or the
+        # other request at this moment.
+        db.session.rollback()
+    result = db.session.execute(
+        update(table)
+        .where(mine, or_(table.c.claimed_at.is_(None), table.c.claimed_at < now - CLAIM_STALE))
+        .values(claimed_at=now))
+    db.session.commit()
+    return now if result.rowcount == 1 else None
+
+
+def release_claim(user_id, client_upload_id, claim):
+    """Give up a claim of claim_upload, unless another request took it over since."""
+    if claim is None:
+        return
+    table = ClientUpload.__table__
+    try:
+        db.session.execute(
+            update(table)
+            .where(table.c.user_id == user_id, table.c.client_upload_id == client_upload_id,
+                   table.c.claimed_at == claim)
+            .values(claimed_at=None))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.warning(f"Could not release the claim of an upload of user {user_id}: {type(e).__name__}")
+
+
+def claim_upload(user_id, client_upload_id):
+    """Reserve this upload for the calling request before anything is staged.
+
+    Returns one of:
+    - ('claimed', claim): this request stores the upload; it passes claim
+      to release_claim when it ends.
+    - ('replay', recording): a request of this upload stored this recording.
+    - ('canceled', None): the upload was canceled while another request
+      held it.
+    - ('in_progress', None): another request still works on it after
+      CLAIM_WAIT_SECONDS.
+    """
+    deadline = time.monotonic() + CLAIM_WAIT_SECONDS
+    while True:
+        recording = already_stored_upload(user_id, client_upload_id)
+        if recording is not None:
+            return 'replay', recording
+        claim = _take_claim(user_id, client_upload_id)
+        if claim is not None:
+            # The other request may have registered its recording and let
+            # the claim go between the look above and the claim.
+            recording = already_stored_upload(user_id, client_upload_id)
+            if recording is not None:
+                release_claim(user_id, client_upload_id, claim)
+                return 'replay', recording
+            return 'claimed', claim
+        if is_canceled(user_id, client_upload_id):
+            return 'canceled', None
+        if time.monotonic() >= deadline:
+            return 'in_progress', None
+        time.sleep(CLAIM_POLL_SECONDS)
+        db.session.expire_all()
+
+
 def register_recording(user_id, client_upload_id, recording):
     """Note the recording this upload stored. True when the upload was canceled.
 
     A row that already points to a recording of this upload keeps it, so a
-    second copy cannot take the cancel away from the first.
+    second copy cannot take the cancel away from the first. The claim of
+    claim_upload goes with the same write.
     """
     try:
         cutoff = datetime.utcnow() - ROW_TTL
@@ -122,7 +222,8 @@ def register_recording(user_id, client_upload_id, recording):
         if _stored_recording(row, user_id) is not None:
             return row.canceled_at is not None
         recording_id, created_at = recording.id, recording.created_at
-        row = _write(user_id, client_upload_id, recording_id=recording_id, recording_created_at=created_at)
+        row = _write(user_id, client_upload_id, recording_id=recording_id,
+                     recording_created_at=created_at, claimed_at=None)
         return bool(row is not None and row.canceled_at is not None)
     except Exception as e:
         db.session.rollback()

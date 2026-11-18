@@ -45,6 +45,11 @@ export function useUpload(state, utils) {
 
     const { setGlobalError, showToast, formatFileSize, onChatComplete, t } = utils;
 
+    // How often, and how far apart, an upload answered with 409
+    // upload_in_progress is sent again before it counts as failed.
+    const IN_PROGRESS_ATTEMPTS = 12;
+    const IN_PROGRESS_RETRY_MS = 10000;
+
     // An upload error shows its message in the interface language; matchText keeps
     // the English wording that getFriendlyError's text patterns recognise.
     const uploadError = (message, matchText) => {
@@ -824,13 +829,31 @@ export function useUpload(state, utils) {
                 // with another fresh token if the server still rejects it —
                 // mirroring what the fetch interceptor in csrf-refresh.js does
                 // for non-XHR requests.
-                try {
-                    data = await sendUpload(await getUploadCsrfToken());
-                } catch (uploadError) {
-                    if (!uploadError.isCsrfRejection) throw uploadError;
-                    console.warn(`[Upload] CSRF rejection for ${fileItem.file.name}; refreshing token and retrying once.`);
-                    fileItem.progress = 5;
-                    data = await sendUpload(await getUploadCsrfToken());
+                const sendOnce = async () => {
+                    try {
+                        return await sendUpload(await getUploadCsrfToken());
+                    } catch (uploadError) {
+                        if (!uploadError.isCsrfRejection) throw uploadError;
+                        console.warn(`[Upload] CSRF rejection for ${fileItem.file.name}; refreshing token and retrying once.`);
+                        fileItem.progress = 5;
+                        return await sendUpload(await getUploadCsrfToken());
+                    }
+                };
+                // An earlier request of this upload is still storing it
+                // (#626): send again a little later, and the server answers
+                // with the recording that request stored.
+                for (let attempt = 1; ; attempt++) {
+                    try {
+                        data = await sendOnce();
+                        break;
+                    } catch (uploadError) {
+                        if (uploadError.code !== 'upload_in_progress' || attempt >= IN_PROGRESS_ATTEMPTS
+                            || fileItem.uploadCanceled) throw uploadError;
+                        console.warn(`[Upload] ${fileItem.file.name} is still being stored by an earlier request; sending again shortly.`);
+                        fileItem.progress = 5;
+                        await new Promise(resolve => setTimeout(resolve, IN_PROGRESS_RETRY_MS));
+                        if (fileItem.uploadCanceled) throw uploadError;
+                    }
                 }
             }
 

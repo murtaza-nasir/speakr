@@ -5,7 +5,9 @@ request after the body was sent, the server still finishes the ingestion and
 would leave a recording nobody asked for. POST /upload/cancel marks the id
 here; the ingestion looks the mark up before it queues the first job, and the
 cancel looks up the recording an ingestion has already stored
-(src/services/upload_cancel.py). Rows are removed after a day.
+(src/services/upload_cancel.py). A request also claims the row while it
+stores the upload, so that a retry sent at the same time waits for its
+recording. Rows are removed after a day.
 """
 
 from datetime import datetime
@@ -28,4 +30,7 @@ class ClientUpload(db.Model):
     recording_id = db.Column(db.Integer, nullable=True)
     recording_created_at = db.Column(db.DateTime, nullable=True)
     canceled_at = db.Column(db.DateTime, nullable=True)
+    # Set while one request of this upload stages and stores it (#626): a
+    # second request with the same id waits for that one's recording.
+    claimed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)

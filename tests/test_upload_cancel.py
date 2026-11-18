@@ -13,6 +13,7 @@ SHARED-DB: every assertion is scoped to the rows the test created.
 import io
 import os
 import sys
+import threading
 import uuid
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -81,11 +82,12 @@ def _files_on_disk():
     return found
 
 
-def _upload(uid, client_upload_id=None, during=None, filename='meeting.mp3'):
+def _upload(uid, client_upload_id=None, during=None, filename='meeting.mp3', fail=False):
     """POST /upload with ffprobe and ffmpeg stubbed out.
 
     during: called while the server works on the stored body (where the
     probe runs), as a cancel that arrives after the bytes were sent.
+    fail: the conversion raises, as a request that fails after its claim.
     """
     def codec_info(path, timeout=None):
         if during:
@@ -93,6 +95,8 @@ def _upload(uid, client_upload_id=None, during=None, filename='meeting.mp3'):
         return {'has_video': False, 'audio_codec': 'mp3', 'duration': 60.0}
 
     def convert(filepath, **kwargs):
+        if fail:
+            raise RuntimeError('conversion failed')
         result = MagicMock()
         result.output_path = filepath
         result.was_converted = result.was_compressed = False
@@ -402,3 +406,162 @@ def test_the_id_of_another_user_replays_nothing(user):
         ClientUpload.query.filter_by(user_id=other_id).delete(synchronize_session=False)
         db.session.delete(db.session.get(User, other_id))
         db.session.commit()
+
+
+# --- two requests of one upload at the same time (#626) -----------------------------
+
+def _row(uid, client_upload_id):
+    db.session.expire_all()
+    return ClientUpload.query.filter_by(user_id=uid, client_upload_id=client_upload_id).one()
+
+
+@pytest.fixture
+def short_wait():
+    with patch.object(upload_cancel, 'CLAIM_WAIT_SECONDS', 0.3), \
+         patch.object(upload_cancel, 'CLAIM_POLL_SECONDS', 0.05):
+        yield
+
+
+def test_only_one_of_two_claims_holds_the_upload(user):
+    upload_id = _upload_id()
+    first = upload_cancel._take_claim(user, upload_id)
+    second = upload_cancel._take_claim(user, upload_id)
+    assert first is not None and second is None
+    assert _row(user, upload_id).claimed_at == first
+    # Once the first lets go, the claim can be taken again.
+    upload_cancel.release_claim(user, upload_id, first)
+    assert _row(user, upload_id).claimed_at is None
+    assert upload_cancel._take_claim(user, upload_id) is not None
+
+
+def test_two_claims_on_two_connections_at_once_give_one_holder(user):
+    upload_id = _upload_id()
+    start = threading.Barrier(2)
+    claims, errors = [], []
+
+    def claim():
+        try:
+            with app.app_context():
+                start.wait(timeout=10)
+                claims.append(upload_cancel._take_claim(user, upload_id))
+        except Exception as e:                       # pragma: no cover - reported below
+            errors.append(e)
+
+    threads = [threading.Thread(target=claim) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+    assert errors == []
+    assert len(claims) == 2
+    assert sum(c is not None for c in claims) == 1
+    assert ClientUpload.query.filter_by(user_id=user, client_upload_id=upload_id).count() == 1
+
+
+def test_a_retry_while_the_first_request_stores_waits_and_replays(user):
+    # The first request holds the claim; it registers its recording while
+    # the retry waits.
+    stored = _upload(user, _upload_id())[0].get_json()['id']
+    recording = db.session.get(Recording, stored)
+    upload_id = _upload_id()
+    assert upload_cancel._take_claim(user, upload_id) is not None
+    waits = []
+
+    def first_request_finishes(seconds):
+        waits.append(seconds)
+        if len(waits) == 1:
+            assert upload_cancel.register_recording(user, upload_id, recording) is False
+
+    before = _files_on_disk()
+    with patch.object(upload_cancel.time, 'sleep', side_effect=first_request_finishes):
+        again, webhook = _upload(user, upload_id)
+    assert again.status_code == 202, again.get_data(as_text=True)[:300]
+    body = again.get_json()
+    assert body['id'] == stored
+    assert body['idempotent_replay'] is True
+    assert len(waits) == 1
+    assert [r.id for r in _recordings(user)] == [stored]
+    assert _jobs(user) == 1
+    assert _files_on_disk() == before
+    assert _events(webhook) == []
+    assert _row(user, upload_id).claimed_at is None
+
+
+def test_a_retry_while_the_first_request_is_still_at_work_gets_409(user, short_wait):
+    upload_id = _upload_id()
+    answers = []
+
+    def retry_now():
+        if not answers:
+            answers.append(_upload(user, upload_id)[0])
+
+    first, _ = _upload(user, upload_id, during=retry_now)
+    assert answers[0].status_code == 409
+    assert answers[0].get_json()['code'] == 'upload_in_progress'
+    assert first.status_code == 202
+    first_id = first.get_json()['id']
+    assert [r.id for r in _recordings(user)] == [first_id]
+    assert _jobs(user) == 1
+    assert _row(user, upload_id).claimed_at is None
+    # The browser sends it again later and gets the first recording.
+    later = _upload(user, upload_id)[0]
+    assert later.status_code == 202
+    assert later.get_json()['id'] == first_id and later.get_json()['idempotent_replay'] is True
+    assert len(_recordings(user)) == 1
+
+
+def test_a_stale_claim_lets_a_retry_store_the_upload(user, short_wait):
+    upload_id = _upload_id()
+    db.session.add(ClientUpload(user_id=user, client_upload_id=upload_id,
+                                claimed_at=datetime.utcnow() - upload_cancel.CLAIM_STALE - timedelta(minutes=1)))
+    db.session.commit()
+    db.session.expunge_all()
+    response = _upload(user, upload_id)[0]
+    assert response.status_code == 202, response.get_data(as_text=True)[:300]
+    assert not response.get_json().get('idempotent_replay')
+    row = _row(user, upload_id)
+    assert row.recording_id == response.get_json()['id'] and row.claimed_at is None
+
+
+def test_a_fresh_claim_without_a_recording_is_not_taken_over(user, short_wait):
+    upload_id = _upload_id()
+    assert upload_cancel._take_claim(user, upload_id) is not None
+    response = _upload(user, upload_id)[0]
+    assert response.status_code == 409
+    assert response.get_json()['code'] == 'upload_in_progress'
+    assert _recordings(user) == []
+
+
+def test_a_failed_first_request_lets_the_claim_go(user):
+    upload_id = _upload_id()
+    before = _files_on_disk()
+    failed = _upload(user, upload_id, fail=True)[0]
+    assert failed.status_code >= 400
+    assert _recordings(user) == []
+    assert _files_on_disk() == before
+    assert _row(user, upload_id).claimed_at is None
+    again = _upload(user, upload_id)[0]
+    assert again.status_code == 202
+    assert not again.get_json().get('idempotent_replay')
+    assert len(_recordings(user)) == 1
+
+
+def test_a_stored_upload_holds_no_claim(user):
+    upload_id = _upload_id()
+    response = _upload(user, upload_id)[0]
+    assert response.status_code == 202
+    row = _row(user, upload_id)
+    assert row.claimed_at is None and row.recording_id == response.get_json()['id']
+
+
+def test_a_cancel_while_another_request_holds_the_claim_refuses_the_retry(user):
+    upload_id = _upload_id()
+    assert upload_cancel._take_claim(user, upload_id) is not None
+    answer = _cancel(user, upload_id).get_json()
+    assert answer == {'success': True, 'recording_deleted': False, 'recording_kept': False}
+    response = _upload(user, upload_id)[0]
+    assert response.status_code == 409
+    assert response.get_json()['code'] == 'upload_canceled'
+    assert _recordings(user) == []
+    row = _row(user, upload_id)
+    assert row.canceled_at is not None and row.claimed_at is not None   # the holder still sees the mark
