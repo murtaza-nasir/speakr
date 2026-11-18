@@ -409,6 +409,10 @@ Speakr uses separate job queues for transcription and summarization to prevent s
 
 **JOB_MAX_RETRIES**: How many times a failed job will be retried before being marked as failed. Default: `3`.
 
+**DISABLE_TRANSCRIPT_UNICODE_REWRITE**: Set to `true` to skip the one-time rewrite that stores transcripts saved before v0.11.2 without `\u` escapes, so non-Latin words are found by search. Default: `false`.
+
+**TRANSCRIPT_UNICODE_REWRITE_DELAY_SECONDS**: Seconds after startup before that rewrite starts. Default: `30`.
+
 In each queue, users take turns: every user with a waiting job gets one job started before anyone gets a second, whatever order the files were uploaded in.
 
 Jobs are persisted to the database and survive application restarts. If Speakr restarts while jobs are processing, they automatically resume from where they left off.
