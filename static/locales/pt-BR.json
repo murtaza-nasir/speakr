@@ -528,9 +528,6 @@
       "transcriptLengthLimitDesc": "Número máximo de caracteres para enviar da transcrição ao LLM para resumo e chat. Use -1 para nenhum limite.",
       "maxAudioOnlyVideoSizeDesc": "Tamanho máximo (em MB) para envios de vídeo em modo apenas-áudio. Apenas o áudio extraído é armazenado, portanto o envio em si pode ser maior que o limite habitual.",
       "disableAutoTranslationDesc": "Quando habilitado, as gravações são apenas transcritas e os usuários precisam iniciar a tradução manualmente. Quando desabilitado, cada usuário pode ativar a tradução automática de novas gravações após a transcrição.",
-      "defaultUiThemeDesc": "Tema da interface para novas contas e para as páginas de login em um navegador sem tema salvo. Um destes: default, classic, workspace, focus, desk, cards. As contas existentes mantêm o tema.",
-      "defaultColorSchemeDesc": "Esquema de cores para novas contas e para as páginas de login em um navegador sem esquema salvo. Um destes: blue, emerald, purple, rose, amber, teal. As contas existentes mantêm o esquema de cores.",
-      "defaultAudioPlayerPositionDesc": "Posição do player de áudio na página de uma gravação para novas contas. Um destes: top, bottom. As contas existentes mantêm a posição.",
       "ssoApiTokensEnabledDesc": "Quando ativado, apps que fazem login dos usuários pelo mesmo provedor SSO do Speakr podem chamar a API com o token de acesso SSO do usuário e trocá-lo por um token de API. O SSO deve estar configurado e pelo menos um cliente deve ser permitido.",
       "ssoApiAllowedClientsDesc": "IDs de cliente OIDC separados por vírgula cujos tokens de acesso são aceitos, comparados com a claim aud ou azp. Vazio significa que nenhum token de acesso é aceito.",
       "ssoApiScopesDesc": "Escopos separados por vírgula que uma requisição com um token de acesso SSO tem. Um token trocado só pode ter esses escopos. Padrão: read.",
@@ -792,7 +789,23 @@
     "permissionModeEveryone": "Todos",
     "userSearchScopeEveryone": "Todos",
     "userSearchScopeGroups": "Pessoas dos seus grupos",
-    "userSearchScopeExact": "Nome de usuário ou e-mail exato"
+    "userSearchScopeExact": "Nome de usuário ou e-mail exato",
+    "userDefaults": {
+      "title": "Padrões de usuário",
+      "description": "As contas novas começam com estas configurações. Os usuários podem alterá-las.",
+      "timezoneMode": "Fuso horário",
+      "timezoneAuto": "Automático (dispositivo do usuário)",
+      "timezoneFixed": "Fixo (fuso horário padrão)",
+      "timezone": "Fuso horário padrão",
+      "autoSummarization": "Resumos automáticos",
+      "autoSpeakerLabelling": "Identificação automática de falantes",
+      "confirmTitle": "Aplicar às contas existentes?",
+      "confirmMessage": "Contas que ainda têm o padrão anterior ({{value}}): {{count}}",
+      "applyToExisting": "Aplicar às contas existentes",
+      "newAccountsOnly": "Somente contas novas",
+      "saved": "Salvo",
+      "savedUpdated": "Salvo. Contas atualizadas: {{count}}"
+    }
   },
   "apiTokens": {
     "activeTokens": "Tokens ativos",
@@ -3826,7 +3839,9 @@
       "group_create_not_permitted": "Você não tem permissão para criar grupos.",
       "group_delete_not_permitted": "Somente um administrador do site, ou o criador do grupo enquanto for administrador dele, pode excluir este grupo.",
       "member_identifier_required": "Digite o nome de usuário ou o endereço de e-mail exato da pessoa a ser adicionada.",
-      "invalid_permission_mode": "Valor inválido. Deve ser um destes: {{modes}}"
+      "invalid_permission_mode": "Valor inválido. Deve ser um destes: {{modes}}",
+      "invalid_user_default": "Valor inválido para {{setting}}. Deve ser um destes: {{allowed}}",
+      "unknown_user_default": "Padrão de usuário desconhecido"
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",

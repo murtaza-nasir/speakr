@@ -528,9 +528,6 @@
       "transcriptLengthLimitDesc": "Nombre maximal de caractères à envoyer de la transcription au LLM pour le résumé et le chat. Utilisez -1 pour aucune limite.",
       "maxAudioOnlyVideoSizeDesc": "Taille maximale (en Mo) des envois vidéo en mode audio uniquement. Seul l’audio extrait est conservé, donc l’envoi lui-même peut dépasser la limite habituelle.",
       "disableAutoTranslationDesc": "Lorsque cette option est activée, les enregistrements sont seulement transcrits et les utilisateurs doivent lancer la traduction manuellement. Lorsqu'elle est désactivée, chaque utilisateur peut activer la traduction automatique de ses nouveaux enregistrements après la transcription.",
-      "defaultUiThemeDesc": "Thème d'interface des nouveaux comptes, et des pages de connexion dans un navigateur sans thème enregistré. Valeurs possibles : default, classic, workspace, focus, desk, cards. Les comptes existants conservent leur thème.",
-      "defaultColorSchemeDesc": "Jeu de couleurs des nouveaux comptes, et des pages de connexion dans un navigateur sans jeu de couleurs enregistré. Valeurs possibles : blue, emerald, purple, rose, amber, teal. Les comptes existants conservent leur jeu de couleurs.",
-      "defaultAudioPlayerPositionDesc": "Position du lecteur audio sur la page d'un enregistrement pour les nouveaux comptes. Valeurs possibles : top, bottom. Les comptes existants conservent leur position.",
       "ssoApiTokensEnabledDesc": "Si activé, les applications qui connectent les utilisateurs par le même fournisseur SSO que Speakr peuvent appeler l'API avec le jeton d'accès SSO de l'utilisateur et l'échanger contre un jeton d'API. Le SSO doit être configuré et au moins un client doit être autorisé.",
       "ssoApiAllowedClientsDesc": "ID de clients OIDC séparés par des virgules dont les jetons d'accès sont acceptés, comparés à la revendication aud ou azp. Vide signifie qu'aucun jeton d'accès n'est accepté.",
       "ssoApiScopesDesc": "Portées séparées par des virgules dont dispose une requête avec un jeton d'accès SSO. Un jeton échangé ne peut avoir que ces portées. Par défaut : read.",
@@ -792,7 +789,23 @@
     "permissionModeEveryone": "Tout le monde",
     "userSearchScopeEveryone": "Tout le monde",
     "userSearchScopeGroups": "Personnes de leurs groupes",
-    "userSearchScopeExact": "Nom d’utilisateur ou adresse e-mail exacts"
+    "userSearchScopeExact": "Nom d’utilisateur ou adresse e-mail exacts",
+    "userDefaults": {
+      "title": "Valeurs par défaut des utilisateurs",
+      "description": "Les nouveaux comptes commencent avec ces réglages. Les utilisateurs peuvent les modifier.",
+      "timezoneMode": "Fuseau horaire",
+      "timezoneAuto": "Automatique (appareil de l'utilisateur)",
+      "timezoneFixed": "Fixe (fuseau horaire par défaut)",
+      "timezone": "Fuseau horaire par défaut",
+      "autoSummarization": "Résumés automatiques",
+      "autoSpeakerLabelling": "Identification automatique des intervenants",
+      "confirmTitle": "Appliquer aux comptes existants ?",
+      "confirmMessage": "Comptes qui ont encore l'ancienne valeur par défaut ({{value}}) : {{count}}",
+      "applyToExisting": "Appliquer aux comptes existants",
+      "newAccountsOnly": "Nouveaux comptes uniquement",
+      "saved": "Enregistré",
+      "savedUpdated": "Enregistré. Comptes mis à jour : {{count}}"
+    }
   },
   "apiTokens": {
     "activeTokens": "Jetons actifs",
@@ -3826,7 +3839,9 @@
       "group_create_not_permitted": "Vous n’êtes pas autorisé à créer des groupes.",
       "group_delete_not_permitted": "Seul un administrateur du site, ou le créateur du groupe tant qu’il en est administrateur, peut supprimer ce groupe.",
       "member_identifier_required": "Saisissez le nom d’utilisateur ou l’adresse e-mail exacts de la personne à ajouter.",
-      "invalid_permission_mode": "Valeur non valide. Valeurs possibles : {{modes}}"
+      "invalid_permission_mode": "Valeur non valide. Valeurs possibles : {{modes}}",
+      "invalid_user_default": "Valeur non valide pour {{setting}}. Valeurs possibles : {{allowed}}",
+      "unknown_user_default": "Valeur par défaut d'utilisateur inconnue"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",

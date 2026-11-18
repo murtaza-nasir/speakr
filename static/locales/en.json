@@ -528,9 +528,6 @@
       "transcriptLengthLimitDesc": "Maximum number of characters to send from transcript to LLM for summarization and chat. Use -1 for no limit.",
       "maxAudioOnlyVideoSizeDesc": "Maximum file size (in MB) for video uploads in audio-only mode. Only the extracted audio is stored, so the upload itself can be larger than the regular file-size limit.",
       "disableAutoTranslationDesc": "When enabled, recordings are only transcribed and users must trigger translation manually. When disabled, each user can opt in to auto-translate new recordings after transcription.",
-      "defaultUiThemeDesc": "UI theme for new accounts, and for the sign-in pages in a browser with no saved theme. One of: default, classic, workspace, focus, desk, cards. Existing accounts keep their theme.",
-      "defaultColorSchemeDesc": "Color scheme for new accounts, and for the sign-in pages in a browser with no saved color scheme. One of: blue, emerald, purple, rose, amber, teal. Existing accounts keep their color scheme.",
-      "defaultAudioPlayerPositionDesc": "Audio player position on a recording's page for new accounts. One of: top, bottom. Existing accounts keep their position.",
       "ssoApiTokensEnabledDesc": "When enabled, apps that sign users in through the same SSO provider as Speakr can call the API with the user's SSO access token, and exchange it for an API token. SSO must be configured, and at least one client must be allowed.",
       "ssoApiAllowedClientsDesc": "Comma-separated OIDC client IDs whose access tokens are accepted, matched against the aud or azp claim. Empty means that no access token is accepted.",
       "ssoApiScopesDesc": "Comma-separated scopes that a request with an SSO access token has. An exchanged token may have these scopes and no others. Default: read.",
@@ -792,7 +789,23 @@
     "permissionModeEveryone": "Everyone",
     "userSearchScopeEveryone": "Everyone",
     "userSearchScopeGroups": "People in their groups",
-    "userSearchScopeExact": "Exact username or email"
+    "userSearchScopeExact": "Exact username or email",
+    "userDefaults": {
+      "title": "User defaults",
+      "description": "New accounts start with these settings. Users can change them.",
+      "timezoneMode": "Timezone",
+      "timezoneAuto": "Automatic (user's device)",
+      "timezoneFixed": "Fixed (default timezone)",
+      "timezone": "Default timezone",
+      "autoSummarization": "Automatic summaries",
+      "autoSpeakerLabelling": "Automatic speaker labelling",
+      "confirmTitle": "Apply to existing accounts?",
+      "confirmMessage": "Accounts that still have the previous default ({{value}}): {{count}}",
+      "applyToExisting": "Apply to existing accounts",
+      "newAccountsOnly": "New accounts only",
+      "saved": "Saved",
+      "savedUpdated": "Saved. Accounts updated: {{count}}"
+    }
   },
   "apiTokens": {
     "activeTokens": "Active tokens",
@@ -3826,7 +3839,9 @@
       "group_create_not_permitted": "You do not have permission to create groups.",
       "group_delete_not_permitted": "Only a site admin, or the creator of the group while a group admin of it, can delete this group.",
       "member_identifier_required": "Enter the exact username or email address of the person to add.",
-      "invalid_permission_mode": "Invalid value. Must be one of: {{modes}}"
+      "invalid_permission_mode": "Invalid value. Must be one of: {{modes}}",
+      "invalid_user_default": "Invalid value for {{setting}}. Must be one of: {{allowed}}",
+      "unknown_user_default": "Unknown user default"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated",

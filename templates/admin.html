@@ -26,6 +26,8 @@
     <script src="{{ url_for('static', filename='js/service-worker-client.js', v=app_version) }}" data-register></script>
     <!-- The app's own confirm, message and input dialogs (window.confirmDialog, alertDialog, promptDialog) -->
     <script src="{{ url_for('static', filename='js/app-dialog.js', v=app_version) }}"></script>
+    <!-- The shared language lists, for the language selects of User defaults -->
+    <script src="{{ url_for('static', filename='js/asr-languages.js', v=app_version) }}"></script>
     <style>
         /* Hide Vue content until compiled */
         [v-cloak] {
@@ -716,6 +718,47 @@
                                 <i :class="savingModels ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
                                 <span>${ savingModels ? t('adminDashboard.saving') : t('adminDashboard.saveSelection') }</span>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- User defaults (#584): the settings that new accounts
+                         start with, each with the control of the Account
+                         page. A changed default is saved at once; when
+                         accounts still have the previous default, a dialog
+                         asks whether they get the new one too. The
+                         settings behind these rows are left out of the
+                         list below. -->
+                    <div v-if="userDefaultRows.length" id="user-defaults" class="mb-6 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg overflow-hidden">
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border-primary)]">
+                            <div class="min-w-0">
+                                <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                                    <i class="fas fa-user-cog text-[var(--text-accent)]"></i>
+                                    <span>${ t('adminDashboard.userDefaults.title') }</span>
+                                </h4>
+                                <p class="text-xs text-[var(--text-muted)] mt-0.5">${ t('adminDashboard.userDefaults.description') }</p>
+                            </div>
+                            <span v-if="userDefaultMessage" id="user-defaults-status" role="status" class="text-sm flex-shrink-0"
+                                  :class="userDefaultError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">
+                                <i :class="userDefaultError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'" class="mr-1"></i>
+                                ${ userDefaultMessage }
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-3 px-4 py-4">
+                            <div v-for="row in userDefaultRows" :key="row.key" :data-user-default="row.key"
+                                 class="flex items-center justify-between gap-3 min-w-0">
+                                <label :for="'user-default-' + row.key" :title="row.hint || null" class="text-sm text-[var(--text-secondary)] min-w-0">${ row.label }</label>
+                                <label v-if="row.setting_type === 'boolean'" class="flex items-center cursor-pointer flex-shrink-0">
+                                    <input :id="'user-default-' + row.key" type="checkbox" class="sr-only peer"
+                                           :checked="row.value === 'true'" :disabled="!!userDefaultSaving"
+                                           @change="changeUserDefault(row, $event.target.checked ? 'true' : 'false', $event.target)">
+                                    <div class="relative w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--text-accent)]"></div>
+                                </label>
+                                <select v-else :id="'user-default-' + row.key" class="field field--sm flex-shrink-0" style="width: 16rem; max-width: 60%;"
+                                        :value="row.value" :disabled="!!userDefaultSaving"
+                                        @change="changeUserDefault(row, $event.target.value, $event.target)">
+                                    <option v-for="option in row.options" :key="option.value" :value="option.value">${ option.label }</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -1768,15 +1811,6 @@ Summarization Instructions:
                                 <small v-if="!settingUseNoLimit" class="text-[var(--text-muted)]">${ t('adminDashboard.transcriptLimitRecommendation') }</small>
                             </div>
                             
-                            <!-- Zone picker for default_timezone (#412) -->
-                            <div v-else-if="editingSetting.key === 'default_timezone'" class="space-y-2">
-                                <select v-model="settingNewValue"
-                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                    <option v-for="z in timezoneOptions" :key="z" :value="z">${ z.replace(/_/g, ' ') }</option>
-                                </select>
-                                <small class="text-[var(--text-muted)]" v-text="t('adminDashboard.defaultTimezoneHelp')"></small>
-                            </div>
-
                             <!-- Special input for max_file_size_mb -->
                             <div v-else-if="editingSetting.key === 'max_file_size_mb'" class="space-y-2">
                                 <input v-model.number="settingNewValue" type="number" min="1" max="10000" step="50"
@@ -2322,6 +2356,127 @@ Summarization Instructions:
                 //     hierarchy explainer, full prompt-structure
                 //     preview). Both used to write the same key, so the
                 //     raw card here was a redundant second editor.
+                // User defaults (#584): GET /admin/user-defaults lists each
+                // default with its value in effect and its accepted values.
+                const userDefaults = ref([]);
+                const userDefaultSaving = ref('');
+                const userDefaultMessage = ref('');
+                const userDefaultError = ref(false);
+                const userDefaultKeys = computed(() => new Set(userDefaults.value.map(row => row.key)));
+                const USER_DEFAULT_LABELS = {
+                    default_ui_theme: 'uiTheme.title',
+                    default_color_scheme: 'modal.colorScheme',
+                    default_audio_player_position: 'display.audioPlayerPositionLabel',
+                    default_ui_language: 'account.interfaceLanguage',
+                    default_transcription_language: 'account.transcriptionLanguage',
+                    default_output_language: 'account.preferredOutputLanguage',
+                    default_timezone_mode: 'adminDashboard.userDefaults.timezoneMode',
+                    default_timezone: 'adminDashboard.userDefaults.timezone',
+                    default_auto_summarization: 'adminDashboard.userDefaults.autoSummarization',
+                    default_auto_speaker_labelling: 'adminDashboard.userDefaults.autoSpeakerLabelling',
+                    default_extract_events: 'eventExtraction.title'
+                };
+                // The options of a select, labeled as on the Account page.
+                // The language lists are the shared ones (asr-languages.js
+                // and the lists of the server); none is repeated here.
+                const userDefaultOptions = (row) => {
+                    const languages = window.SpeakrASRLanguages;
+                    const locale = window.i18n?.currentLocale || 'en';
+                    const byLabel = (a, b) => a.label.localeCompare(b.label, locale);
+                    switch (row.key) {
+                        case 'default_ui_theme':
+                            return row.choices.map(id => ({ value: id, label: t(`uiTheme.themes.${id}.name`) }));
+                        case 'default_color_scheme':
+                            return row.choices.map(id => ({ value: id, label: t(`colorScheme.themes.light.${id}.name`) }));
+                        case 'default_audio_player_position':
+                            return row.choices.map(id => ({ value: id, label: t(id === 'top' ? 'display.playerPositionTop' : 'display.playerPositionBottom') }));
+                        case 'default_ui_language':
+                            return row.options;
+                        case 'default_transcription_language':
+                            return [{ value: 'auto', label: t('languages.autoDetect') },
+                                    ...(languages ? languages.buildOptions(locale) : []).map(o => ({ value: o.value, label: `${o.label} (${o.value})` }))];
+                        case 'default_output_language':
+                            return [{ value: 'auto', label: t('languages.defaultModelDecides') },
+                                    ...row.options.map(o => ({ value: o.value, label: languages ? languages.outputLabel(o.value, o.code, locale) : o.value })).sort(byLabel)];
+                        case 'default_timezone_mode':
+                            return row.choices.map(id => ({ value: id, label: t(id === 'fixed' ? 'adminDashboard.userDefaults.timezoneFixed' : 'adminDashboard.userDefaults.timezoneAuto') }));
+                        case 'default_timezone':
+                            return (timezoneOptions.includes(row.value) ? timezoneOptions : [row.value, ...timezoneOptions])
+                                .map(zone => ({ value: zone, label: zone.replace(/_/g, ' ') }));
+                        default:
+                            return (row.choices || []).map(id => ({ value: id, label: id }));
+                    }
+                };
+                const userDefaultRows = computed(() => userDefaults.value.map(row => ({
+                    ...row,
+                    label: t(USER_DEFAULT_LABELS[row.key] || row.key),
+                    hint: row.key === 'default_timezone' ? t('adminDashboard.defaultTimezoneHelp') : '',
+                    options: row.setting_type === 'boolean' ? [] : userDefaultOptions(row)
+                })));
+                const userDefaultValueLabel = (row, value) => {
+                    if (row.setting_type === 'boolean') return t(value === 'true' ? 'webhooks.enabled' : 'adminDashboard.disabled');
+                    const option = row.options.find(o => o.value === value);
+                    return option ? option.label : value;
+                };
+                const loadUserDefaults = async () => {
+                    try {
+                        const response = await fetch('/admin/user-defaults');
+                        if (!response.ok) throw new Error('Failed to load user defaults');
+                        userDefaults.value = (await response.json()).defaults || [];
+                    } catch (error) {
+                        console.error('Error loading user defaults:', error);
+                    }
+                };
+                // A changed default. The number of accounts that still have
+                // the previous default is read first; above zero, the dialog
+                // asks whether those accounts get the new default too.
+                const changeUserDefault = async (row, value, control) => {
+                    if (value === row.value || userDefaultSaving.value) return;
+                    userDefaultSaving.value = row.key;
+                    userDefaultMessage.value = '';
+                    userDefaultError.value = false;
+                    try {
+                        const counted = await fetch(`/admin/user-defaults/${encodeURIComponent(row.key)}/accounts`);
+                        if (!counted.ok) throw new Error(t('adminDashboard.updateSettingFailed'));
+                        const { count } = await counted.json();
+                        let applyToExisting = false;
+                        if (count > 0) {
+                            applyToExisting = await confirmDialog({
+                                title: t('adminDashboard.userDefaults.confirmTitle'),
+                                message: t('adminDashboard.userDefaults.confirmMessage', {
+                                    count: count.toLocaleString(window.i18n?.getIntlLocale?.()),
+                                    value: userDefaultValueLabel(row, row.value)
+                                }),
+                                confirmLabel: t('adminDashboard.userDefaults.applyToExisting'),
+                                cancelLabel: t('adminDashboard.userDefaults.newAccountsOnly')
+                            });
+                        }
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+                        const response = await fetch('/admin/settings', {
+                            method: 'POST',
+                            headers,
+                            body: JSON.stringify({ key: row.key, value, setting_type: row.setting_type, apply_to_existing: applyToExisting })
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(data.error || t('adminDashboard.updateSettingFailed'));
+                        await loadSettings();
+                        userDefaultMessage.value = data.users_updated > 0
+                            ? t('adminDashboard.userDefaults.savedUpdated', { count: data.users_updated.toLocaleString(window.i18n?.getIntlLocale?.()) })
+                            : t('adminDashboard.userDefaults.saved');
+                    } catch (error) {
+                        console.error('Error saving user default:', error);
+                        // The control goes back to the default that is still in effect.
+                        if (control.type === 'checkbox') control.checked = row.value === 'true';
+                        else control.value = row.value;
+                        userDefaultError.value = true;
+                        userDefaultMessage.value = error.message;
+                    } finally {
+                        userDefaultSaving.value = '';
+                    }
+                };
+
                 const HIDDEN_SETTING_KEYS = new Set([
                     'transcription_models_visible_json',
                     'transcription_default_model',
@@ -2348,8 +2503,9 @@ Summarization Instructions:
                     'voice_space_current', 'voice_space_legacy',
                     'voice_embedding_reference',
                 ]);
+                // The settings of the User defaults panel are edited there.
                 const displayedSettings = computed(() =>
-                    (settings.value || []).filter(s => !HIDDEN_SETTING_KEYS.has(s.key)).slice().sort((a, b) => String(a.key).localeCompare(String(b.key)))
+                    (settings.value || []).filter(s => !HIDDEN_SETTING_KEYS.has(s.key) && !userDefaultKeys.value.has(s.key)).slice().sort((a, b) => String(a.key).localeCompare(String(b.key)))
                 );
                 // Transcription model curation state
                 const visibleTranscriptionModels = ref([]); // [{value, label}, ...]
@@ -2824,6 +2980,7 @@ Summarization Instructions:
                 const loadSettings = async () => {
                     isLoadingSettings.value = true;
                     try {
+                        loadUserDefaults();
                         const response = await fetch('/admin/settings');
                         if (response.status === 429) {
                             throw new Error('Rate limit exceeded. Please wait a moment and try again.');
@@ -2841,7 +2998,6 @@ Summarization Instructions:
                             'asr_async_jobs',
                             'login_max_failed_attempts',
                             'login_lockout_minutes',
-                            'default_timezone',
                             'admin_default_summary_prompt',
                             'recording_disclaimer',
                             'upload_disclaimer',
@@ -3282,9 +3438,6 @@ Summarization Instructions:
                         'upload_disclaimer': 'adminDashboard.settings.uploadDisclaimerDesc',
                         'custom_banner': 'adminDashboard.settings.customBannerDesc',
                         'disable_auto_translation': 'adminDashboard.settings.disableAutoTranslationDesc',
-                        'default_ui_theme': 'adminDashboard.settings.defaultUiThemeDesc',
-                        'default_color_scheme': 'adminDashboard.settings.defaultColorSchemeDesc',
-                        'default_audio_player_position': 'adminDashboard.settings.defaultAudioPlayerPositionDesc',
                         'sso_api_tokens_enabled': 'adminDashboard.settings.ssoApiTokensEnabledDesc',
                         'sso_api_allowed_clients': 'adminDashboard.settings.ssoApiAllowedClientsDesc',
                         'sso_api_exchange_clients': 'adminDashboard.settings.ssoApiExchangeClientsDesc',
@@ -4694,6 +4847,7 @@ Summarization Instructions:
                     formatCompact, formatCost, formatModelCost, formatSeconds, formatDay,
                     settings,
                     displayedSettings,
+                    userDefaultRows, userDefaultSaving, userDefaultMessage, userDefaultError, changeUserDefault,
                     isLoadingUsers,
                     isLoadingSettings,
                     auditGroups, auditOutcomes, auditActorKinds, auditFilters, auditEvents,

@@ -272,12 +272,14 @@ def test_admins_can_save_a_valid_player_position(cleanup):
         assert ui_themes.new_user_audio_player_position() == "bottom"
 
 
-def test_the_player_error_and_description_exist_in_every_locale():
+def test_the_player_error_exists_in_every_locale():
     for name in sorted(os.listdir(os.path.join(ROOT, "static", "locales"))):
         if not name.endswith(".json"):
             continue
         data = json.load(open(os.path.join(ROOT, "static", "locales", name), encoding="utf-8"))
-        assert data["adminDashboard"]["settings"]["defaultAudioPlayerPositionDesc"], name
+        # The setting is shown in the User defaults panel, with the labels of
+        # the Account page (tests/test_user_defaults.py).
+        assert data["display"]["audioPlayerPositionLabel"], name
         assert "{{positions}}" in data["server"]["apiError"]["invalid_default_audio_player_position"], name
 
 

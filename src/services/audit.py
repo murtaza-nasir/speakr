@@ -115,7 +115,7 @@ EVENTS = {
     'admin.user.unlocked': ('admin', _NONE),
     'admin.user.role_changed': ('admin', frozenset({'old', 'new'})),
     'admin.user.deleted': ('admin', frozenset({'username', 'recordings_deleted'})),
-    'admin.setting.changed': ('admin', frozenset({'key', 'old', 'new'})),
+    'admin.setting.changed': ('admin', frozenset({'key', 'old', 'new', 'users_updated'})),
     'admin.retention.run': ('admin', frozenset({'checked', 'deleted_audio_only', 'deleted_full', 'errors'})),
     'admin.inquire.processed': ('admin', frozenset({'processed', 'failed', 'total', 'force'})),
     'group.created': ('admin', _NONE),
@@ -966,6 +966,11 @@ _SETTING_ENUMS = {
 _BOOLEAN_WORDS = {'true': 'true', '1': 'true', 'yes': 'true', 'false': 'false', '0': 'false', 'no': 'false'}
 
 
+def _user_default(key):
+    from src.services import user_defaults
+    return user_defaults.get(key)
+
+
 def setting_value(key, raw):
     """A setting value as a details value: a boolean word, an integer or a
     code of the setting's enumeration. Anything else is 'other'; an empty or
@@ -974,6 +979,14 @@ def setting_value(key, raw):
         return None
     if isinstance(raw, bool):
         return 'true' if raw else 'false'
+    user_default = _user_default(key)
+    if user_default is not None:
+        # A default for user settings: a value of its list (a theme id, a
+        # language, a time zone, a switch).
+        try:
+            return user_default.clean(raw)
+        except ValueError:
+            return 'other'
     text_value = str(raw).strip().lower()
     if key in _SETTING_ENUMS:
         return text_value if text_value in _SETTING_ENUMS[key] else 'other'
@@ -1021,8 +1034,11 @@ def known_setting_key(key):
         return False
 
 
-def setting_changed(key, old_raw, new_raw):
+def setting_changed(key, old_raw, new_raw, users_updated=None):
     """admin.setting.changed in the transaction of the change.
+
+    users_updated: for a default for user settings, the number of existing
+    accounts that got the new default (0 when only new accounts get it).
 
     The key is stored when it is a setting the application defines, else as
     'other'. Old and new value are stored for the keys in SETTING_VALUE_KEYS
@@ -1031,8 +1047,10 @@ def setting_changed(key, old_raw, new_raw):
     """
     known = known_setting_key(key)
     details = {'key': key if known else 'other'}
-    if known and key in SETTING_VALUE_KEYS:
+    if known and (key in SETTING_VALUE_KEYS or _user_default(key) is not None):
         details['old'] = setting_value(key, old_raw)
         details['new'] = setting_value(key, new_raw)
+    if known and users_updated is not None:
+        details['users_updated'] = int(users_updated)
     return record_in_tx('admin.setting.changed', details=details,
                         force=known and key.startswith('audit_log_'))
