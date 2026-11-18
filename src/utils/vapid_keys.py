@@ -80,18 +80,6 @@ def load_vapid_keys():
         return None
 
 
-def get_public_key():
-    """Get the public VAPID key for client use"""
-    keys = load_vapid_keys()
-    return keys['public_key'] if keys else None
-
-
-def get_private_key():
-    """Get the private VAPID key for server use"""
-    keys = load_vapid_keys()
-    return keys['private_key'] if keys else None
-
-
 # Initialize on module import
 VAPID_KEYS = load_vapid_keys()
 VAPID_ENABLED = VAPID_KEYS is not None

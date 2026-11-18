@@ -156,14 +156,6 @@ def _setting(key, env_var, default):
     return value.strip().lower() if isinstance(value, str) else value
 
 
-def is_valid_new_user_theme(value):
-    return is_available(value)
-
-
-def is_valid_color_scheme(value):
-    return value in COLOR_SCHEMES
-
-
 def new_user_theme():
     """The UI theme for new accounts: an available theme id."""
     value = _setting('default_ui_theme', 'DEFAULT_UI_THEME', NEW_USER_THEME)
@@ -180,10 +172,6 @@ def new_user_color_scheme():
         return value
     _warn_once('DEFAULT_COLOR_SCHEME', value, DEFAULT_COLOR_SCHEME)
     return DEFAULT_COLOR_SCHEME
-
-
-def is_valid_audio_player_position(value):
-    return value in AUDIO_PLAYER_POSITIONS
 
 
 def new_user_audio_player_position():

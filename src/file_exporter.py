@@ -71,12 +71,6 @@ def get_export_directory(user):
     return user_dir
 
 
-def generate_safe_filename(recording):
-    """Generate a safe filename for the export based on recording ID only."""
-    # Use only recording ID for consistent filename that doesn't change
-    return f"recording_{recording.id}"
-
-
 # Default filename template — reproduces the legacy "recording_{id}" naming
 # exactly, so users who never touch the setting see no behavior change (#348).
 DEFAULT_EXPORT_FILENAME_TEMPLATE = 'recording_{{id}}'
@@ -179,12 +173,6 @@ def get_stored_export_filename(recording):
     using the legacy "recording_{id}" so existing files remain addressable.
     """
     return recording.export_filename or f"recording_{recording.id}"
-
-
-def get_export_filepath(user, recording):
-    """Get the full export filepath for a recording."""
-    export_dir = get_export_directory(user)
-    return export_dir / f"{get_stored_export_filename(recording)}.md"
 
 
 # The delete endpoint removes the Recording row BEFORE calling

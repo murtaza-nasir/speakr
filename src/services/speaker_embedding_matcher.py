@@ -188,50 +188,6 @@ def calculate_confidence(speaker):
     return min(1.0, max(0.0, confidence))
 
 
-def get_speaker_voice_profile_summary(speaker):
-    """
-    Get a human-readable summary of a speaker's voice profile.
-
-    Args:
-        speaker: Speaker model instance
-
-    Returns:
-        dict: Profile summary with statistics and status
-    """
-    if not speaker.average_embedding:
-        return {
-            'has_profile': False,
-            'message': 'No voice profile yet'
-        }
-
-    return {
-        'has_profile': True,
-        'embedding_count': speaker.embedding_count or 0,
-        'confidence_score': speaker.confidence_score or 0.0,
-        'confidence_level': _get_confidence_level(speaker.confidence_score),
-        'last_updated': speaker.embeddings_history[-1]['timestamp'] if speaker.embeddings_history else None,
-        'recordings': len(speaker.embeddings_history or [])
-    }
-
-
-def _get_confidence_level(score):
-    """
-    Convert numeric confidence score to human-readable level.
-
-    Args:
-        score: float (0-1)
-
-    Returns:
-        str: 'low', 'medium', or 'high'
-    """
-    if score is None or score < 0.6:
-        return 'low'
-    elif score < 0.8:
-        return 'medium'
-    else:
-        return 'high'
-
-
 # Threshold mapping for auto-labelling
 AUTO_LABEL_THRESHOLDS = {
     'low': 0.3,      # Aggressive, may have more false positives

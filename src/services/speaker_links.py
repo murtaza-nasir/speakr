@@ -115,13 +115,6 @@ def link_segments(recording, speakers=None):
     return json.dumps(segments) if link_list(segments, recording, speakers) else None
 
 
-def link_recording(recording):
-    """link_segments and assign the result (an ORM change; no commit)."""
-    text = link_segments(recording)
-    if text is not None:
-        recording.transcription = text
-
-
 def backfill_all(engine, logger=None, batch=200):
     """Link every stored JSON transcript, once (run_once 0003).
 
