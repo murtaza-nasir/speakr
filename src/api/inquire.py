@@ -33,6 +33,8 @@ USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 
 # Most chunks POST /api/inquire/search returns (#628)
 INQUIRE_SEARCH_MAX_TOP_K = 50
+# InquireSession.session_name is a String(200) (#629)
+INQUIRE_SESSION_NAME_MAX_CHARS = 200
 
 # Global helpers (will be injected from app)
 has_recording_access = None
@@ -113,10 +115,20 @@ def create_inquire_session():
             checked = checked_filters(data)
         except FilterError as e:
             return jsonify(api_error(e.code)), 400
+        # The column holds 200 characters (#629)
+        name = data.get('session_name')
+        if name is not None and (not isinstance(name, str) or len(name) > INQUIRE_SESSION_NAME_MAX_CHARS):
+            return jsonify(api_error('invalid_session_name', max=INQUIRE_SESSION_NAME_MAX_CHARS)), 400
+        # A session is not saved around a recording the caller cannot search:
+        # the filter would match nothing. Refused, never silently narrowed (#629).
+        if checked['filter_recording_ids']:
+            allowed = set(get_accessible_recording_ids(current_user.id))
+            if any(rid not in allowed for rid in checked['filter_recording_ids']):
+                return jsonify(api_error('invalid_recording_ids')), 400
 
         session = InquireSession(
             user_id=current_user.id,
-            session_name=data.get('session_name'),
+            session_name=name,
             filter_tags=json.dumps(checked['filter_tags']),
             filter_speakers=json.dumps(real_speaker_names(checked['filter_speakers'])),
             filter_date_from=checked['filter_date_from'],

@@ -286,6 +286,7 @@ def test_create_session_no_data_400(client):
 
 def test_create_session_success(client):
     user_id = _make_user()
+    rid = _make_recording(user_id)
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True):
         resp = client.post('/api/inquire/sessions', json={
@@ -294,14 +295,66 @@ def test_create_session_success(client):
             'filter_speakers': ['Alice'],
             'filter_date_from': '2024-01-01',
             'filter_date_to': '2024-12-31',
-            'filter_recording_ids': [42],
+            'filter_recording_ids': [rid],
         })
         assert resp.status_code == 201
         data = resp.get_json()
         assert data['session_name'] == 'My Session'
         assert data['filter_speakers'] == ['Alice']
-        assert data['filter_recording_ids'] == [42]
+        assert data['filter_recording_ids'] == [rid]
         assert data['filter_date_from'] == '2024-01-01'
+
+
+@pytest.mark.parametrize('body', [
+    {'filter_recording_ids': 'all'}, {'filter_recording_ids': 42}, {'filter_recording_ids': {'a': 1}},
+    {'filter_recording_ids': ['1', '2']}, {'filter_recording_ids': [True]}, {'filter_tags': 'notlist'},
+    {'filter_tags': ['x']}, {'filter_speakers': 42}, {'filter_speakers': ['Alice', 3]},
+    {'session_name': 123}, {'session_name': {'a': 1}},
+])
+def test_create_session_rejects_invalid_filter_shapes(client, body):
+    """A session is stored only with filters its readers can use (#629)."""
+    user_id = _make_user()
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True):
+        resp = client.post('/api/inquire/sessions', json=body)
+        assert resp.status_code == 400 and resp.is_json and resp.get_json()['code']
+    with app.app_context():
+        assert InquireSession.query.filter_by(user_id=user_id).all() == []
+
+
+def test_create_session_rejects_inaccessible_recording_id(client):
+    me = _make_user()
+    other = _make_user()
+    foreign = _make_recording(other)
+    mine = _make_recording(me)
+    with _login(client, me), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True):
+        resp = client.post('/api/inquire/sessions', json={'filter_recording_ids': [mine, foreign]})
+        assert resp.status_code == 400 and resp.get_json()['code'] == 'invalid_recording_ids'
+        resp = client.post('/api/inquire/sessions', json={'filter_recording_ids': [mine]})
+        assert resp.status_code == 201 and resp.get_json()['filter_recording_ids'] == [mine]
+
+
+def test_create_session_name_length_boundary(client):
+    user_id = _make_user()
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True):
+        resp = client.post('/api/inquire/sessions', json={'session_name': 'n' * 201})
+        assert resp.status_code == 400 and resp.get_json()['code'] == 'invalid_session_name'
+        with app.app_context():
+            assert InquireSession.query.filter_by(user_id=user_id).count() == 0
+        resp = client.post('/api/inquire/sessions', json={'session_name': 'n' * 200})
+        assert resp.status_code == 201 and len(resp.get_json()['session_name']) == 200
+
+
+def test_search_rejects_non_integer_ids(client):
+    user_id = _make_user()
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.semantic_search_chunks') as search:
+        resp = client.post('/api/inquire/search', json={'query': 'x', 'filter_recording_ids': ['1']})
+        assert resp.status_code == 400 and resp.get_json()['code'] == 'invalid_recording_ids_list'
+        search.assert_not_called()
 
 
 def test_get_sessions_owner_scoped(client):

@@ -137,6 +137,18 @@ def test_inquire_rejects_malformed_filters(world, filters, code):
     stream.assert_not_called()
 
 
+def test_inquire_still_narrows_digit_string_recording_ids(world):
+    seen = {}
+
+    def fake_stream(user, data, mode="auto"):
+        seen.update(data)
+        yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+
+    with patch("src.api.inquire.inquire_stream", side_effect=fake_stream):
+        resp = _inquire(world, {"question": "x", "filters": {"recording_ids": [str(world["rec"]), world["other"]]}})
+    assert resp.status_code == 200 and seen["filter_recording_ids"] == [world["rec"]]
+
+
 def test_inquire_parses_agent_links_into_citations(world):
     events = [
         {"agent_step": {"id": 1, "tool": "search"}},

@@ -3832,6 +3832,7 @@
       "invalid_default_audio_player_position": "Position par défaut du lecteur audio invalide. Valeurs possibles : {{positions}}",
       "sso_token_required": "Cette route n'accepte qu'un jeton d'accès SSO dans l'en-tête Authorization",
       "token_name_too_long": "name doit comporter au plus {{max}} caractères",
+      "invalid_session_name": "session_name doit être une chaîne d'au plus {{max}} caractères",
       "invalid_top_k": "top_k doit être compris entre 1 et {{max}}",
       "invalid_speaker_names": "les noms d'orateurs doivent être une liste de noms",
       "field_must_be_string": "{{field}} doit être une chaîne de caractères",

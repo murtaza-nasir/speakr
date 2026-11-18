@@ -79,12 +79,15 @@ def parse_filter_date(value):
         raise FilterError('invalid_filter_date') from None
 
 
-def filter_list(value, code):
+def filter_list(value, code, ids=False):
     """The list of a filter value, [] when absent (null); FilterError(code)
-    for any value that is not a list."""
+    for any value that is not a list, or with ids=True a list holding
+    anything but integer ids (#629: "1" is not coerced, True is not 1)."""
     if value is None:
         return []
     if not isinstance(value, list):
+        raise FilterError(code)
+    if ids and not all(isinstance(item, int) and not isinstance(item, bool) for item in value):
         raise FilterError(code)
     return value
 
@@ -92,15 +95,17 @@ def filter_list(value, code):
 def checked_filters(data):
     """The filter column of a request body (filter_tags, filter_folders,
     filter_speakers, filter_recording_ids, filter_date_from, filter_date_to),
-    checked: the id filters as lists, the speakers as a list or one name,
-    the dates parsed. The first unusable value raises FilterError.
-    The one check of every route that takes these filters (#627)."""
+    checked: the id filters as lists of integer ids, the speakers as a list
+    of names or one name, the dates parsed. The first unusable value raises
+    FilterError. The one check of every route that takes these filters
+    (#627, #629)."""
     data = data or {}
-    checked = {key: filter_list(data.get(key), code) for key, code in ID_FILTERS}
+    checked = {key: filter_list(data.get(key), code, ids=True) for key, code in ID_FILTERS}
     speakers = data.get('filter_speakers')
     if speakers is None:
         speakers = []
-    if not isinstance(speakers, (str, list)):
+    if not (isinstance(speakers, str)
+            or (isinstance(speakers, list) and all(isinstance(name, str) for name in speakers))):
         raise FilterError('invalid_speaker_names')
     checked['filter_speakers'] = speakers
     checked['filter_date_from'] = parse_filter_date(data.get('filter_date_from'))

@@ -3670,10 +3670,11 @@ def inquire_v1():
     if not isinstance(filters, dict):
         return jsonify({'error': translate('server.apiError.invalid_filters'), 'code': 'invalid_parameter'}), 400
     # The filters in the form of the web routes, with the same checks (#627)
-    from src.services.assistant_events import FilterError, checked_filters
+    # recording_ids may hold digit strings: they only narrow the scope below.
+    from src.services.assistant_events import FilterError, checked_filters, filter_list
     try:
+        wanted_ids = filter_list(filters.get('recording_ids'), 'invalid_recording_ids_list')
         checked = checked_filters({
-            'filter_recording_ids': filters.get('recording_ids'),
             'filter_tags': filters.get('tag_ids'),
             'filter_folders': filters.get('folder_ids'),
             'filter_speakers': filters.get('speakers'),
@@ -3684,8 +3685,8 @@ def inquire_v1():
         return jsonify(api_error(e.code)), 400
 
     allowed = [rid for (rid,) in db.session.query(Recording.id).filter(scope_condition(current_user.id, scope))]
-    if checked['filter_recording_ids']:
-        wanted = {int(r) for r in checked['filter_recording_ids'] if str(r).isdigit()}
+    if wanted_ids:
+        wanted = {int(r) for r in wanted_ids if str(r).isdigit()}
         allowed = [rid for rid in allowed if rid in wanted]
     if not allowed:
         return jsonify({'answer': 'There are no recordings to search with these filters.', 'citations': [],

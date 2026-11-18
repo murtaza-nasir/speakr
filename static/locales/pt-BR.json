@@ -3832,6 +3832,7 @@
       "invalid_default_audio_player_position": "Posição padrão do player de áudio inválida. Deve ser uma destas: {{positions}}",
       "sso_token_required": "Esta rota aceita apenas um token de acesso SSO no cabeçalho Authorization",
       "token_name_too_long": "name deve ter no máximo {{max}} caracteres",
+      "invalid_session_name": "session_name deve ser uma string de no máximo {{max}} caracteres",
       "invalid_top_k": "top_k deve estar entre 1 e {{max}}",
       "invalid_speaker_names": "os nomes de oradores devem ser uma lista de nomes",
       "field_must_be_string": "{{field}} deve ser uma string",

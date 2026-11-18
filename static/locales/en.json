@@ -3832,6 +3832,7 @@
       "invalid_default_audio_player_position": "Invalid default audio player position. Must be one of: {{positions}}",
       "sso_token_required": "This route accepts only an SSO access token in the Authorization header",
       "token_name_too_long": "name must be at most {{max}} characters",
+      "invalid_session_name": "session_name must be a string of at most {{max}} characters",
       "invalid_top_k": "top_k must be between 1 and {{max}}",
       "invalid_speaker_names": "speaker names must be a list of names",
       "field_must_be_string": "{{field}} must be a string",
