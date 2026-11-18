@@ -101,3 +101,17 @@ def checked_history(raw, v1=False):
                           'code': 'invalid_parameter'}
         return None, api_error('invalid_message_history')
     return bounded_history(raw), None
+
+
+def history_trimmed_event(raw, kept, language=None):
+    """The SSE step that says earlier messages were left out (#633), or ''
+    when the history was used whole. Shown in the answer's activity list."""
+    if not isinstance(raw, list) or not isinstance(kept, list) or len(kept) >= len(raw):
+        return ''
+    import json
+    dropped = len(raw) - len(kept)
+    step = {'id': 'history-trimmed', 'name': 'history_trimmed', 'tool': 'history_trimmed',
+            'icon': 'fa-scissors', 'status': 'done',
+            'label': translate('server.assistant.step.historyTrimmed', language, count=dropped)}
+    return f"data: {json.dumps({'agent_step': step})}\n\n"
+

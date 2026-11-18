@@ -18,7 +18,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import translate, api_error
-from src.utils.assistant_limits import checked_history, question_error
+from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
 from src.utils.error_text import log_failure, user_error_text
 from src.utils.speaker_labels import real_speaker_names
 from src.services.assistant_events import FilterError, checked_filters, filters_from_request
@@ -900,7 +900,8 @@ def inquire_chat():
             return jsonify(too_long), 400
         # A list of {role, content}, else 400; the newest turns within the
         # limits reach the model (src/utils/assistant_limits.py, #633).
-        message_history, bad_history = checked_history(data.get('message_history'))
+        raw_history = data.get('message_history')
+        message_history, bad_history = checked_history(raw_history)
         if bad_history:
             return jsonify(bad_history), 400
         data = dict(data, message_history=message_history)
@@ -927,7 +928,13 @@ def inquire_chat():
         if not 1 <= context_chunks <= INQUIRE_SEARCH_MAX_TOP_K:
             return jsonify(api_error('invalid_context_chunks', max=INQUIRE_SEARCH_MAX_TOP_K)), 400
         stream = inquire_stream(current_user, data, tool_names=tools_for_surface('ask'))
-        return Response(library_events(stream, request_language()), mimetype='text/event-stream')
+        trimmed = history_trimmed_event(raw_history, message_history, request_language())
+
+        def with_notice():
+            if trimmed:
+                yield trimmed
+            yield from library_events(stream, request_language())
+        return Response(with_notice(), mimetype='text/event-stream')
 
     except Exception as e:
         log_failure(current_app.logger, 'error', "Error in inquire chat endpoint", e)

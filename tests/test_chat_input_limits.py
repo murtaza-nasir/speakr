@@ -445,3 +445,22 @@ def test_every_chat_refuses_a_message_that_is_not_text(world, message):
     resp, seen = _v1_inquire(world, {"question": message})
     assert resp.status_code == 400 and seen == []
 
+
+def test_history_trimmed_event_names_the_dropped_messages():
+    from src.utils.assistant_limits import bounded_history, history_trimmed_event
+    raw = [{"role": "user" if i % 2 == 0 else "assistant", "content": "x"} for i in range(60)]
+    kept = bounded_history(raw)
+    event = history_trimmed_event(raw, kept, "en")
+    assert event.startswith("data: ") and "history_trimmed" in event and "(20)" in event
+    assert history_trimmed_event(raw[:10], raw[:10], "en") == ""
+    assert history_trimmed_event(None, [], "en") == ""
+
+
+def test_the_ask_page_says_when_earlier_messages_are_left_out(world):
+    history = [{"role": "user" if i % 2 == 0 else "assistant", "content": f"m{i}"} for i in range(60)]
+    resp, text, _ = _ask(world, {"message": "q", "message_history": history}, _stream("ok"))
+    assert resp.status_code == 200
+    assert "history_trimmed" in text
+    resp, text, _ = _ask(world, {"message": "q", "message_history": history[:4]}, _stream("ok"))
+    assert "history_trimmed" not in text
+

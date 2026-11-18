@@ -24,7 +24,7 @@ from src.services.recording_deletion import delete_recording_completely, cleanup
 from src.models import *
 from src.utils import *
 from src.utils.request_body import optional_json_object
-from src.utils.assistant_limits import checked_history, question_error
+from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
 from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
 
@@ -2554,9 +2554,12 @@ def chat_incognito():
         too_long = question_error(user_message)
         if too_long:
             return jsonify(too_long), 400
+        raw_history = message_history
         message_history, bad_history = checked_history(message_history)
         if bad_history:
             return jsonify(bad_history), 400
+        from src.utils.localization import request_language as _request_language
+        history_notice = history_trimmed_event(raw_history, message_history, _request_language())
 
         # Check if chat client is available
         if chat_client is None:
@@ -2596,6 +2599,8 @@ def chat_incognito():
                                                 user_id=user_id, operation_type='chat')
                 stream = process_streaming_with_thinking(response, user_id=user_id, operation_type='chat',
                                                          app=app)
+                if history_notice:
+                    yield history_notice
                 for event in recording_events(stream, segments):
                     yield event
 
@@ -3386,9 +3391,12 @@ def chat_with_transcription():
         too_long = question_error(user_message)
         if too_long:
             return jsonify(too_long), 400
+        raw_history = message_history
         message_history, bad_history = checked_history(message_history)
         if bad_history:
             return jsonify(bad_history), 400
+        from src.utils.localization import request_language as _request_language
+        history_notice = history_trimmed_event(raw_history, message_history, _request_language())
 
         # Get the recording
         recording = db.session.get(Recording, recording_id)
@@ -3484,6 +3492,8 @@ def chat_with_transcription():
                         operation_type='chat')
                 # `source` events for the model's segment citations
                 # (src/services/assistant_events.py).
+                if history_notice:
+                    yield history_notice
                 for event in recording_events(raw, segments):
                     yield event
 
