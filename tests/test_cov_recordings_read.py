@@ -1898,3 +1898,31 @@ def test_reindex_chunks_noop_when_inquire_disabled(owner):
             rec_module.reindex_recording_chunks_async(987654321)
             enqueue.assert_not_called()
             proc.assert_not_called()
+
+
+def test_search_folds_the_case_of_letters_outside_ascii():
+    """On SQLite too, "привет" finds "Привет" and "ángel" finds "Ángel" (#622)."""
+    import json as _json
+    from sqlalchemy import or_
+    from src.utils.search import needs_unicode_fold, text_contains, transcript_contains
+    assert needs_unicode_fold("привет") and needs_unicode_fold("Ángel")
+    assert not needs_unicode_fold("hello") and not needs_unicode_fold("大家")
+    with app.app_context():
+        owner = User(username=f"fold_{uuid.uuid4().hex[:8]}", email=f"fold_{uuid.uuid4().hex[:8]}@example.com")
+        db.session.add(owner); db.session.commit()
+        segments = [{"speaker": "A", "sentence": "Привет, Москва. Ángel y Óscar."}]
+        rec = Recording(user_id=owner.id, title="Встреча в Москве", status="COMPLETED",
+                        transcription=_json.dumps(segments, ensure_ascii=False))
+        db.session.add(rec); db.session.commit()
+        try:
+            def found(condition):
+                return Recording.query.filter(Recording.id == rec.id, condition).count() == 1
+            for term in ("привет", "ПРИВЕТ", "москва", "МОСКВА", "ángel", "ÓSCAR"):
+                assert found(transcript_contains(Recording.transcription, term)), term
+            for term in ("встреча", "МОСКВЕ"):
+                assert found(text_contains(Recording.title, term)), term
+            assert not found(transcript_contains(Recording.transcription, "пока"))
+            assert not found(text_contains(Recording.title, "пока"))
+        finally:
+            db.session.delete(rec); db.session.delete(owner); db.session.commit()
+

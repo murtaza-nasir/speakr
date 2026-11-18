@@ -52,7 +52,7 @@ from src.services.llm import client, chat_client, call_chat_completion, process_
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording
 from src.utils.mime import served_media_mime, sandbox_media_response
-from src.utils.search import LIKE_ESCAPE, contains_pattern, transcript_contains
+from src.utils.search import LIKE_ESCAPE, contains_pattern, text_contains, transcript_contains
 from src.services.storage import get_storage_service
 from src.services.recording_ingestion import ingest
 from src.services.recording_filters import (
@@ -1498,13 +1498,13 @@ def get_recordings_paginated():
                 # Every character typed is matched literally (#485)
                 pattern = contains_pattern(text_query)
                 text_conditions = [
-                    Recording.title.ilike(pattern, escape=LIKE_ESCAPE),
-                    Recording.participants.ilike(pattern, escape=LIKE_ESCAPE),
+                    text_contains(Recording.title, text_query),
+                    text_contains(Recording.participants, text_query),
                     transcript_contains(Recording.transcription, text_query),
                     # Search owner's notes for owned recordings
                     db.and_(
                         Recording.user_id == current_user.id,
-                        Recording.notes.ilike(pattern, escape=LIKE_ESCAPE)
+                        text_contains(Recording.notes, text_query)
                     )
                 ]
 

@@ -47,7 +47,46 @@ def transcript_patterns(term):
     return [contains_pattern(text) for text in texts]
 
 
-def transcript_contains(column, term):
-    """ILIKE condition: `column` (a transcript) contains `term`; see transcript_patterns."""
+def needs_unicode_fold(term):
+    """Whether `term` has a letter outside ASCII that has another case."""
+    return any(ord(c) > 127 and (c.lower() != c or c.upper() != c) for c in term)
+
+
+def _on_sqlite():
+    try:
+        from src.database import db
+        return db.engine.dialect.name == 'sqlite'
+    except Exception:
+        return False
+
+
+def _unicode_fold(column, term):
+    """On SQLite, a condition that matches `term` in any case of a letter
+    outside ASCII (speakr_casefold, registered in src/database.py); None where
+    it is not needed: an ASCII-only term, or PostgreSQL, whose ILIKE folds
+    Unicode itself (#622)."""
+    if not needs_unicode_fold(term) or not _on_sqlite():
+        return None
+    from sqlalchemy import func
+    return func.speakr_casefold(column).like(contains_pattern(term.casefold()), escape=LIKE_ESCAPE)
+
+
+def text_contains(column, term):
+    """ILIKE condition: `column` (plain text, e.g. a title) contains `term`,
+    in any case of the letters, Unicode letters on SQLite included."""
     from sqlalchemy import or_
-    return or_(*[column.ilike(pattern, escape=LIKE_ESCAPE) for pattern in transcript_patterns(term)])
+    condition = column.ilike(contains_pattern(term), escape=LIKE_ESCAPE)
+    folded = _unicode_fold(column, term)
+    return condition if folded is None else or_(condition, folded)
+
+
+def transcript_contains(column, term):
+    """ILIKE condition: `column` (a transcript) contains `term`; see
+    transcript_patterns. On SQLite a term with letters outside ASCII is also
+    compared case-folded, so "привет" finds "Привет"."""
+    from sqlalchemy import or_
+    conditions = [column.ilike(pattern, escape=LIKE_ESCAPE) for pattern in transcript_patterns(term)]
+    folded = _unicode_fold(column, term)
+    if folded is not None:
+        conditions.append(folded)
+    return or_(*conditions)
