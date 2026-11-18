@@ -686,6 +686,8 @@ def _run_migrations(app, engine):
             app.logger.info("Added speaker_count_mode column to user table")
         if add_column_if_not_exists(engine, 'user', 'audio_player_position', "VARCHAR(10) DEFAULT 'bottom'"):
             app.logger.info("Added audio_player_position column to user table")
+        if add_column_if_not_exists(engine, 'user', 'chosen_settings', "TEXT"):
+            app.logger.info("Added chosen_settings column to user table")
         if add_column_if_not_exists(engine, 'user', 'default_recording_sort', 'VARCHAR(16)'):
             app.logger.info("Added default_recording_sort column to user table")
 

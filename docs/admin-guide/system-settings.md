@@ -163,7 +163,7 @@ The **User defaults** panel lists the settings that every new account starts wit
 
 The defaults are written on an account when it is created: by registration, by an administrator, by a first SSO sign-in and by the admin account from `.env`.
 
-**Existing accounts.** When you change a default and some accounts still have the previous default, their number is shown and you are asked whether to apply the change to them. With **Apply to N accounts**, only those accounts are updated. An account with any other value was changed by its user and stays as it is. With **New accounts only**, the default is saved and no account changes. With **Cancel**, the default stays as it was. Without such accounts, the default is saved without a question.
+**Existing accounts.** When you change a default and some accounts still have the previous default, their number is shown and you are asked whether to apply the change to them. With **Apply to N accounts**, only those accounts are updated. An account with any other value was changed by its user and stays as it is. The same holds for an account whose user changed the setting and later went back to the default value; such changes are recorded from this version on. With **New accounts only**, the default is saved and no account changes. With **Cancel**, the default stays as it was. Without such accounts, the default is saved without a question.
 
 An account from before a setting existed has no stored value. It counts as having the previous default only when the missing value means that default: the standard theme, the blue color scheme, the player at the bottom, English, automatic language detection, the automatic timezone, summaries on, speaker labelling off and event extraction off.
 

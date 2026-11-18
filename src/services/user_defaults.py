@@ -16,6 +16,12 @@ with any other value was changed by its user and is left alone. NULL in a
 column counts as the previous default only where NULL means that value (see
 null_value of each default).
 
+A setting that was changed on an account is listed in User.chosen_settings
+from then on (mark_changed_settings, called before every update of a user
+row). Such an account is left alone for that setting, also after its user
+went back to the value of the default. Accounts from before the column have
+no list: for them only the value tells.
+
 Every row of the user table is an account of a person; Speakr has no service
 accounts, so all rows are counted.
 """
@@ -23,7 +29,7 @@ accounts, so all rows are counted.
 import logging
 import os
 
-from sqlalchemy import and_, false, or_
+from sqlalchemy import and_, event, false, inspect, not_, or_
 
 from src.config import ui_themes
 
@@ -344,10 +350,54 @@ def apply_new_user_defaults(user):
     return user
 
 
-def accounts_on(default, value):
-    """The number of accounts whose setting equals ``value``."""
+def _marker(key):
+    return f',{key},'
+
+
+def _unchosen(default):
+    """The accounts on which the setting was never changed."""
     from src.models import User
-    return User.query.filter(default.condition(value)).count()
+    return or_(User.chosen_settings.is_(None),
+               not_(User.chosen_settings.contains(_marker(default.key), autoescape=True)))
+
+
+def _changed(state, column):
+    history = state.attrs[column].history
+    if not history.has_changes() or not history.added:
+        return False
+    old = history.deleted[0] if history.deleted else None
+    return (old or None) != (history.added[0] or None)
+
+
+def mark_changed_settings(user):
+    """List in chosen_settings the settings whose value is being changed on
+    an account that exists. The zone that a browser reports in automatic mode
+    is not a choice of the default time zone."""
+    from src.utils.timezones import MODE_FIXED
+    state = inspect(user)
+    chosen = user.chosen_settings or ','
+    for default in DEFAULTS:
+        if _marker(default.key) in chosen or not _changed(state, default.column):
+            continue
+        if default.key == 'default_timezone' and user.timezone_mode != MODE_FIXED:
+            continue
+        chosen += default.key + ','
+    if chosen != (user.chosen_settings or ','):
+        user.chosen_settings = chosen
+
+
+def _register_listener():
+    from src.models import User
+
+    @event.listens_for(User, 'before_update')
+    def _before_update(_mapper, _connection, target):
+        mark_changed_settings(target)
+
+
+def accounts_on(default, value):
+    """The number of accounts that have ``value`` and never changed the setting."""
+    from src.models import User
+    return User.query.filter(and_(default.condition(value), _unchosen(default))).count()
 
 
 def apply_to_existing(default, old, new):
@@ -356,7 +406,7 @@ def apply_to_existing(default, old, new):
     from src.models import User
     if old == new:
         return 0
-    return User.query.filter(default.condition(old)).update(
+    return User.query.filter(and_(default.condition(old), _unchosen(default))).update(
         default.assignment(new), synchronize_session=False)
 
 
@@ -378,3 +428,6 @@ def describe():
             'description': row.description if row is not None else None,
         })
     return result
+
+
+_register_listener()

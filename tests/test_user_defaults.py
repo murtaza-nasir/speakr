@@ -639,3 +639,88 @@ def test_other_settings_are_recorded_without_a_number_of_accounts(cleanup, audit
     finally:
         with app.app_context():
             SystemSetting.set_setting("max_concurrent_uploads", saved, None, "integer")
+
+
+# ---------------------------------------------------------------- settings a user changed
+
+
+def _chosen(uid):
+    return _value(uid, "chosen_settings") or ""
+
+
+def test_a_new_account_has_no_changed_settings(cleanup):
+    client = app.test_client()
+    s = uuid.uuid4().hex[:8]
+    with mock.patch.object(auth_mod, "is_registration_domain_allowed", return_value=True), \
+            mock.patch.dict(os.environ, {"ALLOW_REGISTRATION": "true"}):
+        with app.app_context():
+            u = User(username=f"ud_{s}", email=f"ud_{s}@local.test", password="x")
+            user_defaults.apply_new_user_defaults(u)
+            db.session.add(u)
+            db.session.commit()
+            cleanup.append(u.email)
+            uid = u.id
+    assert _chosen(uid) == ""
+
+
+def test_a_setting_the_user_changes_is_listed_and_the_others_are_not(cleanup):
+    uid = _user(cleanup)
+    resp = _client(uid).post("/api/user/preferences", json={"language": "de"})
+    assert resp.status_code == 200
+    assert _chosen(uid) == ",default_ui_language,"
+    # Saving the same value again, or another setting, adds only what changed.
+    _client(uid).post("/api/user/preferences", json={"language": "de", "color_scheme": "teal"})
+    assert _chosen(uid) == ",default_ui_language,default_color_scheme,"
+
+
+def test_saving_an_unchanged_value_lists_nothing(cleanup):
+    uid = _user(cleanup, ui_language="en")
+    _client(uid).post("/api/user/preferences", json={"language": "en"})
+    assert _chosen(uid) == ""
+
+
+def test_an_account_back_on_the_default_by_its_own_choice_keeps_its_value(cleanup):
+    admin = _user(cleanup, is_admin=True, theme_color_scheme="purple")
+    _save({"default_color_scheme": "rose"})
+    untouched = _user(cleanup, theme_color_scheme="rose")
+    came_back = _user(cleanup, theme_color_scheme="rose")
+    client = _client(came_back)
+    client.post("/api/user/preferences", json={"color_scheme": "amber"})
+    client.post("/api/user/preferences", json={"color_scheme": "rose"})
+    assert _value(came_back, "theme_color_scheme") == "rose"
+    with app.app_context():
+        default = user_defaults.get("default_color_scheme")
+        ids = [u.id for u in User.query.filter(default.condition("rose")).all()]
+        assert untouched in ids and came_back in ids
+    count = _client(admin).get("/admin/user-defaults/default_color_scheme/accounts").get_json()["count"]
+    resp = _post(_client(admin), "default_color_scheme", "teal", apply_to_existing=True)
+    assert resp.get_json()["users_updated"] == count
+    assert _value(untouched, "theme_color_scheme") == "teal"
+    assert _value(came_back, "theme_color_scheme") == "rose"
+
+
+def test_applying_a_default_does_not_list_the_setting(cleanup):
+    admin = _user(cleanup, is_admin=True, theme_color_scheme="purple")
+    _save({"default_color_scheme": "rose"})
+    uid = _user(cleanup, theme_color_scheme="rose")
+    _post(_client(admin), "default_color_scheme", "teal", apply_to_existing=True)
+    assert _value(uid, "theme_color_scheme") == "teal" and _chosen(uid) == ""
+    # So a later change of the default reaches the account again.
+    _post(_client(admin), "default_color_scheme", "amber", apply_to_existing=True)
+    assert _value(uid, "theme_color_scheme") == "amber"
+
+
+def test_the_switches_and_the_zone_of_the_browser(cleanup):
+    uid = _user(cleanup, auto_summarization=True, timezone_mode="auto")
+    _client(uid).post("/api/user/auto-summarization", json={"enabled": False})
+    assert _chosen(uid) == ",default_auto_summarization,"
+    with app.app_context():
+        u = db.session.get(User, uid)
+        u.timezone = "Pacific/Chatham"      # what the browser reports in automatic mode
+        db.session.commit()
+    assert "default_timezone" not in _chosen(uid)
+    with app.app_context():
+        u = db.session.get(User, uid)
+        u.timezone_mode, u.timezone = "fixed", "Pacific/Apia"
+        db.session.commit()
+    assert _chosen(uid) == ",default_auto_summarization,default_timezone_mode,default_timezone,"
