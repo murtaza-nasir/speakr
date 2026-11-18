@@ -24,7 +24,7 @@ import pytest
 
 from tests.audit_log_support import (  # noqa: E402
     anonymous_client, api_token, app, audit, bearer, client_for, db, make_recording, make_user,
-    max_id, remove_users, reset_audit_settings, rows_after, set_setting,
+    max_id, remove_users, reset_audit_settings, rows_after, set_setting, unfreeze_hot_settings,
 )
 from src.models import AuditEvent, Share, SystemSetting  # noqa: E402
 
@@ -318,6 +318,9 @@ def created():
         audit.flush()
         audit.reset_memory()
         users = []
+        # The tests set sharing in System Settings; an earlier test file may
+        # have left the switch as a module attribute.
+        unfreeze_hot_settings()
         yield users
         audit.flush()
         with audit._lost_lock:

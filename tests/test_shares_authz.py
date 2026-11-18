@@ -166,14 +166,22 @@ def _anon_client():
 @contextmanager
 def _flag(module_attr, value, *modules):
     """Temporarily set a module-level config bool on each given module."""
-    saved = [(m, getattr(m, module_attr)) for m in modules]
+    # A name read through the module __getattr__ (apply_hot_settings) is not
+    # in the module __dict__. It is removed again afterwards: put back with
+    # setattr, it would stay an ordinary attribute and the saved setting would
+    # be ignored by every later test in the process.
+    missing = object()
+    saved = [(m, m.__dict__.get(module_attr, missing)) for m in modules]
     for m in modules:
         setattr(m, module_attr, value)
     try:
         yield
     finally:
         for m, old in saved:
-            setattr(m, module_attr, old)
+            if old is missing:
+                m.__dict__.pop(module_attr, None)
+            else:
+                setattr(m, module_attr, old)
 
 
 def _internal_enabled():
