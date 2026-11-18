@@ -2546,7 +2546,40 @@ th[aria-sort] > .sort-header .sort-header__icon {
     font-weight: 500;
     color: var(--text-secondary);
 }
-input.field.option-number { width: 4.75rem; }
+/* Speakers: the switch and the number fields share one row height and
+   fill the column, so the row ends where the field above it ends. */
+.speaker-row {
+    display: flex;
+    align-items: stretch;
+    gap: var(--sp-2);
+}
+.speaker-row > .seg { flex: 0 0 auto; }
+.speaker-row > .seg > .seg__item { min-height: 0; padding-block: 0; }
+.speaker-row > input.field.option-number { flex: 1 1 0; width: auto; min-width: 3.5rem; }
+.speaker-row__dash { align-self: center; color: var(--text-muted); }
+.option-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-3);
+}
+.option-link {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: var(--fs-meta);
+    font-family: inherit;
+    color: var(--text-accent);
+    text-decoration: underline;
+    cursor: pointer;
+}
+/* A row that the current choice does not use: kept in place, so the
+   layout does not move, and dimmed. */
+.is-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
 .option-notes {
     gap: 2px;
     font-size: 11px;
@@ -2657,24 +2690,25 @@ select.field.option-folder-select { padding-left: 2rem !important; }
     font-weight: 500;
     line-height: 1.5;
 }
-.tag-combo input.tag-combo__input {
+.tag-combo input.tag-combo__input,
+.dark .tag-combo input.tag-combo__input {
     flex: 1 1 80px;
     min-width: 60px;
+    min-height: 0;
     padding: 1px 0;
-    background: transparent;
-    border: none;
-    outline: none;
-    box-shadow: none;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
     font-size: var(--fs-meta);
     color: var(--text-primary);
 }
 .tag-combo__menu {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(100% + 4px);
-    z-index: 30;
-    max-height: 200px;
+    /* Teleported to <body>; left, width, top or bottom and max-height
+       come from placeUploadTagMenu(). */
+    position: fixed;
+    z-index: 300;
     overflow-y: auto;
     padding: 4px;
     background: var(--bg-secondary);
@@ -2724,39 +2758,138 @@ select.field.option-folder-select { padding-left: 2rem !important; }
 .upload-options {
     display: flex;
     flex-direction: column;
-    gap: var(--sp-3);
+    gap: var(--sp-5);
     margin-top: var(--sp-5);
 }
-.upload-options__title {
+.upload-options__note {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0 0 calc(var(--sp-2) * -1);
+    font-size: var(--fs-meta);
+    color: var(--text-muted);
+}
+
+/* A titled section of an option form: the title, a rule to the edge,
+   then the fields. */
+.option-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    min-width: 0;
+}
+.option-section__title {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
     margin: 0;
     font-size: var(--fs-meta);
     font-weight: 600;
     letter-spacing: 0.02em;
+    color: var(--text-secondary);
+}
+.option-section__title::after {
+    content: "";
+    flex: 1 1 auto;
+    height: var(--border-hairline);
+    background: var(--border-primary);
+}
+.option-help {
+    margin: 0;
+    font-size: 11px;
+    line-height: var(--lh-snug);
     color: var(--text-muted);
 }
-.upload-advanced > summary {
+
+/* A group of fields that belong together, behind a disclosure. The rule
+   at the left of the body ties the fields to the title. */
+.option-group > summary {
     list-style: none;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: var(--sp-2);
-    padding: var(--sp-1) 0;
     font-size: var(--fs-meta);
-    font-weight: 500;
-    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
     cursor: pointer;
 }
-.upload-advanced > summary::-webkit-details-marker { display: none; }
-.upload-advanced > summary:hover { color: var(--text-primary); }
-.upload-advanced > summary > .fa-chevron-right {
+.option-group > summary::-webkit-details-marker { display: none; }
+.option-group > summary::after {
+    content: "";
+    flex: 1 1 auto;
+    height: var(--border-hairline);
+    background: var(--border-primary);
+    margin-left: var(--sp-1);
+}
+.option-group > summary:hover { color: var(--text-primary); }
+.option-group > summary:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+.option-group > summary > .fa-chevron-right {
+    width: 0.75rem;
     font-size: 9px;
+    color: var(--text-muted);
     transition: transform var(--t-fast) ease;
 }
-.upload-advanced[open] > summary > .fa-chevron-right { transform: rotate(90deg); }
-.upload-advanced__body {
+.option-group[open] > summary > .fa-chevron-right { transform: rotate(90deg); }
+/* A dot beside the title while one of the fields has a value. */
+.option-group__state {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--text-accent);
+}
+.option-group__body {
     display: flex;
     flex-direction: column;
     gap: var(--sp-3);
-    padding-top: var(--sp-2);
+    margin: var(--sp-3) 0 0 0.3125rem;
+    padding: var(--sp-1) 0 var(--sp-1) var(--sp-4);
+    border-left: 2px solid var(--border-secondary, var(--border-primary));
+}
+/* The first row of a group: a control that acts on the fields below. */
+.option-group__tool {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-3);
+    color: var(--text-muted);
+}
+.option-group__tool > select.field { flex: 0 1 18rem; width: auto; min-width: 12rem; }
+.option-group__tool > .option-help { flex: 1 1 12rem; }
+/* Desktop: the dialog hangs from a fixed distance under the top edge,
+   so opening Advanced extends it downward and the tabs stay in place. */
+@media (min-width: 641px) {
+    .modal-overlay--anchor-top {
+        align-items: flex-start;
+        padding-top: clamp(16px, 7vh, 80px);
+    }
+    .modal-overlay--anchor-top > .modal-panel {
+        max-height: calc(100vh - clamp(16px, 7vh, 80px) - var(--sp-4));
+    }
+}
+.modal-panel.upload-dialog { max-height: 92vh; }
+/* Both tab panels in one grid cell: the dialog is as tall as the taller
+   panel, so a change of tab does not change its height. The hidden panel
+   counts for at most 30rem, which is more than the Upload tab without
+   files, so a long file list does not stretch the Record tab. */
+.modal-body.upload-panels {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+}
+.upload-panels > .upload-panel {
+    grid-area: 1 / 1;
+    min-width: 0;
+}
+.upload-panels > .upload-panel.is-inactive {
+    visibility: hidden;
+    pointer-events: none;
+    max-height: 30rem;
+    overflow: hidden;
 }
 .record-panel {
     display: flex;

@@ -1861,7 +1861,8 @@
     "textContent": "Текст",
     "transcriptTextPlaceholder": "Введите текст транскрипта…",
     "minShort": "Мин.",
-    "maxShort": "Макс."
+    "maxShort": "Макс.",
+    "transcriptionHints": "Подсказки для транскрипции"
   },
   "groups": {
     "addMembers": "Добавить участников…",
@@ -3246,7 +3247,6 @@
     "keepAudioOnlySubtitleOn": "Видео отброшено",
     "keepAudioOnlyLargerAllowed": "Допустимы более крупные загрузки",
     "largeVideoNotice": "Большой видеофайл. Транскрипция может занять больше времени.",
-    "options": "Параметры",
     "uploadAndAddMore": "Загрузить и добавить ещё",
     "joinModeLabel": "Как добавить эти файлы",
     "joinSeparate": "Отдельные записи",
@@ -3265,7 +3265,8 @@
     "tabUpload": "Загрузка файлов",
     "tabRecord": "Запись",
     "optionsForAll": "Параметры для всех файлов",
-    "advanced": "Дополнительно"
+    "sectionOrganize": "Организация",
+    "sectionTranscription": "Транскрипция"
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"

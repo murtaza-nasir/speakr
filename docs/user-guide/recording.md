@@ -191,7 +191,7 @@ Or use `qpwgraph` / `helvum` to wire it visually.
 
 ## Input Device Picker & Multi-Input Recording
 
-The **Record** tab shows the **Primary input** select for the two microphone sources. **More input settings** beneath it holds the second input and the audio processing switch:
+The **Record** tab shows the **Primary input** select for the two microphone sources. **More input settings** beneath it holds the second input and the audio processing switch. Rows that the selected source does not use stay in place and are dimmed, so the dialog keeps its height:
 
 ![Input device picker](../assets/images/screenshots/recording-input-device-picker.png)
 
@@ -272,7 +272,7 @@ After stopping a recording or dropping a file, the dialog stays open so you can 
 
 **1. File picker / queue.** The drag-and-drop file area at the top, plus the queued files list. Each queued file shows its **name**, **size**, and **duration** (probed asynchronously from the container header so it appears within a fraction of a second — no full payload read). Video files get a sky-blue video glyph instead of the audio one so you can tell which files in the queue are video at a glance. Dropping or choosing files switches the dialog to this tab.
 
-**2. Options.** Folder, tags, transcription language and speakers are always visible in one grid. The last entry of the folder list is **New folder**. The tags field is a search field: selected tags appear in the field, typing narrows the list, and the last row of the list creates a tag. Model, saved template, initial prompt and hotwords are under **Advanced**. With more than one file queued, the heading reads **Options for all files**.
+**2. Options.** Two sections are always visible. **Organization** has the folder and the tags: the last entry of the folder list is **New folder**, and the tags field is a search field in which selected tags appear, typing narrows the list, and the last row of the list creates a tag. **Transcription** has the language, the speakers and, where more than one is offered, the model. The group **Transcription hints** beneath them holds the initial prompt and the hotwords; a saved template chosen in its first row fills both fields. With more than one file queued, a note above the sections reads **Options for all files**.
 
 **3. Sticky modal footer.** Cancel on the left, the action of the active tab on the right. On **Upload files**, the Upload button is disabled until at least one file is queued, then shows "Upload N files", and **Upload & add more** appears beside it. On **Record**, the button is **Start recording**.
 

@@ -12,9 +12,9 @@
      @click.self="closeUploadView"
      @keydown.esc.stop="closeUploadView"
      tabindex="-1"
-     class="modal-overlay">
-    <div class="modal-panel modal-panel--lg modal-panel--bottom-sheet"
-         :style="[{ maxHeight: '92vh' }, bottomSheetDragStyle]">
+     class="modal-overlay modal-overlay--anchor-top">
+    <div class="modal-panel modal-panel--lg modal-panel--bottom-sheet upload-dialog"
+         :style="bottomSheetDragStyle">
         <!-- Drag-to-dismiss handlers attached on the header area only
              (and on the panel's ::before drag handle, which lives inside
              this header's expanded top padding) — keeps the scrollable
@@ -47,9 +47,13 @@
                 <span v-text="t('upload.tabRecord')"></span>
             </button>
         </div>
-        <div class="modal-body">
+        <!-- Both panels lie in one grid cell, so the dialog keeps one
+             height when the tab changes; the panel of the other tab is
+             hidden and inert. -->
+        <div class="modal-body upload-panels">
           <!-- ============ Tab: Upload files ============ -->
-          <div v-show="uploadDialogTab !== 'record'" id="upload-panel-upload" role="tabpanel" aria-labelledby="upload-tab-upload">
+          <div :class="['upload-panel', { 'is-inactive': uploadDialogTab === 'record' }]" :inert="uploadDialogTab === 'record'"
+               id="upload-panel-upload" role="tabpanel" aria-labelledby="upload-tab-upload">
             <!-- File Upload Area -->
             <div @drop="handleDrop" @dragover="handleDragOver" @dragleave="handleDragLeave" @click="$refs.fileInput.click()"
                  :class="['border-2 border-dashed rounded-lg text-center cursor-pointer transition-all duration-300', pendingQueueFiles.length > 0 ? 'p-3' : 'p-6', dragover ? 'border-[var(--border-accent)] bg-[var(--bg-accent)]' : 'border-[var(--border-secondary)] hover:border-[var(--border-accent)]']">
@@ -293,12 +297,15 @@
             </div>
 
             <!-- Options for the queued files: one flat panel. Folder, tags,
-                 language and speakers are always visible; model, saved
-                 template, initial prompt and hotwords sit behind one
-                 "Advanced" disclosure. -->
+                 language, speakers and model are always visible, in the
+                 sections "Organization" and "Transcription"; the saved
+                 template, initial prompt and hotwords form the group
+                 "Transcription hints". -->
             <section class="upload-options">
-                <h4 class="upload-options__title"
-                    v-text="pendingQueueFiles.length > 1 ? t('upload.optionsForAll') : t('upload.options')"></h4>
+                <p v-if="pendingQueueFiles.length > 1" class="upload-options__note">
+                    <i class="fas fa-layer-group" aria-hidden="true"></i>
+                    <span v-text="t('upload.optionsForAll')"></span>
+                </p>
 
                 {% include 'components/shared/folder-tag-picker.html' %}
 
@@ -370,28 +377,22 @@
                 </div><!-- end .disclosure-anim -->
             </div>
 
-                <details v-if="connectorSupportsInitialPrompt || connectorSupportsHotwords || (transcriptionModelOptions && transcriptionModelOptions.length > 1)"
-                         class="upload-advanced">
-                    <summary>
-                        <i class="fas fa-chevron-right"></i>
-                        <span v-text="t('upload.advanced')"></span>
-                    </summary>
-                    <div class="upload-advanced__body">
                 {% with apply_template_fn='applyInitialPromptTemplate',
                         prompt_ref='uploadInitialPrompt', hotwords_ref='uploadHotwords',
                         model_ref='uploadTranscriptionModel', lang_ref='uploadLanguage',
                         exact_ref='uploadSpeakersExact', min_ref='uploadMinSpeakers', max_ref='uploadMaxSpeakers',
-                        asr_part='advanced' %}
+                        asr_part='hints' %}
                 {% include 'components/shared/asr-options.html' %}
                 {% endwith %}
-                    </div>
-                </details>
             </section>
           </div>
 
           <!-- ============ Tab: Record ============ -->
-          <div v-if="uploadDialogTab === 'record'" id="upload-panel-record" role="tabpanel" aria-labelledby="upload-tab-record"
-               class="record-panel">
+          <div :class="['upload-panel record-panel', { 'is-inactive': uploadDialogTab !== 'record' }]" :inert="uploadDialogTab !== 'record'"
+               id="upload-panel-record" role="tabpanel" aria-labelledby="upload-tab-record">
+            <!-- Every row below is always rendered and only disabled where a
+                 source does not use it, so the dialog keeps its height when
+                 the source changes. -->
             <!-- Source. The choice is remembered (recordSource, localStorage).
                  The two display-capture sources are disabled where the
                  browser cannot capture display audio (Firefox, Safari). -->
@@ -431,7 +432,7 @@
                 </p>
                 <!-- Platform-aware hint when only tab audio can be captured
                      on this OS / browser combination. -->
-                <p v-else-if="(canRecordSystemAudio ? recordSource : 'microphone') !== 'microphone' && audioCaps && audioCaps.supportsTabAudio && !audioCaps.supportsSystemAudio"
+                <p v-else-if="audioCaps && audioCaps.supportsTabAudio && !audioCaps.supportsSystemAudio"
                    class="record-hint">
                     <i class="fas fa-circle-info text-amber-500"></i>
                     <span>
@@ -445,9 +446,9 @@
                  (#303). Only offered when the server retains video streams
                  (VIDEO_RETENTION) — without retention the pipeline would
                  strip the video back out at transcription time. -->
-            <label v-if="canRecordSystemAudio && videoRetentionEnabled && (canRecordSystemAudio ? recordSource : 'microphone') !== 'microphone'"
-                   class="record-check">
-                <input type="checkbox" v-model="recordSystemVideo" class="checkbox">
+            <label v-if="canRecordSystemAudio && videoRetentionEnabled"
+                   :class="['record-check', { 'is-disabled': (canRecordSystemAudio ? recordSource : 'microphone') === 'microphone' }]">
+                <input type="checkbox" v-model="recordSystemVideo" class="checkbox" :disabled="(canRecordSystemAudio ? recordSource : 'microphone') === 'microphone'">
                 <span>
                     <strong v-text="t('recording.recordVideoTitle')"></strong>
                     <span class="record-check__help" v-text="t('recording.recordVideoHelp')"></span>
@@ -457,8 +458,14 @@
             <!-- Microphone input. Pre-permission the device labels are
                  empty; the inline button calls getUserMedia briefly to
                  populate them. -->
-            <div v-if="(canRecordSystemAudio ? recordSource : 'microphone') !== 'system'" class="option-field">
-                <label class="option-label" for="record-primary-input" v-text="t('recording.primaryInput')"></label>
+            <div :class="['option-field', { 'is-disabled': (canRecordSystemAudio ? recordSource : 'microphone') === 'system' }]">
+                <div class="option-label-row">
+                    <label class="option-label" for="record-primary-input" v-text="t('recording.primaryInput')"></label>
+                    <button v-if="!inputAudioDevices || inputAudioDevices.length === 0 || !inputAudioDevices.some(d => d.label)"
+                            type="button" @click.prevent="requestMicrophonePermission"
+                            :title="t('recording.grantMicPermissionHint')"
+                            class="option-link" v-text="t('recording.requestMicPermission')"></button>
+                </div>
                 <div v-if="pendingMicrophoneSelection"
                      class="rounded-md border border-blue-300/60 bg-blue-50/70 dark:border-blue-700/60 dark:bg-blue-950/30 px-2.5 py-2 text-[11px]">
                     <div class="flex items-start gap-2">
@@ -471,20 +478,10 @@
                         </div>
                     </div>
                 </div>
-                <p v-if="!inputAudioDevices || inputAudioDevices.length === 0 || !inputAudioDevices.some(d => d.label)"
-                   class="record-hint">
-                    <i class="fas fa-info-circle"></i>
-                    <span>
-                        ${ t('recording.grantMicPermissionHint') }
-                        <button type="button" @click.prevent="requestMicrophonePermission"
-                                class="underline" style="color: var(--text-accent);">
-                            ${ t('recording.requestMicPermission') }
-                        </button>
-                    </span>
-                </p>
-                <select v-else id="record-primary-input" v-model="selectedMicDeviceId" class="field field--sm">
+                <select id="record-primary-input" v-model="selectedMicDeviceId" class="field field--sm"
+                        :disabled="(canRecordSystemAudio ? recordSource : 'microphone') === 'system'">
                     <option value="">${ t('recording.systemDefault') }</option>
-                    <option v-for="d in inputAudioDevices" :key="d.deviceId" :value="d.deviceId">
+                    <option v-for="d in (inputAudioDevices || []).filter(d => d.label)" :key="d.deviceId" :value="d.deviceId">
                         ${ d.label }${ d.isVirtual ? ' · ' + t('recording.virtualMonitor') : '' }
                     </option>
                 </select>
@@ -500,13 +497,13 @@
                  in via Web Audio at recording time: the way to capture your
                  voice + remote participants on macOS / Linux, where the
                  browser can't capture full OS audio natively. -->
-            <details v-if="(canRecordSystemAudio ? recordSource : 'microphone') !== 'system'" class="upload-advanced">
+            <details :class="['option-group', { 'is-disabled': (canRecordSystemAudio ? recordSource : 'microphone') === 'system' }]">
                 <summary>
                     <i class="fas fa-chevron-right"></i>
                     <span v-text="t('recording.moreInputSettings')"></span>
                     <span v-if="selectedSecondaryDeviceId" class="text-green-500 font-medium">· ${ t('recording.mixingTwoInputs') }</span>
                 </summary>
-                <div class="upload-advanced__body">
+                <div class="option-group__body">
                     <div v-if="inputAudioDevices && inputAudioDevices.some(d => d.label)" class="option-field">
                         <label class="option-label" for="record-secondary-input" v-text="t('recording.alsoMixIn')"></label>
                         <select id="record-secondary-input" v-model="selectedSecondaryDeviceId" class="field field--sm">

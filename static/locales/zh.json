@@ -1861,7 +1861,8 @@
     "textContent": "文本内容",
     "transcriptTextPlaceholder": "输入转录文本…",
     "minShort": "最少",
-    "maxShort": "最多"
+    "maxShort": "最多",
+    "transcriptionHints": "转录提示"
   },
   "groups": {
     "addMembers": "添加成员…",
@@ -3246,7 +3247,6 @@
     "keepAudioOnlySubtitleOn": "已丢弃视频",
     "keepAudioOnlyLargerAllowed": "允许更大文件",
     "largeVideoNotice": "视频较大，转录可能耗时更长。",
-    "options": "选项",
     "uploadAndAddMore": "上传并继续添加",
     "joinModeLabel": "如何添加这些文件",
     "joinSeparate": "分别作为录音",
@@ -3265,7 +3265,8 @@
     "tabUpload": "上传文件",
     "tabRecord": "录制",
     "optionsForAll": "所有文件的选项",
-    "advanced": "高级"
+    "sectionOrganize": "整理",
+    "sectionTranscription": "转录"
   },
   "uploadProgress": {
     "title": "上传进度"

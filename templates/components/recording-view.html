@@ -180,7 +180,8 @@
                                     {% with apply_template_fn='applyInitialPromptTemplateToRecording',
                                             prompt_ref='asrInitialPrompt', hotwords_ref='asrHotwords',
                                             model_ref='asrTranscriptionModel', lang_ref='asrLanguage',
-                                            exact_ref='asrSpeakersExact', min_ref='asrMinSpeakers', max_ref='asrMaxSpeakers' %}
+                                            exact_ref='asrSpeakersExact', min_ref='asrMinSpeakers', max_ref='asrMaxSpeakers',
+                                            hints_open=True %}
                                     {% include 'components/shared/asr-options.html' %}
                                     {% endwith %}
                                 </div>

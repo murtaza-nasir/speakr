@@ -1861,7 +1861,8 @@
     "textContent": "Textinhalt",
     "transcriptTextPlaceholder": "Transkripttext eingeben…",
     "minShort": "Min.",
-    "maxShort": "Max."
+    "maxShort": "Max.",
+    "transcriptionHints": "Hinweise für die Transkription"
   },
   "groups": {
     "addMembers": "Mitglieder hinzufügen…",
@@ -3246,7 +3247,6 @@
     "keepAudioOnlySubtitleOn": "Video verworfen",
     "keepAudioOnlyLargerAllowed": "Größere Uploads erlaubt",
     "largeVideoNotice": "Großes Video. Die Transkription kann länger dauern.",
-    "options": "Optionen",
     "uploadAndAddMore": "Hochladen & weitere hinzufügen",
     "joinModeLabel": "Wie diese Dateien hinzugefügt werden",
     "joinSeparate": "Einzelne Aufnahmen",
@@ -3265,7 +3265,8 @@
     "tabUpload": "Dateien hochladen",
     "tabRecord": "Aufnehmen",
     "optionsForAll": "Optionen für alle Dateien",
-    "advanced": "Erweitert"
+    "sectionOrganize": "Organisation",
+    "sectionTranscription": "Transkription"
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"

@@ -8,102 +8,113 @@
     apply_template_fn, prompt_ref, hotwords_ref, model_ref, lang_ref,
     exact_ref, min_ref, max_ref
 
-  asr_part selects what is rendered:
-    'basic'    language and speakers (one .option-grid)
-    'advanced' model, saved template, initial prompt, hotwords
-    omitted    both, basic first
+  Two parts, selected with asr_part ('basic', 'hints'; omitted = both):
+
+    basic  section "Transcription": language, speakers, model
+    hints  group "Transcription hints": the saved template (#309) and the
+           two fields it fills, initial prompt and hotwords. The template
+           select is the first row of the group, directly above the fields,
+           so the relation is visible. hints_open renders the group open.
 
   One source of markup so the two surfaces cannot drift apart.
 #}
 {% set _part = asr_part|default('all') %}
-{% if _part != 'advanced' %}
-<div class="option-grid">
-    <div class="option-field">
-        <label class="option-label">${ t('form.transcriptionLanguage') }</label>
-        <select v-model="{{ lang_ref }}" class="field field--sm">
-            <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
-        </select>
-    </div>
+{% if _part != 'hints' %}
+<section class="option-section">
+    <h4 class="option-section__title" v-text="t('upload.sectionTranscription')"></h4>
+    <div class="option-grid">
+        <div class="option-field">
+            <label class="option-label">${ t('form.transcriptionLanguage') }</label>
+            <select v-model="{{ lang_ref }}" class="field field--sm">
+                <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
+            </select>
+        </div>
 
-    <!-- Speakers (#362): the persisted Range/Exact switch (range connectors
-         only) and narrow inputs. A single count writes min == max. -->
-    <div v-if="connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount" class="option-field">
-        <label class="option-label" v-text="t('form.speakers')"></label>
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-            <div v-if="connectorSupportsSpeakerCount" class="seg seg--sm" role="radiogroup" :aria-label="t('form.speakers')">
-                <button type="button" role="radio" :aria-checked="!exactSpeakerEntry"
-                        @click="setSpeakerCountMode('range')"
-                        :class="['seg__item', { 'is-active': !exactSpeakerEntry }]"
-                        v-text="t('form.speakerModeRange')"></button>
-                <button type="button" role="radio" :aria-checked="!!exactSpeakerEntry"
-                        @click="setSpeakerCountMode('single')"
-                        :class="['seg__item', { 'is-active': exactSpeakerEntry }]"
-                        v-text="t('form.speakerModeExact')"></button>
+        <!-- Speakers (#362): the persisted Range/Exact switch (range
+             connectors only) and the number fields, in one row of one
+             height. A single count writes min == max. -->
+        <div v-if="connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount" class="option-field">
+            <label class="option-label" v-text="t('form.speakers')"></label>
+            <div class="speaker-row">
+                <div v-if="connectorSupportsSpeakerCount" class="seg" role="radiogroup" :aria-label="t('form.speakers')">
+                    <button type="button" role="radio" :aria-checked="!exactSpeakerEntry"
+                            @click="setSpeakerCountMode('range')"
+                            :class="['seg__item', { 'is-active': !exactSpeakerEntry }]"
+                            v-text="t('form.speakerModeRange')"></button>
+                    <button type="button" role="radio" :aria-checked="!!exactSpeakerEntry"
+                            @click="setSpeakerCountMode('single')"
+                            :class="['seg__item', { 'is-active': exactSpeakerEntry }]"
+                            v-text="t('form.speakerModeExact')"></button>
+                </div>
+                <input v-if="exactSpeakerEntry"
+                       v-model.number="{{ exact_ref }}"
+                       type="number" min="1" max="20"
+                       :aria-label="t('form.speakers')"
+                       class="field field--sm option-number">
+                <template v-else>
+                    <input v-model.number="{{ min_ref }}"
+                           type="number" min="1" max="20"
+                           :placeholder="t('form.minShort')" :aria-label="t('form.minSpeakers')"
+                           class="field field--sm option-number">
+                    <span class="speaker-row__dash" aria-hidden="true">–</span>
+                    <input v-model.number="{{ max_ref }}"
+                           type="number" min="1" max="20"
+                           :placeholder="t('form.maxShort')" :aria-label="t('form.maxSpeakers')"
+                           class="field field--sm option-number">
+                </template>
             </div>
-            <input v-if="exactSpeakerEntry"
-                   v-model.number="{{ exact_ref }}"
-                   type="number" min="1" max="20"
-                   :aria-label="t('form.speakers')"
-                   class="field field--sm option-number">
-            <template v-else>
-                <input v-model.number="{{ min_ref }}"
-                       type="number" min="1" max="20"
-                       :placeholder="t('form.minShort')" :aria-label="t('form.minSpeakers')"
-                       class="field field--sm option-number">
-                <span class="text-[var(--text-muted)]" aria-hidden="true">–</span>
-                <input v-model.number="{{ max_ref }}"
-                       type="number" min="1" max="20"
-                       :placeholder="t('form.maxShort')" :aria-label="t('form.maxSpeakers')"
-                       class="field field--sm option-number">
-            </template>
+        </div>
+
+        <!-- The model select (issue #266) renders only when the admin
+             exposes at least 2 models. -->
+        <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 1" class="option-field">
+            <label class="option-label">${ t('form.transcriptionModel') }</label>
+            <select v-model="{{ model_ref }}" class="field field--sm">
+                <option value="">${ t('form.useResolvedDefault') }</option>
+                <option v-for="opt in transcriptionModelOptions" :key="opt.value" :value="opt.value" v-text="opt.label || opt.value"></option>
+            </select>
         </div>
     </div>
-</div>
+</section>
 {% endif %}
 {% if _part != 'basic' %}
-<div v-if="connectorSupportsInitialPrompt || connectorSupportsHotwords || (transcriptionModelOptions && transcriptionModelOptions.length > 1)"
-     class="option-grid">
-    <!-- The model select (issue #266) renders only when the admin exposes
-         at least 2 models. -->
-    <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 1" class="option-field">
-        <label class="option-label">${ t('form.transcriptionModel') }</label>
-        <select v-model="{{ model_ref }}" class="field field--sm">
-            <option value="">${ t('form.useResolvedDefault') }</option>
-            <option v-for="opt in transcriptionModelOptions" :key="opt.value" :value="opt.value" v-text="opt.label || opt.value"></option>
-        </select>
-    </div>
+<details v-if="connectorSupportsInitialPrompt || connectorSupportsHotwords" class="option-group"{% if hints_open %} open{% endif %}>
+    <summary>
+        <i class="fas fa-chevron-right"></i>
+        <span v-text="t('form.transcriptionHints')"></span>
+        <span v-if="{{ prompt_ref }} || {{ hotwords_ref }}" class="option-group__state" aria-hidden="true"></span>
+    </summary>
+    <div class="option-group__body">
+        <!-- Saved transcription template (#309): fills the two fields
+             below. Hidden until the user has saved templates. -->
+        <div v-if="initialPromptTemplates && initialPromptTemplates.length" class="option-group__tool">
+            <i class="fas fa-file-import" aria-hidden="true"></i>
+            <select @change="{{ apply_template_fn }}($event.target.value); $event.target.value=''"
+                    :aria-label="t('initialPromptTemplates.savedTemplate')"
+                    class="field field--sm">
+                <option value="">${ t('initialPromptTemplates.pickPlaceholder') }</option>
+                <option v-for="tpl in initialPromptTemplates" :key="tpl.id" :value="tpl.id" v-text="tpl.name"></option>
+            </select>
+            <span class="option-help" v-text="t('initialPromptTemplates.savedTemplateHelp')"></span>
+        </div>
 
-    <!-- Saved transcription template (#309): fills the initial prompt and
-         hotwords. Hidden until the user has saved templates. -->
-    <div v-if="(connectorSupportsInitialPrompt || connectorSupportsHotwords) && initialPromptTemplates && initialPromptTemplates.length"
-         class="option-field">
-        <label class="option-label" :title="t('initialPromptTemplates.savedTemplateHelp')">
-            ${ t('initialPromptTemplates.savedTemplate') }
-        </label>
-        <select @change="{{ apply_template_fn }}($event.target.value); $event.target.value=''"
-                :title="t('initialPromptTemplates.savedTemplateHelp')"
-                class="field field--sm">
-            <option value="">${ t('initialPromptTemplates.pickPlaceholder') }</option>
-            <option v-for="tpl in initialPromptTemplates" :key="tpl.id" :value="tpl.id" v-text="tpl.name"></option>
-        </select>
-    </div>
+        <div v-if="connectorSupportsInitialPrompt" class="option-field">
+            <label class="option-label">${ t('form.initialPrompt') }</label>
+            <textarea v-model="{{ prompt_ref }}"
+                      rows="2"
+                      :placeholder="t('form.initialPromptPlaceholder')"
+                      class="field field--sm resize-y"></textarea>
+            <p class="option-help" v-text="t('form.initialPromptHelp')"></p>
+        </div>
 
-    <div v-if="connectorSupportsInitialPrompt" class="option-field option-field--wide">
-        <label class="option-label" :title="t('form.initialPromptHelp')">${ t('form.initialPrompt') }</label>
-        <textarea v-model="{{ prompt_ref }}"
-                  rows="2"
-                  :placeholder="t('form.initialPromptPlaceholder')"
-                  :title="t('form.initialPromptHelp')"
-                  class="field field--sm resize-y"></textarea>
+        <div v-if="connectorSupportsHotwords" class="option-field">
+            <label class="option-label">${ t('form.hotwords') }</label>
+            <input v-model="{{ hotwords_ref }}"
+                   type="text"
+                   :placeholder="t('form.hotwordsPlaceholder')"
+                   class="field field--sm">
+            <p class="option-help" v-text="t('form.hotwordsHelp')"></p>
+        </div>
     </div>
-
-    <div v-if="connectorSupportsHotwords" class="option-field option-field--wide">
-        <label class="option-label" :title="t('form.hotwordsHelp')">${ t('form.hotwords') }</label>
-        <input v-model="{{ hotwords_ref }}"
-               type="text"
-               :placeholder="t('form.hotwordsPlaceholder')"
-               :title="t('form.hotwordsHelp')"
-               class="field field--sm">
-    </div>
-</div>
+</details>
 {% endif %}

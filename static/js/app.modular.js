@@ -2770,6 +2770,56 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (n > (old || 0)) uploadDialogTab.value = 'upload';
             });
             const showUploadTagMenu = ref(false);
+            // The tag list is teleported to <body> and placed under its
+            // field with fixed coordinates (above it where there is no room
+            // beneath), so it lies over the dialog and never scrolls it.
+            const uploadTagMenuStyle = ref({});
+            let uploadTagField = null;
+            const placeUploadTagMenu = () => {
+                if (!uploadTagField || !uploadTagField.isConnected) return;
+                const r = uploadTagField.getBoundingClientRect();
+                const below = window.innerHeight - r.bottom - 12;
+                const above = r.top - 12;
+                const up = below < 180 && above > below;
+                const style = {
+                    left: r.left + 'px',
+                    width: r.width + 'px',
+                    maxHeight: Math.max(120, Math.min(280, up ? above : below)) + 'px',
+                };
+                if (up) style.bottom = (window.innerHeight - r.top + 4) + 'px';
+                else style.top = (r.bottom + 4) + 'px';
+                uploadTagMenuStyle.value = style;
+            };
+            const openUploadTagMenu = (event) => {
+                uploadTagField = event.currentTarget.closest('.tag-combo__field');
+                placeUploadTagMenu();
+                showUploadTagMenu.value = true;
+            };
+            // Focus that moves between the field and its list keeps it open.
+            const closeUploadTagMenu = (event) => {
+                const to = event && event.relatedTarget;
+                if (to && to.closest && (to.closest('.tag-combo__menu')
+                        || (uploadTagField && uploadTagField.contains(to)))) return;
+                showUploadTagMenu.value = false;
+            };
+            const pickUploadTag = (id) => {
+                uploadComposable.addTagToSelection(id);
+                uploadTagSearchFilter.value = '';
+                const input = uploadTagField && uploadTagField.querySelector('input');
+                if (input) input.focus();
+                nextTick(placeUploadTagMenu);
+            };
+            const _followUploadTagField = (event) => {
+                if (event && event.target && event.target.closest
+                        && event.target.closest('.tag-combo__menu')) return;
+                placeUploadTagMenu();
+            };
+            watch(showUploadTagMenu, (open) => {
+                const fn = open ? 'addEventListener' : 'removeEventListener';
+                window[fn]('resize', _followUploadTagField);
+                document[fn]('scroll', _followUploadTagField, true);
+            });
+            watch(showUploadModal, (open) => { if (!open) showUploadTagMenu.value = false; });
             // Enter in the tag field: the first match, or the create dialog
             // when nothing matches the text.
             const pickFirstUploadTag = () => {
@@ -5184,6 +5234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 createFolderFromUpload,
                 uploadDialogTab, recordSource, showUploadTagMenu,
                 pickFirstUploadTag, onUploadFolderChange,
+                uploadTagMenuStyle, openUploadTagMenu, closeUploadTagMenu, pickUploadTag,
 
                 // Translation
                 generateTranslation,

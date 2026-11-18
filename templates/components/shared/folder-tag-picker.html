@@ -10,6 +10,8 @@
   field is a combobox: selected tags are chips inside the field, typing
   filters the list, and the last row of the list creates a tag.
 #}
+<section class="option-section">
+<h4 class="option-section__title" v-text="t('upload.sectionOrganize')"></h4>
 <div class="option-grid">
     <!-- Folder (only shown if folders are enabled). The last option opens
          the folder dialog. -->
@@ -35,7 +37,7 @@
     <div :class="['option-field', { 'option-field--wide': !foldersEnabled }]">
         <label class="option-label">${ t('tags.title') }</label>
         <div class="tag-combo"
-             @focusout="!$event.currentTarget.contains($event.relatedTarget) && (showUploadTagMenu = false)"
+             @focusout="closeUploadTagMenu($event)"
              @keydown.esc="showUploadTagMenu && ($event.stopPropagation(), showUploadTagMenu = false)">
             <div class="field field--sm tag-combo__field"
                  @click="$event.currentTarget.querySelector('input').focus()"
@@ -70,18 +72,25 @@
                        type="text"
                        role="combobox" aria-autocomplete="list" :aria-expanded="showUploadTagMenu ? 'true' : 'false'"
                        :aria-label="t('tags.title')"
-                       @focus="showUploadTagMenu = true"
-                       @input="showUploadTagMenu = true"
+                       @focus="openUploadTagMenu($event)"
+                       @input="openUploadTagMenu($event)"
                        @keydown.enter.prevent="pickFirstUploadTag"
                        @keydown.backspace="!uploadTagSearchFilter && selectedTags.length && removeTagFromSelection(selectedTags[selectedTags.length - 1].id)"
                        :placeholder="selectedTags.length ? '' : t('tagsModal.searchTags')"
                        class="tag-combo__input">
             </div>
-            <div v-if="showUploadTagMenu" class="tag-combo__menu" role="listbox">
+            <!-- The list lies over the page (teleported, fixed position under
+                 the field, or above it where there is no room), so it never
+                 adds to the height of the dialog or scrolls inside it. -->
+            <teleport to="body">
+            <div v-if="showUploadTagMenu" class="tag-combo__menu" role="listbox"
+                 :style="uploadTagMenuStyle"
+                 @focusout="closeUploadTagMenu($event)"
+                 @keydown.esc.stop="showUploadTagMenu = false">
                 <button v-for="tag in filteredAvailableTagsForUpload" :key="tag.id"
                         type="button" role="option"
                         @mousedown.prevent
-                        @click="$event.currentTarget.closest('.tag-combo').querySelector('input').focus(); addTagToSelection(tag.id); uploadTagSearchFilter = ''"
+                        @click="pickUploadTag(tag.id)"
                         class="tag-combo__option">
                     <i v-if="tag.group_id" class="fas fa-users flex-shrink-0" style="font-size: 9px;" :style="{ color: tag.color || '#6B7280' }"></i>
                     <span v-else class="w-2 h-2 rounded-full flex-shrink-0"
@@ -91,12 +100,13 @@
                 <p v-if="filteredAvailableTagsForUpload.length === 0 && availableTags.length > 0" class="tag-combo__empty">
                     ${ uploadTagSearchFilter ? t('help.noMatchingTags') : t('help.allTagsSelected') }
                 </p>
-                <button type="button" @click="showUploadTagMenu = false; createTagFromUploadSearch()"
+                <button type="button" @mousedown.prevent @click="showUploadTagMenu = false; createTagFromUploadSearch()"
                         class="tag-combo__option tag-combo__option--create">
                     <i class="fas fa-plus flex-shrink-0" style="font-size: 9px;"></i>
                     <span class="truncate" v-text="uploadTagSearchFilter ? t('help.createTagNamed', { name: uploadTagSearchFilter }) : t('help.newTag')"></span>
                 </button>
             </div>
+            </teleport>
         </div>
     </div>
 
@@ -120,3 +130,4 @@
         </p>
     </div>
 </div>
+</section>

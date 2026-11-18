@@ -1861,7 +1861,8 @@
     "textContent": "Conteúdo do texto",
     "transcriptTextPlaceholder": "Digite o texto da transcrição…",
     "minShort": "Mín.",
-    "maxShort": "Máx."
+    "maxShort": "Máx.",
+    "transcriptionHints": "Dicas para a transcrição"
   },
   "groups": {
     "addMembers": "Adicionar membros…",
@@ -3246,7 +3247,6 @@
     "keepAudioOnlySubtitleOn": "Vídeo descartado",
     "keepAudioOnlyLargerAllowed": "Envios maiores permitidos",
     "largeVideoNotice": "Vídeo grande. A transcrição pode demorar mais.",
-    "options": "Opções",
     "uploadAndAddMore": "Enviar e adicionar mais",
     "joinModeLabel": "Como adicionar estes arquivos",
     "joinSeparate": "Gravações separadas",
@@ -3265,7 +3265,8 @@
     "tabUpload": "Enviar arquivos",
     "tabRecord": "Gravar",
     "optionsForAll": "Opções para todos os arquivos",
-    "advanced": "Avançado"
+    "sectionOrganize": "Organização",
+    "sectionTranscription": "Transcrição"
   },
   "uploadProgress": {
     "title": "Progresso do envio"
