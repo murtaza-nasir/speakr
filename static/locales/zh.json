@@ -3560,6 +3560,8 @@
       "invalid_cursor": "无法读取游标",
       "invalid_dark_mode": "无效的 dark_mode",
       "invalid_date_field": "date_field 必须为 meeting_date 或 created_at",
+      "invalid_date_filter": "{{field}} 必须是 1900 到 2100 年之间的日期（YYYY-MM-DD）",
+      "invalid_date_preset": "date 必须是 today、yesterday、thisweek、lastweek、thismonth、lastmonth，或 1900 到 2100 年之间的年、月或日（YYYY、YYYY-MM 或 YYYY-MM-DD）",
       "invalid_events_list": "events 必须是非空列表",
       "invalid_expires_in_days": "expires_in_days 必须是非负整数",
       "invalid_expires_in_days_range": "expires_in_days 必须在 1 到 3650 之间",

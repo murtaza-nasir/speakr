@@ -3560,6 +3560,8 @@
       "invalid_cursor": "Le curseur n'a pas pu être lu",
       "invalid_dark_mode": "dark_mode invalide",
       "invalid_date_field": "date_field doit être meeting_date ou created_at",
+      "invalid_date_filter": "{{field}} doit être une date de 1900 à 2100 (AAAA-MM-JJ)",
+      "invalid_date_preset": "date doit être today, yesterday, thisweek, lastweek, thismonth, lastmonth, ou une année, un mois ou un jour de 1900 à 2100 (AAAA, AAAA-MM ou AAAA-MM-JJ)",
       "invalid_events_list": "events doit être une liste non vide",
       "invalid_expires_in_days": "expires_in_days doit être un entier non négatif",
       "invalid_expires_in_days_range": "expires_in_days doit être compris entre 1 et 3650",

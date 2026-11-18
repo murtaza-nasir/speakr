@@ -35,7 +35,7 @@ from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
 from src.services.transcription_defaults import (
     resolve_transcription_model as _resolve_transcription_model,
 )
-from src.utils.dates import to_utc_naive
+from src.utils.dates import filter_day, filter_year_ok, to_utc_naive
 from src.utils.log_filters import loggable_error, loggable_locator
 from src.utils.transcript_render import BASIC_TEMPLATE_FORMAT, parse_segments, render_segments
 from src.services.speaker import (
@@ -1395,17 +1395,18 @@ def get_recordings_paginated():
 
         # Apply search filters if provided
         if search_query:
-            # Extract date filters
-            date_filters = re.findall(r'date:(\S+)', search_query.lower())
-            date_from_filters = re.findall(r'date_from:(\S+)', search_query.lower())
-            date_to_filters = re.findall(r'date_to:(\S+)', search_query.lower())
+            # Extract date filters. A token starts the query or follows a
+            # space, so a word such as candidate:x stays text (#631).
+            date_filters = re.findall(r'(?<!\S)date:(\S+)', search_query.lower())
+            date_from_filters = re.findall(r'(?<!\S)date_from:(\S+)', search_query.lower())
+            date_to_filters = re.findall(r'(?<!\S)date_to:(\S+)', search_query.lower())
             tag_filters = re.findall(r'tag:(\S+)', search_query.lower())
             speaker_filters = re.findall(r'speaker:(\S+)', search_query.lower())
 
             # Remove special syntax to get text search
-            text_query = re.sub(r'date:\S+', '', search_query, flags=re.IGNORECASE)
-            text_query = re.sub(r'date_from:\S+', '', text_query, flags=re.IGNORECASE)
-            text_query = re.sub(r'date_to:\S+', '', text_query, flags=re.IGNORECASE)
+            text_query = re.sub(r'(?<!\S)date:\S+', '', search_query, flags=re.IGNORECASE)
+            text_query = re.sub(r'(?<!\S)date_from:\S+', '', text_query, flags=re.IGNORECASE)
+            text_query = re.sub(r'(?<!\S)date_to:\S+', '', text_query, flags=re.IGNORECASE)
             text_query = re.sub(r'tag:\S+', '', text_query, flags=re.IGNORECASE)
             text_query = re.sub(r'speaker:\S+', '', text_query, flags=re.IGNORECASE).strip()
 
@@ -1435,6 +1436,17 @@ def get_recordings_paginated():
             def _next_month(d):
                 return date(d.year + (d.month == 12), d.month % 12 + 1, 1)
 
+            # A date that is not a day, month or year from 1900 to 2100 is
+            # refused, as a bad folder id is, not dropped (#631).
+            def _bad_date(field):
+                key = 'invalid_date_preset' if field == 'date' else 'invalid_date_filter'
+                return jsonify({'error': translate(f'server.apiError.{key}', field=field),
+                                'code': 'invalid_parameter'}), 400
+
+            for field, values in (('date_from', date_from_filters), ('date_to', date_to_filters)):
+                if any(filter_day(v) is None for v in values):
+                    return _bad_date(field)
+
             for date_filter in date_filters:
                 if date_filter == 'today':
                     stmt = stmt.where(_days(_today, _today + timedelta(days=1)))
@@ -1452,37 +1464,35 @@ def get_recordings_paginated():
                     last_month = (this_month - timedelta(days=1)).replace(day=1)
                     stmt = stmt.where(_days(last_month, this_month))
                 elif re.match(r'^\d{4}-\d{2}-\d{2}$', date_filter):
-                    try:
-                        target = datetime.strptime(date_filter, '%Y-%m-%d').date()
-                        stmt = stmt.where(_days(target, target + timedelta(days=1)))
-                    except ValueError:
-                        pass
+                    target = filter_day(date_filter)
+                    if target is None:
+                        return _bad_date('date')
+                    stmt = stmt.where(_days(target, target + timedelta(days=1)))
                 elif re.match(r'^\d{4}-\d{2}$', date_filter):
                     year, month = map(int, date_filter.split('-'))
-                    if 1 <= month <= 12:
-                        first = _month_start(year, month)
-                        stmt = stmt.where(_days(first, _next_month(first)))
+                    if not (1 <= month <= 12 and filter_year_ok(year)):
+                        return _bad_date('date')
+                    first = _month_start(year, month)
+                    stmt = stmt.where(_days(first, _next_month(first)))
                 elif re.match(r'^\d{4}$', date_filter):
                     year = int(date_filter)
+                    if not filter_year_ok(year):
+                        return _bad_date('date')
                     stmt = stmt.where(_days(date(year, 1, 1), date(year + 1, 1, 1)))
+                else:
+                    return _bad_date('date')
 
             # Apply date range filters (date_to includes that whole day)
-            if date_from_filters and date_from_filters[0]:
-                try:
-                    date_from = datetime.strptime(date_from_filters[0], '%Y-%m-%d').date()
-                    stmt = stmt.where(_days(date_from))
-                except ValueError:
-                    pass  # Invalid date format, ignore
+            # (Checked above: each value is a day from 1900 to 2100.)
+            if date_from_filters:
+                stmt = stmt.where(_days(filter_day(date_from_filters[0])))
 
-            if date_to_filters and date_to_filters[0]:
-                try:
-                    date_to = datetime.strptime(date_to_filters[0], '%Y-%m-%d').date()
-                    end_utc = local_day_start_utc(date_to + timedelta(days=1), _zone)
-                    stmt = stmt.where(db.or_(
-                        Recording.meeting_date < end_utc,
-                        db.and_(Recording.meeting_date.is_(None), Recording.created_at < end_utc)))
-                except ValueError:
-                    pass  # Invalid date format, ignore
+            if date_to_filters:
+                date_to = filter_day(date_to_filters[0])
+                end_utc = local_day_start_utc(date_to + timedelta(days=1), _zone)
+                stmt = stmt.where(db.or_(
+                    Recording.meeting_date < end_utc,
+                    db.and_(Recording.meeting_date.is_(None), Recording.created_at < end_utc)))
 
             # Apply tag filters
             if tag_filters:

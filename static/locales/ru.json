@@ -3560,6 +3560,8 @@
       "invalid_cursor": "Не удалось прочитать курсор",
       "invalid_dark_mode": "Недопустимое значение dark_mode",
       "invalid_date_field": "date_field должно быть meeting_date или created_at",
+      "invalid_date_filter": "{{field}} должно быть датой с 1900 по 2100 год (ГГГГ-ММ-ДД)",
+      "invalid_date_preset": "date должно быть today, yesterday, thisweek, lastweek, thismonth, lastmonth или годом, месяцем или днём с 1900 по 2100 год (ГГГГ, ГГГГ-ММ или ГГГГ-ММ-ДД)",
       "invalid_events_list": "events должно быть непустым списком",
       "invalid_expires_in_days": "expires_in_days должно быть неотрицательным целым числом",
       "invalid_expires_in_days_range": "expires_in_days должно быть от 1 до 3650",

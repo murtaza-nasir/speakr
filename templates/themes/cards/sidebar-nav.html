@@ -214,7 +214,7 @@
                             <div>
                                 <input v-model="filterDateRange.start"
                                        @change="filterDatePreset = ''"
-                                       type="date"
+                                       type="date" min="1900-01-01" max="2100-12-31"
                                        class="sb-input sb-input--sm w-full"
                                        :placeholder="t('form.dateFrom')"
                                        :aria-label="t('form.dateFrom')">
@@ -222,7 +222,7 @@
                             <div>
                                 <input v-model="filterDateRange.end"
                                        @change="filterDatePreset = ''"
-                                       type="date"
+                                       type="date" min="1900-01-01" max="2100-12-31"
                                        class="sb-input sb-input--sm w-full"
                                        :placeholder="t('form.dateTo')"
                                        :aria-label="t('form.dateTo')">

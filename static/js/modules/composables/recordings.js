@@ -7,6 +7,7 @@ import * as IncognitoStorage from '../db/incognito-storage.js';
 import { matchTagsByLabelName } from '../utils/label-links.js';
 import { confirmDialog } from '../utils/dialogs.js';
 import { realSpeakers } from '../utils/speaker-labels.js';
+import { isValidDateInput } from '../utils/date-filter.js';
 
 // Guarded: the module can run before i18n.js has loaded.
 const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
@@ -500,10 +501,12 @@ export function useRecordings(state, utils, reprocessComposable) {
         if (filterDatePreset.value) {
             query.push(`date:${filterDatePreset.value}`);
         } else if (filterDateRange.value.start || filterDateRange.value.end) {
-            if (filterDateRange.value.start) {
+            // A date the server would refuse (#631) is not applied; the
+            // input shows itself invalid against its min and max.
+            if (isValidDateInput(filterDateRange.value.start)) {
                 query.push(`date_from:${filterDateRange.value.start}`);
             }
-            if (filterDateRange.value.end) {
+            if (isValidDateInput(filterDateRange.value.end)) {
                 query.push(`date_to:${filterDateRange.value.end}`);
             }
         }

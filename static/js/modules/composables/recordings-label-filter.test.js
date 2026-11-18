@@ -251,3 +251,16 @@ describe("short list", () => {
         expect(fetch).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('date range filter (#631)', () => {
+    it('applies a valid range and leaves out a date the server would refuse', () => {
+        const { state, composable } = setup({
+            filterDateRange: ref({ start: '2026-10-01', end: '20255-01-01' })
+        });
+        expect(composable.buildSearchQuery()).toBe('date_from:2026-10-01');
+        state.filterDateRange.value = { start: '1899-12-31', end: '2026-10-31' };
+        expect(composable.buildSearchQuery()).toBe('date_to:2026-10-31');
+        state.filterDateRange.value = { start: '9999-99-99', end: '' };
+        expect(composable.buildSearchQuery()).toBe('');
+    });
+});
