@@ -24,6 +24,7 @@ from src.services.recording_deletion import delete_recording_completely, cleanup
 from src.models import *
 from src.utils import *
 from src.utils.request_body import optional_json_object
+from src.utils.assistant_limits import checked_history, question_error
 from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
 
@@ -2510,8 +2511,12 @@ def chat_incognito():
             return jsonify(api_error('no_transcription_provided')), 400
         if not user_message or not isinstance(user_message, str):
             return jsonify(api_error('no_message_provided')), 400
-        if not isinstance(message_history, list):
-            message_history = []
+        too_long = question_error(user_message)
+        if too_long:
+            return jsonify(too_long), 400
+        message_history, bad_history = checked_history(message_history)
+        if bad_history:
+            return jsonify(bad_history), 400
 
         # Check if chat client is available
         if chat_client is None:
@@ -3338,6 +3343,12 @@ def chat_with_transcription():
             return jsonify(api_error('no_recording_id')), 400
         if not user_message:
             return jsonify(api_error('no_message_provided')), 400
+        too_long = question_error(user_message)
+        if too_long:
+            return jsonify(too_long), 400
+        message_history, bad_history = checked_history(message_history)
+        if bad_history:
+            return jsonify(bad_history), 400
 
         # Get the recording
         recording = db.session.get(Recording, recording_id)
@@ -3366,8 +3377,6 @@ def chat_with_transcription():
         from src.services.inquire_agent import run_inquire_agent
         from src.services.recording_chat import build_chat_messages, transcript_cut
         from src.utils.localization import request_language
-        if not isinstance(message_history, list):
-            message_history = []
         messages, segments = build_chat_messages(recording, current_user, user_message,
                                                  panel_history(message_history), with_sources=True)
 

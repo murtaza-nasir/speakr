@@ -17,6 +17,14 @@ the same `data: {...}` events:
   status, context_usage, context_compacted, conversation_memory
   end_of_stream {finish_reason?, truncated?}, error {error, budget_exceeded?}
 
+delta and thinking are the model's text unchanged (#632): Markdown that may
+hold raw HTML from the question, a transcript or the model. They are not
+escaped, since that would break the Markdown and code examples; every consumer
+renders delta through a sanitizing Markdown renderer (window.renderMarkdownSafe,
+static/js/markdown-safe.js: marked, then DOMPurify) or as plain text, and
+thinking as plain text. API v1 documents the same for its `answer`
+(docs/user-guide/api-reference.md, Inquire).
+
 recording_events() adds `source` events to the recording engine's stream;
 library_events() turns the retrieval stages (`status`) into steps. The event
 names the Ask page and API v1 already read are kept; `source` is new.

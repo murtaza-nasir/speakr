@@ -1595,6 +1595,10 @@ Ask questions about a recording's content using AI.
 }
 ```
 
+`message` is at most 10,000 characters. A longer one answers `400` with `{"code": "invalid_parameter"}` and no model call is made. The same limit applies to the question in the web app's recording chat and on the Ask page.
+
+`conversation_history` is optional: a list of objects, each with a `role` of `user` or `assistant` and a string `content`, oldest first. Any other shape answers `400` with `{"code": "invalid_parameter"}`. Send the whole conversation with each question; the model gets its newest 40 messages, and fewer when their `content` is longer than 60,000 characters together. Older messages are left out without an error, and an answer left first by that cut is left out too, so the kept history starts with a question.
+
 **Response:**
 
 ```json
@@ -1615,6 +1619,8 @@ Ask questions about a recording's content using AI.
 ```
 
 `verified` is `true` when the quote appears in that segment (ignoring case and spacing). A citation of a segment that does not exist has `segment_index: null` and `verified: false`.
+
+`response` is the model's Markdown and may contain raw HTML. Show it as plain text, or sanitize the HTML you render from it, as described in "Rendering the answer" under [Ask Across Recordings](#ask-across-recordings).
 
 The notes in the chat context are the ones you can see: your own for your recordings, your personal notes for a recording shared with you. Chat sends the transcript to the chat model of the instance; `GET /api/v1/capabilities` reports `models_local`.
 
@@ -1643,6 +1649,8 @@ Answers a question from the recordings you can read, with Inquire's search (and 
 }
 ```
 
+- `question`: at most 10,000 characters after leading and trailing spaces are removed. A longer one answers `400` with `{"code": "invalid_parameter"}` and no model call is made.
+- `history`: the earlier messages of the conversation, in the form and with the limits of `conversation_history` in [Chat with Recording](#chat-with-recording).
 - `mode`: `rag`, `agent` (`403 feature_disabled` when the agent is off) or `auto` (the agent when it is on).
 - `scope`: `own`, `shared` or `all`, as on [List Recordings](#list-recordings).
 - `stream: true` returns the server-sent events of the web app's Inquire (`delta`, `status`, `agent_step`, `agent_summary`, `error`).
@@ -1665,6 +1673,15 @@ Answers a question from the recordings you can read, with Inquire's search (and 
 ```
 
 Every citation names a recording you can read. The question and the matching transcript passages go to the instance's chat model.
+
+**Rendering the answer.** `answer`, and the `delta` events of `stream: true`, are the model's text as it wrote it: Markdown, which may contain raw HTML. The HTML can come from the question, from a transcript or from the model itself, for example `<img src=x onerror=...>`. Speakr does not escape or sanitize this text, because escaping would break the Markdown and the examples in code blocks. Treat it as untrusted input:
+
+- Show it as plain text (for example with `textContent`), or
+- Convert the Markdown to HTML and sanitize that HTML before it goes into a page. Never insert `delta` or `answer` into `innerHTML` without sanitizing it.
+
+The web app takes the second route. It parses the whole answer so far with marked after each `delta`, sanitizes the result with DOMPurify (`static/js/markdown-safe.js`), and shows the text escaped when DOMPurify is not loaded. `thinking` is model text as well, and the web app shows it as plain text only. The other strings in the stream (`status` messages, step labels and details, `agent_summary`, `error`) can contain recording titles and speaker names; show them as plain text too.
+
+The same holds for `response` from [Chat with Recording](#chat-with-recording) and for its stream in the web app.
 
 ---
 
