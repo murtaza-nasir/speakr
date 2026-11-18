@@ -528,9 +528,6 @@
       "transcriptLengthLimitDesc": "Maximale Anzahl von Zeichen, die vom Transkript an das LLM für Zusammenfassung und Chat gesendet werden. Verwenden Sie -1 für kein Limit.",
       "maxAudioOnlyVideoSizeDesc": "Maximale Dateigröße (in MB) für Video-Uploads im Nur-Audio-Modus. Nur das extrahierte Audio wird gespeichert, daher kann der Upload selbst größer als das normale Limit sein.",
       "disableAutoTranslationDesc": "Wenn aktiviert, werden Aufnahmen nur transkribiert und Benutzer müssen die Übersetzung manuell auslösen. Wenn deaktiviert, kann jeder Benutzer neue Aufnahmen nach der Transkription automatisch übersetzen lassen.",
-      "defaultUiThemeDesc": "UI-Design für neue Konten und für die Anmeldeseiten in einem Browser ohne gespeichertes Design. Einer der Werte: default, classic, workspace, focus, desk, cards. Bestehende Konten behalten ihr Design.",
-      "defaultColorSchemeDesc": "Farbschema für neue Konten und für die Anmeldeseiten in einem Browser ohne gespeichertes Farbschema. Einer der Werte: blue, emerald, purple, rose, amber, teal. Bestehende Konten behalten ihr Farbschema.",
-      "defaultAudioPlayerPositionDesc": "Position des Audioplayers auf der Seite einer Aufnahme für neue Konten. Einer der Werte: top, bottom. Bestehende Konten behalten ihre Position.",
       "ssoApiTokensEnabledDesc": "Wenn aktiviert, können Apps, die Benutzer über denselben SSO-Anbieter wie Speakr anmelden, die API mit dem SSO-Zugriffstoken des Benutzers aufrufen und es gegen ein API-Token tauschen. SSO muss eingerichtet und mindestens ein Client erlaubt sein.",
       "ssoApiAllowedClientsDesc": "Kommagetrennte OIDC-Client-IDs, deren Zugriffstoken akzeptiert werden, abgeglichen mit dem Claim aud oder azp. Leer bedeutet, dass kein Zugriffstoken akzeptiert wird.",
       "ssoApiScopesDesc": "Kommagetrennte Bereiche, die eine Anfrage mit einem SSO-Zugriffstoken hat. Ein getauschtes Token darf nur diese Bereiche haben. Standard: read.",
@@ -792,7 +789,25 @@
     "permissionModeEveryone": "Alle",
     "userSearchScopeEveryone": "Alle",
     "userSearchScopeGroups": "Personen in ihren Gruppen",
-    "userSearchScopeExact": "Genauer Benutzername oder E-Mail-Adresse"
+    "userSearchScopeExact": "Genauer Benutzername oder E-Mail-Adresse",
+    "userDefaults": {
+      "title": "Standardwerte für Benutzer",
+      "description": "Neue Konten beginnen mit diesen Einstellungen. Benutzer können sie ändern.",
+      "timezoneMode": "Zeitzone",
+      "timezoneAuto": "Automatisch (Gerät des Benutzers)",
+      "timezoneFixed": "Fest (Standardzeitzone)",
+      "timezone": "Standardzeitzone",
+      "autoSummarization": "Automatische Zusammenfassungen",
+      "autoSpeakerLabelling": "Automatische Sprecherzuordnung",
+      "confirmTitle": "Auf bestehende Konten anwenden?",
+      "confirmMessage": "{{count}} Konto hat noch den bisherigen Standardwert ({{value}}).",
+      "newAccountsOnly": "Nur neue Konten",
+      "saved": "Gespeichert",
+      "savedUpdated": "Gespeichert. Aktualisierte Konten: {{count}}",
+      "confirmMessagePlural": "{{count}} Konten haben noch den bisherigen Standardwert ({{value}}).",
+      "applyToCount": "Auf {{count}} Konto anwenden",
+      "applyToCountPlural": "Auf {{count}} Konten anwenden"
+    }
   },
   "apiTokens": {
     "activeTokens": "Aktive Token",
@@ -3826,7 +3841,9 @@
       "group_create_not_permitted": "Sie haben keine Berechtigung, Gruppen zu erstellen.",
       "group_delete_not_permitted": "Nur ein Administrator oder der Ersteller der Gruppe, solange er ihr Gruppenadministrator ist, kann diese Gruppe löschen.",
       "member_identifier_required": "Geben Sie den genauen Benutzernamen oder die genaue E-Mail-Adresse der hinzuzufügenden Person ein.",
-      "invalid_permission_mode": "Ungültiger Wert. Zulässig sind: {{modes}}"
+      "invalid_permission_mode": "Ungültiger Wert. Zulässig sind: {{modes}}",
+      "invalid_user_default": "Ungültiger Wert für {{setting}}. Erlaubt: {{allowed}}",
+      "unknown_user_default": "Unbekannter Standardwert für Benutzer"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

@@ -22,7 +22,7 @@ describe('what a dialog shows', () => {
     it('takes the message alone, with OK and Cancel', () => {
         expect(dialogSpec('confirm', 'Rename the files?')).toEqual({
             kind: 'confirm', title: '', message: 'Rename the files?', confirmLabel: 'OK', cancelLabel: 'Cancel',
-            danger: false, value: '', placeholder: '', content: null, size: 'sm',
+            alternateLabel: '', danger: false, value: '', placeholder: '', content: null, size: 'sm',
         });
     });
 
@@ -111,6 +111,15 @@ describe('what a dialog resolves to', () => {
     it('is true or false for a confirmation', () => {
         expect(result('confirm', true)).toBe(true);
         expect(result('confirm', false)).toBe(false);
+    });
+
+    it('is alternate for the second answer of a confirmation', () => {
+        const { dialogSpec } = load().SpeakrDialog;
+        expect(dialogSpec('confirm', { message: 'x', alternateLabel: 'New accounts only' }).alternateLabel).toBe('New accounts only');
+        expect(dialogSpec('alert', { message: 'x', alternateLabel: 'No' }).alternateLabel).toBe('');
+        expect(result('confirm', 'alternate')).toBe('alternate');
+        expect(result('prompt', 'alternate', 'typed')).toBe('typed');
+        expect(result('alert', 'alternate')).toBeUndefined();
     });
 
     it('is the text, or null when cancelled, for an input', () => {

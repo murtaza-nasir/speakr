@@ -528,9 +528,6 @@
       "transcriptLengthLimitDesc": "Número máximo de caracteres a enviar desde la transcripción al LLM para resumen y chat. Use -1 para sin límite.",
       "maxAudioOnlyVideoSizeDesc": "Tamaño máximo (en MB) para subidas de vídeo en modo solo audio. Solo se almacena el audio extraído, por lo que la subida en sí puede ser mayor que el límite habitual.",
       "disableAutoTranslationDesc": "Cuando está activado, las grabaciones solo se transcriben y los usuarios deben iniciar la traducción manualmente. Cuando está desactivado, cada usuario puede activar la traducción automática de sus grabaciones nuevas tras la transcripción.",
-      "defaultUiThemeDesc": "Tema de la interfaz para las cuentas nuevas y para las páginas de inicio de sesión en un navegador sin tema guardado. Uno de: default, classic, workspace, focus, desk, cards. Las cuentas existentes conservan su tema.",
-      "defaultColorSchemeDesc": "Esquema de colores para las cuentas nuevas y para las páginas de inicio de sesión en un navegador sin esquema guardado. Uno de: blue, emerald, purple, rose, amber, teal. Las cuentas existentes conservan su esquema de colores.",
-      "defaultAudioPlayerPositionDesc": "Posición del reproductor de audio en la página de una grabación para las cuentas nuevas. Uno de: top, bottom. Las cuentas existentes conservan su posición.",
       "ssoApiTokensEnabledDesc": "Si se activa, las aplicaciones que inician sesión de los usuarios con el mismo proveedor SSO que Speakr pueden llamar a la API con el token de acceso SSO del usuario y canjearlo por un token de API. SSO debe estar configurado y al menos un cliente debe estar permitido.",
       "ssoApiAllowedClientsDesc": "ID de cliente OIDC separados por comas cuyos tokens de acceso se aceptan, comparados con la reclamación aud o azp. Vacío significa que no se acepta ningún token de acceso.",
       "ssoApiScopesDesc": "Ámbitos separados por comas que tiene una solicitud con un token de acceso SSO. Un token canjeado solo puede tener estos ámbitos. Predeterminado: read.",
@@ -792,7 +789,25 @@
     "permissionModeEveryone": "Todos",
     "userSearchScopeEveryone": "Todos",
     "userSearchScopeGroups": "Personas de sus grupos",
-    "userSearchScopeExact": "Nombre de usuario o correo exacto"
+    "userSearchScopeExact": "Nombre de usuario o correo exacto",
+    "userDefaults": {
+      "title": "Valores predeterminados de usuario",
+      "description": "Las cuentas nuevas empiezan con estos ajustes. Los usuarios pueden cambiarlos.",
+      "timezoneMode": "Zona horaria",
+      "timezoneAuto": "Automática (dispositivo del usuario)",
+      "timezoneFixed": "Fija (zona horaria predeterminada)",
+      "timezone": "Zona horaria predeterminada",
+      "autoSummarization": "Resúmenes automáticos",
+      "autoSpeakerLabelling": "Etiquetado automático de hablantes",
+      "confirmTitle": "¿Aplicar a las cuentas existentes?",
+      "confirmMessage": "{{count}} cuenta aún tiene el valor predeterminado anterior ({{value}}).",
+      "newAccountsOnly": "Solo cuentas nuevas",
+      "saved": "Guardado",
+      "savedUpdated": "Guardado. Cuentas actualizadas: {{count}}",
+      "confirmMessagePlural": "{{count}} cuentas aún tienen el valor predeterminado anterior ({{value}}).",
+      "applyToCount": "Aplicar a {{count}} cuenta",
+      "applyToCountPlural": "Aplicar a {{count}} cuentas"
+    }
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",
@@ -3826,7 +3841,9 @@
       "group_create_not_permitted": "No tiene permiso para crear grupos.",
       "group_delete_not_permitted": "Solo un administrador del sitio, o el creador del grupo mientras sea administrador de este, puede eliminar este grupo.",
       "member_identifier_required": "Introduzca el nombre de usuario o la dirección de correo electrónico exactos de la persona que desea añadir.",
-      "invalid_permission_mode": "Valor no válido. Debe ser uno de: {{modes}}"
+      "invalid_permission_mode": "Valor no válido. Debe ser uno de: {{modes}}",
+      "invalid_user_default": "Valor no válido para {{setting}}. Debe ser uno de: {{allowed}}",
+      "unknown_user_default": "Valor predeterminado de usuario desconocido"
     },
     "apiMessage": {
       "accountUpdated": "Datos de la cuenta actualizados",

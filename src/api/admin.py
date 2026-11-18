@@ -429,7 +429,7 @@ def admin_add_user():
         monthly_transcription_budget=data.get('monthly_transcription_budget'),
         storage_quota_mb=storage_quota,
     )
-    from src.config.ui_themes import apply_new_user_defaults
+    from src.services.user_defaults import apply_new_user_defaults
     apply_new_user_defaults(new_user)
 
     db.session.add(new_user)
@@ -1370,15 +1370,43 @@ def admin_update_setting():
     # The stored value before the change, for the audit row.
     existing_row = SystemSetting.query.filter_by(key=key).first()
     old_value = existing_row.value if existing_row is not None else None
+    # A default for user settings (#584). With apply_to_existing, the accounts
+    # that still have the previous default get the new one in this request;
+    # without it (the default), only new accounts do.
+    from src.services import user_defaults
+    user_default = user_defaults.get(key)
+    apply_to_existing = user_default is not None and data.get('apply_to_existing') is True
+    old_default = user_default.current() if user_default else None
+
+    def _save_user_default(new_default):
+        """Update the accounts on the previous default when asked, and add the
+        audit row. Returns the number of accounts updated."""
+        updated = (user_defaults.apply_to_existing(user_default, old_default, new_default)
+                   if apply_to_existing else 0)
+        audit.setting_changed(key, old_default, new_default, users_updated=updated)
+        return updated
+
     if key in ENV_BACKED_SETTINGS and (value is None or (isinstance(value, str) and not value.strip())):
         try:
-            audit.setting_changed(key, old_value, None)
+            if user_default:
+                users_updated = _save_user_default(user_default.fallback())
+            else:
+                audit.setting_changed(key, old_value, None)
             setting = SystemSetting.set_setting(key, None, description, ENV_BACKED_SETTINGS[key][2])
+            if user_default:
+                return jsonify({**setting.to_dict(), 'users_updated': users_updated})
             return jsonify(setting.to_dict())
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error clearing setting {key}: {e}")
             return jsonify({'error': str(e)}), 500
+
+    if user_default:
+        try:
+            value = user_default.clean(value)
+        except ValueError:
+            return jsonify(api_error(user_default.error_code, **user_default.error_params())), 400
+        setting_type = user_default.setting_type
 
     # Validate setting type
     valid_types = ['string', 'integer', 'boolean', 'float']
@@ -1400,30 +1428,6 @@ def admin_update_setting():
         if value not in ['true', 'false', '1', '0', 'yes', 'no', True, False, 1, 0]:
             return jsonify(api_error('invalid_boolean_value')), 400
     
-    if key == 'default_timezone':
-        from src.utils.timezones import is_valid_timezone
-        if not is_valid_timezone(value):
-            return jsonify(api_error('invalid_timezone_value')), 400
-
-    if key == 'default_ui_theme':
-        from src.config import ui_themes
-        if not ui_themes.is_valid_new_user_theme(str(value).strip().lower()):
-            return jsonify(api_error('invalid_default_ui_theme',
-                                     themes=', '.join(t.id for t in ui_themes.available_themes()))), 400
-        value = str(value).strip().lower()
-    if key == 'default_color_scheme':
-        from src.config import ui_themes
-        if not ui_themes.is_valid_color_scheme(str(value).strip().lower()):
-            return jsonify(api_error('invalid_default_color_scheme',
-                                     schemes=', '.join(ui_themes.COLOR_SCHEMES))), 400
-        value = str(value).strip().lower()
-    if key == 'default_audio_player_position':
-        from src.config import ui_themes
-        if not ui_themes.is_valid_audio_player_position(str(value).strip().lower()):
-            return jsonify(api_error('invalid_default_audio_player_position',
-                                     positions=', '.join(ui_themes.AUDIO_PLAYER_POSITIONS))), 400
-        value = str(value).strip().lower()
-
     if key == 'deletion_mode':
         if value not in ('audio_only', 'full_recording'):
             return jsonify(api_error('invalid_deletion_mode_value')), 400
@@ -1443,7 +1447,10 @@ def admin_update_setting():
         setting_type = 'string'
 
     try:
-        audit.setting_changed(key, old_value, value)
+        if user_default:
+            users_updated = _save_user_default(value)
+        else:
+            audit.setting_changed(key, old_value, value)
         setting = SystemSetting.set_setting(key, value, description, setting_type)
 
         # Recompute the Werkzeug ceiling whenever either upload limit
@@ -1464,11 +1471,38 @@ def admin_update_setting():
             except (ValueError, TypeError):
                 pass
 
+        if user_default:
+            return jsonify({**setting.to_dict(), 'users_updated': users_updated})
         return jsonify(setting.to_dict())
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error updating setting {key}: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/user-defaults', methods=['GET'])
+@login_required
+def admin_user_defaults():
+    """The defaults for user settings (#584), with the value in effect."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import user_defaults
+    return jsonify({'defaults': user_defaults.describe()})
+
+
+@admin_bp.route('/admin/user-defaults/<key>/accounts', methods=['GET'])
+@login_required
+def admin_user_default_accounts(key):
+    """The number of accounts that still have the default in effect. The
+    admin page asks before a default is changed (#584)."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import user_defaults
+    user_default = user_defaults.get(key)
+    if user_default is None:
+        return jsonify(api_error('unknown_user_default')), 404
+    value = user_default.current()
+    return jsonify({'key': key, 'value': value, 'count': user_defaults.accounts_on(user_default, value)})
 
 # --- Configuration API ---
 

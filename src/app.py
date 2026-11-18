@@ -1071,6 +1071,12 @@ def inject_registration_flag():
     return {'registration_enabled': registration_enabled()}
 
 @app.context_processor
+def inject_ui_languages():
+    """The interface languages, for the selects that list them."""
+    from src.utils.localization import UI_LANGUAGES
+    return {'ui_languages': UI_LANGUAGES}
+
+@app.context_processor
 def inject_output_languages():
     """Shared list of output/translation target language names (#translation)."""
     from src.utils.language import OUTPUT_LANGUAGES

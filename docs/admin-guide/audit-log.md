@@ -94,7 +94,7 @@ Rows with `imported` in the details were copied from the table `share_audit_log`
 | `admin.user.password_set` | An administrator set the password of an account | `self` |
 | `admin.user.unlocked` | An administrator ended the sign-in lock of an account | |
 | `admin.user.role_changed` | The administrator role was given or taken away | `old`, `new` |
-| `admin.setting.changed` | A system setting was saved or cleared | `key`. For settings that hold a switch, a number or a fixed choice: `old` and `new`. For every other setting, only the key. A key that is not a setting of the application is stored as `other`. |
+| `admin.setting.changed` | A system setting was saved or cleared | `key`. For settings that hold a switch, a number or a fixed choice: `old` and `new`. For every other setting, only the key. A key that is not a setting of the application is stored as `other`. For a [user default](system-settings.md#user-defaults): `old`, `new` and `users_updated`, the number of existing accounts that got the new default. |
 | `admin.retention.run` | Automatic deletion was started by hand | Counts |
 | `admin.inquire.processed` | An administrator started the processing of recordings for Ask Ambrose on the admin page. The recordings of all accounts are processed. | `processed`, `failed`, `total`, `force` |
 | `group.created`, `group.changed`, `group.deleted` | A group was created, changed or deleted | `fields` |

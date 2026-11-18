@@ -217,6 +217,19 @@ FALLBACK_LANGUAGE = 'en'
 _PLACEHOLDER_RE = re.compile(r'\{\{(\w+)\}\}')
 
 
+# The interface languages as the Account page and the admin page list them:
+# (code of the locale file, name shown in the select).
+UI_LANGUAGES = (
+    ('en', 'English'),
+    ('zh', '中文 (Chinese)'),
+    ('de', 'Deutsch (German)'),
+    ('es', 'Español (Spanish)'),
+    ('fr', 'Français (French)'),
+    ('ru', 'Русский (Russian)'),
+    ('pt-BR', 'Português (Brasil)'),
+)
+
+
 @lru_cache(maxsize=1)
 def available_languages() -> tuple:
     """Codes of the shipped locale files, e.g. ('de', 'en', ..., 'pt-BR', 'zh')."""
