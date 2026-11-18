@@ -52,6 +52,7 @@ from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.token_auth import load_user_from_token_value
 from src.utils.localization import api_error, translate
 from src.utils.error_text import log_failure
+from src.utils.metadata_limits import PARTICIPANTS_MAX_CHARS, metadata_error
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -2209,6 +2210,13 @@ def update_recording(recording_id):
             **api_error('keep_audio_only_immutable')
         }), 400
 
+    # Wrong types and over-long values are refused before any change (#624)
+    error = metadata_error(data, {'title': recording.title, 'participants': recording.participants,
+                                  'notes': recording.get_user_notes(current_user),
+                                  'summary': recording.summary})
+    if error:
+        return jsonify(error), 400
+
     # Update fields if provided
     if 'title' in data:
         if data['title'] != recording.title:
@@ -2310,6 +2318,9 @@ def replace_notes(recording_id):
     data = request.get_json()
     if not data or 'notes' not in data:
         return jsonify(api_error('notes_field_required')), 400
+    error = metadata_error({'notes': data['notes']}, {'notes': recording.get_user_notes(current_user)})
+    if error:
+        return jsonify(error), 400
 
     from src.services.recording_state import set_user_notes
     set_user_notes(recording, current_user, data['notes'])
@@ -2336,6 +2347,9 @@ def replace_summary(recording_id):
     data = request.get_json()
     if not data or 'summary' not in data:
         return jsonify(api_error('summary_field_required')), 400
+    error = metadata_error({'summary': data['summary']}, {'summary': recording.summary})
+    if error:
+        return jsonify(error), 400
 
     recording.summary = data['summary']
     # Text from outside replaces the summary: no stored prompt produced it.
@@ -4250,7 +4264,7 @@ def upload_recording():
     form = request.form
 
     participants = form.get('participants')
-    if participants is not None and len(participants) > 500:
+    if participants is not None and len(participants) > PARTICIPANTS_MAX_CHARS:
         return jsonify({'error': translate('server.apiError.participants_too_long'), 'code': 'invalid_parameter'}), 400
     clean_refs = []
     if form.get('external_refs'):

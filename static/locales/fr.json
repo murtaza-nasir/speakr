@@ -3832,6 +3832,8 @@
       "invalid_default_audio_player_position": "Position par défaut du lecteur audio invalide. Valeurs possibles : {{positions}}",
       "sso_token_required": "Cette route n'accepte qu'un jeton d'accès SSO dans l'en-tête Authorization",
       "token_name_too_long": "name doit comporter au plus {{max}} caractères",
+      "field_must_be_string": "{{field}} doit être une chaîne de caractères",
+      "field_too_long": "{{field}} doit comporter au plus {{max}} caractères",
       "sso_scopes_not_allowed": "scopes doit être un sous-ensemble des portées autorisées pour les jetons d'accès SSO : {{allowed}}",
       "sso_exchange_not_allowed": "L'échange d'un jeton d'accès SSO n'est pas autorisé pour cette application",
       "sso_registration_closed": "Aucun compte Speakr n'est lié à cette identité SSO. Connectez-vous d'abord une fois à Speakr avec le SSO",

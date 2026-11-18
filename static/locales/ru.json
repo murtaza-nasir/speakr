@@ -3832,6 +3832,8 @@
       "invalid_default_audio_player_position": "Недопустимое положение аудиоплеера по умолчанию. Допустимые значения: {{positions}}",
       "sso_token_required": "Этот маршрут принимает только токен доступа SSO в заголовке Authorization",
       "token_name_too_long": "name может содержать не более {{max}} символов",
+      "field_must_be_string": "{{field}} должно быть строкой",
+      "field_too_long": "{{field}} должно содержать не более {{max}} символов",
       "sso_scopes_not_allowed": "scopes должен быть подмножеством областей, разрешенных для токенов доступа SSO: {{allowed}}",
       "sso_exchange_not_allowed": "Обмен токена доступа SSO для этого приложения не разрешен",
       "sso_registration_closed": "С этой учетной записью SSO не связана учетная запись Speakr. Сначала войдите в Speakr один раз через SSO",

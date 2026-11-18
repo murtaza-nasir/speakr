@@ -372,3 +372,22 @@ def test_list_filters_updated_since_and_date_field(world):
     ordered = c.get("/api/v1/recordings?sort_by=updated_at&sort_order=desc", headers=_api(world)).get_json()
     stamps = [r["updated_at"] for r in ordered["recordings"]]
     assert stamps == sorted(stamps, reverse=True)
+
+
+# ------------------------------------------------------------ metadata limits (#624)
+
+def test_save_rejects_oversized_metadata(world):
+    from src.utils.metadata_limits import NOTES_MAX_CHARS
+    c = _session(world["me"])
+    with patch("src.api.recordings.export_recording"):
+        resp = c.post("/save", json={"id": world["rec"], "notes": "x" * (NOTES_MAX_CHARS + 1)})
+        assert resp.status_code == 400 and resp.get_json()["code"] == "invalid_parameter"
+        resp = c.post("/save", json={"id": world["rec"], "summary": {"a": 1}})
+        assert resp.status_code == 400 and resp.get_json()["code"] == "invalid_parameter"
+        with app.app_context():
+            assert db.session.get(Recording, world["rec"]).notes is None
+        resp = c.post("/save", json={"id": world["rec"], "title": "Sync", "participants": None,
+                                     "notes": "short note", "summary": None, "meeting_date": None})
+        assert resp.status_code == 200
+    with app.app_context():
+        assert db.session.get(Recording, world["rec"]).notes == "short note"

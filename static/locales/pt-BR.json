@@ -3832,6 +3832,8 @@
       "invalid_default_audio_player_position": "Posição padrão do player de áudio inválida. Deve ser uma destas: {{positions}}",
       "sso_token_required": "Esta rota aceita apenas um token de acesso SSO no cabeçalho Authorization",
       "token_name_too_long": "name deve ter no máximo {{max}} caracteres",
+      "field_must_be_string": "{{field}} deve ser uma string",
+      "field_too_long": "{{field}} deve ter no máximo {{max}} caracteres",
       "sso_scopes_not_allowed": "scopes deve ser um subconjunto dos escopos permitidos para tokens de acesso SSO: {{allowed}}",
       "sso_exchange_not_allowed": "A troca de um token de acesso SSO não é permitida para este app",
       "sso_registration_closed": "Nenhuma conta do Speakr está vinculada a esta identidade SSO. Entre primeiro no Speakr uma vez com SSO",
