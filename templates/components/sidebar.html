@@ -137,6 +137,70 @@
             </div>
         </div>
 
+        <!-- Selection mode: the bulk actions as a panel at the foot of the
+             list, above the processing queue. It takes its room from the
+             list, so no row is covered. First row: where the recordings
+             belong (tags, folder, inbox, star). Second row: what is done
+             with them (archive, reprocess, merge, delete). On a phone the
+             same panel is a bar at the bottom edge (phone.css). -->
+        <transition name="bulk-dock">
+            <div v-if="selectionMode && selectedCount > 0 && (!isMobile || phoneListOpen)"
+                 data-bulk-bar class="bulk-bar" role="toolbar"
+                 :aria-label="t('bulkActions.selectedCount', { count: selectedCount })">
+                <div class="bulk-bar__head">
+                    <span class="bulk-bar__count" v-text="t('bulkActions.selectedCount', { count: selectedCount })"></span>
+                    <button type="button" @click="exitSelectionMode" class="bulk-bar__close"
+                            :title="t('bulkActions.exitSelection')" :aria-label="t('bulkActions.exitSelection')">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <div class="bulk-bar__grid">
+                <button type="button" @click="openBulkTagModal('add')"
+                        class="bulk-act" :title="t('bulkActions.addOrRemoveTags')">
+                    <i class="fas fa-tags" aria-hidden="true"></i>
+                    <span v-text="t('tags.title')"></span>
+                </button>
+                <button type="button" @click="showBulkFolderModal = true"
+                        v-if="foldersEnabled"
+                        class="bulk-act" :title="t('folderManagement.moveToFolder')">
+                    <i class="fas fa-folder" aria-hidden="true"></i>
+                    <span v-text="t('form.folder')"></span>
+                </button>
+                <button type="button" @click="bulkToggleInbox()"
+                        class="bulk-act" :title="t('bulkActions.toggleInbox')">
+                    <i class="fas fa-inbox" aria-hidden="true"></i>
+                    <span v-text="t('sidebar.inbox')"></span>
+                </button>
+                <button type="button" @click="bulkToggleHighlight()"
+                        class="bulk-act" :title="t('bulkActions.toggleHighlight')">
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <span v-text="t('bulkActions.star')"></span>
+                </button>
+                <button type="button" @click="bulkToggleArchive()"
+                        class="bulk-act" :title="t('archive.toggleSelected')">
+                    <i class="fas fa-box-archive" aria-hidden="true"></i>
+                    <span v-text="t('archive.archive')"></span>
+                </button>
+                <button type="button" @click="openBulkReprocessModal"
+                        class="bulk-act" :title="t('bulkActions.reprocess')">
+                    <i class="fas fa-redo" aria-hidden="true"></i>
+                    <span v-text="t('bulkActions.reprocess')"></span>
+                </button>
+                <button type="button" @click="openBulkMergeModal"
+                        :disabled="selectedCount < 2"
+                        class="bulk-act" :title="t('mergeRecordings.title')">
+                    <i class="fas fa-object-group" aria-hidden="true"></i>
+                    <span v-text="t('mergeRecordings.action')"></span>
+                </button>
+                <button type="button" @click="openBulkDeleteModal"
+                        class="bulk-act bulk-act--danger" :title="t('bulkActions.deleteSelected')">
+                    <i class="fas fa-trash" aria-hidden="true"></i>
+                    <span v-text="t('common.delete')"></span>
+                </button>
+                </div>
+            </div>
+        </transition>
+
         <!-- The processing queue at the foot of the list: the one-line
              indicator, or the panel, which takes its room from the list
              (the list gets shorter and scrolls; nothing lies over it). On a
@@ -159,76 +223,6 @@
 <template v-if="isMobile">
     {% include 'components/phone/list-sheets.html' %}
 </template>
-
-<!-- Vertical Floating Bulk Action Bar - To the right of sidebar -->
-<transition name="slide-right">
-    <div v-if="selectionMode && selectedCount > 0 && (isMobile ? phoneListOpen : !isSidebarCollapsed)"
-         data-bulk-bar
-         class="bulk-bar fixed top-1/2 -translate-y-1/2 left-80 z-50 flex flex-col gap-1 p-2 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-r-xl shadow-lg">
-        <!-- Selection count badge -->
-        <div class="text-center text-xs font-medium text-[var(--text-accent)] py-1 border-b border-[var(--border-primary)] mb-1">
-            ${ selectedCount }
-        </div>
-
-        <button @click="openBulkTagModal('add')"
-                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                :title="t('bulkActions.addOrRemoveTags')">
-            <i class="fas fa-tags text-[var(--text-muted)]"></i>
-        </button>
-
-        <button v-if="foldersEnabled"
-                @click="showBulkFolderModal = true"
-                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                :title="t('folderManagement.moveToFolder')">
-            <i class="fas fa-folder text-emerald-500"></i>
-        </button>
-
-        <button @click="bulkToggleInbox()"
-                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                :title="t('bulkActions.toggleInbox')">
-            <i class="fas fa-inbox text-blue-500"></i>
-        </button>
-
-        <button @click="bulkToggleHighlight()"
-                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                :title="t('bulkActions.toggleHighlight')">
-            <i class="fas fa-star text-amber-500"></i>
-        </button>
-
-        <button @click="bulkToggleArchive()"
-                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                :title="t('archive.toggleSelected')">
-            <i class="fas fa-box-archive text-[var(--text-muted)]"></i>
-        </button>
-
-        <button @click="openBulkReprocessModal"
-                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                :title="t('bulkActions.reprocess')">
-            <i class="fas fa-redo text-[var(--text-muted)]"></i>
-        </button>
-
-        <button v-if="selectedCount >= 2"
-                @click="openBulkMergeModal"
-                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                :title="t('mergeRecordings.title')">
-            <i class="fas fa-object-group text-purple-500"></i>
-        </button>
-
-        <div class="border-t border-[var(--border-primary)] my-1"></div>
-
-        <button @click="openBulkDeleteModal"
-                class="w-10 h-10 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                :title="t('bulkActions.deleteSelected')">
-            <i class="fas fa-trash"></i>
-        </button>
-
-        <button @click="exitSelectionMode"
-                class="w-10 h-10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
-                :title="t('bulkActions.exitSelection')">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-</transition>
 
 <!-- Bulk Folder Assignment Modal -->
 <div v-if="showBulkFolderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" data-shortcut-scope="dialog" @click.self="showBulkFolderModal = false">

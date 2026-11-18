@@ -577,7 +577,7 @@ html[data-ui-theme="workspace"] .sidebar-content-wrapper {
     width: var(--sidebar-w);
     display: grid;
     grid-template-columns: var(--sidebar-nav-w) minmax(0, 1fr);
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
     overflow: hidden;
     background: var(--bg-secondary);
 }
@@ -590,7 +590,8 @@ html[data-ui-theme="workspace"] .sidebar-content-wrapper > .overflow-y-auto > .s
 /* The processing queue at the foot of the list column (static/css/queue.css). The row
    of a grid has no height a percentage could refer to, so the open panel is capped
    against the height of the window. */
-html[data-ui-theme="workspace"] .sidebar-content-wrapper > .queue-dock { grid-column: 2; grid-row: 5; min-width: 0; }
+html[data-ui-theme="workspace"] .sidebar-content-wrapper > .bulk-bar { grid-column: 2; grid-row: 5; min-width: 0; }
+html[data-ui-theme="workspace"] .sidebar-content-wrapper > .queue-dock { grid-column: 2; grid-row: 6; min-width: 0; }
 html[data-ui-theme="workspace"] .sidebar-content-wrapper > .queue-dock.is-open { max-height: calc((var(--app-height, 100vh) - var(--app-header-height, 56px)) * 0.54); }
 
 /* Navigation rail */

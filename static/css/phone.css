@@ -807,22 +807,16 @@ html body .ph-search input, html body .ph-search input:focus {
 
     /* Selection mode: the bulk actions as a bar at the bottom edge */
     html body .bulk-bar {
-        top: auto;
+        position: fixed;
         left: max(8px, var(--ph-safe-l));
         right: max(8px, var(--ph-safe-r));
         bottom: calc(10px + var(--ph-safe-b));
-        transform: none;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
+        margin: 0;
         border-radius: 14px;
         z-index: 47;
     }
-    html body .bulk-bar > .border-t { display: none; }
-    html body .bulk-bar > .border-b { border-bottom: 0; margin: 0; padding: 0 6px; min-width: 28px; }
-    html body .bulk-bar > button { width: 44px; height: 44px; }
+    html body .bulk-bar .bulk-act { min-height: 52px; }
+    html body .bulk-bar__close { width: 44px; height: 36px; }
 }
 @media (max-width: 767px) and (prefers-reduced-motion: reduce) {
     html body aside.sidebar.ph-list, html body aside.sidebar.ph-list.collapsed { transition: none; }
