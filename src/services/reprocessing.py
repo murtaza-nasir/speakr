@@ -62,6 +62,7 @@ def queue_transcription_reprocess(recording, user, overrides=None):
 
     recording.transcription = None
     recording.summary = None
+    recording.clear_summary_prompt_used()
     recording.status = 'QUEUED'
     Event.query.filter_by(recording_id=recording.id).delete()
     from src.services import audit
@@ -130,6 +131,54 @@ def caller_summary_prompt(recording, user, custom_prompt, append):
     return f"{base}\n\nAdditional context for this recording:\n{custom_prompt}", False
 
 
+def summary_prompt_used(recording, user, custom_prompt=None, prompt_mode='replace'):
+    """The prompt to store with the summary a request produces, or None.
+
+    The editable form: the prompt of the request without the instructions
+    added for one run (additional_instructions, or a prompt sent to append).
+    Returns {'prompt', 'source', 'name'}. A replacing prompt is 'custom',
+    unless it is the caller's resolved prompt unchanged, which keeps its
+    source. Another user's request without a replacing prompt runs that
+    user's resolved prompt (caller_summary_prompt), so that one is stored.
+    None for the owner without a replacing prompt: the summary task resolves
+    the prompt when it runs and stores what it resolved.
+    """
+    from src.services.summary_prompt import prompt_source, same_prompt
+    from src.tasks.processing import resolve_summary_prompt_detail
+
+    text = custom_prompt.strip() if isinstance(custom_prompt, str) and custom_prompt.strip() else None
+    mode = (prompt_mode or 'replace').strip().lower() if isinstance(prompt_mode, str) else 'replace'
+    replacing = bool(text) and mode != 'append'
+    is_owner = user is None or recording.user_id is None or recording.user_id == user.id
+    if not replacing and is_owner:
+        return None
+    base, source, supplier = resolve_summary_prompt_detail(recording, user)
+    if replacing and not same_prompt(text, base):
+        return {'prompt': text, 'source': 'custom', 'name': None}
+    kind, name, _key = prompt_source(source, supplier)
+    return {'prompt': text if replacing else base, 'source': kind, 'name': name}
+
+
+def follow_up_summary_params(recording, user):
+    """Job parameters of the summary that follows a change of the transcript
+    (new speaker names, an edited transcript).
+
+    A custom prompt that produced the current summary in a run of this user
+    is run again, so that the new summary has the same form (#584). In every
+    other case only the user id is passed and the summary task resolves the
+    owner's prompt, as it does after an upload.
+    """
+    params = {'user_id': user.id}
+    stored = (recording.summary_prompt_used or '').strip()
+    if (stored and recording.summary_prompt_source == 'custom'
+            and recording.summary_prompt_user_id == user.id
+            and (recording.summary or '').strip()):
+        params.update(
+            custom_prompt=recording.summary_prompt_used, custom_prompt_append=False,
+            prompt_used={'prompt': recording.summary_prompt_used, 'source': 'custom', 'name': None})
+    return params
+
+
 def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='replace',
                             prompt_variables=None, job_type='reprocess_summary',
                             additional_instructions=None):
@@ -153,6 +202,7 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
     if llm.client is None:
         raise ReprocessError('summary_llm_not_configured', 503)
 
+    prompt_used = summary_prompt_used(recording, user, custom_prompt, prompt_mode)
     custom_prompt, append = summary_prompt_params(custom_prompt, prompt_mode, additional_instructions)
     custom_prompt, append = caller_summary_prompt(recording, user, custom_prompt, append)
     if prompt_variables is not None:
@@ -162,6 +212,7 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
     restore_state = snapshot_for_reprocess(recording, 'summary')
 
     recording.summary = None
+    recording.clear_summary_prompt_used()
     Event.query.filter_by(recording_id=recording.id).delete()
     from src.services import audit
     audit.record_in_tx('recording.reprocessed', recording=recording, details={'kind': 'summary'})
@@ -171,6 +222,8 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
         'custom_prompt': custom_prompt,
         'custom_prompt_append': append,
         'user_id': user.id,
+        # What to store as the prompt of the new summary (summary_prompt_used).
+        'prompt_used': prompt_used,
     }
     return job_queue.enqueue(user_id=user.id, recording_id=recording.id, job_type=job_type, params=params,
                              restore_state=restore_state)

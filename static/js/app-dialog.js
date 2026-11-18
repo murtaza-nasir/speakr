@@ -4,8 +4,10 @@
  * Vue app and the standalone pages (account, admin, group management, share,
  * inquire) use the same one: it sets
  *
- *   window.confirmDialog({ title?, message, confirmLabel?, cancelLabel?, danger? })
+ *   window.confirmDialog({ title?, message, confirmLabel?, cancelLabel?, danger?, alternateLabel? })
  *       -> Promise<boolean>         true when confirmed
+ *       With alternateLabel, a second answer is offered on a button between
+ *       Cancel and the confirming one, and the promise is 'alternate' for it.
  *   window.alertDialog({ title?, message, confirmLabel?, content?, size? })
  *       -> Promise<void>            resolved when closed
  *   window.promptDialog({ title?, message, value?, placeholder?, confirmLabel?, cancelLabel? })
@@ -50,7 +52,7 @@
 
     /**
      * What a dialog shows: { kind, title, message, confirmLabel, cancelLabel,
-     * danger, value, placeholder, content, size }. `options` is an object or
+     * alternateLabel, danger, value, placeholder, content, size }. `options` is an object or
      * the message. A message dialog has no cancel button (cancelLabel is '');
      * only a message dialog has `content` and a size other than 'sm'.
      */
@@ -63,6 +65,7 @@
             message: text(given.message),
             confirmLabel: text(given.confirmLabel) || t('common.ok', 'OK'),
             cancelLabel: type === 'alert' ? '' : (text(given.cancelLabel) || t('common.cancel', 'Cancel')),
+            alternateLabel: type === 'confirm' ? text(given.alternateLabel) : '',
             danger: type === 'confirm' && !!given.danger,
             value: type === 'prompt' ? text(given.value) : '',
             placeholder: type === 'prompt' ? text(given.placeholder) : '',
@@ -100,6 +103,8 @@
     function result(kind, confirmed, value) {
         if (kind === 'alert') return undefined;
         if (kind === 'prompt') return confirmed ? text(value) : null;
+        // The second answer of a confirmation with alternateLabel
+        if (confirmed === 'alternate') return 'alternate';
         return !!confirmed;
     }
 
@@ -160,6 +165,13 @@
             cancel.setAttribute('data-app-dialog-cancel', '');
             footer.appendChild(cancel);
         }
+        let alternate = null;
+        if (spec.alternateLabel) {
+            alternate = el('button', 'btn btn--ghost', spec.alternateLabel);
+            alternate.type = 'button';
+            alternate.setAttribute('data-app-dialog-alternate', '');
+            footer.appendChild(alternate);
+        }
         const confirm = el('button', `btn ${spec.danger ? 'btn--danger' : 'btn--primary'}`, spec.confirmLabel);
         confirm.type = 'button';
         confirm.setAttribute('data-app-dialog-confirm', '');
@@ -191,7 +203,8 @@
             // Nothing under the dialog sees a key while it is open
             event.stopPropagation();
             const active = document.activeElement;
-            const on = active === cancel ? 'cancel' : active === confirm ? 'confirm' : active === input ? 'input' : 'other';
+            // Enter on any of the buttons presses that button
+            const on = active === cancel || active === alternate ? 'cancel' : active === confirm ? 'confirm' : active === input ? 'input' : 'other';
             const intent = keyIntent(event.key, on, { composing: event.isComposing, mod: event.ctrlKey || event.metaKey });
             if (intent === 'block') {
                 event.preventDefault();
@@ -221,6 +234,7 @@
         overlay.addEventListener('mousedown', (event) => { pressedOutside = event.target === overlay; });
         overlay.addEventListener('click', (event) => { if (event.target === overlay && pressedOutside) close(false); });
         if (cancel) cancel.addEventListener('click', () => close(false));
+        if (alternate) alternate.addEventListener('click', () => close('alternate'));
         confirm.addEventListener('click', () => close(true));
 
         root.addEventListener('keydown', onKeydown, true);

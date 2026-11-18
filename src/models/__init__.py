@@ -106,3 +106,6 @@ __all__ = [
     'WEBHOOK_DELIVERY_STATUSES',
     'generate_webhook_secret',
 ]
+
+# Registers the listener that lists the settings changed on an account (#584).
+from src.services import user_defaults as _user_defaults  # noqa: E402,F401

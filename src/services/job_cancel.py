@@ -50,10 +50,14 @@ _CANCELED_CARD = {
 _TRANSCRIPTION_SIDE = ('convert', 'transcribe', 'reprocess_transcription')
 _DEPENDENT_TYPES = ('summarize', 'reprocess_summary', 'translate_transcription')
 
+# The stored prompt of the summary is cleared and restored with it (#584).
+_SUMMARY_PROMPT_FIELDS = ('summary_prompt_used', 'summary_prompt_source',
+                          'summary_prompt_source_name', 'summary_prompt_user_id')
 _SNAPSHOT_FIELDS = {
     'transcription': ('transcription', 'summary', 'status', 'error_message',
-                      'transcription_requested_language', 'resolved_hotwords', 'resolved_initial_prompt'),
-    'summary': ('summary', 'status', 'error_message'),
+                      'transcription_requested_language', 'resolved_hotwords', 'resolved_initial_prompt')
+                     + _SUMMARY_PROMPT_FIELDS,
+    'summary': ('summary', 'status', 'error_message') + _SUMMARY_PROMPT_FIELDS,
 }
 
 

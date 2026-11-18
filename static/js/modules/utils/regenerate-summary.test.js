@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-    buildRegenerateBody, groupStartFrom, normalizePrompt, optionLabel, promptsDiffer,
-    runVariables, saveLabel, sourceLabel,
+    baseSourceKind, buildRegenerateBody, groupStartFrom, normalizePrompt, openingBase, optionLabel,
+    promptsDiffer, runVariables, saveLabel, sourceLabel,
 } from './regenerate-summary.js';
 
 const t = (key, params = {}) => `${key}${params.name ? `(${params.name})` : ''}`;
@@ -75,5 +75,54 @@ describe('runVariables', () => {
         expect(vars.map(v => v.name)).toEqual(['client_name', 'date', 'room']);
         expect(vars[0].label).toBe('Client name');
         expect(vars[0].sources).toEqual([{ type: 'tag', name: 'Sales' }, { type: 'instructions', name: 'Added' }]);
+    });
+});
+
+describe('the prompt used for the current summary', () => {
+    const resolved = {
+        prompt: 'Resolved', source: 'tag', source_key: 'tag:3', source_name: 'Standup',
+        save_target: { kind: 'tag', id: 3, name: 'Standup' },
+    };
+    const used = (source, prompt) => ({
+        key: 'used', kind: 'used', source, name: null, prompt, applies: true,
+        save_target: { kind: 'user', id: null, name: null },
+    });
+
+    it('opens with the resolved prompt when nothing is stored', () => {
+        expect(openingBase({ ...resolved, used: null })).toEqual({
+            key: 'tag:3', kind: 'tag', name: 'Standup', prompt: 'Resolved', save_target: resolved.save_target,
+        });
+        expect(openingBase({ ...resolved, source: 'tag', source_key: 'tags', source_name: 'A, B' }).kind).toBe('tags');
+    });
+
+    it('opens with the custom prompt of the current summary', () => {
+        const base = openingBase({ ...resolved, used: used('custom', 'Mine') });
+        expect(base).toEqual(used('custom', 'Mine'));
+        // Run unchanged, it differs from the resolved prompt, so it is sent again.
+        const body = buildRegenerateBody({ prompt: base.prompt, resolvedPrompt: resolved.prompt, isOwner: true });
+        expect(body).toEqual({ custom_prompt: 'Mine', prompt_mode: 'replace' });
+    });
+
+    it('opens as before when the summary came from a tag, folder or default prompt', () => {
+        expect(openingBase({ ...resolved, used: used('tag', 'Older tag text') }).key).toBe('tag:3');
+        expect(openingBase({ ...resolved, used: used('default', 'Built in') }).key).toBe('tag:3');
+    });
+
+    it('opens as before when the custom prompt is the resolved prompt or empty', () => {
+        expect(openingBase({ ...resolved, used: used('custom', 'Resolved\r\n') }).key).toBe('tag:3');
+        expect(openingBase({ ...resolved, used: used('custom', '  ') }).key).toBe('tag:3');
+    });
+
+    it('labels the entry and its edits', () => {
+        expect(optionLabel(t, used('custom', 'Mine'))).toBe('regenerateSummary.sourceUsed');
+        expect(sourceLabel(t, used('custom', 'Mine'), false)).toBe('regenerateSummary.sourceUsed');
+        expect(sourceLabel(t, used('custom', 'Mine'), true)).toBe('regenerateSummary.editedFromUsed');
+        expect(saveLabel(t, used('custom', 'Mine').save_target)).toBe('regenerateSummary.saveToUser');
+    });
+
+    it('names the stored source of a used prompt', () => {
+        expect(baseSourceKind(used('folder', 'F'))).toBe('folder');
+        expect(baseSourceKind({ kind: 'tags' })).toBe('tags');
+        expect(baseSourceKind(null)).toBe('blank');
     });
 });

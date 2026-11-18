@@ -561,7 +561,9 @@ def generate_summary_endpoint(recording_id):
 
         # Optional custom prompt + mode (issue / discussion #253)
         data = request.get_json(silent=True) or {}
-        from src.services.reprocessing import summary_prompt_params, caller_summary_prompt
+        from src.services.reprocessing import summary_prompt_params, caller_summary_prompt, summary_prompt_used
+        prompt_used = summary_prompt_used(
+            recording, current_user, data.get('custom_prompt'), data.get('prompt_mode'))
         custom_prompt, custom_prompt_append = summary_prompt_params(
             data.get('custom_prompt'), data.get('prompt_mode'), data.get('additional_instructions'))
         custom_prompt, custom_prompt_append = caller_summary_prompt(
@@ -582,6 +584,8 @@ def generate_summary_endpoint(recording_id):
         if custom_prompt:
             job_params['custom_prompt'] = custom_prompt
             job_params['custom_prompt_append'] = custom_prompt_append
+        if prompt_used:
+            job_params['prompt_used'] = prompt_used
 
         audit.record_in_tx('recording.reprocessed', recording=recording, details={'kind': 'summary'})
         job_queue.enqueue(
@@ -698,11 +702,12 @@ def update_transcript(recording_id):
         summary_queued = False
         if regenerate_summary:
             current_app.logger.info(f"Queueing summary regeneration for recording {recording_id} after transcript update.")
+            from src.services.reprocessing import follow_up_summary_params
             job_queue.enqueue(
                 user_id=current_user.id,
                 recording_id=recording.id,
                 job_type='summarize',
-                params={'user_id': current_user.id}
+                params=follow_up_summary_params(recording, current_user)
             )
             summary_queued = True
             # Export will happen after summary regenerates
@@ -896,7 +901,8 @@ def get_summary_prompt(recording_id):
     """The summary prompt the current user would regenerate with (#584).
 
     Returns {prompt, source, source_name, source_key, is_owner, save_target,
-    start_from}. Only the current user's own prompts are included.
+    start_from, used}. Only the current user's own prompts are included;
+    used is the prompt of the current summary when their run produced it.
     """
     recording, error = _summary_prompt_recording(recording_id)
     if error:
@@ -1701,6 +1707,9 @@ def save_metadata():
                 recording.participants = clean_participants(data['participants'])
             if 'summary' in data:
                 recording.summary = data['summary']
+                # An edited summary keeps its prompt; an emptied one has none.
+                if not (data['summary'] or '').strip():
+                    recording.clear_summary_prompt_used()
             if 'meeting_date' in data:
                 try:
                     date_str = data['meeting_date']

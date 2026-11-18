@@ -627,7 +627,8 @@ def _generate_ai_title(recording):
         return None
 
 
-def generate_summary_only_task(app_context, recording_id, custom_prompt_override=None, custom_prompt_append=False, user_id=None):
+def generate_summary_only_task(app_context, recording_id, custom_prompt_override=None, custom_prompt_append=False,
+                               user_id=None, prompt_used=None):
     """Generates only a summary for a recording (no title, no JSON response).
 
     Args:
@@ -639,7 +640,10 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             default as additional context instead.
         custom_prompt_append: When True, append ``custom_prompt_override`` to the
             resolved default prompt rather than replacing it.
-        user_id: Optional user ID to filter tag visibility (defaults to recording owner)
+        user_id: The user who asked for the summary (defaults to the recording owner)
+        prompt_used: {'prompt', 'source', 'name'} to store as the prompt of this
+            summary (reprocessing.summary_prompt_used). Without it the prompt
+            that runs is stored, before the appended text and the variables.
     """
     with app_context:
         recording = db.session.get(Recording, recording_id)
@@ -651,6 +655,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         if client is None:
             current_app.logger.warning(f"Skipping summary generation for {recording_id}: OpenRouter client not configured.")
             recording.summary = "[Summary skipped: OpenRouter client not configured]"
+            recording.clear_summary_prompt_used()
             db.session.commit()
             # enqueue set SUMMARIZING; like the other exits, finish_processing
             # sets COMPLETED and runs the steps that follow it (#412).
@@ -669,6 +674,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         if not recording.transcription or len(recording.transcription.strip()) < 10:
             current_app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping summarization.")
             recording.summary = "[Summary skipped due to short transcription]"
+            recording.clear_summary_prompt_used()
             db.session.commit()
             finish_processing(recording_id)
             from src.services.webhook_dispatch import emit_summary_result
@@ -703,9 +709,27 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         if custom_prompt_override and not custom_prompt_append:
             current_app.logger.info(f"Using custom prompt override for recording {recording_id} (length: {len(custom_prompt_override)})")
             summarization_instructions = custom_prompt_override
+            used_source = ('custom', None)
+            used_prompt_user_id = user_id or recording.user_id
         else:
-            summarization_instructions, _source = resolve_summary_instructions(recording)
+            summarization_instructions, _source, _supplier = resolve_summary_prompt_detail(recording)
             current_app.logger.info(f"Using {_source} summary prompt for recording {recording_id}")
+            from src.services.summary_prompt import prompt_source
+            used_source = prompt_source(_source, _supplier)[:2]
+            # The owner's prompt, whoever asked (a summary after new speaker
+            # names, for example): it is shown to the owner only.
+            used_prompt_user_id = recording.user_id
+
+        # What is stored with the summary (#584): the prompt in its editable
+        # form, so before the appended text and the variable substitution
+        # below. A request that folded one-run instructions into the override
+        # names the prompt without them in prompt_used; so does a request by
+        # another user than the owner, which runs that user's prompt.
+        if isinstance(prompt_used, dict) and prompt_used.get('prompt'):
+            used_prompt = (prompt_used['prompt'], prompt_used.get('source') or 'custom', prompt_used.get('name'))
+            used_prompt_user_id = user_id or recording.user_id
+        else:
+            used_prompt = (summarization_instructions,) + tuple(used_source)
 
         # Append the user's per-run additions on top of the resolved default
         # (issue / discussion #253). This is how a user supplies a meeting agenda
@@ -853,6 +877,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
                                            truncated=bool(summary))
 
             recording.summary = summary
+            recording.set_summary_prompt_used(*used_prompt, used_prompt_user_id)
             db.session.commit()
             current_app.logger.info(f"Summary generated successfully for recording {recording_id}")
 
@@ -887,6 +912,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
                 log_failure(current_app.logger, logging.ERROR,
                             f"Error generating summary for recording {recording_id}", e)
             recording.summary = error_msg
+            recording.clear_summary_prompt_used()
             recording.status = 'FAILED'
             recording.error_message = sanitize_error_message(error_msg)
             db.session.commit()

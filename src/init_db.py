@@ -481,6 +481,15 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'recording', 'resolved_initial_prompt', 'TEXT'):
             app.logger.info("Added resolved_initial_prompt column to recording table")
 
+        # The prompt that produced the current summary, its source and whose
+        # run it was (#584). No backfill: older summaries have none.
+        for column, column_type in (('summary_prompt_used', 'TEXT'),
+                                    ('summary_prompt_source', 'VARCHAR(16)'),
+                                    ('summary_prompt_source_name', 'TEXT'),
+                                    ('summary_prompt_user_id', 'INTEGER')):
+            if add_column_if_not_exists(engine, 'recording', column, column_type):
+                app.logger.info(f"Added {column} column to recording table")
+
         # Transcription templates now bundle hotwords alongside the prompt (#309)
         if add_column_if_not_exists(engine, 'initial_prompt_template', 'hotwords', 'TEXT'):
             app.logger.info("Added hotwords column to initial_prompt_template table")
@@ -677,6 +686,8 @@ def _run_migrations(app, engine):
             app.logger.info("Added speaker_count_mode column to user table")
         if add_column_if_not_exists(engine, 'user', 'audio_player_position', "VARCHAR(10) DEFAULT 'bottom'"):
             app.logger.info("Added audio_player_position column to user table")
+        if add_column_if_not_exists(engine, 'user', 'chosen_settings', "TEXT"):
+            app.logger.info("Added chosen_settings column to user table")
         if add_column_if_not_exists(engine, 'user', 'default_recording_sort', 'VARCHAR(16)'):
             app.logger.info("Added default_recording_sort column to user table")
 

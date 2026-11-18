@@ -119,6 +119,17 @@ class Recording(db.Model):
     resolved_hotwords = db.Column(db.Text, nullable=True)
     resolved_initial_prompt = db.Column(db.Text, nullable=True)
 
+    # The prompt that produced the current summary (#584), in its editable
+    # form: before {{variable}} substitution and without the instructions
+    # added for one run. Source: 'tag', 'tags', 'folder', 'user', 'admin',
+    # 'default' or 'custom'; source name: the tag or folder names. User id:
+    # whose run it was, the only user the text is shown to. All NULL without
+    # a generated summary and for summaries from before the columns existed.
+    summary_prompt_used = db.Column(db.Text, nullable=True)
+    summary_prompt_source = db.Column(db.String(16), nullable=True)
+    summary_prompt_source_name = db.Column(db.Text, nullable=True)
+    summary_prompt_user_id = db.Column(db.Integer, nullable=True)
+
     # Rendered auto-export filename WITHOUT the .md extension (#348). Set on
     # first export and authoritative from then on: re-exports overwrite this
     # file and deletion renames it. Null = legacy "recording_{id}" naming, so
@@ -496,6 +507,17 @@ class Recording(db.Model):
                 copies.append({**c, 'is_self': c['id'] == self.id})
             return {'total_copies': entry['total_copies'], 'copies': copies}
         return self.get_duplicate_info()
+
+    def set_summary_prompt_used(self, prompt, source, name, user_id):
+        """Store the prompt of the summary being saved (see the columns)."""
+        self.summary_prompt_used = prompt or None
+        self.summary_prompt_source = (source or None) if prompt else None
+        self.summary_prompt_source_name = (name or None) if prompt else None
+        self.summary_prompt_user_id = user_id if prompt else None
+
+    def clear_summary_prompt_used(self):
+        """The summary is gone or was not generated: no prompt belongs to it."""
+        self.set_summary_prompt_used(None, None, None, None)
 
     def to_dict(self, include_html=True, viewer_user=None, duplicate_info_map=None, share_map=None, batch=None):
         """

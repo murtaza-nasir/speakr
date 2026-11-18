@@ -145,6 +145,11 @@ class User(db.Model, UserMixin):
     # 'top' renders it above the columns so it sits closer to the
     # title bar. User-configurable from the Display tab in settings.
     audio_player_position = db.Column(db.String(10), default='bottom')
+    # The settings with an admin default (src/services/user_defaults.py) that
+    # were changed on this account after it was created: ',key,key,'. A change
+    # of a default is never applied to an account for a setting listed here.
+    # Written by the before_update listener in user_defaults.
+    chosen_settings = db.Column(db.Text, nullable=True)
     # Sort the recordings list opens with in a browser that has not saved its own
     # choice yet: 'created_at' (date added) or 'meeting_date'. NULL means 'created_at'.
     default_recording_sort = db.Column(db.String(16), nullable=True)

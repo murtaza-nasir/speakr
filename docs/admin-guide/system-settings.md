@@ -70,7 +70,7 @@ Behind a reverse proxy, the client address is read from the proxy's `X-Forwarded
 
 ## Default Timezone
 
-Dates in generated titles (naming-template dates and default titles), in exported files and in the dates given to the AI are written in each user's timezone. A user's timezone is reported by their browser or chosen in Account → Preferences. The default timezone is used for users without one, for example accounts that only use the API or the watch folder. On a new installation it is UTC; if the `TIMEZONE` variable from earlier versions is set, its value is used as the initial default. Stored dates and API responses are always UTC.
+Dates in generated titles (naming-template dates and default titles), in exported files and in the dates given to the AI are written in each user's timezone. A user's timezone is reported by their browser or chosen in Account → Preferences. The default timezone is used for users without one, for example accounts that only use the API or the watch folder. It is set in the [User defaults](#user-defaults) panel. On a new installation it is UTC; if the `TIMEZONE` variable from earlier versions is set, its value is used as the initial default. Stored dates and API responses are always UTC.
 
 ## Recording Disclaimer
 
@@ -143,9 +143,41 @@ Like the disclaimers, the banner supports full markdown formatting, so you can i
 
 Leave this field empty to hide the banner completely.
 
+## User defaults
+
+The **User defaults** panel lists the settings that every new account starts with. Each one has the control of the Account page. Users can change these settings afterwards.
+
+| Default | Setting | Values | Built-in value |
+|---|---|---|---|
+| Interface theme | `default_ui_theme` | `default`, `classic`, `workspace`, `focus`, `desk`, `cards` | `cards` |
+| Color scheme | `default_color_scheme` | `blue`, `emerald`, `purple`, `rose`, `amber`, `teal` | `emerald` |
+| Player position | `default_audio_player_position` | `top`, `bottom` | `top` |
+| Interface language | `default_ui_language` | a shipped language, such as `en` or `de` | `en` |
+| Transcription language | `default_transcription_language` | `auto` or a language code | `auto` |
+| Language for summaries, chat and translations | `default_output_language` | `auto` or an English language name, such as `German` | `auto` |
+| Timezone | `default_timezone_mode` | `auto` (the zone of the user's browser), `fixed` (the default timezone) | `auto` |
+| Default timezone | `default_timezone` | an IANA zone | `UTC` |
+| Automatic summaries | `default_auto_summarization` | on, off | on |
+| Automatic speaker labelling | `default_auto_speaker_labelling` | on, off | off |
+| Event extraction | `default_extract_events` | on, off | off |
+
+The defaults are written on an account when it is created: by registration, by an administrator, by a first SSO sign-in and by the admin account from `.env`.
+
+**Existing accounts.** When you change a default and some accounts still have the previous default, their number is shown and you are asked whether to apply the change to them. With **Apply to N accounts**, only those accounts are updated. An account with any other value was changed by its user and stays as it is. The same holds for an account whose user changed the setting and later went back to the default value; such changes are recorded from this version on. With **New accounts only**, the default is saved and no account changes. With **Cancel**, the default stays as it was. Without such accounts, the default is saved without a question.
+
+An account from before a setting existed has no stored value. It counts as having the previous default only when the missing value means that default: the standard theme, the blue color scheme, the player at the bottom, English, automatic language detection, the automatic timezone, summaries on, speaker labelling off and event extraction off.
+
+**Timezone.** With `fixed`, new accounts get the default timezone as a fixed zone. With `auto`, the zone of each user's browser is saved as the user visits, and the default timezone is used only for accounts without a zone (see [Default Timezone](#default-timezone)).
+
+**Automatic summaries** has no effect while `disable_auto_summarization` is on. **Automatic speaker labelling** needs a transcription service with voice profiles or contextual labelling.
+
+Each change is recorded in the [audit log](audit-log.md) with the old and the new default and the number of accounts updated.
+
+**API.** With `POST /admin/settings`, a default is saved as before and no existing account changes. With `"apply_to_existing": true` in the body, the accounts on the previous default are updated in the same request, and the response has `users_updated`. `GET /admin/user-defaults/<setting>/accounts` returns the number of accounts on the current default.
+
 ## Default look for new accounts
 
-With the **default_ui_theme** and **default_color_scheme** settings, you choose the interface theme and the color scheme of every account created afterwards: by registration, by an administrator, by a first SSO sign-in and by the admin account from `.env`. Without a saved value, new accounts start with the **Cards** theme and the **Forest Emerald** color scheme.
+The **Interface theme** and **Color scheme** defaults (`default_ui_theme`, `default_color_scheme`) are set in the [User defaults](#user-defaults) panel. Without a saved value, new accounts start with the **Cards** theme and the **Forest Emerald** color scheme.
 
 | Setting | Values | Default |
 |---|---|---|
@@ -154,17 +186,17 @@ With the **default_ui_theme** and **default_color_scheme** settings, you choose 
 
 `default` is the standard theme, and `emerald` is the color scheme shown as Forest Emerald. A value outside the list is refused on this page. In `.env`, a value outside the list is replaced by `default` or `blue`, and a warning is written to the log.
 
-Existing accounts keep their theme and color scheme. Users who never picked a theme keep the standard theme with the blue color scheme, or the look they picked in a browser before themes were saved with the account. Users change both in Account settings.
+Existing accounts keep their theme and color scheme unless you apply a changed default to them. Users who never picked a theme keep the standard theme with the blue color scheme, or the look they picked in a browser before themes were saved with the account. Users change both in Account settings.
 
 On the sign-in, registration and password reset pages, and on recordings shared with a public link, the same defaults are shown in a browser with no theme or color scheme saved. In a browser where a theme or color scheme was picked before, that choice stays. After sign-in, the account's own theme and color scheme apply, and the defaults for new accounts are not used.
 
 ## Audio player position for new accounts
 
-With the **default_audio_player_position** setting, you choose where the audio player sits on a recording's page for every account created afterwards. The value is `top` (under the title) or `bottom` (under the transcript and summary). Without a saved value, new accounts get `top`.
+With the **Player position** default (`default_audio_player_position`) in the [User defaults](#user-defaults) panel, you choose where the audio player sits on a recording's page for every account created afterwards. The value is `top` (under the title) or `bottom` (under the transcript and summary). Without a saved value, new accounts get `top`.
 
 A value outside the list is refused on this page. In `.env`, a value outside the list is replaced by `bottom`, and a warning is written to the log.
 
-Existing accounts keep their position. Users who never picked a position keep the player at the bottom. Users change it under **Account → Preferences → Player position**.
+Existing accounts keep their position unless you apply a changed default to them. Users who never picked a position keep the player at the bottom. Users change it under **Account → Preferences → Player position**.
 
 ## Who Can Create Groups
 
@@ -282,7 +314,14 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | `audit_log_store_ip` | `AUDIT_LOG_STORE_IP` |
 | `auto_export_delete_with_recording` | `AUTO_EXPORT_DELETE_WITH_RECORDING` |
 | `default_audio_player_position` | `DEFAULT_AUDIO_PLAYER_POSITION` |
+| `default_auto_speaker_labelling` | `DEFAULT_AUTO_SPEAKER_LABELLING` |
+| `default_auto_summarization` | `DEFAULT_AUTO_SUMMARIZATION` |
 | `default_color_scheme` | `DEFAULT_COLOR_SCHEME` |
+| `default_extract_events` | `DEFAULT_EXTRACT_EVENTS` |
+| `default_output_language` | `DEFAULT_OUTPUT_LANGUAGE` |
+| `default_timezone_mode` | `DEFAULT_TIMEZONE_MODE` |
+| `default_transcription_language` | `DEFAULT_TRANSCRIPTION_LANGUAGE` |
+| `default_ui_language` | `DEFAULT_UI_LANGUAGE` |
 | `default_ui_theme` | `DEFAULT_UI_THEME` |
 | `deletion_mode` | `DELETION_MODE` |
 | `enable_auto_deletion` | `ENABLE_AUTO_DELETION` |
@@ -329,6 +368,8 @@ Beyond the UI-configurable settings above, several environment variables in your
 **DEFAULT_COLOR_SCHEME**: Color scheme for new accounts and for signed-out pages in a browser with no saved color scheme. One of `blue`, `emerald` (Forest Emerald), `purple`, `rose`, `amber` or `teal`. Default: `emerald`.
 
 **DEFAULT_AUDIO_PLAYER_POSITION**: Audio player position on a recording's page for new accounts. One of `top` or `bottom`. Default: `top`. See [Audio player position for new accounts](#audio-player-position-for-new-accounts).
+
+**DEFAULT_UI_LANGUAGE**, **DEFAULT_TRANSCRIPTION_LANGUAGE**, **DEFAULT_OUTPUT_LANGUAGE**, **DEFAULT_TIMEZONE_MODE**, **DEFAULT_AUTO_SUMMARIZATION**, **DEFAULT_AUTO_SPEAKER_LABELLING**, **DEFAULT_EXTRACT_EVENTS**: The other defaults for new accounts, with the values listed under [User defaults](#user-defaults). The switches take `true` or `false`. A value outside the list is replaced by the built-in value, and a warning is written to the log.
 
 ### Collaboration & Sharing
 

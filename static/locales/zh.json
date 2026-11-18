@@ -528,9 +528,6 @@
       "transcriptLengthLimitDesc": "从转录发送到 LLM 进行摘要和聊天的最大字符数。使用 -1 表示无限制。",
       "maxAudioOnlyVideoSizeDesc": "仅音频模式下视频上传的最大文件大小（MB）。仅保留提取出的音频，因此上传文件本身可以大于常规限制。",
       "disableAutoTranslationDesc": "启用后，录音只会进行转录，用户必须手动触发翻译。禁用后，每位用户可以选择在转录完成后自动翻译新录音。",
-      "defaultUiThemeDesc": "新账户以及未保存主题的浏览器中登录页面使用的界面主题。可选值：default、classic、workspace、focus、desk、cards。现有账户保留各自的主题。",
-      "defaultColorSchemeDesc": "新账户以及未保存配色方案的浏览器中登录页面使用的配色方案。可选值：blue、emerald、purple、rose、amber、teal。现有账户保留各自的配色方案。",
-      "defaultAudioPlayerPositionDesc": "新账户在录音页面上的音频播放器位置。可选值：top、bottom。现有账户保留各自的位置。",
       "ssoApiTokensEnabledDesc": "启用后，通过与 Speakr 相同的 SSO 提供方登录用户的应用可以使用用户的 SSO 访问令牌调用 API，并将其换取 API 令牌。必须已配置 SSO，并且至少允许一个客户端。",
       "ssoApiAllowedClientsDesc": "以逗号分隔的 OIDC 客户端 ID，其访问令牌会被接受，与 aud 或 azp 声明比对。留空表示不接受任何访问令牌。",
       "ssoApiScopesDesc": "以逗号分隔的范围，即携带 SSO 访问令牌的请求所具有的范围。换取的令牌只能具有这些范围。默认值：read。",
@@ -792,7 +789,25 @@
     "permissionModeEveryone": "所有人",
     "userSearchScopeEveryone": "所有人",
     "userSearchScopeGroups": "其所在群组的成员",
-    "userSearchScopeExact": "准确的用户名或邮箱"
+    "userSearchScopeExact": "准确的用户名或邮箱",
+    "userDefaults": {
+      "title": "用户默认设置",
+      "description": "新账户以这些设置开始，用户可以自行更改。",
+      "timezoneMode": "时区",
+      "timezoneAuto": "自动（用户设备）",
+      "timezoneFixed": "固定（默认时区）",
+      "timezone": "默认时区",
+      "autoSummarization": "自动摘要",
+      "autoSpeakerLabelling": "自动标注说话人",
+      "confirmTitle": "应用到现有账户？",
+      "confirmMessage": "仍有 {{count}} 个账户使用原默认值（{{value}}）。",
+      "newAccountsOnly": "仅新账户",
+      "saved": "已保存",
+      "savedUpdated": "已保存。已更新账户：{{count}}",
+      "confirmMessagePlural": "仍有 {{count}} 个账户使用原默认值（{{value}}）。",
+      "applyToCount": "应用到 {{count}} 个账户",
+      "applyToCountPlural": "应用到 {{count}} 个账户"
+    }
   },
   "apiTokens": {
     "activeTokens": "活跃令牌",
@@ -3826,7 +3841,9 @@
       "group_create_not_permitted": "您没有创建群组的权限。",
       "group_delete_not_permitted": "只有站点管理员，或仍为该群组管理员的群组创建者，才能删除此群组。",
       "member_identifier_required": "请输入要添加的人员的准确用户名或电子邮件地址。",
-      "invalid_permission_mode": "无效的值。必须是以下之一：{{modes}}"
+      "invalid_permission_mode": "无效的值。必须是以下之一：{{modes}}",
+      "invalid_user_default": "{{setting}} 的值无效。必须是以下之一：{{allowed}}",
+      "unknown_user_default": "未知的用户默认设置"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新",
@@ -4161,6 +4178,7 @@
     "sourceAdmin": "管理员默认提示词",
     "sourceDefault": "内置默认提示词",
     "sourceBlank": "空白",
+    "sourceUsed": "用于此摘要",
     "editedFromTag": "基于标签修改：{{name}}",
     "editedFromTags": "基于标签修改：{{name}}",
     "editedFromFolder": "基于文件夹修改：{{name}}",
@@ -4168,6 +4186,7 @@
     "editedFromAdmin": "基于管理员默认提示词修改",
     "editedFromDefault": "基于内置默认提示词修改",
     "editedFromBlank": "自定义提示词",
+    "editedFromUsed": "基于此摘要的提示词修改",
     "startFrom": "起始内容",
     "forThisRecording": "适用于此录音",
     "otherPrompts": "其他提示词",

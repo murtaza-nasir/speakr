@@ -7,6 +7,11 @@
  * edited prompt, or any prompt run by an editor, is sent as a replacing
  * custom prompt: the editor runs the prompt they see, not the owner's.
  * Added instructions are sent separately and apply to this run only.
+ *
+ * The response also holds `used`, the prompt that produced the current
+ * summary, when the viewer's own run produced it. A custom prompt among
+ * those opens the dialog, so a prompt under revision is not lost; it differs
+ * from the resolved prompt, so it is sent again when run unchanged.
  */
 
 import { extractVariableNames, inferVarLabel } from './prompt-variables.js';
@@ -21,14 +26,14 @@ export const promptsDiffer = (a, b) => normalizePrompt(a) !== normalizePrompt(b)
 /**
  * The chip text for a prompt source. `base` is a start-from option
  * ({ kind, name }) or the resolved source ({ kind: 'tags', name: 'A, B' });
- * kind 'blank' is an empty start.
+ * kind 'blank' is an empty start and kind 'used' the prompt of the current summary.
  */
 export const sourceLabel = (t, base, edited) => {
     const kind = base?.kind || 'blank';
     const params = { name: base?.name || '' };
     const keys = {
         tag: 'Tag', tags: 'Tags', folder: 'Folder', user: 'User',
-        admin: 'Admin', default: 'Default', blank: 'Blank',
+        admin: 'Admin', default: 'Default', blank: 'Blank', used: 'Used',
     };
     const suffix = keys[kind] || 'Blank';
     return t(`regenerateSummary.${edited ? 'editedFrom' : 'source'}${suffix}`, params);
@@ -48,6 +53,29 @@ export const saveLabel = (t, target) => {
     if (target.kind === 'folder') return t('regenerateSummary.saveToFolder', { name: target.name || '' });
     return t('regenerateSummary.saveToUser');
 };
+
+/**
+ * The base the dialog opens with, from GET /recording/<id>/summary_prompt.
+ * The viewer's custom prompt of the current summary when there is one that
+ * differs from the resolved prompt; otherwise the resolved prompt.
+ */
+export const openingBase = (data) => {
+    const used = data?.used;
+    if (used && used.source === 'custom' && normalizePrompt(used.prompt)
+        && promptsDiffer(used.prompt, data.prompt)) {
+        return { ...used };
+    }
+    return {
+        key: data?.source_key,
+        kind: data?.source_key === 'tags' ? 'tags' : data?.source,
+        name: data?.source_name || '',
+        prompt: data?.prompt || '',
+        save_target: data?.save_target || null,
+    };
+};
+
+/** The kind that names where a base's prompt came from: a used prompt has its stored source. */
+export const baseSourceKind = (base) => (base?.kind === 'used' ? base.source : base?.kind) || 'blank';
 
 /** Start from entries split into those that apply to the recording and the rest. */
 export const groupStartFrom = (options) => {
