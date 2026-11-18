@@ -3846,7 +3846,8 @@
       "member_identifier_required": "Enter the exact username or email address of the person to add.",
       "invalid_permission_mode": "Invalid value. Must be one of: {{modes}}",
       "invalid_user_default": "Invalid value for {{setting}}. Must be one of: {{allowed}}",
-      "unknown_user_default": "Unknown user default"
+      "unknown_user_default": "Unknown user default",
+      "invalid_context_chunks": "context_chunks must be between 1 and {{max}}"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated",

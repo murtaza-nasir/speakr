@@ -1301,3 +1301,13 @@ def test_chat_rag_present_speaker_not_auto_filtered(client):
     # And no 'filtering' status event should be emitted for a present speaker.
     statuses = [e.get('status') for e in events]
     assert 'filtering' not in statuses, f"unexpected filtering event: {events}"
+
+
+@pytest.mark.parametrize("value", [0, -1, 51, "8", 2.5, True, None])
+def test_chat_refuses_a_context_chunks_outside_1_to_50(value, client):
+    """context_chunks bounds the chunks given to the model (#628)."""
+    user_id = _make_user()
+    with _login(client, user_id),          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True),          patch('src.api.inquire.client', MagicMock()):
+        response = client.post('/api/inquire/chat', json={'message': 'hello', 'context_chunks': value})
+    assert response.status_code == 400
+    assert response.get_json()['code'] in ('invalid_integer_value', 'invalid_context_chunks')

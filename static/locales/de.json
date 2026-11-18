@@ -3846,7 +3846,8 @@
       "member_identifier_required": "Geben Sie den genauen Benutzernamen oder die genaue E-Mail-Adresse der hinzuzufügenden Person ein.",
       "invalid_permission_mode": "Ungültiger Wert. Zulässig sind: {{modes}}",
       "invalid_user_default": "Ungültiger Wert für {{setting}}. Erlaubt: {{allowed}}",
-      "unknown_user_default": "Unbekannter Standardwert für Benutzer"
+      "unknown_user_default": "Unbekannter Standardwert für Benutzer",
+      "invalid_context_chunks": "context_chunks muss zwischen 1 und {{max}} liegen"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

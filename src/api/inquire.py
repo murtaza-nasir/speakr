@@ -906,6 +906,13 @@ def inquire_chat():
             filters_from_request(data)
         except FilterError as e:
             return jsonify(api_error(e.code)), 400
+        # context_chunks bounds the chunks given to the model: a whole number
+        # from 1 to 50, like top_k of the search route (#628).
+        context_chunks = data.get('context_chunks', 8)
+        if isinstance(context_chunks, bool) or not isinstance(context_chunks, int):
+            return jsonify(api_error('invalid_integer_value')), 400
+        if not 1 <= context_chunks <= INQUIRE_SEARCH_MAX_TOP_K:
+            return jsonify(api_error('invalid_context_chunks', max=INQUIRE_SEARCH_MAX_TOP_K)), 400
         stream = inquire_stream(current_user, data, tool_names=tools_for_surface('ask'))
         return Response(library_events(stream, request_language()), mimetype='text/event-stream')
 

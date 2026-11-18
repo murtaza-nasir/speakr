@@ -3846,7 +3846,8 @@
       "member_identifier_required": "Introduzca el nombre de usuario o la dirección de correo electrónico exactos de la persona que desea añadir.",
       "invalid_permission_mode": "Valor no válido. Debe ser uno de: {{modes}}",
       "invalid_user_default": "Valor no válido para {{setting}}. Debe ser uno de: {{allowed}}",
-      "unknown_user_default": "Valor predeterminado de usuario desconocido"
+      "unknown_user_default": "Valor predeterminado de usuario desconocido",
+      "invalid_context_chunks": "context_chunks debe estar entre 1 y {{max}}"
     },
     "apiMessage": {
       "accountUpdated": "Datos de la cuenta actualizados",
