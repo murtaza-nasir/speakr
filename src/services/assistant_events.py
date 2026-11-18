@@ -49,31 +49,87 @@ def tools_for_surface(surface):
     return None if tools is None else list(tools)
 
 
+class FilterError(ValueError):
+    """A library filter value that cannot be used (#627). `code` is the
+    server.apiError key the route answers with; the message never holds
+    the value that was sent."""
+
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
+
+
+# The id filters of the filter column, with the code each refusal answers
+ID_FILTERS = (('filter_tags', 'invalid_tag_ids'),
+              ('filter_folders', 'invalid_ids_list'),
+              ('filter_recording_ids', 'invalid_recording_ids_list'))
+
+
+def parse_filter_date(value):
+    """The date of a filter value, None when absent (null or ''). Any other
+    value that is not an ISO date string raises FilterError."""
+    from datetime import datetime
+    if value is None or value == '':
+        return None
+    if not isinstance(value, str):
+        raise FilterError('invalid_filter_date')
+    try:
+        return datetime.fromisoformat(value).date()
+    except ValueError:
+        raise FilterError('invalid_filter_date') from None
+
+
+def filter_list(value, code):
+    """The list of a filter value, [] when absent (null); FilterError(code)
+    for any value that is not a list."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise FilterError(code)
+    return value
+
+
+def checked_filters(data):
+    """The filter column of a request body (filter_tags, filter_folders,
+    filter_speakers, filter_recording_ids, filter_date_from, filter_date_to),
+    checked: the id filters as lists, the speakers as a list or one name,
+    the dates parsed. The first unusable value raises FilterError.
+    The one check of every route that takes these filters (#627)."""
+    data = data or {}
+    checked = {key: filter_list(data.get(key), code) for key, code in ID_FILTERS}
+    speakers = data.get('filter_speakers')
+    if speakers is None:
+        speakers = []
+    if not isinstance(speakers, (str, list)):
+        raise FilterError('invalid_speaker_names')
+    checked['filter_speakers'] = speakers
+    checked['filter_date_from'] = parse_filter_date(data.get('filter_date_from'))
+    checked['filter_date_to'] = parse_filter_date(data.get('filter_date_to'))
+    return checked
+
+
 def filters_from_request(data):
     """The library filters of an Ask page chat request, in the agent's form:
     the keys of its filter column (filter_tags, filter_folders,
     filter_speakers, filter_recording_ids, filter_date_from, filter_date_to).
     The filters are a ceiling: resolve_allowed_recording_ids intersects them
-    with access. The recording panel has no filters."""
-    from datetime import datetime
-    data = data or {}
+    with access. The recording panel has no filters. A value that cannot be
+    used raises FilterError (a ValueError)."""
+    checked = checked_filters(data)
     filters = {}
     for key, name in (('filter_tags', 'tag_ids'), ('filter_folders', 'folder_ids'),
-                      ('filter_speakers', 'speaker_names'), ('filter_recording_ids', 'recording_ids')):
-        if data.get(key):
-            filters[name] = data[key]
+                      ('filter_recording_ids', 'recording_ids')):
+        if checked[key]:
+            filters[name] = checked[key]
     # Diarization labels (SPEAKER_00) name nobody: such values are ignored.
-    if 'speaker_names' in filters:
-        from src.utils.speaker_labels import real_speaker_names
-        names = real_speaker_names(filters['speaker_names'])
-        if names:
-            filters['speaker_names'] = names
-        else:
-            del filters['speaker_names']
-    if data.get('filter_date_from'):
-        filters['date_from'] = datetime.fromisoformat(data['filter_date_from']).date()
-    if data.get('filter_date_to'):
-        filters['date_to'] = datetime.fromisoformat(data['filter_date_to']).date()
+    from src.utils.speaker_labels import real_speaker_names
+    names = real_speaker_names(checked['filter_speakers'])
+    if names:
+        filters['speaker_names'] = names
+    if checked['filter_date_from']:
+        filters['date_from'] = checked['filter_date_from']
+    if checked['filter_date_to']:
+        filters['date_to'] = checked['filter_date_to']
     return filters
 
 

@@ -3669,10 +3669,23 @@ def inquire_v1():
     filters = body.get('filters') or {}
     if not isinstance(filters, dict):
         return jsonify({'error': translate('server.apiError.invalid_filters'), 'code': 'invalid_parameter'}), 400
+    # The filters in the form of the web routes, with the same checks (#627)
+    from src.services.assistant_events import FilterError, checked_filters
+    try:
+        checked = checked_filters({
+            'filter_recording_ids': filters.get('recording_ids'),
+            'filter_tags': filters.get('tag_ids'),
+            'filter_folders': filters.get('folder_ids'),
+            'filter_speakers': filters.get('speakers'),
+            'filter_date_from': filters.get('date_from'),
+            'filter_date_to': filters.get('date_to'),
+        })
+    except FilterError as e:
+        return jsonify(api_error(e.code)), 400
 
     allowed = [rid for (rid,) in db.session.query(Recording.id).filter(scope_condition(current_user.id, scope))]
-    if filters.get('recording_ids'):
-        wanted = {int(r) for r in filters['recording_ids'] if str(r).isdigit()}
+    if checked['filter_recording_ids']:
+        wanted = {int(r) for r in checked['filter_recording_ids'] if str(r).isdigit()}
         allowed = [rid for rid in allowed if rid in wanted]
     if not allowed:
         return jsonify({'answer': 'There are no recordings to search with these filters.', 'citations': [],
@@ -3681,14 +3694,17 @@ def inquire_v1():
         'message': question,
         'message_history': body.get('history') or [],
         'filter_recording_ids': allowed,
-        'filter_tags': filters.get('tag_ids') or [],
-        'filter_folders': filters.get('folder_ids') or [],
-        'filter_speakers': real_speaker_names(filters.get('speakers')),
+        'filter_tags': checked['filter_tags'],
+        'filter_folders': checked['filter_folders'],
+        'filter_speakers': real_speaker_names(checked['filter_speakers']),
         'filter_date_from': filters.get('date_from'),
         'filter_date_to': filters.get('date_to'),
     }
     mode_used = 'agent' if (mode != 'rag' and agent_enabled()) else 'rag'
-    stream = inquire_stream(current_user, data, mode=mode)
+    try:
+        stream = inquire_stream(current_user, data, mode=mode)
+    except FilterError as e:
+        return jsonify(api_error(e.code)), 400
     if body.get('stream'):
         return Response(stream_with_context(stream), mimetype='text/event-stream')
 

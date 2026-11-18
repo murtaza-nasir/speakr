@@ -329,15 +329,45 @@ def test_get_sessions_owner_scoped(client):
         assert sess_id not in ids
 
 
-def test_create_session_bad_date_500(client):
+@pytest.mark.parametrize('body,code', [
+    ({'filter_date_from': 'not-a-date'}, 'invalid_filter_date'),
+    ({'filter_date_to': '2024-99-99'}, 'invalid_filter_date'),
+    ({'filter_date_from': {'a': 1}}, 'invalid_filter_date'),
+    ({'filter_date_from': 0}, 'invalid_filter_date'),
+    ({'filter_tags': 'notlist'}, 'invalid_tag_ids'),
+    ({'filter_recording_ids': 'all'}, 'invalid_recording_ids_list'),
+    ({'filter_speakers': 123}, 'invalid_speaker_names'),
+])
+def test_create_session_rejects_malformed_filters(client, body, code):
+    """A filter that cannot be used is a 400 with its code, never the exception text (#627)."""
     user_id = _make_user()
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True):
-        resp = client.post('/api/inquire/sessions', json={
-            'session_name': 'bad', 'filter_date_from': 'not-a-date'
-        })
+        resp = client.post('/api/inquire/sessions', json=dict(body, session_name='bad'))
+        assert resp.status_code == 400 and resp.is_json
+        assert resp.get_json()['code'] == code
+    with app.app_context():
+        assert InquireSession.query.filter_by(user_id=user_id).count() == 0
+
+
+def test_create_session_takes_a_single_speaker_name(client):
+    user_id = _make_user()
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True):
+        resp = client.post('/api/inquire/sessions', json={'filter_speakers': 'Alice', 'filter_date_from': None})
+        assert resp.status_code == 201
+        assert resp.get_json()['filter_speakers'] == ['Alice']
+
+
+def test_create_session_internal_error_has_no_exception_text(client):
+    user_id = _make_user()
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.InquireSession', side_effect=RuntimeError("boom")):
+        resp = client.post('/api/inquire/sessions', json={'session_name': 'x'})
         assert resp.status_code == 500
-        assert 'error' in resp.get_json()
+        assert resp.get_json()['code'] == 'unexpected_error'
+        assert 'boom' not in resp.get_data(as_text=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -442,15 +472,24 @@ def test_search_with_meeting_date_in_result(client):
         assert r['recording_meeting_date'] is not None
 
 
-def test_search_bad_date_500(client):
+@pytest.mark.parametrize('body,code', [
+    ({'filter_date_from': 'not-a-date'}, 'invalid_filter_date'),
+    ({'filter_date_from': {'a': 1}}, 'invalid_filter_date'),
+    ({'filter_speakers': 123}, 'invalid_speaker_names'),
+    ({'filter_folders': 'x'}, 'invalid_ids_list'),
+    ({'filter_recording_ids': 'all'}, 'invalid_recording_ids_list'),
+    ({'filter_tags': 'notlist'}, 'invalid_tag_ids'),
+])
+def test_search_rejects_malformed_filters(client, body, code):
+    """A bad filter is refused before any search runs (#627)."""
     user_id = _make_user()
     with _login(client, user_id), \
-         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True):
-        resp = client.post('/api/inquire/search', json={
-            'query': 'q', 'filter_date_from': 'garbage'
-        })
-        assert resp.status_code == 500
-        assert 'error' in resp.get_json()
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.semantic_search_chunks') as search:
+        resp = client.post('/api/inquire/search', json=dict(body, query='q'))
+        assert resp.status_code == 400 and resp.is_json
+        assert resp.get_json()['code'] == code
+        search.assert_not_called()
 
 
 def test_search_internal_error_500(client):
@@ -461,7 +500,8 @@ def test_search_internal_error_500(client):
                side_effect=RuntimeError("boom")):
         resp = client.post('/api/inquire/search', json={'query': 'q'})
         assert resp.status_code == 500
-        assert 'boom' in resp.get_json()['error']
+        assert resp.get_json()['code'] == 'unexpected_error'
+        assert 'boom' not in resp.get_data(as_text=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -510,6 +550,22 @@ def _stream_chunks(texts):
         ch.choices[0].delta.content = t
         out.append(ch)
     return iter(out)
+
+
+@pytest.mark.parametrize('body,code', [
+    ({'filter_date_from': {'a': 1}}, 'invalid_filter_date'),
+    ({'filter_date_to': 'garbage'}, 'invalid_filter_date'),
+    ({'filter_tags': 'notlist'}, 'invalid_tag_ids'),
+])
+def test_chat_rejects_malformed_filters(client, body, code):
+    user_id = _make_user()
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.client', MagicMock()):
+        resp = client.post('/api/inquire/chat', json=dict(body, message='hi'))
+        assert resp.status_code == 400 and resp.is_json
+        assert resp.get_json()['code'] == code
+        assert not resp.mimetype.startswith('text/event-stream')
 
 
 def test_chat_direct_path(client):

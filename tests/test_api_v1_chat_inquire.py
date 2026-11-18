@@ -120,6 +120,23 @@ def test_inquire_refusals(world):
     assert _inquire(world, {"question": ""}).status_code == 400
 
 
+@pytest.mark.parametrize("filters,code", [
+    ({"date_from": "not-a-date"}, "invalid_filter_date"),
+    ({"date_to": "2024-99-99"}, "invalid_filter_date"),
+    ({"date_from": {"a": 1}}, "invalid_filter_date"),
+    ({"recording_ids": 5}, "invalid_recording_ids_list"),
+    ({"tag_ids": "x"}, "invalid_tag_ids"),
+    ({"folder_ids": 3}, "invalid_ids_list"),
+    ({"speakers": 7}, "invalid_speaker_names"),
+])
+def test_inquire_rejects_malformed_filters(world, filters, code):
+    """A filter that cannot be used is a JSON 400 with its code (#627)."""
+    with patch("src.api.inquire.inquire_stream") as stream:
+        resp = _inquire(world, {"question": "x", "filters": filters})
+    assert resp.status_code == 400 and resp.is_json and resp.get_json()["code"] == code
+    stream.assert_not_called()
+
+
 def test_inquire_parses_agent_links_into_citations(world):
     events = [
         {"agent_step": {"id": 1, "tool": "search"}},
