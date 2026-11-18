@@ -232,7 +232,9 @@ def test_the_new_texts_exist_in_every_locale():
         texts = data["adminDashboard"]["userDefaults"]
         keys = keys or set(texts)
         assert set(texts) == keys and all(texts.values()), name
-        assert "{{count}}" in texts["confirmMessage"] and "{{value}}" in texts["confirmMessage"], name
+        for key in ("confirmMessage", "confirmMessagePlural"):
+            assert "{{count}}" in texts[key] and "{{value}}" in texts[key], (name, key)
+        assert "{{count}}" in texts["applyToCount"] and "{{count}}" in texts["applyToCountPlural"], name
         assert "{{count}}" in texts["savedUpdated"], name
         assert "{{allowed}}" in data["server"]["apiError"]["invalid_user_default"], name
         assert data["server"]["apiError"]["unknown_user_default"], name

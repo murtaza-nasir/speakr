@@ -5,8 +5,9 @@ covers the panel in System Settings: every default is listed once, with a
 select or a switch, and the settings behind the panel are left out of the
 list below it. A changed default asks whether the accounts that still have
 the previous default get the new one, with their number and the previous
-value, and both answers are followed to the server. Without such accounts
-the default is saved without a question.
+value, and both answers are followed to the server. Cancel, Esc and a click
+beside the dialog leave the default as it was. Without such accounts the
+default is saved without a question.
 
 The steps run in file order and build on each other. Setup, through the
 app's own HTTP API as the seeded admin: the default color scheme set to
@@ -56,6 +57,7 @@ KEYS = ("default_ui_theme", "default_color_scheme", "default_audio_player_positi
 DIALOG = "[data-app-dialog]"
 CONFIRM = f"{DIALOG} [data-app-dialog-confirm]"
 CANCEL = f"{DIALOG} [data-app-dialog-cancel]"
+NEW_ONLY = f"{DIALOG} [data-app-dialog-alternate]"
 STATUS = "#user-defaults-status"
 
 
@@ -93,6 +95,13 @@ class Admin:
         number = self.count(key)
         self.save(key, current)
         return number
+
+    def last_setting_change(self):
+        """The id of the newest admin.setting.changed row of the audit log, or 0."""
+        r = self.api("GET", "/admin/audit-log?event=admin.setting.changed&limit=1")
+        assert r.ok, f"audit log: {r.status} {r.text()}"
+        events = r.json()["events"]
+        return events[0]["id"] if events else 0
 
     def add_user(self):
         name = f"ud{len(self.users)}_{RUN}"
@@ -197,6 +206,34 @@ def _shots(admin, panel):
     admin.open_settings()
 
 
+@pytest.mark.parametrize("dismiss", ["cancel", "escape", "beside"])
+def test_cancelling_the_question_changes_nothing(admin, dismiss):
+    panel = admin.open_settings()
+    page = admin.page
+    on_rose = admin.count(SCHEME)
+    last_change = admin.last_setting_change()
+    saves = []
+    page.on("request", lambda r: saves.append(r.url) if r.method == "POST" and r.url.endswith("/admin/settings") else None)
+    control(panel, SCHEME).select_option("teal")
+    page.locator(DIALOG).wait_for(state="visible", timeout=5000)
+    if dismiss == "cancel":
+        page.locator(CANCEL).click()
+    elif dismiss == "escape":
+        page.keyboard.press("Escape")
+    else:
+        page.mouse.click(5, 5)
+    page.locator(DIALOG).wait_for(state="detached", timeout=5000)
+    page.wait_for_timeout(500)
+    assert not saves, f"/admin: {dismiss} saved the default"
+    assert control(panel, SCHEME).input_value() == "rose", f"/admin: after {dismiss} the select does not show the default"
+    assert page.locator(STATUS).count() == 0
+    assert not control(panel, SCHEME).is_disabled()
+    current = admin.api("GET", f"/admin/user-defaults/{SCHEME}/accounts").json()
+    assert (current["value"], current["count"]) == ("rose", on_rose)
+    assert admin.last_setting_change() == last_change, f"/admin: {dismiss} wrote an audit row"
+    admin.check()
+
+
 def test_a_changed_default_asks_and_updates_the_accounts_on_the_previous_one(admin):
     panel = admin.open_settings()
     page = admin.page
@@ -207,11 +244,13 @@ def test_a_changed_default_asks_and_updates_the_accounts_on_the_previous_one(adm
     question = page.locator(DIALOG)
     question.wait_for(state="visible", timeout=5000)
     assert question.locator(".app-dialog__message").inner_text() == (
-        en("adminDashboard.userDefaults.confirmMessage")
+        en("adminDashboard.userDefaults.confirmMessagePlural")
         .replace("{{value}}", en("colorScheme.themes.light.rose.name")).replace("{{count}}", str(on_rose)))
     assert en("adminDashboard.userDefaults.confirmTitle") in question.inner_text()
-    assert page.locator(CONFIRM).inner_text().strip() == en("adminDashboard.userDefaults.applyToExisting")
-    assert page.locator(CANCEL).inner_text().strip() == en("adminDashboard.userDefaults.newAccountsOnly")
+    assert page.locator(CONFIRM).inner_text().strip() == (
+        en("adminDashboard.userDefaults.applyToCountPlural").replace("{{count}}", str(on_rose)))
+    assert page.locator(NEW_ONLY).inner_text().strip() == en("adminDashboard.userDefaults.newAccountsOnly")
+    assert page.locator(CANCEL).inner_text().strip() == en("common.cancel")
     if SHOTS:
         page.wait_for_timeout(400)
         page.screenshot(path=os.path.join(SHOTS, "user-defaults-question.png"))
@@ -236,7 +275,7 @@ def test_new_accounts_only_changes_no_account(admin):
     control(panel, SCHEME).select_option("purple")
     page.locator(DIALOG).wait_for(state="visible", timeout=5000)
     with page.expect_response(lambda r: r.url.endswith("/admin/settings") and r.request.method == "POST") as saved:
-        page.locator(CANCEL).click()
+        page.locator(NEW_ONLY).click()
     assert saved.value.json()["users_updated"] == 0
     assert saved.value.request.post_data_json["apply_to_existing"] is False
     wait_status(page, en("adminDashboard.userDefaults.saved"))
@@ -271,10 +310,10 @@ def test_a_switch_asks_with_its_previous_state(admin):
     question = page.locator(DIALOG)
     question.wait_for(state="visible", timeout=5000)
     assert question.locator(".app-dialog__message").inner_text() == (
-        en("adminDashboard.userDefaults.confirmMessage")
+        en("adminDashboard.userDefaults.confirmMessagePlural")
         .replace("{{value}}", en("adminDashboard.disabled")).replace("{{count}}", str(off)))
     with page.expect_response(lambda r: r.url.endswith("/admin/settings") and r.request.method == "POST") as saved:
-        page.locator(CANCEL).click()
+        page.locator(NEW_ONLY).click()
     assert saved.value.json()["value"] == "true" and saved.value.json()["users_updated"] == 0
     wait_status(page, en("adminDashboard.userDefaults.saved"))
     assert control(panel, EVENTS).is_checked()

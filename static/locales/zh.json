@@ -800,11 +800,13 @@
       "autoSummarization": "自动摘要",
       "autoSpeakerLabelling": "自动标注说话人",
       "confirmTitle": "应用到现有账户？",
-      "confirmMessage": "仍使用原默认值（{{value}}）的账户：{{count}}",
-      "applyToExisting": "应用到现有账户",
+      "confirmMessage": "仍有 {{count}} 个账户使用原默认值（{{value}}）。",
       "newAccountsOnly": "仅新账户",
       "saved": "已保存",
-      "savedUpdated": "已保存。已更新账户：{{count}}"
+      "savedUpdated": "已保存。已更新账户：{{count}}",
+      "confirmMessagePlural": "仍有 {{count}} 个账户使用原默认值（{{value}}）。",
+      "applyToCount": "应用到 {{count}} 个账户",
+      "applyToCountPlural": "应用到 {{count}} 个账户"
     }
   },
   "apiTokens": {

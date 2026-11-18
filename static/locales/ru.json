@@ -800,11 +800,13 @@
       "autoSummarization": "Автоматические сводки",
       "autoSpeakerLabelling": "Автоматическое определение говорящих",
       "confirmTitle": "Применить к существующим учётным записям?",
-      "confirmMessage": "Учётные записи с прежним значением по умолчанию ({{value}}): {{count}}",
-      "applyToExisting": "Применить к существующим",
+      "confirmMessage": "{{count}} учётная запись всё ещё имеет прежнее значение по умолчанию ({{value}}).",
       "newAccountsOnly": "Только новые учётные записи",
       "saved": "Сохранено",
-      "savedUpdated": "Сохранено. Обновлено учётных записей: {{count}}"
+      "savedUpdated": "Сохранено. Обновлено учётных записей: {{count}}",
+      "confirmMessagePlural": "Учётных записей с прежним значением по умолчанию ({{value}}): {{count}}.",
+      "applyToCount": "Применить к {{count}} учётной записи",
+      "applyToCountPlural": "Применить к учётным записям: {{count}}"
     }
   },
   "apiTokens": {

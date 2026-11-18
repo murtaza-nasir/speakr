@@ -800,11 +800,13 @@
       "autoSummarization": "Automatische Zusammenfassungen",
       "autoSpeakerLabelling": "Automatische Sprecherzuordnung",
       "confirmTitle": "Auf bestehende Konten anwenden?",
-      "confirmMessage": "Konten, die noch den bisherigen Standardwert ({{value}}) haben: {{count}}",
-      "applyToExisting": "Auf bestehende Konten anwenden",
+      "confirmMessage": "{{count}} Konto hat noch den bisherigen Standardwert ({{value}}).",
       "newAccountsOnly": "Nur neue Konten",
       "saved": "Gespeichert",
-      "savedUpdated": "Gespeichert. Aktualisierte Konten: {{count}}"
+      "savedUpdated": "Gespeichert. Aktualisierte Konten: {{count}}",
+      "confirmMessagePlural": "{{count}} Konten haben noch den bisherigen Standardwert ({{value}}).",
+      "applyToCount": "Auf {{count}} Konto anwenden",
+      "applyToCountPlural": "Auf {{count}} Konten anwenden"
     }
   },
   "apiTokens": {

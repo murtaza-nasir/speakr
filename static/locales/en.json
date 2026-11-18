@@ -800,11 +800,13 @@
       "autoSummarization": "Automatic summaries",
       "autoSpeakerLabelling": "Automatic speaker labelling",
       "confirmTitle": "Apply to existing accounts?",
-      "confirmMessage": "Accounts that still have the previous default ({{value}}): {{count}}",
-      "applyToExisting": "Apply to existing accounts",
+      "confirmMessage": "{{count}} account still has the previous default ({{value}}).",
       "newAccountsOnly": "New accounts only",
       "saved": "Saved",
-      "savedUpdated": "Saved. Accounts updated: {{count}}"
+      "savedUpdated": "Saved. Accounts updated: {{count}}",
+      "confirmMessagePlural": "{{count}} accounts still have the previous default ({{value}}).",
+      "applyToCount": "Apply to {{count}} account",
+      "applyToCountPlural": "Apply to {{count}} accounts"
     }
   },
   "apiTokens": {

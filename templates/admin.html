@@ -725,7 +725,8 @@
                          start with, each with the control of the Account
                          page. A changed default is saved at once; when
                          accounts still have the previous default, a dialog
-                         asks whether they get the new one too. The
+                         asks whether they get the new one too; cancelling
+                         it leaves the default as it was. The
                          settings behind these rows are left out of the
                          list below. -->
                     <div v-if="userDefaultRows.length" id="user-defaults" class="mb-6 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg overflow-hidden">
@@ -2427,6 +2428,11 @@ Summarization Instructions:
                         console.error('Error loading user defaults:', error);
                     }
                 };
+                // The control goes back to the default that is still in effect.
+                const restoreUserDefaultControl = (row, control) => {
+                    if (control.type === 'checkbox') control.checked = row.value === 'true';
+                    else control.value = row.value;
+                };
                 // A changed default. The number of accounts that still have
                 // the previous default is read first; above zero, the dialog
                 // asks whether those accounts get the new default too.
@@ -2441,15 +2447,25 @@ Summarization Instructions:
                         const { count } = await counted.json();
                         let applyToExisting = false;
                         if (count > 0) {
-                            applyToExisting = await confirmDialog({
+                            // Three outcomes: the accounts too, new accounts
+                            // only, or (Cancel, Esc, a click beside the
+                            // dialog) no change at all.
+                            const shown = count.toLocaleString(window.i18n?.getIntlLocale?.());
+                            const plural = count === 1 ? '' : 'Plural';
+                            const answer = await confirmDialog({
                                 title: t('adminDashboard.userDefaults.confirmTitle'),
-                                message: t('adminDashboard.userDefaults.confirmMessage', {
-                                    count: count.toLocaleString(window.i18n?.getIntlLocale?.()),
+                                message: t('adminDashboard.userDefaults.confirmMessage' + plural, {
+                                    count: shown,
                                     value: userDefaultValueLabel(row, row.value)
                                 }),
-                                confirmLabel: t('adminDashboard.userDefaults.applyToExisting'),
-                                cancelLabel: t('adminDashboard.userDefaults.newAccountsOnly')
+                                confirmLabel: t('adminDashboard.userDefaults.applyToCount' + plural, { count: shown }),
+                                alternateLabel: t('adminDashboard.userDefaults.newAccountsOnly')
                             });
+                            if (answer === false) {
+                                restoreUserDefaultControl(row, control);
+                                return;
+                            }
+                            applyToExisting = answer === true;
                         }
                         const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
                         const headers = { 'Content-Type': 'application/json' };
@@ -2467,9 +2483,7 @@ Summarization Instructions:
                             : t('adminDashboard.userDefaults.saved');
                     } catch (error) {
                         console.error('Error saving user default:', error);
-                        // The control goes back to the default that is still in effect.
-                        if (control.type === 'checkbox') control.checked = row.value === 'true';
-                        else control.value = row.value;
+                        restoreUserDefaultControl(row, control);
                         userDefaultError.value = true;
                         userDefaultMessage.value = error.message;
                     } finally {

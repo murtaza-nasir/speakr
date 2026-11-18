@@ -800,11 +800,13 @@
       "autoSummarization": "Resumos automáticos",
       "autoSpeakerLabelling": "Identificação automática de falantes",
       "confirmTitle": "Aplicar às contas existentes?",
-      "confirmMessage": "Contas que ainda têm o padrão anterior ({{value}}): {{count}}",
-      "applyToExisting": "Aplicar às contas existentes",
+      "confirmMessage": "{{count}} conta ainda tem o padrão anterior ({{value}}).",
       "newAccountsOnly": "Somente contas novas",
       "saved": "Salvo",
-      "savedUpdated": "Salvo. Contas atualizadas: {{count}}"
+      "savedUpdated": "Salvo. Contas atualizadas: {{count}}",
+      "confirmMessagePlural": "{{count}} contas ainda têm o padrão anterior ({{value}}).",
+      "applyToCount": "Aplicar a {{count}} conta",
+      "applyToCountPlural": "Aplicar a {{count}} contas"
     }
   },
   "apiTokens": {

@@ -800,11 +800,13 @@
       "autoSummarization": "Résumés automatiques",
       "autoSpeakerLabelling": "Identification automatique des intervenants",
       "confirmTitle": "Appliquer aux comptes existants ?",
-      "confirmMessage": "Comptes qui ont encore l'ancienne valeur par défaut ({{value}}) : {{count}}",
-      "applyToExisting": "Appliquer aux comptes existants",
+      "confirmMessage": "{{count}} compte a encore l'ancienne valeur par défaut ({{value}}).",
       "newAccountsOnly": "Nouveaux comptes uniquement",
       "saved": "Enregistré",
-      "savedUpdated": "Enregistré. Comptes mis à jour : {{count}}"
+      "savedUpdated": "Enregistré. Comptes mis à jour : {{count}}",
+      "confirmMessagePlural": "{{count}} comptes ont encore l'ancienne valeur par défaut ({{value}}).",
+      "applyToCount": "Appliquer à {{count}} compte",
+      "applyToCountPlural": "Appliquer à {{count}} comptes"
     }
   },
   "apiTokens": {

@@ -800,11 +800,13 @@
       "autoSummarization": "Resúmenes automáticos",
       "autoSpeakerLabelling": "Etiquetado automático de hablantes",
       "confirmTitle": "¿Aplicar a las cuentas existentes?",
-      "confirmMessage": "Cuentas que aún tienen el valor predeterminado anterior ({{value}}): {{count}}",
-      "applyToExisting": "Aplicar a las cuentas existentes",
+      "confirmMessage": "{{count}} cuenta aún tiene el valor predeterminado anterior ({{value}}).",
       "newAccountsOnly": "Solo cuentas nuevas",
       "saved": "Guardado",
-      "savedUpdated": "Guardado. Cuentas actualizadas: {{count}}"
+      "savedUpdated": "Guardado. Cuentas actualizadas: {{count}}",
+      "confirmMessagePlural": "{{count}} cuentas aún tienen el valor predeterminado anterior ({{value}}).",
+      "applyToCount": "Aplicar a {{count}} cuenta",
+      "applyToCountPlural": "Aplicar a {{count}} cuentas"
     }
   },
   "apiTokens": {
