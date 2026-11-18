@@ -1,6 +1,7 @@
 <!-- Regenerate summary dialog (#584, design system v1).
      The prompt is the viewer's own resolved prompt (GET /recording/<id>/summary_prompt).
-     Editing it replaces the prompt for this run; Add instructions appends to it. -->
+     Editing it replaces the prompt for this run; Add instructions appends to it.
+     The viewer's custom prompt of the current summary opens the dialog when there is one. -->
 <div v-if="showRegenerateSummaryModal" @click.self="closeRegenerateSummaryModal" class="modal-overlay">
     <div class="modal-panel modal-panel--lg modal-panel--phone-full regen-modal"
          role="dialog" aria-modal="true" aria-labelledby="regen-summary-title"
@@ -30,7 +31,7 @@
                 <div class="regen-label-row">
                     <label for="regen-summary-prompt" class="t-label" v-text="t('regenerateSummary.promptLabel')"></label>
                     <span class="chip-meta regen-chip" :class="{ 'regen-chip--edited': regenEdited }" data-regen-source>
-                        <i :class="regenEdited ? 'fas fa-pen' : ({ tag: 'fas fa-tag', tags: 'fas fa-tags', folder: 'fas fa-folder', user: 'fas fa-user', admin: 'fas fa-cog', default: 'fas fa-file-alt' }[regenSummary.base && regenSummary.base.kind] || 'fas fa-eraser')"></i>
+                        <i :class="regenEdited ? 'fas fa-pen' : ({ used: 'fas fa-history', tag: 'fas fa-tag', tags: 'fas fa-tags', folder: 'fas fa-folder', user: 'fas fa-user', admin: 'fas fa-cog', default: 'fas fa-file-alt' }[regenSummary.base && regenSummary.base.kind] || 'fas fa-eraser')"></i>
                         <span class="chip-meta__label" v-text="regenSourceLabel"></span>
                     </span>
                     <div class="regen-start-from" @click.stop>
@@ -42,6 +43,15 @@
                             <i class="fas fa-chevron-down text-xs"></i>
                         </button>
                         <div v-if="regenSummary.startFromOpen" class="regen-menu surface-raised" role="menu">
+                            <template v-if="regenSummary.used">
+                                <button type="button" role="menuitem" class="regen-menu__item"
+                                        @click="startRegenerateFrom(regenSummary.used)" data-regen-used>
+                                    <i class="fas fa-history"></i>
+                                    <span class="regen-menu__label" v-text="regenOptionLabel(regenSummary.used)"></span>
+                                    <i v-if="regenSummary.base && regenSummary.base.key === 'used'" class="fas fa-check regen-menu__check"></i>
+                                </button>
+                                <div class="regen-menu__divider"></div>
+                            </template>
                             <template v-if="regenStartFromGroups.applies.length">
                                 <div class="regen-menu__heading" v-text="t('regenerateSummary.forThisRecording')"></div>
                                 <button v-for="option in regenStartFromGroups.applies" :key="option.key" type="button"

@@ -5,7 +5,7 @@
 
 import * as IncognitoStorage from '../db/incognito-storage.js';
 import { readJsonResponse } from '../utils/response.js';
-import { buildRegenerateBody, normalizePrompt } from '../utils/regenerate-summary.js';
+import { buildRegenerateBody, normalizePrompt, openingBase } from '../utils/regenerate-summary.js';
 
 export function useReprocess(state, utils) {
     const { nextTick } = Vue;
@@ -238,20 +238,16 @@ export function useReprocess(state, utils) {
     // =========================================
 
     // Show a prompt description from GET /recording/<id>/summary_prompt.
-    // fill: put its resolved prompt in the textarea as the starting point.
+    // fill: put the opening prompt in the textarea: the viewer's custom prompt
+    // of the current summary when there is one, else the resolved prompt.
     const applySummaryPromptInfo = (data, fill) => {
         regenSummary.resolvedPrompt = data.prompt || '';
         regenSummary.isOwner = !!data.is_owner;
         regenSummary.startFrom = Array.isArray(data.start_from) ? data.start_from : [];
+        regenSummary.used = data.used || null;
         if (fill) {
-            regenSummary.prompt = data.prompt || '';
-            regenSummary.base = {
-                key: data.source_key,
-                kind: data.source_key === 'tags' ? 'tags' : data.source,
-                name: data.source_name || '',
-                prompt: data.prompt || '',
-                save_target: data.save_target || null,
-            };
+            regenSummary.base = openingBase(data);
+            regenSummary.prompt = regenSummary.base.prompt || '';
         }
     };
 
@@ -271,6 +267,7 @@ export function useReprocess(state, utils) {
             instructions: '',
             isOwner: false,
             base: null,
+            used: null,
             startFrom: [],
             startFromOpen: false,
             variablesOpen: false,

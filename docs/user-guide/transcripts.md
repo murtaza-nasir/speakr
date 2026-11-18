@@ -253,7 +253,7 @@ The dialog shows the prompt that applies to you for this recording, in an editab
 
 Everyone sees only their own prompt. When you edit a recording someone shared with you, the dialog shows your tags and your default prompt, never the owner's, and the prompt you see is the one that runs. Summaries made automatically after upload or transcription still use the owner's prompt.
 
-**Start from** fills the text box from another prompt. It lists the prompts that apply to this recording first, then your other prompts: your default, the admin default and your tags with summary prompts. **Blank** empties the box so you can write a prompt from scratch.
+**Start from** fills the text box from another prompt. It lists the prompts that apply to this recording first, then your other prompts: your default, the admin default and your tags with summary prompts. **Blank** empties the box so you can write a prompt from scratch. **Used for this summary** is the prompt that produced the current summary; it is listed first when you generated that summary yourself. If that prompt was one you wrote or edited in this dialog, the dialog opens with it, so you can keep revising it. Instructions added for one run are not part of it.
 
 Once you change the prompt, the chip reads **Edited from …** and two links appear. **Reset** puts the original prompt back. **Save to …** writes your edited prompt back to where it came from: your own tag, a folder you own, or your default. Nothing is saved unless you click it, and the dialog never offers to save to the admin default or to a tag or folder you can't edit. An edited prompt runs in place of the original for this regeneration only.
 

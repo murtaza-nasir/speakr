@@ -39,7 +39,7 @@ import { labelPathForFilter, parseLabelPath } from './modules/utils/label-links.
 import { buildVariableList } from './modules/utils/prompt-variables.js';
 import {
     MAX_PROMPT_LENGTH as REGEN_MAX_PROMPT_LENGTH, groupStartFrom, normalizePrompt, optionLabel,
-    promptsDiffer, runVariables, saveLabel, sourceLabel,
+    baseSourceKind, promptsDiffer, runVariables, saveLabel, sourceLabel,
 } from './modules/utils/regenerate-summary.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
 import { cancelResult, clockOffsetMs, parseServerInstant as parseQueueInstant, queueFieldsFromJob, settledCancels } from './modules/utils/queue-data.js';
@@ -813,7 +813,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const regenSummary = reactive({
                 recording: null, generate: false, loading: false, loadError: '', saving: false,
                 prompt: '', resolvedPrompt: '', instructions: '', isOwner: false,
-                base: null, startFrom: [], startFromOpen: false, variablesOpen: false,
+                base: null, used: null, startFrom: [], startFromOpen: false, variablesOpen: false,
             });
             const editingRecording = ref(null);
             const editingTranscriptionContent = ref('');
@@ -1878,7 +1878,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return runVariables({
                     prompt: regenSummary.prompt,
                     instructions: regenSummary.instructions,
-                    sourceType: typeOf[base.kind] || 'instructions',
+                    sourceType: typeOf[baseSourceKind(base)] || 'instructions',
                     sourceName: base.name || regenSourceLabel.value,
                     instructionsName: safeT('regenerateSummary.instructionsSource'),
                 });
