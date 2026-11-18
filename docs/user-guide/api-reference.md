@@ -579,8 +579,8 @@ GET /api/v1/recordings
 | `status` | string | `all` | Filter: `all`, `pending`, `processing`, `completed`, `failed` |
 | `sort_by` | string | `created_at` | Sort field: `created_at`, `meeting_date`, `title`, `file_size`, `status`, `updated_at` |
 | `sort_order` | string | `desc` | Sort order: `asc`, `desc` |
-| `date_from` | string | - | Filter from date (ISO format) |
-| `date_to` | string | - | Filter to date (ISO format); a date alone includes that whole day |
+| `date_from` | string | - | Filter from date (ISO format, 1900 to 2100) |
+| `date_to` | string | - | Filter to date (ISO format, 1900 to 2100); a date alone includes that whole day |
 | `date_field` | string | `created_at` | What `date_from` and `date_to` filter: `created_at` or `meeting_date` |
 | `updated_since` | string | - | Only recordings changed after this time (ISO 8601). Deletions are not listed; use the [changes feed](#changes-feed) for those. |
 | `external_system`, `external_ref`, `external_kind` | string | - | Only recordings that carry this [external reference](#external-references) of yours (`external_kind` optional) |
@@ -593,6 +593,8 @@ GET /api/v1/recordings
 | `archived` | boolean | - | Filter by archive status. Omitted returns archived and unarchived recordings, as before. |
 | `folder_id` | string | - | Filter by folder. Pass an integer folder ID to list recordings in that folder, or the literal `none` to list recordings not in any folder. Requires folders to be enabled. |
 | `include_children` | boolean | `false` | With `folder_id`, include recordings assigned to all descendant folders. |
+
+A `date_from` or `date_to` that is not an ISO date or date-time from 1900 to 2100 (`9999-99-99`, `2026-02-30`) gives `400` with the code `invalid_parameter`, as a bad `updated_since` or `folder_id` does; it is not ignored.
 
 **Response:**
 
@@ -1420,7 +1422,7 @@ POST /api/v1/speakers
 }
 ```
 
-`email` and `aliases` are optional. A diarization label as `name` gives `400` with the code `invalid_parameter`.
+`email` and `aliases` are optional. A diarization label as `name`, or a `name` of more than 100 characters, gives `400` with the code `invalid_parameter`.
 
 ### Update Speaker
 
@@ -1430,7 +1432,7 @@ PUT /api/v1/speakers/{id}
 
 **Scope:** `write`
 
-Changes the name, email or aliases; send only what changes. A new name appears in every recording the speaker is in (transcript, participants, search). `email` must be an address (stored in lower case); `null` or `""` removes it. `aliases`: at most 20 names of at most 100 characters, trimmed, duplicates (any case) dropped; `[]` removes them. A name another of your speakers has gives `409`. A diarization label as `name` gives `400` with the code `invalid_parameter`.
+Changes the name, email or aliases; send only what changes. A new name appears in every recording the speaker is in (transcript, participants, search). `email` must be an address (stored in lower case); `null` or `""` removes it. `aliases`: at most 20 names of at most 100 characters, trimmed, duplicates (any case) dropped; `[]` removes them. A name another of your speakers has gives `409`. A diarization label as `name`, or a `name` of more than 100 characters, gives `400` with the code `invalid_parameter`.
 
 **Request Body:**
 

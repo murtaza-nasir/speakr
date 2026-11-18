@@ -20,6 +20,7 @@
                 <input
                     type="text"
                     v-model="newSpeakerName"
+                    maxlength="100"
                     @input="searchNewSpeaker"
                     @focus="showNewSpeakerSuggestions = true"
                     @blur="hideNewSpeakerSuggestionsDelayed"

@@ -193,9 +193,9 @@
                                 :title="preset.label" v-text="preset.label"></button>
                     </div>
                     <div class="ws-filters__dates">
-                        <input v-model="filterDateRange.start" @change="filterDatePreset = ''" type="date"
+                        <input v-model="filterDateRange.start" @change="filterDatePreset = ''" type="date" min="1900-01-01" max="2100-12-31"
                                class="ws-input" :aria-label="t('form.dateFrom')">
-                        <input v-model="filterDateRange.end" @change="filterDatePreset = ''" type="date"
+                        <input v-model="filterDateRange.end" @change="filterDatePreset = ''" type="date" min="1900-01-01" max="2100-12-31"
                                class="ws-input" :aria-label="t('form.dateTo')">
                     </div>
                 </div>

@@ -85,6 +85,52 @@ def real_speaker_names(names):
     return [n.strip() for n in (names or []) if is_real_speaker_name(n)]
 
 
+# Speaker.name and TranscriptChunk.speaker_name are VARCHAR(100), and
+# Recording.participants VARCHAR(500). SQLite stores a longer value,
+# PostgreSQL refuses it at flush, so every writer keeps to these widths
+# (#636): a name a request supplies is refused past the width, a name from
+# automated processing (an LLM, a transcription service) is clipped to it.
+MAX_SPEAKER_NAME_LENGTH = 100
+MAX_PARTICIPANTS_LENGTH = 500
+
+
+def speaker_name_too_long(name):
+    """True for a name past the width of every column that stores one."""
+    return isinstance(name, str) and len(name.strip()) > MAX_SPEAKER_NAME_LENGTH
+
+
+def clip_speaker_name(name):
+    """A name from automated processing, stripped and cut to the column width."""
+    if not isinstance(name, str):
+        return name
+    return name.strip()[:MAX_SPEAKER_NAME_LENGTH].rstrip()
+
+
+def speaker_map_name_too_long(speaker_map):
+    """True when a name of a speaker map ({label: {'name': ...}} or
+    {label: 'name'}) is past the width."""
+    if not isinstance(speaker_map, dict):
+        return False
+    return any(speaker_name_too_long(info.get('name') if isinstance(info, dict) else info)
+               for info in speaker_map.values())
+
+
+def join_participants(names):
+    """The participants field for `names`: comma-separated and at most
+    MAX_PARTICIPANTS_LENGTH characters. A name that no longer fits is left
+    out whole, so the field never ends in a cut name. '' for no names."""
+    out = ''
+    for name in names:
+        name = clip_speaker_name(name)
+        if not name:
+            continue
+        joined = f'{out}, {name}' if out else name
+        if len(joined) > MAX_PARTICIPANTS_LENGTH:
+            break
+        out = joined
+    return out
+
+
 def clean_participants(text):
     """A participants field without diarization labels.
 

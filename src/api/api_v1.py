@@ -20,7 +20,7 @@ import math
 from datetime import datetime, date, timedelta, timezone
 from functools import wraps
 
-from src.utils.dates import to_utc_naive
+from src.utils.dates import FILTER_DATE_MAX, FILTER_DATE_MIN, to_utc_naive
 from src.utils.request_body import optional_json_object
 from typing import Optional
 
@@ -28,7 +28,8 @@ from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
 from src.utils.token_auth import public_route, require_scope, token_rate_key
 from src.services import audit
-from src.utils.speaker_labels import clean_participants, is_generic_speaker_label, real_speaker_names
+from src.utils.speaker_labels import (MAX_SPEAKER_NAME_LENGTH, clean_participants, is_generic_speaker_label,
+                                      real_speaker_names, speaker_map_name_too_long, speaker_name_too_long)
 from sqlalchemy import func, extract, or_, and_
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -408,6 +409,8 @@ OPENAPI_SPEC = {
                     {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["all", "pending", "processing", "completed", "failed"]}},
                     {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date", "title", "file_size", "status", "updated_at"]}},
                     {"name": "updated_since", "in": "query", "schema": {"type": "string", "format": "date-time"}, "description": "Only recordings changed after this time"},
+                    {"name": "date_from", "in": "query", "schema": {"type": "string"}, "description": "ISO 8601 date or date-time from 1900 to 2100; a bad value is a 400"},
+                    {"name": "date_to", "in": "query", "schema": {"type": "string"}, "description": "ISO 8601 date (that whole day) or date-time from 1900 to 2100; a bad value is a 400"},
                     {"name": "date_field", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date"], "default": "created_at"}, "description": "What date_from and date_to filter"},
                     {"name": "scope", "in": "query", "schema": {"type": "string", "enum": ["own", "shared", "all"], "default": "own"}},
                     {"name": "owner_id", "in": "query", "schema": {"type": "integer"}},
@@ -418,7 +421,8 @@ OPENAPI_SPEC = {
                     {"name": "include_children", "in": "query", "schema": {"type": "boolean"}, "description": "With folder_id, also include recordings in all descendant folders"},
                     {"name": "q", "in": "query", "schema": {"type": "string"}, "description": "Search query"}
                 ],
-                "responses": {"200": {"description": "Paginated list of recordings"}}
+                "responses": {"200": {"description": "Paginated list of recordings"},
+                              "400": {"description": "Invalid parameter (invalid_parameter), such as a bad date_from, date_to, updated_since or folder_id"}}
             }
         },
         "/recordings/{id}": {
@@ -1409,8 +1413,8 @@ def list_recordings():
         status: Filter by status (pending, processing, completed, failed, all)
         sort_by: Sort field (created_at, meeting_date, title, file_size, status)
         sort_order: asc or desc (default: desc)
-        date_from: Filter from date (ISO format)
-        date_to: Filter to date (ISO format)
+        date_from: Filter from date (ISO format, 1900 to 2100; else 400)
+        date_to: Filter to date (ISO format, 1900 to 2100; else 400)
         tag_id: Filter by tag ID
         q: Search query (title, participants)
         inbox: Filter by inbox status (true/false)
@@ -1483,23 +1487,30 @@ def list_recordings():
     # Aware values are converted to the naive-UTC storage convention; a bare
     # date_to includes that whole day (#412 B8).
     from src.utils.dates import to_utc_naive
+    # A value that is not an ISO 8601 date or date-time from 1900 to 2100 is
+    # refused, as updated_since is, not dropped (#631).
     date_column = Recording.meeting_date if date_field == 'meeting_date' else Recording.created_at
-    if date_from:
+    bounds = {}
+    for field, value in (('date_from', date_from), ('date_to', date_to)):
+        if not value:
+            continue
         try:
-            from_date = to_utc_naive(datetime.fromisoformat(date_from.replace('Z', '+00:00')))
-            query = query.filter(date_column >= from_date)
+            parsed = datetime.fromisoformat(value.strip().replace('Z', '+00:00'))
         except ValueError:
-            pass
+            parsed = None
+        if parsed is None or not (FILTER_DATE_MIN <= parsed.date() <= FILTER_DATE_MAX):
+            return jsonify({'error': translate('server.apiError.invalid_date_filter', field=field),
+                            'code': 'invalid_parameter'}), 400
+        bounds[field] = to_utc_naive(parsed)
 
-    if date_to:
-        try:
-            to_date = to_utc_naive(datetime.fromisoformat(date_to.replace('Z', '+00:00')))
-            if len(date_to.strip()) == 10:
-                query = query.filter(date_column < to_date + timedelta(days=1))
-            else:
-                query = query.filter(date_column <= to_date)
-        except ValueError:
-            pass
+    if 'date_from' in bounds:
+        query = query.filter(date_column >= bounds['date_from'])
+
+    if 'date_to' in bounds:
+        if len(date_to.strip()) == 10:
+            query = query.filter(date_column < bounds['date_to'] + timedelta(days=1))
+        else:
+            query = query.filter(date_column <= bounds['date_to'])
 
     # External references (mailr spec G8): only the caller's own.
     external_system = request.args.get('external_system')
@@ -3211,6 +3222,9 @@ def create_speaker():
     name = data['name'].strip()
     if is_generic_speaker_label(name):
         return jsonify({'error': translate('server.apiError.speaker_name_generic'), 'code': 'invalid_parameter'}), 400
+    if speaker_name_too_long(name):
+        return jsonify({'error': translate('server.apiError.speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH),
+                        'code': 'invalid_parameter'}), 400
 
     # Check if already exists
     existing = Speaker.query.filter_by(user_id=current_user.id, name=name).first()
@@ -3265,6 +3279,10 @@ def update_speaker(speaker_id):
         if is_generic_speaker_label(new_name):
             db.session.rollback()
             return jsonify({'error': translate('server.apiError.speaker_name_generic'), 'code': 'invalid_parameter'}), 400
+        if speaker_name_too_long(new_name):
+            db.session.rollback()
+            return jsonify({'error': translate('server.apiError.speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH),
+                            'code': 'invalid_parameter'}), 400
         if new_name != speaker.name:
             clash = Speaker.query.filter_by(user_id=current_user.id, name=new_name).first()
             if clash and clash.id != speaker.id:
@@ -3435,6 +3453,9 @@ def assign_speakers(recording_id):
                 }
             else:
                 return jsonify(api_error('invalid_speaker_value_type', label=label)), 400
+        if speaker_map_name_too_long(speaker_map):
+            return jsonify({'error': translate('server.apiError.speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH),
+                            'code': 'invalid_parameter'}), 400
 
         # Same rename and follow-up steps as the web update_speakers (#412).
         from src.services.speaker_assignment import apply_speaker_names

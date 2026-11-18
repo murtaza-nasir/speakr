@@ -23,7 +23,7 @@ from src.services.speaker_snippets import get_speaker_snippets, get_speaker_reco
 from src.services.speaker_merge import merge_speakers, preview_merge, can_merge_speakers
 from src.utils.localization import api_error, translate
 from src.services import audit
-from src.utils.speaker_labels import is_generic_speaker_label
+from src.utils.speaker_labels import MAX_SPEAKER_NAME_LENGTH, is_generic_speaker_label, speaker_name_too_long
 
 # Create blueprint
 speakers_bp = Blueprint('speakers', __name__)
@@ -69,7 +69,7 @@ def get_speakers():
         return jsonify(out)
     except Exception as e:
         current_app.logger.error(f"Error fetching speakers: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 
@@ -97,7 +97,7 @@ def search_speakers():
         return jsonify([speaker.to_dict() for speaker in speakers])
     except Exception as e:
         current_app.logger.error(f"Error searching speakers: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 
@@ -113,6 +113,8 @@ def create_speaker():
             return jsonify(api_error('speaker_name_required')), 400
         if is_generic_speaker_label(name):
             return jsonify(api_error('speaker_name_generic')), 400
+        if speaker_name_too_long(name):
+            return jsonify(api_error('speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH)), 400
 
         # Check if speaker already exists for this user
         existing_speaker = Speaker.query.filter_by(user_id=current_user.id, name=name).first()
@@ -139,7 +141,7 @@ def create_speaker():
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error creating speaker: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 
@@ -159,6 +161,8 @@ def update_speaker(speaker_id):
             return jsonify(api_error('speaker_name_empty')), 400
         if is_generic_speaker_label(new_name):
             return jsonify(api_error('speaker_name_generic')), 400
+        if speaker_name_too_long(new_name):
+            return jsonify(api_error('speaker_name_too_long', max=MAX_SPEAKER_NAME_LENGTH)), 400
 
         # Check if another speaker with this name already exists for this user
         existing_speaker = Speaker.query.filter_by(user_id=current_user.id, name=new_name).first()
@@ -196,7 +200,7 @@ def update_speaker(speaker_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error updating speaker: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @speakers_bp.route('/speakers/<int:speaker_id>', methods=['DELETE'])
@@ -215,7 +219,7 @@ def delete_speaker(speaker_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error deleting speaker: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 
@@ -239,7 +243,7 @@ def delete_all_speakers():
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error deleting all speakers: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @speakers_bp.route('/speakers/suggestions/<int:recording_id>', methods=['GET'])
@@ -286,7 +290,7 @@ def get_speaker_suggestions(recording_id):
 
     except Exception as e:
         current_app.logger.error(f"Error getting speaker suggestions: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @speakers_bp.route('/speakers/<int:speaker_id>/snippets', methods=['GET'])
@@ -315,7 +319,7 @@ def get_snippets(speaker_id):
 
     except Exception as e:
         current_app.logger.error(f"Error getting speaker snippets: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @speakers_bp.route('/speakers/<int:speaker_id>/recordings', methods=['GET'])
@@ -343,7 +347,7 @@ def get_speaker_recordings(speaker_id):
 
     except Exception as e:
         current_app.logger.error(f"Error getting speaker recordings: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @speakers_bp.route('/speakers/<int:speaker_id>/voice_samples', methods=['GET'])
@@ -454,7 +458,7 @@ def clear_speaker_embeddings(speaker_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error clearing speaker embeddings: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @speakers_bp.route('/speakers/snippet-audio/<int:recording_id>', methods=['GET'])
@@ -565,7 +569,7 @@ def get_snippet_audio(recording_id):
         return jsonify(api_error('invalid_snippet_range')), 400
     except Exception as e:
         current_app.logger.error(f"Error serving audio snippet: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @speakers_bp.route('/speakers/merge', methods=['POST'])
@@ -623,7 +627,7 @@ def merge_speaker_profiles():
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error merging speakers: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 # Hot-applied System Settings (high priority) with environment fallback.

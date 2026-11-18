@@ -79,7 +79,8 @@ def _union_participants(recordings):
             if name and key not in seen and not is_generic_speaker_label(name):
                 seen.add(key)
                 out.append(name)
-    return ', '.join(out) if out else None
+    from src.utils.speaker_labels import join_participants
+    return join_participants(out) or None
 
 
 def _build_concat_filter(num_inputs: int) -> str:

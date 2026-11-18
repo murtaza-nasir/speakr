@@ -2558,7 +2558,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             </div>
             <div class="modal-body">
                 <label for="editSpeakerNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-2" data-i18n="help.speakerName">Speaker name</label>
-                <input type="text" id="editSpeakerNameInput" class="field" placeholder="Enter speaker name" data-i18n-placeholder="help.enterSpeakerName">
+                <input type="text" id="editSpeakerNameInput" class="field" maxlength="100" placeholder="Enter speaker name" data-i18n-placeholder="help.enterSpeakerName">
                 <div id="editSpeakerError" class="t-meta mt-2 hidden" style="color: var(--text-danger);"></div>
             </div>
             <div class="modal-footer">
