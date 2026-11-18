@@ -32,7 +32,9 @@ def transcript_patterns(term):
     escaped in every JSON transcript. The term is searched as typed and in
     both JSON-escaped forms. ILIKE folds only ASCII letters on SQLite, and
     inside a \\u escape on any backend, so the lowercased term is searched
-    too when it differs beyond ASCII case.
+    too when it differs beyond ASCII case. Escaped rows are rewritten once
+    at startup (src/services/transcript_unicode_rewrite.py); the escaped
+    forms stay here for rows restored from a backup taken before it ran.
     """
     import json
     texts, seen = [], set()

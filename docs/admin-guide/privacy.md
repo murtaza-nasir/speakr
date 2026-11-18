@@ -14,6 +14,8 @@ The features that support a deployment with regulated data are local transcripti
 
 All text is kept in the application database (SQLite by default, PostgreSQL as an option) as plain text. No column is encrypted by the application.
 
+Earlier releases stored the characters of a transcript outside ASCII as `\uXXXX` escapes. About 30 seconds after the first start after the upgrade, such transcripts are rewritten once in the background with the characters themselves. The words of the transcript, its `updated_at` and plain-text transcripts are not changed, and the log line holds counts only. The setting `transcript_unicode_rewrite_done` is stored when the rewrite is complete, and an interrupted rewrite is resumed at the next start.
+
 | Data | Table |
 |---|---|
 | Title, participants, notes, transcript, translation, summary, original file name, storage path of the media, error text, prompt variables, resolved hotwords and initial prompt, name of the exported file. Voice embeddings of every voice of the recording, named or not, under its diarization label, when embeddings are returned by the transcription service. | `recording` |
