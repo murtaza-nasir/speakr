@@ -46,7 +46,7 @@ def apply_speaker_names(recording, user, speaker_map, regenerate_summary=False):
             names_used = []
         from src.services.speaker_links import link_list
         link_list(transcription_data, recording)
-        recording.transcription = json.dumps(transcription_data)
+        recording.transcription = json.dumps(transcription_data, ensure_ascii=False)
         recording.participants = participants_from_segments(transcription_data)
     else:
         for label, info in speaker_map.items():

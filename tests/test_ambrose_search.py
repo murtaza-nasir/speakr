@@ -484,6 +484,20 @@ def test_search_text_reads_transcripts_that_have_no_chunks(lib):
             'Garden notes', 'Weekly Sync']
 
 
+def test_search_text_reads_unchunked_transcripts_saved_with_ascii_escapes(lib):
+    # #622: a transcript saved with json.dumps' ASCII escapes is still read.
+    with app.app_context():
+        TranscriptChunk.query.filter_by(recording_id=lib['r3']).delete()
+        rec = db.session.get(Recording, lib['r3'])
+        rec.transcription = json.dumps([{'speaker': 'Pat', 'sentence': '大家好, Grüße, привет.',
+                                         'start_time': 0.0, 'end_time': 4.0}])
+        db.session.commit()
+        ctx = _owner_ctx(lib, availability={'summaries': False, 'notes': False})
+        for word in ('大家', 'Grüße', 'Привет'):
+            hits = ia.tool_search_text(ctx, {'query': word})['results']
+            assert [(h['title'], h['speaker']) for h in hits] == [('Garden notes', 'Pat')], word
+
+
 # ---------------------------------------------------------------------------
 # Steps
 # ---------------------------------------------------------------------------

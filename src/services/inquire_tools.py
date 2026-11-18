@@ -14,7 +14,7 @@ from datetime import datetime
 from src.database import db
 from src.models import Recording
 from src.services.embeddings import basic_text_search_chunks, semantic_search_chunks
-from src.utils.search import LIKE_ESCAPE, contains_pattern
+from src.utils.search import LIKE_ESCAPE, contains_pattern, transcript_contains
 
 
 def _truncate_to_tokens(text, cap_tokens, pagination_hint=None):
@@ -533,12 +533,11 @@ def tool_search_text(ctx, args):
         unindexed = ids - indexed
         if unindexed:
             rq = Recording.query.filter(Recording.id.in_(unindexed), Recording.transcription.isnot(None))
-            # The stored JSON escapes quotes, backslashes and non-ASCII text,
-            # so only plain ASCII terms narrow the query in SQL.
-            plain = [t for t in terms if t.isascii() and '"' not in t and '\\' not in t]
-            if plain:
-                rq = rq.filter(and_(*[Recording.transcription.ilike(contains_pattern(t), escape=LIKE_ESCAPE)
-                                      for t in plain]))
+            # SQL folds case only for ASCII letters, so a term with a cased
+            # letter outside ASCII (é, д) is matched below in Python alone.
+            exact = [t for t in terms if all(c.isascii() or c.upper() == c for c in t)]
+            if exact:
+                rq = rq.filter(and_(*[transcript_contains(Recording.transcription, t) for t in exact]))
             from src.services.transcript_segments import segments_of
             for rec in rq.order_by(Recording.meeting_date.desc()).limit(top_k * 4).all():
                 segments = segments_of(rec.transcription)

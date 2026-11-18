@@ -52,7 +52,7 @@ from src.services.llm import client, chat_client, call_chat_completion, process_
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording
 from src.utils.mime import served_media_mime, sandbox_media_response
-from src.utils.search import LIKE_ESCAPE, contains_pattern
+from src.utils.search import LIKE_ESCAPE, contains_pattern, transcript_contains
 from src.services.storage import get_storage_service
 from src.services.recording_ingestion import ingest
 from src.services.recording_filters import (
@@ -686,7 +686,7 @@ def update_transcript(recording_id):
         link_list(transcript_data, recording)
 
         # Save the updated transcript
-        recording.transcription = json.dumps(transcript_data)
+        recording.transcription = json.dumps(transcript_data, ensure_ascii=False)
         recording.participants = participants_from_segments(transcript_data)
 
         from src.services.speaker import labels_typed_as_names
@@ -1500,7 +1500,7 @@ def get_recordings_paginated():
                 text_conditions = [
                     Recording.title.ilike(pattern, escape=LIKE_ESCAPE),
                     Recording.participants.ilike(pattern, escape=LIKE_ESCAPE),
-                    Recording.transcription.ilike(pattern, escape=LIKE_ESCAPE),
+                    transcript_contains(Recording.transcription, text_query),
                     # Search owner's notes for owned recordings
                     db.and_(
                         Recording.user_id == current_user.id,

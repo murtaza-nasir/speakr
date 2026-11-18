@@ -512,6 +512,60 @@ def test_paginated_text_search_treats_input_literally(owner):
     assert _search_ids(owner, f"{marker} 50%") & mine == {percent}
 
 
+def test_transcript_patterns_add_the_json_escaped_form():
+    from src.utils.search import transcript_patterns
+    assert transcript_patterns("budget") == ["%budget%"]
+    assert transcript_patterns("Español") == ["%Español%", "%Espa\\\\u00f1ol%"]
+    # The lowercased term too, when it differs beyond ASCII case
+    assert transcript_patterns("ÑANDÚ") == [
+        "%ÑANDÚ%", "%\\\\u00d1AND\\\\u00da%", "%ñandú%", "%\\\\u00f1and\\\\u00fa%"]
+    assert transcript_patterns('say "hi"') == ['%say "hi"%', '%say \\\\"hi\\\\"%']
+    assert transcript_patterns('"Grüße"') == [
+        '%"Grüße"%', '%\\\\"Gr\\\\u00fc\\\\u00dfe\\\\"%', '%\\\\"Grüße\\\\"%']
+
+
+def _segments_json(sentences, **dumps_kw):
+    return json.dumps([{"speaker": "SPEAKER_00", "sentence": text, "start_time": float(i), "end_time": i + 1.0}
+                       for i, text in enumerate(sentences)], **dumps_kw)
+
+
+def test_paginated_text_search_finds_words_outside_ascii_in_transcripts(owner):
+    # #622: transcripts saved before the fix escape non-ASCII text
+    # (json.dumps default); later ones store it as written. Both are found.
+    marker = f"u{uuid.uuid4().hex[:8]}"
+    sentences = [f"{marker} Esta es una grabación de demostración en español.",
+                 "大家好，这是一段用来测试中文自动转录的演示录音。",
+                 "Привет, это тестовая запись.",
+                 'Er sagte "Grüße" und C:\\temp.']
+    with _db():
+        u = db.session.get(User, owner)
+        escaped = make_recording(u, title=f"old {marker}", transcription=_segments_json(sentences)).id
+        raw = make_recording(u, title=f"new {marker}",
+                             transcription=_segments_json(sentences, ensure_ascii=False)).id
+        other_rec = make_recording(u, title=f"other {marker}",
+                                   transcription=_segments_json([f"{marker} english only"])).id
+    mine = {escaped, raw, other_rec}
+
+    for word in ("grabación", "español", "大家", "中文自动转录", "Привет", "тестовая", "Grüße",
+                 '"Grüße"', "C:\\temp"):
+        assert _search_ids(owner, word) & mine == {escaped, raw}, word
+    # A capital typed for a lowercase stored letter still matches
+    assert _search_ids(owner, "Español") & mine == {escaped, raw}
+    assert _search_ids(owner, "会议") & mine == set()
+    assert _search_ids(owner, "Пока") & mine == set()
+    # ASCII matching is unchanged
+    assert _search_ids(owner, "grabaci") & mine == {escaped, raw}
+
+
+def test_transcripts_are_written_without_ascii_escapes():
+    from src.services.transcription.base import TranscriptionResponse, TranscriptionSegment
+    text = TranscriptionResponse(text="", segments=[
+        TranscriptionSegment(text="español 大家 Привет", speaker="SPEAKER_00", start_time=0.0, end_time=1.0)
+    ]).to_storage_format()
+    assert "español 大家 Привет" in text
+    assert json.loads(text)[0]["sentence"] == "español 大家 Привет"
+
+
 def test_paginated_text_search_still_matches_title_transcript_and_notes(owner, other):
     from src.models import InternalShare, SharedRecordingState
     marker = f"pos{uuid.uuid4().hex[:8]}"
