@@ -129,6 +129,7 @@
                   :ref="assistant.setInput"
                   @keydown="assistant.onKeydown"
                   :disabled="assistant.disabled"
+                  maxlength="{{ max_question_chars }}"
                   :placeholder="t('{{ placeholder }}', { name: assistantName })"
                   :title="t('assistant.sendHint')"
                   class="field flex-1"

@@ -3630,6 +3630,7 @@
       "merge_needs_two": "Select at least two recordings to merge",
       "merge_needs_two_speakers": "Need at least 2 speakers to merge",
       "message_required": "message is required",
+      "message_too_long": "The question is too long (at most {{max}} characters).",
       "missing_bulk_status_fields": "Missing recording_ids, field, or value",
       "missing_recording_ids": "Missing recording_ids",
       "missing_recording_ids_or_tag_id": "Missing recording_ids or tag_id",

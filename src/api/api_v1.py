@@ -53,6 +53,7 @@ from src.utils.token_auth import load_user_from_token_value
 from src.utils.localization import api_error, translate
 from src.utils.error_text import log_failure
 from src.utils.metadata_limits import PARTICIPANTS_MAX_CHARS, metadata_error
+from src.utils.assistant_limits import MAX_QUESTION_CHARS, question_error
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -479,7 +480,7 @@ OPENAPI_SPEC = {
             "post": {"tags": ["Processing"], "summary": "Queue summarization", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"custom_prompt": {"type": "string"}, "prompt_mode": {"type": "string", "enum": ["replace", "append"], "description": "replace (default): custom_prompt replaces the resolved prompt. append: it is added after the resolved prompt."}, "additional_instructions": {"type": "string", "description": "Added for this run after the prompt that runs."}, "prompt_variables": {"type": "object", "description": "Values for the {{variable}} placeholders; replaces the stored values."}}}}}}, "responses": {"200": {"description": "Job queued"}}}
         },
         "/recordings/{id}/chat": {
-            "post": {"tags": ["Chat"], "summary": "Chat about recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["message"], "properties": {"message": {"type": "string"}, "conversation_history": {"type": "array"}}}}}}, "responses": {"200": {"description": "Chat response"}}}
+            "post": {"tags": ["Chat"], "summary": "Chat about recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["message"], "properties": {"message": {"type": "string", "maxLength": MAX_QUESTION_CHARS}, "conversation_history": {"type": "array"}}}}}}, "responses": {"200": {"description": "Chat response"}}}
         },
         "/recordings/{id}/events": {
             "get": {"tags": ["Events"], "summary": "Get calendar events", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "List of events"}}}
@@ -3613,6 +3614,9 @@ def chat_with_recording(recording_id):
     data = request.get_json()
     if not data or not data.get('message'):
         return jsonify(api_error('message_required')), 400
+    too_long = question_error(data['message'], v1=True)
+    if too_long:
+        return jsonify(too_long), 400
 
     with_sources = data.get('with_sources', False)
     if not isinstance(with_sources, bool):
@@ -3658,6 +3662,9 @@ def inquire_v1():
     question = (body.get('question') or '').strip()
     if not question:
         return jsonify({'error': translate('server.apiError.question_required'), 'code': 'invalid_parameter'}), 400
+    too_long = question_error(question, v1=True)
+    if too_long:
+        return jsonify(too_long), 400
     mode = body.get('mode', 'auto')
     if mode not in ('rag', 'agent', 'auto'):
         return jsonify({'error': translate('server.apiError.invalid_inquire_mode'), 'code': 'invalid_parameter'}), 400

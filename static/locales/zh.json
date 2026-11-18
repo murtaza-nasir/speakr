@@ -3630,6 +3630,7 @@
       "merge_needs_two": "请至少选择两条录音进行合并",
       "merge_needs_two_speakers": "至少需要 2 位发言人才能合并",
       "message_required": "message 为必填项",
+      "message_too_long": "问题太长（最多 {{max}} 个字符）。",
       "missing_bulk_status_fields": "缺少 recording_ids、field 或 value",
       "missing_recording_ids": "缺少 recording_ids",
       "missing_recording_ids_or_tag_id": "缺少 recording_ids 或 tag_id",

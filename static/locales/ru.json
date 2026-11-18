@@ -3630,6 +3630,7 @@
       "merge_needs_two": "Выберите не менее двух записей для объединения",
       "merge_needs_two_speakers": "Для объединения нужно не менее 2 спикеров",
       "message_required": "message обязательно",
+      "message_too_long": "Вопрос слишком длинный (не более {{max}} символов).",
       "missing_bulk_status_fields": "Отсутствует recording_ids, field или value",
       "missing_recording_ids": "Отсутствует recording_ids",
       "missing_recording_ids_or_tag_id": "Отсутствует recording_ids или tag_id",

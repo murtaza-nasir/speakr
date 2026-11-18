@@ -18,6 +18,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import translate, api_error
+from src.utils.assistant_limits import question_error
 from src.utils.error_text import log_failure, user_error_text
 from src.utils.speaker_labels import real_speaker_names
 from src.services.assistant_events import FilterError, checked_filters, filters_from_request
@@ -891,6 +892,9 @@ def inquire_chat():
         
         if not user_message:
             return jsonify(api_error('no_message_provided')), 400
+        too_long = question_error(user_message)
+        if too_long:
+            return jsonify(too_long), 400
         
         # Check if OpenRouter client is available
         if client is None:

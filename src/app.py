@@ -973,6 +973,13 @@ _app_version = get_version()
 def inject_app_version():
     return {'app_version': _app_version}
 
+from src.utils.assistant_limits import MAX_QUESTION_CHARS as _max_question_chars
+
+@app.context_processor
+def inject_assistant_limits():
+    """The longest question the chat routes accept, for the composer's maxlength (#634)."""
+    return {'max_question_chars': _max_question_chars}
+
 from src.utils.i18n_bootstrap import i18n_bootstrap as _i18n_bootstrap
 
 @app.context_processor

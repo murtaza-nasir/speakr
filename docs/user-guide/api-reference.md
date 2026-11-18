@@ -1595,6 +1595,8 @@ Ask questions about a recording's content using AI.
 }
 ```
 
+`message` is at most 10,000 characters. A longer one answers `400` with `{"code": "invalid_parameter"}` and no model call is made. The same limit applies to the question in the web app's recording chat and on the Ask page.
+
 **Response:**
 
 ```json
@@ -1643,6 +1645,7 @@ Answers a question from the recordings you can read, with Inquire's search (and 
 }
 ```
 
+- `question`: at most 10,000 characters after leading and trailing spaces are removed. A longer one answers `400` with `{"code": "invalid_parameter"}` and no model call is made.
 - `mode`: `rag`, `agent` (`403 feature_disabled` when the agent is off) or `auto` (the agent when it is on).
 - `scope`: `own`, `shared` or `all`, as on [List Recordings](#list-recordings).
 - `stream: true` returns the server-sent events of the web app's Inquire (`delta`, `status`, `agent_step`, `agent_summary`, `error`).
