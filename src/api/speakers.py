@@ -28,10 +28,6 @@ from src.utils.speaker_labels import is_generic_speaker_label
 # Create blueprint
 speakers_bp = Blueprint('speakers', __name__)
 
-# Configuration from environment
-ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
-
 # Global helpers (will be injected from app)
 has_recording_access = None
 bcrypt = None
@@ -476,7 +472,6 @@ def get_snippet_audio(recording_id):
         Audio file segment in the original format
     """
     import tempfile
-    import os
     from pathlib import Path
 
     try:

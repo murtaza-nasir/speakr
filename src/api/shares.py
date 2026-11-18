@@ -26,7 +26,6 @@ from src.utils.log_filters import loggable_error, loggable_locator
 from src.utils.localization import api_error, translate, request_language
 
 # Configuration from environment
-ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 READABLE_PUBLIC_LINKS = os.environ.get('READABLE_PUBLIC_LINKS', 'false').lower() == 'true'
 
 # Create blueprint

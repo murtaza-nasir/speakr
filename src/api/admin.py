@@ -33,7 +33,6 @@ admin_bp = Blueprint('admin', __name__)
 
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 
 # Global helpers (will be injected from app)
 has_recording_access = None
