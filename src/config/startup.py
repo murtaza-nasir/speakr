@@ -34,6 +34,7 @@ AUTO_DELETION_OWNER_LOCK = 'speakr.auto_deletion_owner'
 SESSION_CLEANUP_OWNER_LOCK = 'speakr.session_cleanup_owner'
 WEBHOOK_DISPATCHER_OWNER_LOCK = 'speakr.webhook_dispatcher_owner'
 VOICE_EMBEDDING_CHECK_OWNER_LOCK = 'speakr.voice_embedding_check_owner'
+TRANSCRIPT_UNICODE_REWRITE_OWNER_LOCK = 'speakr.transcript_unicode_rewrite_owner'
 
 # Every lock name this module elects on. The test suite asserts that each
 # background starter in run_startup_tasks() goes through one of these.
@@ -44,6 +45,7 @@ SINGLE_INSTANCE_LOCKS = (
     SESSION_CLEANUP_OWNER_LOCK,
     WEBHOOK_DISPATCHER_OWNER_LOCK,
     VOICE_EMBEDDING_CHECK_OWNER_LOCK,
+    TRANSCRIPT_UNICODE_REWRITE_OWNER_LOCK,
 )
 
 
@@ -377,6 +379,37 @@ def initialize_voice_embedding_check(app):
     threading.Thread(target=_run, daemon=True, name="VoiceEmbeddingCheck").start()
 
 
+def initialize_transcript_unicode_rewrite(app):
+    """Rewrite the transcripts stored with \\u escapes once, on a thread (#622).
+
+    The thread waits TRANSCRIPT_UNICODE_REWRITE_DELAY_SECONDS (default 30)
+    so that the rewrite does not compete with the boot, and does nothing once
+    the setting of a completed run is stored. See
+    src/services/transcript_unicode_rewrite.py.
+    """
+    import threading
+
+    if os.environ.get('DISABLE_TRANSCRIPT_UNICODE_REWRITE', 'false').lower() == 'true':
+        app.logger.info("Transcript Unicode rewrite disabled (DISABLE_TRANSCRIPT_UNICODE_REWRITE=true)")
+        return
+    try:
+        delay = max(0, int(os.environ.get('TRANSCRIPT_UNICODE_REWRITE_DELAY_SECONDS', '30')))
+    except ValueError:
+        delay = 30
+
+    def _run():
+        from src.services.transcript_unicode_rewrite import run_transcript_unicode_rewrite
+        time.sleep(delay)
+        try:
+            with app.app_context():
+                run_transcript_unicode_rewrite(log=app.logger)
+        except Exception as e:
+            # Rows already rewritten stay rewritten; the next start resumes.
+            app.logger.error(f"Transcript Unicode rewrite stopped: {type(e).__name__}")
+
+    threading.Thread(target=_run, daemon=True, name="TranscriptUnicodeRewrite").start()
+
+
 def run_startup_tasks(app):
     """Run all startup tasks that need to happen after app creation."""
     from src.models import SystemSetting
@@ -446,6 +479,12 @@ def run_startup_tasks(app):
         start_single_instance(
             app, VOICE_EMBEDDING_CHECK_OWNER_LOCK,
             lambda: initialize_voice_embedding_check(app), 'voice embedding check')
+
+        # Rewrites the transcripts stored with \u escapes once (#622).
+        # Several processes running it would read and update the same rows.
+        start_single_instance(
+            app, TRANSCRIPT_UNICODE_REWRITE_OWNER_LOCK,
+            lambda: initialize_transcript_unicode_rewrite(app), 'transcript Unicode rewrite')
 
         # Not elected: this only creates a directory and logs. No thread, no
         # sweep, nothing to duplicate. If it ever grows a background task it

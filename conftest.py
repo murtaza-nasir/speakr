@@ -83,6 +83,10 @@ os.environ["ENABLE_INQUIRE_AGENT"] = "false"
 # points at: slow, noisy in the logs, and it bills somebody for a transcription
 # nobody asked for. The check has its own tests, which drive it explicitly.
 os.environ["DISABLE_VOICE_EMBEDDING_CHECK"] = "true"
+# The one-time rewrite of escaped transcripts (#622) would run on a thread
+# beside the tests that store escaped rows on purpose, to check that search
+# still finds them. Its own tests call it directly.
+os.environ["DISABLE_TRANSCRIPT_UNICODE_REWRITE"] = "true"
 
 # The webhook dispatcher thread starts with the application and posts every
 # due delivery on its interval (5 seconds by default). In a test process it
