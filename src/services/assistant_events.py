@@ -96,7 +96,7 @@ def checked_filters(data):
     """The filter column of a request body (filter_tags, filter_folders,
     filter_speakers, filter_recording_ids, filter_date_from, filter_date_to),
     checked: the id filters as lists of integer ids, the speakers as a list
-    of names or one name, the dates parsed. The first unusable value raises
+    of non-empty names or one name, the dates parsed. The first unusable value raises
     FilterError. The one check of every route that takes these filters
     (#627, #629)."""
     data = data or {}
@@ -105,7 +105,7 @@ def checked_filters(data):
     if speakers is None:
         speakers = []
     if not (isinstance(speakers, str)
-            or (isinstance(speakers, list) and all(isinstance(name, str) for name in speakers))):
+            or (isinstance(speakers, list) and all(isinstance(name, str) and name.strip() for name in speakers))):
         raise FilterError('invalid_speaker_names')
     checked['filter_speakers'] = speakers
     checked['filter_date_from'] = parse_filter_date(data.get('filter_date_from'))

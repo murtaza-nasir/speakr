@@ -1311,3 +1311,14 @@ def test_chat_refuses_a_context_chunks_outside_1_to_50(value, client):
         response = client.post('/api/inquire/chat', json={'message': 'hello', 'context_chunks': value})
     assert response.status_code == 400
     assert response.get_json()['code'] in ('invalid_integer_value', 'invalid_context_chunks')
+
+
+@pytest.mark.parametrize("names", [[""], ["  "], ["Alice", ""]])
+def test_create_session_refuses_an_empty_speaker_name(names, client):
+    """A speaker filter holds names; an empty one is refused, not dropped (#629)."""
+    user_id = _make_user()
+    with _login(client, user_id), patch('src.api.inquire.ENABLE_INQUIRE_MODE', True):
+        response = client.post('/api/inquire/sessions', json={'session_name': 's', 'filter_speakers': names})
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'invalid_speaker_names'
+
