@@ -3617,6 +3617,7 @@
       "invalid_with_sources": "with_sources doit valoir true ou false",
       "job_not_found": "Tâche introuvable",
       "upload_canceled": "Le téléversement a été annulé",
+      "upload_in_progress": "Une requête précédente enregistre encore ce téléversement. Réessayez dans un instant.",
       "invalid_client_upload_id": "client_upload_id invalide",
       "job_not_cancelable": "Cette tâche ne peut pas être annulée",
       "job_already_finished": "La tâche est déjà terminée",

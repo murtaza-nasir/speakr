@@ -3617,6 +3617,7 @@
       "invalid_with_sources": "with_sources должно быть true или false",
       "job_not_found": "Задача не найдена",
       "upload_canceled": "Загрузка отменена",
+      "upload_in_progress": "Предыдущий запрос ещё сохраняет эту загрузку. Повторите попытку чуть позже.",
       "invalid_client_upload_id": "Недопустимый client_upload_id",
       "job_not_cancelable": "Эту задачу нельзя отменить",
       "job_already_finished": "Задача уже завершена",

@@ -421,6 +421,9 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'recording', 'upload_idempotency_key', 'VARCHAR(100)'):
             app.logger.info("Added upload_idempotency_key column to recording table")
         unique_upload_idempotency_key(app, engine)
+        # The request that stores a browser upload claims its row (#626).
+        if add_column_if_not_exists(engine, 'client_upload', 'claimed_at', 'DATETIME'):
+            app.logger.info("Added claimed_at column to client_upload table")
         # Chunks are read and deleted by recording, in order (D#441)
         create_index_if_not_exists(engine, 'ix_transcript_chunk_recording', 'transcript_chunk',
                                    'recording_id, chunk_index')

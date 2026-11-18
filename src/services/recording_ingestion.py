@@ -962,6 +962,7 @@ def ingest(
     )
 
     filepath = None
+    client_upload_id = upload_claim = None
     try:
         from src.services.recording_source import coerce_source
         file = coerce_source(uploaded_file=uploaded_file, source=source)
@@ -988,15 +989,24 @@ def ingest(
 
         # A retry of an upload whose answer was lost gets the recording the
         # first request stored (#626): nothing is staged, stored or queued.
-        from src.services.upload_cancel import already_stored_upload, client_upload_id_from
+        # A retry sent while the first request still works on the file
+        # waits a moment for that recording; only one request holds the
+        # claim and stores the upload.
+        from src.services.upload_cancel import claim_upload, client_upload_id_from
         client_upload_id = None if join else client_upload_id_from(form)
         if client_upload_id:
-            already = already_stored_upload(owner.id, client_upload_id)
-            if already is not None:
-                current_app.logger.info(f"Upload replay for user {owner.id}: recording {already.id}")
-                response_data = already.to_dict(viewer_user=owner)
+            outcome, value = claim_upload(owner.id, client_upload_id)
+            if outcome == 'replay':
+                current_app.logger.info(f"Upload replay for user {owner.id}: recording {value.id}")
+                response_data = value.to_dict(viewer_user=owner)
                 response_data['idempotent_replay'] = True
                 return jsonify(response_data), success_status
+            if outcome == 'canceled':
+                return jsonify(api_error('upload_canceled')), 409
+            if outcome == 'in_progress':
+                current_app.logger.info(f"Upload of user {owner.id} is still stored by another request")
+                return jsonify(api_error('upload_in_progress')), 409
+            upload_claim = (owner.id, value)
 
         safe_filename = shorten_filename(secure_filename(original_filename))
         storage = get_storage_service()
@@ -1425,6 +1435,13 @@ def ingest(
         _discard_staging(filepath)
         current_app.logger.error(f"Error during file upload: {loggable_error(e, filepath)}", exc_info=True)
         return jsonify(api_error('unexpected_error_upload')), 500
+    finally:
+        # register_recording let the claim go with the recording; a request
+        # that ended without one (refused, failed or a duplicate reused)
+        # lets it go here, so a retry of this upload may go ahead at once.
+        if upload_claim is not None:
+            from src.services.upload_cancel import release_claim
+            release_claim(upload_claim[0], client_upload_id, upload_claim[1])
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
