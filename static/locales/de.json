@@ -2529,7 +2529,8 @@
     "stage": {
       "assembling": "Zusammensetzen",
       "titling": "Titel",
-      "indexing": "Indexierung"
+      "indexing": "Indexierung",
+      "checking": "Prüfung"
     },
     "queuedFor": {
       "conversion": "Platz {{position}} für Konvertierung",

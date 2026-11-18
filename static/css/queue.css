@@ -131,7 +131,8 @@
     top: calc(var(--queue-float-top, var(--app-header-height, 56px)) + 6px);   /* measured in app.modular.js */
     right: 12px;
     width: min(400px, calc(100vw - 24px));
-    max-height: calc(var(--app-height, 100vh) - var(--queue-float-top, var(--app-header-height, 56px)) - 28px);
+    /* At most about six rows; a longer queue scrolls inside the panel. */
+    max-height: min(30rem, calc(var(--app-height, 100vh) - var(--queue-float-top, var(--app-header-height, 56px)) - 28px));
     display: flex;
     flex-direction: column;
 }
@@ -139,7 +140,7 @@
 .queue-float--status {
     top: auto;
     bottom: 30px;
-    max-height: calc(var(--app-height, 100vh) - var(--app-header-height, 56px) - 44px);
+    max-height: min(30rem, calc(var(--app-height, 100vh) - var(--app-header-height, 56px) - 44px));
 }
 
 /* ---- 3. Panel --------------------------------------------------------------- */

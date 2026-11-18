@@ -2529,7 +2529,8 @@
     "stage": {
       "assembling": "Assembling",
       "titling": "Titling",
-      "indexing": "Indexing"
+      "indexing": "Indexing",
+      "checking": "Checking"
     },
     "queuedFor": {
       "conversion": "Queued #{{position}} for conversion",

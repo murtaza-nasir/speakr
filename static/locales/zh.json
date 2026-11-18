@@ -2529,7 +2529,8 @@
     "stage": {
       "assembling": "组装中",
       "titling": "生成标题",
-      "indexing": "索引中"
+      "indexing": "索引中",
+      "checking": "检查中"
     },
     "queuedFor": {
       "conversion": "排队第 {{position}} 位，等待转换",
