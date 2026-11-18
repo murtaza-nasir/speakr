@@ -419,16 +419,16 @@ describe('the segment editor session', () => {
 });
 
 describe('an editor toast', () => {
-    it('is plain text without an action, with user text escaped', () => {
+    it('is plain text without an action, user text kept as it is', () => {
         expect(editorToast('SPEAKER_00 renamed to <b>Dana</b> & Co')).toEqual({
-            html: 'SPEAKER_00 renamed to &lt;b&gt;Dana&lt;/b&gt; &amp; Co', duration: undefined, onClick: null,
+            message: 'SPEAKER_00 renamed to <b>Dana</b> & Co', duration: undefined, onClick: null,
         });
     });
 
     it('names its action, stays longer and runs it on a click', () => {
         const action = vi.fn();
         const toast = editorToast('SPEAKER_00 renamed to Dana Lee', { action, actionLabel: 'Undo' });
-        expect(toast.html).toBe('SPEAKER_00 renamed to Dana Lee <span class="toast__action">Undo</span>');
+        expect(toast.message).toEqual({ text: 'SPEAKER_00 renamed to Dana Lee', actionLabel: 'Undo' });
         expect(toast.duration).toBeGreaterThan(3000);
         toast.onClick();
         expect(action).toHaveBeenCalledTimes(1);

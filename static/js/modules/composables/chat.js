@@ -29,9 +29,6 @@ export function useChat(state, utils) {
     const { showToast, onChatComplete, t, processedTranscription } = utils;
     const threads = state.chatThreads || null;
 
-    const escapeHtml = (text) => String(text == null ? '' : text).replace(/[&<>"']/g,
-        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
     // An answer finished in a recording that is no longer open: say where,
     // and open it on a click.
     const announce = (thread) => {
@@ -41,7 +38,7 @@ export function useChat(state, utils) {
         if (!last || last.role !== 'assistant') return;
         const listed = (state.recordings && state.recordings.value || []).find((r) => String(r.id) === String(thread.recordingId));
         const title = (listed && listed.title) || thread.title || t('common.untitled');
-        const params = { name: escapeHtml(utils.assistantName || 'Ambrose'), title: escapeHtml(title) };
+        const params = { name: utils.assistantName || 'Ambrose', title };
         const open = utils.openRecordingById ? () => utils.openRecordingById(thread.recordingId) : null;
         if (last.failed) showToast(t('chat.answerFailedIn', params), 'fa-exclamation-circle', 6000, 'info', open);
         else showToast(t('chat.answeredIn', params), 'fa-comment-dots', 6000, 'info', open);

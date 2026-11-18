@@ -279,14 +279,22 @@ describe('showToast', () => {
         expect(container.children.map(t => t.dataset.toastType)).toEqual(['error']);
     });
 
-    it('makes the action named in the message a button that runs it', () => {
+    it('shows the message as text, never as markup (#623)', () => {
+        showToast('<img src=x onerror="window.__toastFired=1">', 'fa-exclamation-circle', 5000, 'error');
+        const body = container.children[0].find('toast__body');
+        expect(body.textContent).toBe('<img src=x onerror="window.__toastFired=1">');
+        expect(body.innerHTML).toBe('');
+        expect(container.children[0].find('toast__action')).toBeNull();
+    });
+
+    it('makes the action label of the message a button that runs it', () => {
         const action = vi.fn();
-        showToast('Renamed <span class="toast__action">Undo</span>', 'fa-check-circle', 6000, 'info', action);
+        showToast({ text: 'Renamed', actionLabel: 'Undo' }, 'fa-check-circle', 6000, 'info', action);
         const toast = container.children[0];
         const button = toast.find('toast__action');
         expect(button.tagName).toBe('BUTTON');
         expect(button.textContent).toBe('Undo');
-        expect(toast.find('toast__body').innerHTML).toBe('Renamed');
+        expect(toast.find('toast__body').textContent).toBe('Renamed');
         // The body is not a second button
         expect(toast.find('toast__body').getAttribute('role')).toBeNull();
         button.click();

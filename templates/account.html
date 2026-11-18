@@ -4366,7 +4366,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
 
                 } catch (error) {
-                    sharesContainer.innerHTML = `<p class="text-center text-[var(--text-danger)]">${t('errors.loadingShares')}: ${error.message}</p>`;
+                    // The message can come from the server: text, never markup (#623).
+                    const failure = document.createElement('p');
+                    failure.className = 'text-center text-[var(--text-danger)]';
+                    failure.textContent = `${t('errors.loadingShares')}: ${error.message}`;
+                    sharesContainer.replaceChildren(failure);
                 }
             }
 

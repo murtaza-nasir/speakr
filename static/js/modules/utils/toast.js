@@ -281,10 +281,10 @@ const timeScale = () => {
 };
 
 /**
- * `message` is HTML: escape any user text in it. With `onClick`, a click on
- * the toast calls it before the toast goes. An element with the class
- * toast__action in the message (`<span class="toast__action">Undo</span>`)
- * becomes the button of that action.
+ * `message` is plain text, never markup (#623): server errors and user text
+ * are shown as they are. With `onClick`, a click on the toast calls it before
+ * the toast goes. A message given as `{ text, actionLabel }` also shows a
+ * button with that label, which runs `onClick`.
  */
 export const showToast = (message, iconClass = 'fa-info-circle', duration = DEFAULT_DURATION, type, onClick = null) => {
     const container = document.getElementById('toastContainer');
@@ -295,7 +295,10 @@ export const showToast = (message, iconClass = 'fa-info-circle', duration = DEFA
     prepareContainer(container);
 
     const { kind, inferred } = resolveType(type, iconClass);
-    const key = toastKey(message, kind);
+    const parts = message && typeof message === 'object'
+        ? { text: String(message.text == null ? '' : message.text), actionLabel: message.actionLabel ? String(message.actionLabel) : '' }
+        : { text: String(message == null ? '' : message), actionLabel: '' };
+    const key = toastKey(parts.actionLabel ? `${parts.text}\u0000${parts.actionLabel}` : parts.text, kind);
 
     // The same message is already up: count it and give it its time again.
     for (const existing of container.children) {
@@ -325,21 +328,19 @@ export const showToast = (message, iconClass = 'fa-info-circle', duration = DEFA
 
     const body = document.createElement('span');
     body.className = 'toast__body';
-    body.innerHTML = message;
+    body.textContent = parts.text;
 
     const counter = document.createElement('span');
     counter.className = 'toast__count';
     counter.hidden = true;
 
-    // The action named in the message becomes a button beside it
+    // The action label of the message becomes a button beside it
     let action = null;
-    const named = typeof body.querySelector === 'function' ? body.querySelector('.toast__action') : null;
-    if (named) {
+    if (parts.actionLabel) {
         action = document.createElement('button');
         action.type = 'button';
         action.className = 'toast__action';
-        action.textContent = named.textContent;
-        named.remove();
+        action.textContent = parts.actionLabel;
     }
 
     const close = document.createElement('button');

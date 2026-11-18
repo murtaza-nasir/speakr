@@ -32,20 +32,18 @@ const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
 
 const plain = (value) => ({ value });
 
-const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-const escapeHtml = (text) => String(text == null ? '' : text).replace(/[&<>"']/g, (c) => ESCAPES[c]);
 const ACTION_TOAST_MS = 8000;
 
 /**
- * The HTML and the arguments of an editor toast. With an action, the toast
- * names it (e.g. Undo) and a click on the toast runs it. Speaker names are
- * user text: they are escaped.
+ * The message and the arguments of an editor toast. With an action, the
+ * toast names it (e.g. Undo) and a click on the toast runs it. The toast
+ * shows text only, so speaker names need no escaping.
  */
 export function editorToast(message, { action = null, actionLabel = '' } = {}) {
-    const text = escapeHtml(message);
-    if (typeof action !== 'function') return { html: text, duration: undefined, onClick: null };
+    const text = String(message == null ? '' : message);
+    if (typeof action !== 'function') return { message: text, duration: undefined, onClick: null };
     return {
-        html: `${text} <span class="toast__action">${escapeHtml(actionLabel)}</span>`,
+        message: { text, actionLabel: String(actionLabel || '') },
         duration: ACTION_TOAST_MS,
         onClick: action,
     };
@@ -191,8 +189,8 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
             initialScrollTop: targetIndex == null ? (scrollMemory.get(`${recording.id}:${field}`) || 0) : 0,
             audio: () => document.querySelector('[data-asr-editor-audio]'),
             toast: (message, options) => {
-                const { html, duration, onClick } = editorToast(message, options);
-                showToast(html, 'fa-check-circle', duration, 'info', onClick);
+                const { message: body, duration, onClick } = editorToast(message, options);
+                showToast(body, 'fa-check-circle', duration, 'info', onClick);
             },
             restoreDraft,
             discardDraft,
