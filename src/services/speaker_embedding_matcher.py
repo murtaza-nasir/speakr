@@ -321,7 +321,7 @@ def apply_speaker_names_to_transcription(recording, speaker_map):
     recording.participants = participants_from_segments(segments)
 
     # Save updated transcription
-    recording.transcription = json.dumps(segments)
+    recording.transcription = json.dumps(segments, ensure_ascii=False)
     db.session.commit()
 
     return True

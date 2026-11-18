@@ -220,7 +220,7 @@ class TranscriptionResponse:
                     'end_time': seg.end_time
                 }
                 for seg in self.segments
-            ])
+            ], ensure_ascii=False)
         # If no segments, return plain text (for non-diarized transcriptions)
         return self.text
 

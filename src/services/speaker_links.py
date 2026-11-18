@@ -112,7 +112,7 @@ def link_segments(recording, speakers=None):
         return None
     if not isinstance(segments, list):
         return None
-    return json.dumps(segments) if link_list(segments, recording, speakers) else None
+    return json.dumps(segments, ensure_ascii=False) if link_list(segments, recording, speakers) else None
 
 
 def link_recording(recording):

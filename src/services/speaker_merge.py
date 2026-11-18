@@ -182,7 +182,7 @@ def rename_speaker_in_recordings(user_id, old_name, new_name, speaker_id=None, n
                             segment['speaker_id'] = new_speaker_id
                             hit = True
                 if hit:
-                    recording.transcription = json.dumps(segments)
+                    recording.transcription = json.dumps(segments, ensure_ascii=False)
                     fields.add('transcription')
 
         # The label map records which name each diarization label shows;

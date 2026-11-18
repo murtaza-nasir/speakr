@@ -122,6 +122,28 @@ def test_percent_and_underscore_are_literal(world):
     assert _ok(world, q="clear%now")["results"] == []
 
 
+def test_words_outside_ascii_are_found_in_escaped_and_raw_transcripts(world):
+    # #622: older transcripts were saved with json.dumps' default ASCII escapes.
+    seg = [{"speaker": "Ana", "sentence": "Grabación en español: 大家好, привет.", "start_time": 3.0, "end_time": 6.0}]
+    with app.app_context():
+        recs = [Recording(user_id=world["me"], title=f"Unicode {i}", status="COMPLETED", original_filename="u.wav",
+                          transcription=json.dumps(seg, ensure_ascii=ascii_only))
+                for i, ascii_only in enumerate((True, False))]
+        db.session.add_all(recs)
+        db.session.commit()
+        ids = {r.id for r in recs}
+    try:
+        for word in ("español", "Español", "大家", "привет", "grabación en"):
+            hits = _ok(world, q=word)["results"]
+            assert {h["recording_id"] for h in hits} == ids, word
+            assert {h["speaker"] for h in hits} == {"Ana"}
+        assert _ok(world, q="u00f1")["results"] == []
+    finally:
+        with app.app_context():
+            Recording.query.filter(Recording.id.in_(ids)).delete(synchronize_session=False)
+            db.session.commit()
+
+
 def test_json_keys_are_not_matches(world):
     assert _ok(world, q="sentence")["results"] == []
     assert _ok(world, q="start_time")["results"] == []

@@ -81,7 +81,7 @@ def _unlink(transcription, removed_ids):
                 and not isinstance(segment.get('speaker_id'), bool):
             del segment['speaker_id']
             changed += 1
-    return (json.dumps(segments), changed) if changed else (None, 0)
+    return (json.dumps(segments, ensure_ascii=False), changed) if changed else (None, 0)
 
 
 def plan(engine):
