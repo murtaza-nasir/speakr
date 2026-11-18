@@ -2,6 +2,7 @@ const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextT
 
 // Import composables
 import { useRecordings } from './modules/composables/recordings.js';
+import { isValidDateInput } from './modules/utils/date-filter.js';
 import { resolveInitialSort } from './modules/utils/sort-preference.js';
 import { releasesToShow, releaseVersion } from './modules/utils/whats-new.js';
 import { useUpload } from './modules/composables/upload.js';
@@ -2783,6 +2784,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             watch(() => uploadQueue.value.filter(item => item.status === 'queued').length, (n, old) => {
                 if (n > (old || 0)) uploadDialogTab.value = 'upload';
             });
+            // A typed date outside 1900-2100, or a day that does not exist, is
+            // not sent (#631): the panel says so and does not count it.
+            const dateRangeActive = computed(() => {
+                const r = filterDateRange.value || {};
+                return isValidDateInput(r.start) || isValidDateInput(r.end);
+            });
+            const dateRangeInvalid = computed(() => {
+                const r = filterDateRange.value || {};
+                return [r.start, r.end].some(v => v && !isValidDateInput(v));
+            });
             const showUploadTagMenu = ref(false);
             // The tag list is teleported to <body> and placed under its
             // field with fixed coordinates (above it where there is no room
@@ -5247,6 +5258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 createTagFromUploadSearch,
                 createFolderFromUpload,
                 uploadDialogTab, recordSource, showUploadTagMenu,
+                dateRangeActive, dateRangeInvalid,
                 pickFirstUploadTag, onUploadFolderChange,
                 uploadTagMenuStyle, openUploadTagMenu, closeUploadTagMenu, pickUploadTag,
 

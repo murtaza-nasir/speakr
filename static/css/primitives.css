@@ -2963,3 +2963,13 @@ select.field.option-folder-select { padding-left: 2rem !important; }
 }
 .bulk-act--quiet { color: var(--text-muted); }
 .bulk-act--quiet:hover:not(:disabled) { color: var(--text-primary); }
+
+/* Recordings filter: a date that is not applied (#631) */
+.date-filter-note {
+    margin: 4px 0 0;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--text-danger, #dc2626);
+}
+input[type="date"]:invalid { border-color: var(--text-danger, #dc2626) !important; }
+

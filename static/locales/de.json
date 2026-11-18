@@ -2833,7 +2833,8 @@
     "totalRecordingsPlural": "{{count}} Aufnahmen",
     "unfiled": "Nicht zugeordnet",
     "upcoming": "Bevorstehend",
-    "yesterday": "Gestern"
+    "yesterday": "Gestern",
+    "dateNotApplied": "Dieses Datum wird nicht angewendet: Wählen Sie einen Tag von 1900 bis 2100."
   },
   "speakerModal": {
     "alreadyAssigned": "Bereits einem anderen Sprecher zugewiesen",
@@ -3938,7 +3939,8 @@
         "searchingWords": "Suche nach den Wörtern „{{query}}“",
         "findingSimilar": "Ähnliche Aufnahmen wie {{title}} werden gesucht",
         "findingSimilarRecordings": "Ähnliche Aufnahmen werden gesucht",
-        "findingPerson": "{{name}} wird nachgeschlagen"
+        "findingPerson": "{{name}} wird nachgeschlagen",
+        "historyTrimmed": "Frühere Nachrichten ausgelassen ({{count}})"
       },
       "result": {
         "failed": "Dieser Schritt konnte nicht abgeschlossen werden",

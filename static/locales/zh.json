@@ -2833,7 +2833,8 @@
     "totalRecordingsPlural": "{{count}} 个录音",
     "unfiled": "未分类",
     "upcoming": "即将到来",
-    "yesterday": "昨天"
+    "yesterday": "昨天",
+    "dateNotApplied": "此日期未生效：请使用 1900 年至 2100 年之间的日期。"
   },
   "speakerModal": {
     "alreadyAssigned": "已分配给其他发言人",
@@ -3938,7 +3939,8 @@
         "searchingWords": "正在搜索词语“{{query}}”",
         "findingSimilar": "正在查找与“{{title}}”相似的录音",
         "findingSimilarRecordings": "正在查找相似的录音",
-        "findingPerson": "正在查找 {{name}}"
+        "findingPerson": "正在查找 {{name}}",
+        "historyTrimmed": "已省略较早的消息（{{count}}）"
       },
       "result": {
         "failed": "无法完成此步骤",

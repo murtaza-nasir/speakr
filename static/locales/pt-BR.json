@@ -2833,7 +2833,8 @@
     "totalRecordingsPlural": "{{count}} gravações",
     "unfiled": "Sem pasta",
     "upcoming": "Próximos",
-    "yesterday": "Ontem"
+    "yesterday": "Ontem",
+    "dateNotApplied": "Esta data não é aplicada: use um dia entre 1900 e 2100."
   },
   "speakerModal": {
     "alreadyAssigned": "Já atribuído a outro orador",
@@ -3938,7 +3939,8 @@
         "searchingWords": "Buscando as palavras “{{query}}”",
         "findingSimilar": "Buscando gravações parecidas com {{title}}",
         "findingSimilarRecordings": "Buscando gravações parecidas",
-        "findingPerson": "Procurando {{name}}"
+        "findingPerson": "Procurando {{name}}",
+        "historyTrimmed": "Mensagens anteriores omitidas ({{count}})"
       },
       "result": {
         "failed": "Não foi possível concluir esta etapa",

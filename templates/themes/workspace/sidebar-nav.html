@@ -127,9 +127,9 @@
                         :aria-expanded="showAdvancedFilters"
                         :title="t('sidebar.filters')" :aria-label="t('sidebar.filters')">
                     <i class="fas fa-sliders-h"></i>
-                    <span v-if="(filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterAudioRemoved ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0) > 0"
+                    <span v-if="(filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || dateRangeActive ? 1 : 0) + (filterAudioRemoved ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0) > 0"
                           class="ws-iconbtn__badge"
-                          v-text="(filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterAudioRemoved ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0)"></span>
+                          v-text="(filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || dateRangeActive ? 1 : 0) + (filterAudioRemoved ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0)"></span>
                 </button>
                 <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox || filterAudioRemoved || filterNeedsTranscription || filterNeedsSummary || filterNeedsSpeakers"
                         type="button" class="ws-iconbtn"
@@ -198,6 +198,7 @@
                         <input v-model="filterDateRange.end" @change="filterDatePreset = ''" type="date" min="1900-01-01" max="2100-12-31"
                                class="ws-input" :aria-label="t('form.dateTo')">
                     </div>
+                    <p v-if="dateRangeInvalid" class="date-filter-note" role="status" v-text="t('sidebar.dateNotApplied')"></p>
                 </div>
             </div>
 

@@ -2833,7 +2833,8 @@
     "yesterday": "Yesterday",
     "allRecordings": "All recordings",
     "recordingsList": "Recordings list",
-    "unfiled": "Unfiled"
+    "unfiled": "Unfiled",
+    "dateNotApplied": "This date is not applied: use a day from 1900 to 2100."
   },
   "speakerModal": {
     "alreadyAssigned": "Already given to another speaker",
@@ -3938,7 +3939,8 @@
         "searchingWords": "Searching for the words “{{query}}”",
         "findingSimilar": "Finding recordings like {{title}}",
         "findingSimilarRecordings": "Finding similar recordings",
-        "findingPerson": "Looking up {{name}}"
+        "findingPerson": "Looking up {{name}}",
+        "historyTrimmed": "Earlier messages left out ({{count}})"
       },
       "result": {
         "failed": "Couldn't complete this step",

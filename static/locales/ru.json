@@ -2833,7 +2833,8 @@
     "totalRecordingsPlural": "{{count}} записей",
     "unfiled": "Без папки",
     "upcoming": "Предстоящие",
-    "yesterday": "Вчера"
+    "yesterday": "Вчера",
+    "dateNotApplied": "Эта дата не применяется: укажите день с 1900 по 2100 год."
   },
   "speakerModal": {
     "alreadyAssigned": "Уже назначено другому спикеру",
@@ -3938,7 +3939,8 @@
         "searchingWords": "Поиск слов: «{{query}}»",
         "findingSimilar": "Поиск записей, похожих на «{{title}}»",
         "findingSimilarRecordings": "Поиск похожих записей",
-        "findingPerson": "Поиск человека: {{name}}"
+        "findingPerson": "Поиск человека: {{name}}",
+        "historyTrimmed": "Ранние сообщения пропущены ({{count}})"
       },
       "result": {
         "failed": "Не удалось выполнить этот шаг",

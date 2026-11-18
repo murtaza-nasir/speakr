@@ -2833,7 +2833,8 @@
     "totalRecordingsPlural": "{{count}} enregistrements",
     "unfiled": "Non classés",
     "upcoming": "À venir",
-    "yesterday": "Hier"
+    "yesterday": "Hier",
+    "dateNotApplied": "Cette date n'est pas appliquée : choisissez un jour entre 1900 et 2100."
   },
   "speakerModal": {
     "alreadyAssigned": "Déjà attribué à un autre intervenant",
@@ -3938,7 +3939,8 @@
         "searchingWords": "Recherche des mots « {{query}} »",
         "findingSimilar": "Recherche d’enregistrements proches de « {{title}} »",
         "findingSimilarRecordings": "Recherche d’enregistrements proches",
-        "findingPerson": "Recherche de {{name}}"
+        "findingPerson": "Recherche de {{name}}",
+        "historyTrimmed": "Messages précédents omis ({{count}})"
       },
       "result": {
         "failed": "Impossible de terminer cette étape",

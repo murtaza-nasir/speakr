@@ -163,6 +163,7 @@
             <input v-model="filterDateRange.start" @change="filterDatePreset = ''" type="date" min="1900-01-01" max="2100-12-31" class="field" :aria-label="t('form.dateFrom')">
             <input v-model="filterDateRange.end" @change="filterDatePreset = ''" type="date" min="1900-01-01" max="2100-12-31" class="field" :aria-label="t('form.dateTo')">
         </div>
+        <p v-if="dateRangeInvalid" class="date-filter-note" role="status" v-text="t('sidebar.dateNotApplied')"></p>
 
         <div class="ph-fsheet__foot">
             <button type="button" class="btn btn--ghost" data-phone-filters-clear @click="clearAllFilters" v-text="t('buttons.clearAllFilters')"></button>
