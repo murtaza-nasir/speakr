@@ -1100,6 +1100,8 @@ def _process(job_id, error=None, retry_count=0):
             job_queue._process_job(job)
     with app.app_context():
         job = db.session.get(ProcessingJob, job_id)
+        if job is None:
+            return None, None, None
         return job.status, job.provider_task, job.error_message
 
 
@@ -1150,8 +1152,7 @@ def test_a_recording_deleted_while_the_job_ran_removes_the_remote_job(audio, rem
     with app.app_context():
         recording_id, job_id = _saved_job(audio, 'job0034')
     status, task, message = _process(job_id, RecordingDeletedDuringJob(recording_id))
-    assert status == 'failed' and task is None
-    assert message == 'Recording deleted while the job ran'
+    assert status is None                            # the job is removed (#625)
     assert remote.cancelled == ['job0034']
 
 

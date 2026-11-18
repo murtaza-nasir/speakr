@@ -150,6 +150,14 @@ def run_daily_maintenance(app):
         from src.services.ownerless_cleanup import run_ownerless_cleanup
         run_ownerless_cleanup()
 
+    # Finished job rows past a week, and jobs of deleted recordings (#625).
+    # A week, because the admin overview counts the failed jobs of the last 7 days.
+    try:
+        from src.services.job_queue import job_queue
+        job_queue.cleanup_old_jobs(max_age_hours=7 * 24)
+    except Exception as e:
+        app.logger.error(f"Error while cleaning up old jobs: {type(e).__name__}")
+
     # Audit log rows past audit_log_retention_days. Here and not in the hourly
     # cleanup loop, because that loop can be turned off and this thread
     # always starts.

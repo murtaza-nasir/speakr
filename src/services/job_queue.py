@@ -549,14 +549,13 @@ class FairJobQueue:
                         or (loaded_created_at is not None and current.created_at != loaded_created_at)):
                     # Deleted while the job ran, or the id now belongs to a
                     # new upload (#597): nothing to retry or report, and the
-                    # row with this id is not this job's to write.
+                    # row with this id is not this job's to write. The job
+                    # goes too, so it is not claimed again (#625).
                     logger.info(f"Job {job_id}: recording {recording_id} was deleted while the job ran; job dropped")
                     job = db.session.get(ProcessingJob, job_id)
                     if job:
-                        job.status = 'failed'
-                        job.error_message = 'Recording deleted while the job ran'
-                        job.completed_at = datetime.utcnow()
                         self._release_remote_task(job)
+                        db.session.delete(job)
                         db.session.commit()
                     return
 
@@ -1026,11 +1025,33 @@ class FairJobQueue:
                 logger.info(f"Enqueued {queue_name} job {job.id} (type={job_type}) for user {user_id}, recording {recording_id}")
                 return job.id
 
+    def purge_orphaned_jobs(self):
+        """Delete the jobs whose recording no longer exists; returns how many.
+
+        The foreign key cascades only where the database enforces it, and
+        SQLite runs without foreign keys, so a recording removed outside
+        delete_recording_completely leaves its jobs behind (#625).
+        """
+        with self._app_context():
+            from src.database import db
+            from src.models import ProcessingJob, Recording
+
+            orphans = ProcessingJob.query.filter(ProcessingJob.recording_id.notin_(db.select(Recording.id)))
+            for job in orphans.filter(ProcessingJob.provider_task.isnot(None)).all():
+                self._release_remote_task(job)
+            deleted = orphans.delete(synchronize_session=False)
+            db.session.commit()
+            if deleted:
+                logger.info(f"Purged {deleted} jobs of deleted recordings")
+            return deleted
+
     def recover_orphaned_jobs(self):
         """
         Recover jobs that were processing when the app crashed.
         Call this on startup to reset orphaned jobs back to queued.
+        Jobs of deleted recordings are removed first, so none is replayed.
         """
+        self.purge_orphaned_jobs()
         with self._app_context():
             from src.database import db
             from src.models import ProcessingJob
@@ -1175,7 +1196,8 @@ class FairJobQueue:
             ).first()
 
     def cleanup_old_jobs(self, max_age_hours: int = 24):
-        """Remove completed/failed jobs older than max_age_hours."""
+        """Remove completed/failed jobs older than max_age_hours, and jobs of deleted recordings."""
+        self.purge_orphaned_jobs()
         with self._app_context():
             from src.database import db
             from src.models import ProcessingJob
