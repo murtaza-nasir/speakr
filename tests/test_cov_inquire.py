@@ -454,6 +454,62 @@ def test_search_passes_filters(client):
     assert captured['top_k'] == 9
 
 
+class _Recorder:
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, uid, query, filters, top_k):
+        self.calls.append(top_k)
+        return []
+
+
+@pytest.mark.parametrize('value', [-1, 0, 999999, 51, 'abc', 2.5, True, None])
+def test_search_rejects_invalid_top_k(client, value):
+    """top_k outside 1 to 50, or not an integer, is a 400 before any search (#628)."""
+    user_id = _make_user()
+    recorder = _Recorder()
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.semantic_search_chunks', recorder):
+        resp = client.post('/api/inquire/search', json={'query': 'x', 'top_k': value})
+        assert resp.status_code == 400 and resp.is_json
+        assert resp.get_json()['code'] in ('invalid_top_k', 'invalid_integer_value')
+    assert recorder.calls == []
+
+
+def test_search_top_k_range_edges(client):
+    user_id = _make_user()
+    recorder = _Recorder()
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.semantic_search_chunks', recorder):
+        assert client.post('/api/inquire/search', json={'query': 'x', 'top_k': 1}).status_code == 200
+        assert client.post('/api/inquire/search', json={'query': 'x', 'top_k': 50}).status_code == 200
+        resp = client.post('/api/inquire/search', json={'query': 'x', 'top_k': 51})
+        assert resp.status_code == 400 and resp.get_json()['code'] == 'invalid_top_k'
+    assert recorder.calls == [1, 50]
+
+
+def test_search_top_k_default_is_five(client):
+    user_id = _make_user()
+    recorder = _Recorder()
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.semantic_search_chunks', recorder):
+        assert client.post('/api/inquire/search', json={'query': 'x'}).status_code == 200
+    assert recorder.calls == [5]
+
+
+@pytest.mark.parametrize('value', [0, -1, True, '3'])
+def test_search_services_refuse_a_bad_top_k(value):
+    """The service never reads a negative index as 'all but the last' (#628)."""
+    from src.services.embeddings import basic_text_search_chunks, semantic_search_chunks
+    with app.app_context():
+        for search in (semantic_search_chunks, basic_text_search_chunks):
+            with pytest.raises(ValueError):
+                search(1, 'x', None, value)
+
+
 def test_search_with_meeting_date_in_result(client):
     from datetime import datetime
     user_id = _make_user()

@@ -3832,6 +3832,7 @@
       "invalid_default_audio_player_position": "无效的默认音频播放器位置。必须是以下之一：{{positions}}",
       "sso_token_required": "此路由仅接受 Authorization 请求头中的 SSO 访问令牌",
       "token_name_too_long": "name 最多 {{max}} 个字符",
+      "invalid_top_k": "top_k 必须在 1 到 {{max}} 之间",
       "invalid_speaker_names": "发言人名称必须是名称列表",
       "field_must_be_string": "{{field}} 必须是字符串",
       "field_too_long": "{{field}} 最多 {{max}} 个字符",

@@ -31,6 +31,9 @@ inquire_bp = Blueprint('inquire', __name__)
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 
+# Most chunks POST /api/inquire/search returns (#628)
+INQUIRE_SEARCH_MAX_TOP_K = 50
+
 # Global helpers (will be injected from app)
 has_recording_access = None
 bcrypt = None
@@ -136,7 +139,11 @@ def create_inquire_session():
 @inquire_bp.route('/api/inquire/search', methods=['POST'])
 @login_required
 def inquire_search():
-    """Perform semantic search within filtered transcriptions."""
+    """Perform semantic search within filtered transcriptions.
+
+    top_k: the number of chunks to return, 1 to 50 (default 5); any other
+    value is refused with 400.
+    """
     if not ENABLE_INQUIRE_MODE:
         return jsonify(api_error('inquire_disabled')), 403
     try:
@@ -155,8 +162,12 @@ def inquire_search():
         except FilterError as e:
             return jsonify(api_error(e.code)), 400
 
-        # Perform semantic search
+        # Perform semantic search: top_k is a whole number from 1 to 50 (#628)
         top_k = data.get('top_k', 5)
+        if isinstance(top_k, bool) or not isinstance(top_k, int):
+            return jsonify(api_error('invalid_integer_value')), 400
+        if not 1 <= top_k <= INQUIRE_SEARCH_MAX_TOP_K:
+            return jsonify(api_error('invalid_top_k', max=INQUIRE_SEARCH_MAX_TOP_K)), 400
         chunk_results = semantic_search_chunks(current_user.id, query, filters, top_k)
         
         # Format results
