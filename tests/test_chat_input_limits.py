@@ -421,3 +421,27 @@ def test_the_recording_panel_bounds_a_real_conversation(world):
     assert resp.status_code == 200
     turns = [m for m in answer.calls[0][1:-1] if m["role"] != "system"]
     assert _plain(turns) == _plain(long[-MAX_HISTORY_MESSAGES:])
+
+
+def test_bounded_memory_ignores_a_non_string_and_cuts_a_long_one():
+    from src.utils.assistant_limits import MAX_MEMORY_CHARS, bounded_memory
+    assert bounded_memory(None) == ''
+    assert bounded_memory(['x']) == ''
+    assert bounded_memory({'a': 1}) == ''
+    assert bounded_memory('notes') == 'notes'
+    assert len(bounded_memory('m' * (MAX_MEMORY_CHARS + 50))) == MAX_MEMORY_CHARS
+
+
+
+@pytest.mark.parametrize("message", [123, ["q"], {"a": 1}])
+def test_every_chat_refuses_a_message_that_is_not_text(world, message):
+    def never(*args, **kwargs):
+        raise AssertionError("no model call")
+    resp, _, _ = _ask(world, {"message": message}, never)
+    assert resp.status_code == 400
+    resp, _ = _panel(world, {"message": message}, never)
+    assert resp.status_code == 400
+    assert _v1_chat(world, {"message": message}, never).status_code == 400
+    resp, seen = _v1_inquire(world, {"question": message})
+    assert resp.status_code == 400 and seen == []
+

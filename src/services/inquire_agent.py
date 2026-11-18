@@ -351,7 +351,8 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
             return msgs
 
         history = sanitize_history(message_history)
-        memory = (conversation_memory or '').strip() or None
+        from src.utils.assistant_limits import bounded_memory
+        memory = bounded_memory(conversation_memory).strip() or None
 
         # Context accounting + compaction before the first call (the Ask
         # page; the recording panel sends its builder's messages as they are)

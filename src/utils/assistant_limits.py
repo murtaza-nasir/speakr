@@ -27,6 +27,18 @@ from src.utils.localization import api_error, format_number, translate
 MAX_QUESTION_CHARS = 10_000
 MAX_HISTORY_MESSAGES = 40
 MAX_HISTORY_CHARS = 60_000
+# The conversation memory the Ask page sends back: the summary the agent
+# wrote when it compacted the conversation. It is the server's own text, so
+# a value that is not a string is ignored and a longer one is cut.
+MAX_MEMORY_CHARS = 20_000
+
+
+def bounded_memory(raw):
+    """The conversation memory a client sent back, as a string of at most
+    MAX_MEMORY_CHARS characters; '' for anything that is not a string."""
+    if not isinstance(raw, str):
+        return ''
+    return raw[:MAX_MEMORY_CHARS]
 
 
 def question_too_long(value):

@@ -3612,7 +3612,7 @@ def chat_with_recording(recording_id):
         return jsonify(api_error('no_transcription')), 400
 
     data = request.get_json()
-    if not data or not data.get('message'):
+    if not data or not data.get('message') or not isinstance(data.get('message'), str):
         return jsonify(api_error('message_required')), 400
     too_long = question_error(data['message'], v1=True)
     if too_long:
@@ -3662,7 +3662,8 @@ def inquire_v1():
     if os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() != 'true':
         return jsonify({'error': translate('server.apiError.inquire_off'), 'code': 'feature_disabled'}), 403
     body = request.get_json(silent=True) or {}
-    question = (body.get('question') or '').strip()
+    question = body.get('question')
+    question = question.strip() if isinstance(question, str) else ''
     if not question:
         return jsonify({'error': translate('server.apiError.question_required'), 'code': 'invalid_parameter'}), 400
     too_long = question_error(question, v1=True)

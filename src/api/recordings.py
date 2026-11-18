@@ -3341,7 +3341,7 @@ def chat_with_transcription():
 
         if not recording_id:
             return jsonify(api_error('no_recording_id')), 400
-        if not user_message:
+        if not user_message or not isinstance(user_message, str):
             return jsonify(api_error('no_message_provided')), 400
         too_long = question_error(user_message)
         if too_long:

@@ -891,7 +891,7 @@ def inquire_chat():
         
         user_message = data.get('message')
 
-        if not user_message:
+        if not user_message or not isinstance(user_message, str):
             return jsonify(api_error('no_message_provided')), 400
         too_long = question_error(user_message)
         if too_long:
