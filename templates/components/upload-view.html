@@ -12,7 +12,7 @@
      @click.self="closeUploadView"
      @keydown.esc.stop="closeUploadView"
      tabindex="-1"
-     class="modal-overlay modal-overlay--anchor-top">
+     class="modal-overlay">
     <div class="modal-panel modal-panel--lg modal-panel--bottom-sheet upload-dialog"
          :style="bottomSheetDragStyle">
         <!-- Drag-to-dismiss handlers attached on the header area only
@@ -47,9 +47,7 @@
                 <span v-text="t('upload.tabRecord')"></span>
             </button>
         </div>
-        <!-- Both panels lie in one grid cell, so the dialog keeps one
-             height when the tab changes; the panel of the other tab is
-             hidden and inert. -->
+        <!-- One panel per tab; the panel of the other tab is hidden and inert. -->
         <div class="modal-body upload-panels">
           <!-- ============ Tab: Upload files ============ -->
           <div :class="['upload-panel', { 'is-inactive': uploadDialogTab === 'record' }]" :inert="uploadDialogTab === 'record'"

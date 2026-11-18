@@ -191,7 +191,7 @@ Or use `qpwgraph` / `helvum` to wire it visually.
 
 ## Input Device Picker & Multi-Input Recording
 
-The **Record** tab shows the **Primary input** select for the two microphone sources. **More input settings** beneath it holds the second input and the audio processing switch. Rows that the selected source does not use stay in place and are dimmed, so the dialog keeps its height:
+The **Record** tab shows the **Primary input** select for the two microphone sources. **More input settings** beneath it holds the second input and the audio processing switch. Rows that the selected source does not use stay in place and are dimmed, so the dialog keeps its height when the source changes:
 
 ![Input device picker](../assets/images/screenshots/recording-input-device-picker.png)
 

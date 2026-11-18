@@ -2860,37 +2860,11 @@ select.field.option-folder-select { padding-left: 2rem !important; }
 }
 .option-group__tool > select.field { flex: 0 1 18rem; width: auto; min-width: 12rem; }
 .option-group__tool > .option-help { flex: 1 1 12rem; }
-/* Desktop: the dialog hangs from a fixed distance under the top edge,
-   so opening Advanced extends it downward and the tabs stay in place. */
-@media (min-width: 641px) {
-    .modal-overlay--anchor-top {
-        align-items: flex-start;
-        padding-top: clamp(16px, 7vh, 80px);
-    }
-    .modal-overlay--anchor-top > .modal-panel {
-        max-height: calc(100vh - clamp(16px, 7vh, 80px) - var(--sp-4));
-    }
-}
 .modal-panel.upload-dialog { max-height: 92vh; }
-/* Both tab panels in one grid cell: the dialog is as tall as the taller
-   panel, so a change of tab does not change its height. The hidden panel
-   counts for at most 30rem, which is more than the Upload tab without
-   files, so a long file list does not stretch the Record tab. */
-.modal-body.upload-panels {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-}
-.upload-panels > .upload-panel {
-    grid-area: 1 / 1;
-    min-width: 0;
-}
-.upload-panels > .upload-panel.is-inactive {
-    visibility: hidden;
-    pointer-events: none;
-    max-height: 30rem;
-    overflow: hidden;
-}
+/* Each tab has the height of its own content, with a floor so a short
+   tab is not a sliver. The panel of the other tab is not rendered. */
+.modal-body.upload-panels { min-height: 16rem; }
+.upload-panels > .upload-panel.is-inactive { display: none; }
 .record-panel {
     display: flex;
     flex-direction: column;
