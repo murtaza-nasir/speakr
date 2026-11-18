@@ -651,10 +651,8 @@ def admin_delete_user(user_id):
 
     # Summaries this user generated on other users' recordings: the stored
     # prompt was theirs alone, and their id may be given to a new account.
-    Recording.query.filter_by(summary_prompt_user_id=user_id).update({
-        'summary_prompt_used': None, 'summary_prompt_source': None,
-        'summary_prompt_source_name': None, 'summary_prompt_user_id': None,
-    }, synchronize_session=False)
+    for other_recording in Recording.query.filter_by(summary_prompt_user_id=user_id).all():
+        other_recording.clear_summary_prompt_used()
 
     # Groups the user created keep existing without a creator (#576)
     Group.query.filter_by(created_by=user_id).update({'created_by': None}, synchronize_session=False)
