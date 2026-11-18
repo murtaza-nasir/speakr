@@ -356,7 +356,8 @@ class App:
             }""", args)
         else:
             self.page.evaluate(SHOW, args)
-        return self.page.locator(TOAST).filter(has_text=re.sub(r"<[^>]+>.*", "", message).strip())
+        text = message["text"] if isinstance(message, dict) else message
+        return self.page.locator(TOAST).filter(has_text=text.strip())
 
     def toasts_settled(self):
         """The toasts have finished moving in."""
@@ -486,7 +487,7 @@ def test_each_toast_type_has_its_color_badge_role_and_time(desk):
     desk.toast("Summary reprocessing started", "fa-info-circle", 3000, "info")
     desk.toast("Transcript saved", "fa-check-circle", 3000, "success")
     desk.toast("The screen may lock. Keep it on while you record.", "fa-exclamation-triangle", 3000, "warning")
-    desk.toast('Transcription failed <span class="toast__action">Retry</span>', "fa-exclamation-circle", 3000, "error", action=True)
+    desk.toast({"text": "Transcription failed", "actionLabel": "Retry"}, "fa-exclamation-circle", 3000, "error", action=True)
     page.locator(TOAST).nth(3).wait_for(state="visible", timeout=WAIT)
     desk.toasts_settled()
     look = page.evaluate(TOAST_LOOK)
@@ -663,7 +664,7 @@ def test_toasts_in_every_theme(browser, desk, theme, dark):
         session.toast("Transcript saved", "fa-check-circle", 600000, "success")
         session.toast("Transcript saved", "fa-check-circle", 600000, "success")
         session.toast("The screen may lock. Keep it on while you record.", "fa-exclamation-triangle", 600000, "warning")
-        session.toast('Transcription failed <span class="toast__action">Retry</span>', "fa-exclamation-circle", 3000, "error", action=True)
+        session.toast({"text": "Transcription failed", "actionLabel": "Retry"}, "fa-exclamation-circle", 3000, "error", action=True)
         page.locator(TOAST).nth(3).wait_for(state="visible", timeout=WAIT)
         session.toasts_settled()
         look = page.evaluate(TOAST_LOOK)
