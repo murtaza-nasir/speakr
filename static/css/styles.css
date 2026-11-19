@@ -1762,9 +1762,10 @@ body {
    the audio. */
 .share-controls {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    min-height: 2rem;
+    min-height: 32px;
     margin-bottom: 0.75rem;
 }
 .share-controls__actions {
@@ -1773,11 +1774,73 @@ body {
     gap: 0.5rem;
     margin-left: auto;
 }
-.share-page .transcript-find {
-    margin-bottom: 0.75rem;
-    padding: 0.375rem 0.5rem;
-    border: 1px solid var(--border-primary);
-    border-radius: 0.75rem;
+/* One height for every button of the row, icon-only or labelled */
+.share-controls .share-btn {
+    min-height: 32px;
+    height: 32px;
+    padding: 0 var(--sp-3);
+}
+.share-controls .share-btn--icon {
+    width: 32px;
+    padding: 0;
+}
+.share-controls .share-btn[aria-pressed="true"] {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+/* Find opens in the row, to the right of its button */
+.share-find {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 1 30rem;
+    min-width: 0;
+}
+.share-find .transcript-find {
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+    gap: var(--sp-1);
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+}
+.share-find .find-replace-bar__fields {
+    flex: 1 1 auto;
+}
+.share-find .find-replace-bar__field .field {
+    height: 32px;
+    min-height: 32px;
+}
+.share-find .find-replace-bar__actions {
+    flex-wrap: nowrap;
+}
+.share-controls .share-find .find-replace-bar__actions .btn {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+}
+@media (max-width: 639px) {
+    /* An open find takes the free width of the row, and Follow and Copy
+       keep only their icons, so the row stays one line */
+    .share-find:has(.transcript-find) {
+        flex: 1 1 0;
+    }
+    .share-controls:has(.transcript-find) .share-btn__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+    .share-controls:has(.transcript-find) .share-controls__actions .share-btn {
+        width: 32px;
+        padding: 0;
+    }
+    .share-controls:has(.transcript-find) {
+        flex-wrap: nowrap;
+    }
 }
 .share-page [data-start-time] {
     cursor: pointer;

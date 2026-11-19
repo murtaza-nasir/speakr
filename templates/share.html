@@ -206,55 +206,28 @@
                 <div class="w-full max-w-4xl mx-auto p-4 flex-1 flex flex-col overflow-hidden">
                     <!-- Transcription View -->
                     <div v-show="activeTab === 'transcription'" class="w-full flex-1 flex flex-col overflow-hidden">
-                        <!-- Transcript controls -->
+                        <!-- Transcript controls: find on the left, opened in this row;
+                             Follow and Copy on the right -->
                         <div class="share-controls flex-shrink-0">
-                            <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
-                                <button @click="transcriptionViewMode = 'simple'"
-                                        :class="['toggle-button', transcriptionViewMode === 'simple' ? 'active' : '']">
-                                    <i class="fas fa-list mr-1"></i>${ t('transcription.simple') }
-                                </button>
-                                <button @click="transcriptionViewMode = 'bubble'"
-                                        :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']">
-                                    <i class="fas fa-comments mr-1"></i>${ t('transcription.bubble') }
-                                </button>
-                            </div>
-                            <div class="share-controls__actions">
-                                <!-- Shown once the reader has moved away from the playing segment -->
-                                <button v-if="followPaused" @click="resumeFollowing" class="copy-btn" data-share-follow
-                                        :title="t('tooltips.followPlayerDisabled')">
-                                    <i class="fas fa-location-arrow mr-1"></i>${ t('sharePage.follow') }
-                                </button>
-                                <!-- Find, for a transcript that is not rendered whole (the
-                                     browser's own find sees only the rendered part) -->
-                                <button v-if="transcriptView.windowed" @click="toggleTranscriptFind" class="copy-btn" data-share-find
+                            <!-- Find, for a transcript that is not rendered whole (the
+                                 browser's own find sees only the rendered part) -->
+                            <div v-if="transcriptView.windowed" class="share-find">
+                                <button @click="toggleTranscriptFind" class="btn btn--ghost btn--sm share-btn share-btn--icon" data-share-find
+                                        :aria-pressed="transcriptFind.open ? 'true' : 'false'"
                                         :title="t('findReplace.find')" :aria-label="t('findReplace.find')">
                                     <i class="fas fa-search"></i>
                                 </button>
-                                <button @click="copyTranscript" class="copy-btn" data-share-copy>
-                                    <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
+                                {% include 'components/detail/_transcript-find.html' %}
+                            </div>
+                            <div class="share-controls__actions">
+                                <!-- Shown once the reader has moved away from the playing segment -->
+                                <button v-if="followPaused" @click="resumeFollowing" class="btn btn--ghost btn--sm share-btn" data-share-follow
+                                        :title="t('tooltips.followPlayerDisabled')">
+                                    <i class="fas fa-location-arrow" aria-hidden="true"></i><span class="share-btn__label">${ t('sharePage.follow') }</span>
                                 </button>
-                            </div>
-                        </div>
-
-                        {% include 'components/detail/_transcript-find.html' %}
-
-                        <!-- Speaker legend (bubble view) -->
-                        <div v-if="processedTranscription.hasDialogue && processedTranscription.speakers.length > 0 && transcriptionViewMode === 'bubble'"
-                             :class="['speaker-legend', legendExpanded ? 'expanded' : '', 'flex-shrink-0', 'mb-4']">
-                            <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
-                                <div class="speaker-legend-title">
-                                    <i class="fas fa-users"></i>
-                                    ${ t('form.speakers') }
-                                    <span class="speaker-count-indicator">(${processedTranscription.speakers.length})</span>
-                                </div>
-                                <i class="fas fa-chevron-down speaker-legend-toggle"></i>
-                            </div>
-                            <div class="speaker-legend-content">
-                                <div v-for="(speaker, index) in processedTranscription.speakers"
-                                     :key="index"
-                                     :class="['speaker-legend-item', speaker.color]">
-                                    <span class="speaker-name">${speaker.name}</span>
-                                </div>
+                                <button @click="copyTranscript" class="btn btn--ghost btn--sm share-btn" data-share-copy :title="t('buttons.copy')">
+                                    <i class="fas fa-copy" aria-hidden="true"></i><span class="share-btn__label">${ t('buttons.copy') }</span>
+                                </button>
                             </div>
                         </div>
 
@@ -264,30 +237,13 @@
                         <div ref="transcriptBox" class="w-full flex-1 overflow-y-auto transcription-box"
                              tabindex="0" role="region" :aria-label="t('transcription.title')">
                             <!-- Simple view: speaker turns -->
-                            <div v-if="processedTranscription.hasDialogue && transcriptionViewMode === 'simple'" class="transcription-simple-view">
+                            <div v-if="processedTranscription.hasDialogue" class="transcription-simple-view">
                                 <div data-tv-list>
                                     <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
                                     {# The speaker turn of the visitor's UI theme, as on the recording page #}
                                     {% with ui_slot = 'transcript-turn', transcript_read_only = true %}{% include 'themes/slot.html' %}{% endwith %}
                                     <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
                                 </div>
-                            </div>
-
-                            <!-- Bubble view -->
-                            <div v-else-if="processedTranscription.hasDialogue" class="transcription-with-speakers" data-tv-list>
-                                <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
-                                <div v-for="row in transcriptView.rows" :key="row.key" :data-tv-unit="row.unit"
-                                     :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
-                                    <div v-for="bubble in row.bubbles"
-                                         :key="bubble.index"
-                                         :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === bubble.index }]"
-                                         @click="seekAudioFromEvent"
-                                         :data-start-time="bubble.startTime"
-                                         :data-segment-index="bubble.index">
-                                        <div class="speaker-bubble-content">${bubble.sentence}</div>
-                                    </div>
-                                </div>
-                                <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
                             </div>
 
                             <!-- Segments without speakers -->
@@ -315,8 +271,8 @@
                     <div v-show="activeTab === 'summary'" class="w-full flex-1 flex flex-col overflow-hidden">
                         <div class="share-controls flex-shrink-0">
                             <div class="share-controls__actions">
-                                <button @click="copySummary" class="copy-btn">
-                                    <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
+                                <button @click="copySummary" class="btn btn--ghost btn--sm share-btn">
+                                    <i class="fas fa-copy"></i>${ t('buttons.copy') }
                                 </button>
                             </div>
                         </div>
@@ -330,8 +286,8 @@
                     <div v-show="activeTab === 'notes'" class="w-full flex-1 flex flex-col overflow-hidden">
                         <div class="share-controls flex-shrink-0">
                             <div class="share-controls__actions">
-                                <button @click="copyNotes" class="copy-btn">
-                                    <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
+                                <button @click="copyNotes" class="btn btn--ghost btn--sm share-btn">
+                                    <i class="fas fa-copy"></i>${ t('buttons.copy') }
                                 </button>
                             </div>
                         </div>

@@ -9,7 +9,7 @@ browser that is not signed in. It checks that the page stays small at the
 top, in the middle and at the end, that the find bar (Ctrl+F and its button)
 goes to a match far away, that a click on a line plays the audio from there,
 that the playing line is followed until the reader scrolls and again after
-"Follow", the bubble view, copying, printing the whole transcript, a phone
+"Follow", the single view, copying, printing the whole transcript, a phone
 width in light and dark, and that the page receives nothing beyond what it
 shows. A short transcript is rendered whole. Text in shared notes that looks
 like a template expression stays text.
@@ -467,30 +467,28 @@ def test_a_click_plays_from_a_line_and_the_playing_line_is_followed(visitor, lon
     visitor.check("share page seek and follow")
 
 
-def test_the_bubble_view_copy_and_summary(visitor, long_link, segments):
+def test_one_view_copy_and_summary(visitor, long_link, segments):
     page = visitor.page
     visitor.open(long_link)
-    visitor.scroll_to(0.5)
-    reading = visitor.state()["visible"][0]
 
-    # The other view shows the place that was being read
-    toggle = page.locator(".view-mode-toggle .toggle-button")
-    toggle.nth(1).click()
-    page.locator(f"{LIST} .speaker-bubble").first.wait_for(state="visible", timeout=10000)
-    page.wait_for_timeout(600)
-    bubbles = visitor.state()
-    assert_small(bubbles, "bubble view")
-    assert abs(bubbles["visible"][0] - reading) <= 3, f"the bubble view shows segment {bubbles['visible'][0]}, the simple view showed {reading}"
-    index = bubbles["visible"][2]
-    assert visitor.segment(index).inner_text().strip() == segments[index]["sentence"]
-    assert f"speaker-color-{index % 4 + 1}" in visitor.segment(index).get_attribute("class")
-    assert page.locator(".speaker-legend .speaker-legend-item").count() == 4
-    visitor.shot("share-page-test-bubbles")
-    visitor.scroll_to(1)
-    visitor.scroll_to(1)
-    assert visitor.state()["visible"][-1] == LARGE_COUNT - 1
-    toggle.nth(0).click()
-    page.locator(f"{LIST} .speaker-segment").first.wait_for(state="visible", timeout=10000)
+    # The speaker turns are the only view: no view switch, no bubbles
+    assert page.locator(".view-mode-toggle").count() == 0
+    assert page.locator(".speaker-bubble, .speaker-legend").count() == 0
+
+    # Every button of the controls row has one height, with find closed and open
+    heights = """() => [...document.querySelectorAll('.share-controls button')]
+        .filter(b => b.offsetParent).map(b => Math.round(b.getBoundingClientRect().height))"""
+    closed = page.evaluate(heights)
+    assert closed and len(set(closed)) == 1, closed
+    page.locator("[data-share-find]").click()
+    page.locator(f"{FIND} input").wait_for(state="visible", timeout=5000)
+    opened = page.evaluate(heights)
+    assert len(set(opened)) == 1 and opened[0] == closed[0], opened
+    # It opens in the controls row, not in a row of its own
+    assert page.locator(f".share-controls {FIND}").count() == 1
+    visitor.shot("share-page-test-controls-find")
+    page.keyboard.press("Escape")
+    page.locator(FIND).wait_for(state="detached", timeout=5000)
 
     # Copy puts the whole transcript on the clipboard
     page.locator("[data-share-copy]").click()
@@ -509,7 +507,7 @@ def test_the_bubble_view_copy_and_summary(visitor, long_link, segments):
     page.locator("button", has_text=en("transcription.title")).first.click()
     page.locator(SEGMENT).first.wait_for(state="visible", timeout=5000)
     assert_small(visitor.state(), "back on the transcript tab")
-    visitor.check("share page bubble view, copy and summary")
+    visitor.check("share page view, copy and summary")
 
 
 def test_printing_prints_the_whole_transcript(visitor, long_link, segments):

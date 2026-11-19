@@ -97,8 +97,8 @@ const app = createApp({
         window.addEventListener('i18nReady', updateDocumentTitle);
 
         const activeTab = ref('transcription');
+        // The page has one view of the transcript, the speaker turns.
         const transcriptionViewMode = ref('simple');
-        const legendExpanded = ref(false);
         const isDarkMode = ref(document.documentElement.classList.contains('dark'));
         const audioPlayer = ref(null);
         const transcriptBox = ref(null);
@@ -120,7 +120,7 @@ const app = createApp({
             transcriptionViewMode,
             recordingId: () => recording.value.public_id,
             recordingTitle: () => recording.value.title || '',
-            relayoutOn: [activeTab, legendExpanded],
+            relayoutOn: [activeTab],
             scrollSegmentIntoView,
             t,
             // The page does not scroll, its transcript does: a print of the
@@ -300,7 +300,7 @@ const app = createApp({
 
         return {
             t,
-            recording, activeTab, transcriptionViewMode, legendExpanded, isDarkMode, toggleDarkMode,
+            recording, activeTab, transcriptionViewMode, isDarkMode, toggleDarkMode,
             audioPlayer, transcriptBox,
             processedTranscription, uiTheme, showTimestampsSimpleView, formatTimestamp: formatAudioTime,
             transcriptView: view.transcriptView,

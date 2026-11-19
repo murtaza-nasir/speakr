@@ -170,7 +170,7 @@ When someone clicks your share link, they're taken to a streamlined view of your
 
 At the top of the page, recipients see the recording title prominently displayed along with a note indicating it's a shared recording. The audio player sits just below, providing full playback controls so they can listen to the original recording at their own pace. The player shows the total duration and current position, allowing recipients to navigate to specific moments or replay important sections.
 
-The transcript looks as it does on the recording page: speaker turns in the same colors, with the Simple and Bubble views when the recording has speakers. A click on a line plays the audio from there. While the audio plays, the playing line is highlighted and kept in view. Scrolling away stops that, so the page does not pull a reader back; the Follow button returns to the playing line. Copy puts the whole transcript on the clipboard.
+The transcript looks as it does on the recording page: speaker turns in the same colors. A click on a line plays the audio from there. While the audio plays, the playing line is highlighted and kept in view. Scrolling away stops that, so the page does not pull a reader back; the Follow button returns to the playing line. Copy puts the whole transcript on the clipboard.
 
 A long transcript opens at once, because only the part on screen is rendered. For such a transcript the browser's own search would see only that part, so Ctrl+F (or the search button) opens a find bar that searches the whole transcript. Printing the page prints the whole transcript.
 
