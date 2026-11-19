@@ -89,15 +89,17 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
-        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-timeout
+        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-timeout pytest-xdist
 
       - name: Run test suite on PostgreSQL
         env:
-          # conftest.py points the app at this database instead of SQLite.
-          # The migration tests read TEST_DATABASE_URI, which is not set
-          # here, so they cannot drop the suite's tables.
+          # conftest.py points the app at this database instead of SQLite and
+          # gives each xdist worker a copy of it (speakr_suite_gw0, ...), so
+          # four workers do not create the schema in the same place. The
+          # migration tests read TEST_DATABASE_URI, which is not set here, so
+          # they cannot drop the suite's tables.
           PYTEST_DATABASE_URI: postgresql://speakr:speakr@postgres:5432/speakr_suite
-        run: pytest tests/ -q -p no:cacheprovider --timeout=120
+        run: pytest tests/ -q -p no:cacheprovider --timeout=120 -n 4 --dist loadfile --durations=15
 
   dependency-audit:
     # The locked packages against the published advisories (pip-audit);
