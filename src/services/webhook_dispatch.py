@@ -39,7 +39,6 @@ import threading
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Iterable
 from urllib.parse import urlparse
 
 import requests

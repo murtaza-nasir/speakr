@@ -4,7 +4,6 @@ Embedding generation and semantic search services.
 
 import os
 import re
-import json
 import time
 import random
 from urllib.parse import urlsplit
@@ -291,12 +290,8 @@ def _api_embed(texts, user_id=None, input_type="document"):
 # Re-exported for backwards compatibility with callers and tests that import
 # these helpers from the embeddings module.
 from src.transcript_chunking import (
-    CHUNK_TARGET_CHARS,
-    build_transcript_segments,
-    _segment_line,
-    _finalize_segment_chunk,
     chunk_transcript_segments,
-    chunk_transcription,
+    chunk_transcription as chunk_transcription,
 )
 
 

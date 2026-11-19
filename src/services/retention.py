@@ -2,12 +2,11 @@
 Recording retention and auto-deletion services.
 """
 
-import os
 from datetime import datetime, timedelta
 from flask import current_app
 
 from src.database import db
-from src.models import Recording, RecordingTag, Tag
+from src.models import Recording
 from src.services.storage import get_storage_service
 from src.utils.localization import api_error
 from src.utils.log_filters import loggable_locator

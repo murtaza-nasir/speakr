@@ -7,13 +7,10 @@ This blueprint was auto-generated from app.py route extraction.
 import os
 import json
 import re
-import time
-from datetime import datetime, timedelta
 from src.utils.timezones import to_local, user_timezone
 from src.utils.route_errors import internal_error
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response, current_app
 from flask_login import login_required, current_user
-from werkzeug.utils import secure_filename
 
 from src.database import db
 from src.models import *
@@ -24,7 +21,7 @@ from src.utils.error_text import log_failure, user_error_text
 from src.utils.speaker_labels import real_speaker_names
 from src.services.assistant_events import FilterError, checked_filters, filters_from_request
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
-from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
+from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, TokenBudgetExceeded
 
 # Create blueprint
 inquire_bp = Blueprint('inquire', __name__)

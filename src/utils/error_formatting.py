@@ -7,7 +7,7 @@ actionable guidance. Works for both known error patterns and unknown errors.
 
 import re
 import json
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 # Prefixes of stored transcription text that is a failure, not content. Shared
 # by the SQL "needs transcription" predicate and is_transcription_error, so the

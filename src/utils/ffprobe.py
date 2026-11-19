@@ -561,7 +561,6 @@ def get_creation_date(filename: str, timeout: Optional[int] = None, use_file_mti
     Returns:
         datetime object if creation date found, None otherwise
     """
-    import os
 
     try:
         probe_data = probe(filename, timeout=timeout)

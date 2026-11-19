@@ -6,7 +6,6 @@ import os
 import time
 import threading
 from datetime import datetime, timedelta
-from flask import current_app
 from src.utils.localization import api_error
 
 
@@ -183,7 +182,6 @@ def initialize_auto_deletion_scheduler(app):
     def run_daily_deletion():
         """Background thread that runs auto-deletion daily at 2 AM."""
         import time
-        from datetime import datetime, timedelta
 
         app.logger.info("Auto-deletion scheduler started - will run daily at 2:00 AM")
 
@@ -212,7 +210,6 @@ def initialize_auto_deletion_scheduler(app):
                 time.sleep(3600)
 
     # Start the scheduler thread
-    import threading
     scheduler_thread = threading.Thread(target=run_daily_deletion, daemon=True, name="AutoDeletionScheduler")
     scheduler_thread.start()
     app.logger.info("✅ Auto-deletion scheduler initialized - running daily at 2:00 AM")
@@ -295,7 +292,6 @@ def initialize_recording_session_cleanup(app):
     ``RECORDING_SESSION_CLEANUP_INTERVAL_SECONDS`` (default 3600 = hourly).
     """
     import os
-    import threading
     import time
 
     global _cleanup_thread_started
@@ -361,7 +357,6 @@ def initialize_voice_embedding_check(app):
     failure to check is logged and leaves the previous verdict alone; a
     backend that is down is not a backend that changed.
     """
-    import threading
 
     if os.environ.get('DISABLE_VOICE_EMBEDDING_CHECK', 'false').lower() == 'true':
         app.logger.info("Voice embedding check disabled (DISABLE_VOICE_EMBEDDING_CHECK=true)")
@@ -387,7 +382,6 @@ def initialize_transcript_unicode_rewrite(app):
     the setting of a completed run is stored. See
     src/services/transcript_unicode_rewrite.py.
     """
-    import threading
 
     if os.environ.get('DISABLE_TRANSCRIPT_UNICODE_REWRITE', 'false').lower() == 'true':
         app.logger.info("Transcript Unicode rewrite disabled (DISABLE_TRANSCRIPT_UNICODE_REWRITE=true)")

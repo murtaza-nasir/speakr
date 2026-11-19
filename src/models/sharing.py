@@ -5,7 +5,6 @@ This module defines models for sharing recordings both publicly (via links)
 and internally (between users).
 """
 
-import os
 import secrets
 from datetime import datetime
 from src.database import db

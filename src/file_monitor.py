@@ -105,7 +105,7 @@ class FileMonitor:
             return
         
         # Import Flask components inside function to avoid circular imports
-        from src.app import app, db, User
+        from src.app import app, User
             
         with app.app_context():
             try:

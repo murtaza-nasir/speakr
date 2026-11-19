@@ -9,7 +9,7 @@ import os
 import logging
 from typing import Dict, Any, Optional, Type, List
 
-from .base import BaseTranscriptionConnector, TranscriptionCapability, TranscriptionRequest, TranscriptionResponse
+from .base import BaseTranscriptionConnector, TranscriptionRequest, TranscriptionResponse
 from .exceptions import ConfigurationError
 
 logger = logging.getLogger(__name__)

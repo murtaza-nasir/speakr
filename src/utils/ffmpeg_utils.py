@@ -294,7 +294,7 @@ def extract_audio_from_video(
         
         return final_audio_path, mime_type
         
-    except Exception as e:
+    except Exception:
         # Clean up temp file on error
         if os.path.exists(temp_audio_path):
             try:
@@ -386,7 +386,7 @@ def compress_audio(
         # Return codec_info as None since file was converted (codec changed)
         return final_output_path, config['mime'], None
         
-    except Exception as e:
+    except Exception:
         # Clean up temp file if it exists
         if os.path.exists(temp_output_path):
             try:
@@ -648,7 +648,7 @@ def _run_ffmpeg_command(cmd: list, operation_description: str) -> None:
         # No text=True: that would strict-decode ffmpeg's output inside
         # communicate() and raise UnicodeDecodeError on non-UTF-8 metadata
         # bytes before any error handling below could run.
-        result = subprocess.run(
+        subprocess.run(
             cmd,
             check=True,
             capture_output=True,

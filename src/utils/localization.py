@@ -7,7 +7,6 @@ produced on the server (flash messages, account emails).
 """
 
 import json
-import os
 import re
 import logging
 from decimal import Decimal, ROUND_HALF_UP

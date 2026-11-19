@@ -96,7 +96,7 @@ class NamingTemplate(db.Model):
                     variables[var_name] = match.group(1) if match.groups() else match.group(0)
                 else:
                     variables[var_name] = ''
-            except re.error as e:
+            except re.error:
                 # Invalid regex - log and treat as empty
                 variables[var_name] = ''
 

@@ -24,7 +24,6 @@ class TokenBudgetExceeded(Exception):
         self.usage_percentage = usage_percentage
         super().__init__(message)
 
-from src.utils import safe_json_loads, extract_json_object
 from src.utils.error_text import log_failure
 
 
@@ -260,7 +259,7 @@ try:
         f"connect_timeout={LLM_CONNECT_TIMEOUT}s, write_timeout={LLM_WRITE_TIMEOUT}s, "
         f"max_retries={LLM_MAX_RETRIES}"
     )
-except Exception as client_init_e:
+except Exception:
     client = None
 
 def _build_chat_client():
@@ -500,7 +499,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
 
     except TokenBudgetExceeded:
         raise
-    except APITimeoutError as e:
+    except APITimeoutError:
         elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(
@@ -643,7 +642,7 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
 
     except TokenBudgetExceeded:
         raise
-    except APITimeoutError as e:
+    except APITimeoutError:
         elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(
@@ -774,7 +773,7 @@ def call_translation_completion(messages, temperature=0.7, response_format=None,
 
     except TokenBudgetExceeded:
         raise
-    except APITimeoutError as e:
+    except APITimeoutError:
         elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(

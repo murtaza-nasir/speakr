@@ -2,15 +2,12 @@
 Calendar/ICS file generation services.
 """
 
-import json
 import uuid
 from datetime import datetime, timedelta
 
 
 def generate_ics_content(event):
     """Generate ICS calendar file content for an event."""
-    import uuid
-    from datetime import datetime, timedelta
 
     # Generate unique ID for the event
     uid = f"{event.id}-{uuid.uuid4()}@speakr.app"
