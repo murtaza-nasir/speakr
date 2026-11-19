@@ -127,11 +127,13 @@ jobs:
 
       - name: Run test suite on PostgreSQL
         env:
-          # conftest.py points the app at this database instead of SQLite.
-          # The migration tests read TEST_DATABASE_URI, which is not set
-          # here, so they cannot drop the suite's tables.
+          # conftest.py points the app at this database instead of SQLite and
+          # gives each xdist worker a copy of it (speakr_suite_gw0, ...), so
+          # four workers do not create the schema in the same place. The
+          # migration tests read TEST_DATABASE_URI, which is not set here, so
+          # they cannot drop the suite's tables.
           PYTEST_DATABASE_URI: postgresql://speakr:speakr@localhost:5432/speakr_suite
-        run: pytest tests/ -q -p no:cacheprovider --timeout=120
+        run: pytest tests/ -q -p no:cacheprovider --timeout=120 -n 4 --dist loadfile --durations=15
 
   # Speakr and whisperx-asr-service set up exactly as their docs describe
   # (config/env.whisperx.example; the service's docker-compose.yml plus its
@@ -217,7 +219,13 @@ jobs:
       - name: Audit the lock files
         run: scripts/audit-dependencies.sh
 
-  browser-smoke:
+  # The browser suite runs as four shards on four runners. Each shard starts
+  # its own Speakr instance, so the files are independent, and a failure is
+  # isolated to one job. The groups are balanced on measured per-file wall
+  # time (253 s for the toast queue file, 40 s for the smallest), which is why
+  # they are not alphabetical. Rebalancing means editing `matrix.include`
+  # below; `--durations=15` reports drift in each shard's log.
+  browser-smoke-shards:
     # Opens every page in headless Chromium and fails on failed requests,
     # JavaScript errors, leftover template text, or a header whose user menu
     # does not open (tests/e2e/test_browser_smoke.py). Vendor files are
@@ -225,6 +233,33 @@ jobs:
     # reference to a file the image lacks fails here. The Tailwind stylesheet
     # is compiled with the same pinned CLI as the Dockerfile css-stage.
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            files: >-
+              tests/e2e/test_toast_queue_ui.py
+              tests/e2e/test_user_defaults_ui.py
+          - shard: 2
+            files: >-
+              tests/e2e/test_asr_editor_ui.py
+              tests/e2e/test_share_window_ui.py
+              tests/e2e/test_browser_smoke.py
+              tests/e2e/test_speaker_dialog_ui.py
+          - shard: 3
+            files: >-
+              tests/e2e/test_audit_log_ui.py
+              tests/e2e/test_group_permission_ui.py
+              tests/e2e/test_share_page_ui.py
+              tests/e2e/test_app_dialog_ui.py
+              tests/e2e/test_i18n_payload_ui.py
+          - shard: 4
+            files: >-
+              tests/e2e/test_phone_layout_ui.py
+              tests/e2e/test_keyboard_shortcuts_ui.py
+              tests/e2e/test_service_worker_ui.py
+              tests/e2e/test_transcript_view_ui.py
 
     steps:
       - name: Checkout repository
@@ -266,17 +301,32 @@ jobs:
           for i in $(seq 1 90); do curl -fs -o /dev/null http://127.0.0.1:8899/login && break; sleep 2; done
           curl -fs -o /dev/null http://127.0.0.1:8899/login
 
-      # The group permission test (#576) runs on the same instance after
-      # the smoke test; the settings it changes are restored afterwards.
-      - name: Browser smoke test and group permission test
+      # The group permission test (#576) runs on the same instance as the rest
+      # of its shard; the settings it changes are restored afterwards.
+      - name: Browser tests, shard ${{ matrix.shard }}
         env:
           SPEAKR_BROWSER_SMOKE: '1'
           SPEAKR_BASE_URL: http://127.0.0.1:8899
-        run: pytest tests/e2e/test_browser_smoke.py tests/e2e/test_group_permission_ui.py tests/e2e/test_asr_editor_ui.py tests/e2e/test_transcript_view_ui.py tests/e2e/test_app_dialog_ui.py tests/e2e/test_share_page_ui.py tests/e2e/test_speaker_dialog_ui.py tests/e2e/test_share_window_ui.py tests/e2e/test_phone_layout_ui.py tests/e2e/test_service_worker_ui.py tests/e2e/test_i18n_payload_ui.py tests/e2e/test_toast_queue_ui.py tests/e2e/test_keyboard_shortcuts_ui.py tests/e2e/test_audit_log_ui.py tests/e2e/test_user_defaults_ui.py -q -p no:cacheprovider --noconftest -rs
+        run: pytest ${{ matrix.files }} -q -p no:cacheprovider --noconftest -rs --durations=15
 
       - name: Speakr log
         if: always()
         run: tail -n 200 /tmp/speakr.log || true
+
+  browser-smoke:
+    # The check name the release flow and branch protection know. It only
+    # aggregates the shards, so the matrix can gain or lose a shard without
+    # renaming the required check.
+    needs: browser-smoke-shards
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every shard passed
+        env:
+          SHARD_RESULT: ${{ needs.browser-smoke-shards.result }}
+        run: |
+          echo "browser-smoke-shards: $SHARD_RESULT"
+          test "$SHARD_RESULT" = "success"
 
   image-smoke:
     # Builds the lite image for amd64 and opens its pages in a browser
