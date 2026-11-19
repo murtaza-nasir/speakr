@@ -24,7 +24,6 @@ if one is added for the recording table.
 
 import base64
 import json
-import os
 from datetime import datetime, timedelta
 
 from sqlalchemy import event, or_, and_, func, select

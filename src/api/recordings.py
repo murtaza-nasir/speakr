@@ -30,11 +30,10 @@ from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
 
 
-# Model validation + the full default-resolution chain now live in one shared
-# module so every ingestion path (upload, reprocess, merge, stitch, share,
-# auto-process) resolves transcription params identically. Kept as an alias so
-# existing references in this file keep working.
-from src.services.transcription_defaults import (
+# Model validation + the full default-resolution chain live in
+# src.services.transcription_defaults. Re-exported here for tests that import
+# it from this module.
+from src.services.transcription_defaults import (  # noqa: F401
     resolve_transcription_model as _resolve_transcription_model,
 )
 from src.utils.dates import filter_day, filter_year_ok, to_utc_naive
@@ -2764,8 +2763,6 @@ def get_archived_recordings():
     """
     from sqlalchemy import select
     try:
-        search_query = request.args.get('q', '').strip()
-
         # Find recordings owned by current user where audio_deleted_at is not null
         stmt = select(Recording).where(
             Recording.user_id == current_user.id,
@@ -3110,7 +3107,6 @@ def delete_job(job_id):
     """
     try:
         from src.models import ProcessingJob
-        import os
 
         job = db.session.get(ProcessingJob, job_id)
         if not job:

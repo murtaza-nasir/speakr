@@ -20,43 +20,24 @@ if __name__ == '__main__':
 
 import os
 import sys
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response, make_response, session
-from urllib.parse import urlparse, urljoin, quote
-from email.utils import encode_rfc2231
-from markupsafe import Markup
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, request, jsonify, send_file, redirect, url_for, flash, session
+from urllib.parse import urlparse
 from datetime import datetime, timedelta
-from openai import OpenAI # Keep using the OpenAI library
-import json
-from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
-from sqlalchemy import select
-from sqlalchemy.orm import joinedload
-import threading
 from dotenv import load_dotenv # Import load_dotenv
-import httpx 
 import re
-import subprocess
 import mimetypes
-import bleach
 
 # Add common audio MIME type mappings that might be missing
 from src.utils.mime import SPEAKR_MEDIA_TYPES
 for _media_type, _media_ext in SPEAKR_MEDIA_TYPES:
     mimetypes.add_type(_media_type, _media_ext)
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, current_user
 from flask_bcrypt import Bcrypt
-from flask_wtf import FlaskForm
 from flask_wtf.csrf import CSRFProtect, CSRFError
-from wtforms import StringField, PasswordField, SubmitField, BooleanField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import ast
 import logging
-import secrets
-import time
-from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 from src.utils.localization import api_error, format_number, translate
 
 # Optional imports for embedding functionality
@@ -65,7 +46,7 @@ try:
     from sentence_transformers import SentenceTransformer
     from sklearn.metrics.pairwise import cosine_similarity
     EMBEDDINGS_AVAILABLE = True
-except ImportError as e:
+except ImportError:
     EMBEDDINGS_AVAILABLE = False
     # Create dummy classes to prevent import errors
     class SentenceTransformer:
@@ -579,41 +560,30 @@ register_change_tracking()
 
 # Import all models from extracted modules
 from src.models import (
-    User, Speaker, Recording, TranscriptChunk, Share, InternalShare,
-    SharedRecordingState, Group, GroupMembership, Tag, RecordingTag,
-    Event, TranscriptTemplate, InquireSession, SystemSetting, PushSubscription,
-    APIToken, NamingTemplate, Folder, SpeakerSnippet, ShareAuditLog,
-    ProcessingJob, TokenUsage, TranscriptionUsage
+    User, InternalShare,
+    SharedRecordingState, GroupMembership, Tag, RecordingTag,
+    SystemSetting
 )
 
-# Import utility functions from extracted modules
-from src.utils import (
-    auto_close_json, safe_json_loads, preprocess_json_escapes, extract_json_object,
-    md_to_html, sanitize_html, password_check,
-    add_column_if_not_exists, is_safe_url
+# Re-exports kept for tests and scripts that import them from src.app. The
+# repeated name marks each one as a deliberate re-export, so F401 stays clean.
+from src.models import (
+    InquireSession as InquireSession,
+    Recording as Recording,
+    TranscriptChunk as TranscriptChunk,
 )
-
-# Import service layer functions
 from src.services.embeddings import (
-    get_embedding_model, generate_embeddings,
-    serialize_embedding, deserialize_embedding, get_accessible_recording_ids,
-    process_recording_chunks, basic_text_search_chunks, semantic_search_chunks
+    deserialize_embedding as deserialize_embedding,
+    generate_embeddings as generate_embeddings,
+    process_recording_chunks as process_recording_chunks,
+    serialize_embedding as serialize_embedding,
 )
-from src.transcript_chunking import chunk_transcription
-from src.services.llm import (
-    is_gpt5_model, is_using_openai_api, call_llm_completion, format_api_error_message
-)
-from src.services.document import process_markdown_to_docx
-from src.services.retention import (
-    is_recording_exempt_from_deletion, get_retention_days_for_recording, process_auto_deletion
-)
-from src.services.calendar import generate_ics_content, escape_ical_text
-
-# Import background task functions
-from src.tasks.processing import (
-    generate_title_task, generate_summary_only_task, extract_events_from_transcript,
-    extract_audio_from_video, transcribe_audio_task, transcribe_with_connector,
-    transcribe_chunks_with_connector, transcribe_incognito
+from src.transcript_chunking import chunk_transcription as chunk_transcription
+from src.utils import (
+    auto_close_json as auto_close_json,
+    extract_json_object as extract_json_object,
+    preprocess_json_escapes as preprocess_json_escapes,
+    safe_json_loads as safe_json_loads,
 )
 
 # Import configuration helpers
@@ -1065,7 +1035,6 @@ def inject_help_center_link():
     Admins hosting their own FAQ/tutorial page set HELP_CENTER_URL (and
     optionally HELP_CENTER_LABEL) to surface it prominently for users.
     """
-    from src.models import SystemSetting
     return {
         'help_center_url': (SystemSetting.get_setting('help_center_url', os.environ.get('HELP_CENTER_URL', '')) or '').strip(),
         'help_center_label': (SystemSetting.get_setting('help_center_label', os.environ.get('HELP_CENTER_LABEL', '')) or '').strip(),
@@ -1293,7 +1262,7 @@ csrf.exempt(_share_target_view)
 # File monitor and scheduler initialization functions below
 
 # Startup functions (extracted to src/config/startup.py)
-from src.config.startup import initialize_file_monitor, get_file_monitor_functions, initialize_auto_deletion_scheduler, run_startup_tasks
+from src.config.startup import run_startup_tasks
 
 # Run startup tasks
 run_startup_tasks(app)

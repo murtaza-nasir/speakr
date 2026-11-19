@@ -11,7 +11,7 @@ CRUD operations also work for API-token authenticated clients.
 import os
 from datetime import datetime
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from src.utils.token_auth import require_scope
 
@@ -20,7 +20,6 @@ from src.models import Webhook, WebhookDelivery, WEBHOOK_EVENT_TYPES, generate_w
 from src.utils.localization import api_error
 from src.services.webhook_dispatch import (
     is_url_safe_for_webhook,
-    emit_webhook_event,
 )
 
 

@@ -244,7 +244,7 @@ def update_token(token_id):
     # Scopes can only be narrowed (mailr spec G1): a wider set needs a new
     # token, so a stolen session cannot silently widen an integration token.
     if 'scopes' in data:
-        from src.models.api_token import parse_scopes, TOKEN_SCOPES
+        from src.models.api_token import parse_scopes
         new_value, error = parse_scopes(data.get('scopes'))
         if error:
             return jsonify({'error': error, 'code': 'invalid_parameter'}), 400

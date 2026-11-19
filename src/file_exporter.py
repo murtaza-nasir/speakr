@@ -10,7 +10,6 @@ Supports customizable export templates with localized labels.
 import os
 import re
 import logging
-from datetime import datetime
 from pathlib import Path
 from werkzeug.utils import secure_filename
 from src.utils.log_filters import loggable_error, loggable_path
@@ -492,7 +491,7 @@ def generate_markdown_content(recording, user, include_transcription=True, inclu
         include_transcription: Whether to include transcription
         include_summary: Whether to include summary
     """
-    from src.utils.localization import get_export_labels, format_date_localized, format_datetime_localized
+    from src.utils.localization import get_export_labels
 
     # Get user's language preference (default to English)
     user_language = getattr(user, 'ui_language', 'en') or 'en'

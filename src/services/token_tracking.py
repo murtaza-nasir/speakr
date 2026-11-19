@@ -3,7 +3,7 @@ Token usage tracking service for monitoring LLM API consumption and budget enfor
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Tuple, Optional, Dict, List
 
 from sqlalchemy import func, extract

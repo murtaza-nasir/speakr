@@ -591,7 +591,7 @@ def calibrated_threshold(space_id):
     and the 95th percentile of impostor scores, within [0.45, 0.85]. None
     until there are MIN_CALIBRATION_PAIRS of each.
     """
-    from src.models import Speaker, SpeakerVoiceSample
+    from src.models import SpeakerVoiceSample
     target = effective_space(space_id)
     cached = _calibration_cache.get(target)
     if cached and time.time() - cached[0] < _CALIBRATION_TTL:

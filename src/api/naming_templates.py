@@ -8,7 +8,7 @@ metadata, and AI-generated content.
 
 import json
 from datetime import datetime
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 
 from src.database import db

@@ -13,7 +13,11 @@ def generate_vapid_keys():
         from pywebpush import webpush
 
         # Generate keys
-        vapid_claims = webpush.WebPusher().vapid_claims
+        # pywebpush 1.14.0 binds the `webpush` function, not the module, so this
+        # line raises AttributeError and the handler below runs. Kept verbatim so
+        # the lint sweep does not change behaviour: removing it would make key
+        # generation succeed, which is a separate change.
+        vapid_claims = webpush.WebPusher().vapid_claims  # noqa: F841
 
         # For newer versions of pywebpush, use this approach:
         from py_vapid import Vapid

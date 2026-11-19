@@ -5,7 +5,6 @@ This module defines models for audio recordings and their chunked transcriptions
 """
 
 import logging
-import os
 from datetime import datetime
 from sqlalchemy import func
 from sqlalchemy.orm import query_expression, validates

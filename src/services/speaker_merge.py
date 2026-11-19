@@ -20,8 +20,7 @@ from src.database import db
 from src.models import Speaker, SpeakerSnippet
 from src.services.speaker_embedding_matcher import (
     serialize_embedding,
-    deserialize_embedding,
-    calculate_confidence
+    deserialize_embedding
 )
 
 

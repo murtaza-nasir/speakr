@@ -520,7 +520,7 @@ def migrate_column_type(engine, table_name, column_name, new_type, transform_sql
                             conn.execute(text(f'ALTER TABLE "{table_name}" RENAME COLUMN "{temp_col}" TO "{column_name}"'))
                             conn.commit()
                             return True
-                        except Exception as e:
+                        except Exception:
                             # Can't complete, leave as-is
                             return False
                     # Both columns exist - abort to avoid data issues
