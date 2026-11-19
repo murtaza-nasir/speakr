@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
+from src.utils.route_errors import internal_error
 from src.config.version import get_version
 from src.utils.localization import format_file_size, api_error, translate
 from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME
@@ -175,7 +176,7 @@ def get_user_token_budget():
         })
     except Exception as e:
         current_app.logger.error(f"Error getting token budget for user {current_user.id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 # --- System Info API Endpoint ---
@@ -413,7 +414,7 @@ def get_config():
         return jsonify(payload)
     except Exception as e:
         current_app.logger.error(f"Error fetching configuration: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -428,7 +429,7 @@ def get_csrf_token():
         return jsonify({'csrf_token': token})
     except Exception as e:
         current_app.logger.error(f"Error generating CSRF token: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 # --- Flask Routes ---
 
@@ -446,7 +447,7 @@ def check_deletion_permission():
         })
     except Exception as e:
         current_app.logger.error(f"Error checking deletion permissions: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 # Hot-applied System Settings (high priority) with environment fallback.

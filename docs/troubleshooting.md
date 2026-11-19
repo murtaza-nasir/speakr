@@ -36,6 +36,10 @@ If you can't sign in with your [admin credentials](getting-started.md#step-4-con
 
 Sometimes the admin user creation fails silently if the password doesn't meet requirements. Ensure your admin password is at least 8 characters long. If the admin user wasn't created, you might need to remove the database file and restart the container to trigger initialization again.
 
+### "Something Went Wrong (Reference ...)"
+
+An unexpected server error is shown with an eight-character reference, for example `Something went wrong (reference 3fa9c21e).` The details are left out of the message because they can include database addresses, file paths or settings. The cause is in the Speakr log under the same reference: run `docker compose logs app | grep 3fa9c21e` to see the error and its traceback.
+
 ## Transcription Problems
 
 ### Transcription Never Starts

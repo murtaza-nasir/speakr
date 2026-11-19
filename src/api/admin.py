@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
+from src.utils.route_errors import internal_error
 from src.utils.localization import translate, api_error
 from src.utils.search import contains_pattern, LIKE_ESCAPE
 from src.services.retention import (is_recording_exempt_from_deletion, get_retention_days_for_recording,
@@ -1091,7 +1092,7 @@ def admin_get_token_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error getting token stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/token-stats/daily', methods=['GET'])
@@ -1114,7 +1115,7 @@ def admin_get_daily_token_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error getting daily token stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/token-stats/monthly', methods=['GET'])
@@ -1136,7 +1137,7 @@ def admin_get_monthly_token_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error getting monthly token stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/token-stats/users', methods=['GET'])
@@ -1155,7 +1156,7 @@ def admin_get_user_token_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error getting user token stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 # --- Transcription Usage Stats ---
@@ -1197,7 +1198,7 @@ def admin_get_transcription_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error getting transcription stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/transcription-stats/daily', methods=['GET'])
@@ -1220,7 +1221,7 @@ def admin_get_daily_transcription_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error getting daily transcription stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/transcription-stats/monthly', methods=['GET'])
@@ -1242,7 +1243,7 @@ def admin_get_monthly_transcription_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error getting monthly transcription stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/transcription-stats/users', methods=['GET'])
@@ -1261,7 +1262,7 @@ def admin_get_user_transcription_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error getting user transcription stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 # --- Transcript Template Routes ---
@@ -1398,7 +1399,7 @@ def admin_update_setting():
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error clearing setting {key}: {e}")
-            return jsonify({'error': str(e)}), 500
+            return internal_error(e)
 
     if user_default:
         try:
@@ -1476,7 +1477,7 @@ def admin_update_setting():
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error updating setting {key}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/user-defaults', methods=['GET'])
@@ -1524,7 +1525,7 @@ def run_auto_deletion():
         return jsonify(stats)
     except Exception as e:
         current_app.logger.error(f"Error running auto-deletion: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -1589,7 +1590,7 @@ def get_auto_deletion_stats():
         return jsonify(stats)
     except Exception as e:
         current_app.logger.error(f"Error fetching auto-deletion stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -1656,7 +1657,7 @@ def migrate_existing_recordings_api():
         
     except Exception as e:
         current_app.logger.error(f"Error in migration API: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 # --- Auto-Processing File Monitor Integration ---
@@ -1689,7 +1690,7 @@ def admin_get_auto_process_status():
         
     except Exception as e:
         current_app.logger.error(f"Error getting auto-process status: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -1706,7 +1707,7 @@ def admin_start_auto_process():
         return jsonify({'success': True, 'message': translate('server.apiMessage.autoProcessingStarted')})
     except Exception as e:
         current_app.logger.error(f"Error starting auto-process: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -1723,7 +1724,7 @@ def admin_stop_auto_process():
         return jsonify({'success': True, 'message': translate('server.apiMessage.autoProcessingStopped')})
     except Exception as e:
         current_app.logger.error(f"Error stopping auto-process: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -1749,7 +1750,7 @@ def admin_update_auto_process_config():
         
     except Exception as e:
         current_app.logger.error(f"Error updating auto-process config: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -1785,7 +1786,7 @@ def admin_trigger_auto_process():
 
     except Exception as e:
         current_app.logger.error(f"Error triggering auto-process scan: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -1828,7 +1829,7 @@ def admin_discover_transcription_models():
 
     except Exception as e:
         current_app.logger.error(f"Error discovering transcription models: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/transcription/visible-models', methods=['GET'])
@@ -1869,7 +1870,7 @@ def admin_get_visible_models():
 
     except Exception as e:
         current_app.logger.error(f"Error reading visible transcription models: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/transcription/visible-models', methods=['POST'])
@@ -1935,7 +1936,7 @@ def admin_save_visible_models():
     except Exception as e:
         current_app.logger.error(f"Error saving visible transcription models: {e}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @admin_bp.route('/admin/inquire/process-recordings', methods=['POST'])
@@ -2124,7 +2125,7 @@ def admin_process_recordings_for_inquire():
     except Exception as e:
         current_app.logger.error(f"Error in admin process recordings endpoint: {e}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -2215,7 +2216,7 @@ def admin_inquire_status():
 
     except Exception as e:
         current_app.logger.error(f"Error getting inquire status: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 # --- Group Management API (Admin Only) ---
 

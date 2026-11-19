@@ -3793,6 +3793,7 @@
       "unexpected_error": "出现问题。",
       "unexpected_error_deleting": "删除时出现问题。",
       "unexpected_error_detail": "出现问题：{{detail}}",
+      "unexpected_error_ref": "出现错误（参考编号 {{ref}}）。",
       "unexpected_error_processing": "处理时出现问题。",
       "unexpected_error_saving": "保存时出现问题。",
       "unexpected_error_updating_transcription": "保存转录文本时出现问题。",

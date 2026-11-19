@@ -66,6 +66,7 @@ from src.models import RecordingSession, Recording, User, RECORDING_SESSION_STAT
 from src.services.job_queue import job_queue
 from src.services.recording_stitch import byte_join, session_chunk_paths
 from src.utils.localization import api_error
+from src.utils.route_errors import unexpected_error_body
 
 
 recording_sessions_bp = Blueprint('recording_sessions', __name__)
@@ -338,7 +339,7 @@ def _replay_finalize_response(session):
             return jsonify({
                 'recording_id': existing.id,
                 'status': session.status,
-                'queue_error': str(e),
+                'queue_error': unexpected_error_body(e)['error'],
             }), 500
 
     return jsonify({

@@ -3793,6 +3793,7 @@
       "unexpected_error": "Something went wrong.",
       "unexpected_error_deleting": "Something went wrong while deleting.",
       "unexpected_error_detail": "Something went wrong: {{detail}}",
+      "unexpected_error_ref": "Something went wrong (reference {{ref}}).",
       "unexpected_error_processing": "Something went wrong while processing.",
       "unexpected_error_saving": "Something went wrong while saving.",
       "unexpected_error_updating_transcription": "Something went wrong while saving the transcript.",

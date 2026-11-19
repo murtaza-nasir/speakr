@@ -55,6 +55,7 @@ from src.utils.localization import api_error, translate
 from src.utils.error_text import log_failure
 from src.utils.metadata_limits import PARTICIPANTS_MAX_CHARS, metadata_error
 from src.utils.assistant_limits import MAX_QUESTION_CHARS, checked_history, question_error
+from src.utils.route_errors import unexpected_error_body
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -4042,7 +4043,8 @@ def batch_update_recordings():
 
             results.append({'id': recording_id, 'success': True})
         except Exception as e:
-            results.append({'id': recording_id, 'success': False, 'error': str(e)})
+            results.append({'id': recording_id, 'success': False,
+                            'error': unexpected_error_body(e)['error']})
 
     db.session.commit()
 
@@ -4141,7 +4143,8 @@ def batch_transcribe_recordings():
         except ReprocessError as e:
             results.append({'id': recording_id, 'success': False, 'error': e.message})
         except Exception as e:
-            results.append({'id': recording_id, 'success': False, 'error': str(e)})
+            results.append({'id': recording_id, 'success': False,
+                            'error': unexpected_error_body(e)['error']})
 
     success_count = sum(1 for r in results if r['success'])
     return jsonify({

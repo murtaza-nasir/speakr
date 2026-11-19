@@ -23,6 +23,7 @@ from src.database import db
 from src.services.recording_deletion import delete_recording_completely, cleanup_orphaned_speakers_quietly
 from src.models import *
 from src.utils import *
+from src.utils.route_errors import internal_error
 from src.utils.request_body import optional_json_object
 from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
 from werkzeug.exceptions import HTTPException
@@ -606,7 +607,7 @@ def generate_summary_endpoint(recording_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error starting summary generation for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -861,7 +862,7 @@ def reprocess_transcription(recording_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error reprocessing transcription for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -911,7 +912,7 @@ def reprocess_summary(recording_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error reprocessing summary for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 def _summary_prompt_recording(recording_id):
@@ -1017,7 +1018,7 @@ def regenerate_title(recording_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error regenerating title for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 def _cancel_remote_asr_jobs(jobs):
@@ -1075,7 +1076,7 @@ def reset_status(recording_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error resetting status for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 # --- Authentication Routes ---
 
@@ -1261,7 +1262,7 @@ def get_recordings():
         ])
     except Exception as e:
         current_app.logger.error(f"Error fetching recordings: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @recordings_bp.route('/api/recordings', methods=['GET'])
@@ -1681,7 +1682,7 @@ def get_recordings_paginated():
 
     except Exception as e:
         current_app.logger.error(f"Error fetching paginated recordings: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @recordings_bp.route('/save', methods=['POST'])
@@ -2748,7 +2749,7 @@ def get_inbox_recordings():
         return jsonify([recording.to_list_dict(viewer_user=current_user, batch=batch) for recording in recordings])
     except Exception as e:
         current_app.logger.error(f"Error fetching inbox recordings: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @recordings_bp.route('/api/recordings/audio-removed', methods=['GET'])
@@ -2778,7 +2779,7 @@ def get_archived_recordings():
         return jsonify([recording.to_list_dict(viewer_user=current_user, batch=batch) for recording in recordings])
     except Exception as e:
         current_app.logger.error(f"Error fetching archived recordings: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 def _owner_username_for_recipient(owner):
@@ -2876,7 +2877,7 @@ def get_recording_detail(recording_id):
         return jsonify(rec_dict)
     except Exception as e:
         current_app.logger.error(f"Error fetching recording detail: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @recordings_bp.route('/recording/<int:recording_id>/status', methods=['GET'])
@@ -4071,7 +4072,7 @@ def toggle_deletion_exempt(recording_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error toggling deletion exempt for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @recordings_bp.route('/api/recording/<int:recording_id>/process_chunks', methods=['POST'])
@@ -4094,7 +4095,7 @@ def process_recording_chunks_endpoint(recording_id):
 
     except Exception as e:
         current_app.logger.error(f"Error in process chunks endpoint: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 # --- Inquire Mode API Endpoints ---

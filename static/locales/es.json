@@ -3793,6 +3793,7 @@
       "unexpected_error": "Algo salió mal.",
       "unexpected_error_deleting": "Algo salió mal al eliminar.",
       "unexpected_error_detail": "Algo salió mal: {{detail}}",
+      "unexpected_error_ref": "Algo salió mal (referencia {{ref}}).",
       "unexpected_error_processing": "Algo salió mal durante el procesamiento.",
       "unexpected_error_saving": "Algo salió mal al guardar.",
       "unexpected_error_updating_transcription": "Algo salió mal al guardar la transcripción.",

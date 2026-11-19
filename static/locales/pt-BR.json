@@ -3793,6 +3793,7 @@
       "unexpected_error": "Algo deu errado.",
       "unexpected_error_deleting": "Algo deu errado ao excluir.",
       "unexpected_error_detail": "Algo deu errado: {{detail}}",
+      "unexpected_error_ref": "Algo deu errado (referência {{ref}}).",
       "unexpected_error_processing": "Algo deu errado ao processar.",
       "unexpected_error_saving": "Algo deu errado ao salvar.",
       "unexpected_error_updating_transcription": "Algo deu errado ao salvar a transcrição.",

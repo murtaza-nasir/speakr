@@ -3793,6 +3793,7 @@
       "unexpected_error": "Une erreur s'est produite.",
       "unexpected_error_deleting": "Une erreur s'est produite lors de la suppression.",
       "unexpected_error_detail": "Une erreur s'est produite : {{detail}}",
+      "unexpected_error_ref": "Une erreur s'est produite (référence {{ref}}).",
       "unexpected_error_processing": "Une erreur s'est produite pendant le traitement.",
       "unexpected_error_saving": "Une erreur s'est produite lors de l'enregistrement.",
       "unexpected_error_updating_transcription": "Une erreur s'est produite lors de l'enregistrement de la transcription.",

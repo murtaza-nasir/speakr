@@ -19,6 +19,7 @@ from src.database import db
 from src.models import Recording, Share, InternalShare, SharedRecordingState, User, TranscriptChunk, Folder
 from src.services import audit
 from src.utils import md_to_html
+from src.utils.route_errors import internal_error
 from src.services.storage import get_storage_service
 from src.services.public_shares import active_share_or_404, link_is_https, public_url
 from src.utils.mime import served_media_mime, sandbox_media_response
@@ -934,7 +935,7 @@ def get_shared_with_me():
 
     except Exception as e:
         current_app.logger.error(f"Error fetching shared recordings: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @shares_bp.route('/api/permissions/can-share-publicly', methods=['GET'])

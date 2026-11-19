@@ -10,6 +10,7 @@ import re
 import time
 from datetime import datetime, timedelta
 from src.utils.timezones import to_local, user_timezone
+from src.utils.route_errors import internal_error
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -97,7 +98,7 @@ def get_inquire_sessions():
         return jsonify([session.to_dict() for session in sessions])
     except Exception as e:
         current_app.logger.error(f"Error getting inquire sessions: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 
@@ -1192,7 +1193,7 @@ def get_available_filters():
 
     except Exception as e:
         current_app.logger.error(f"Error getting available filters: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 from src.utils.system_settings import apply_hot_settings

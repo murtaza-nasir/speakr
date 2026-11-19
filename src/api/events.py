@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
+from src.utils.route_errors import internal_error
 from src.services.calendar import generate_ics_content
 from src.services import audit
 from src.utils.localization import api_error
@@ -51,7 +52,7 @@ def get_recording_events(recording_id):
 
     except Exception as e:
         current_app.logger.error(f"Error fetching events for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 def _recording_of_event(event_id):
@@ -83,7 +84,7 @@ def download_event_ics(event_id):
 
     except Exception as e:
         current_app.logger.error(f"Error generating ICS for event {event_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @events_bp.route('/api/recording/<int:recording_id>/events/ics', methods=['GET'])
@@ -115,7 +116,7 @@ def download_all_events_ics(recording_id):
 
     except Exception as e:
         current_app.logger.error(f"Error generating ICS for all events in recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 @events_bp.route('/api/event/<int:event_id>', methods=['DELETE'])
@@ -140,7 +141,7 @@ def delete_event(event_id):
     except Exception as e:
         current_app.logger.error(f"Error deleting event {event_id}: {e}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return internal_error(e)
 
 
 # Hot-applied System Settings (high priority) with environment fallback.

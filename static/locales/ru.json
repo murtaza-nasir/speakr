@@ -3793,6 +3793,7 @@
       "unexpected_error": "Что-то пошло не так.",
       "unexpected_error_deleting": "При удалении что-то пошло не так.",
       "unexpected_error_detail": "Что-то пошло не так: {{detail}}",
+      "unexpected_error_ref": "Что-то пошло не так (код {{ref}}).",
       "unexpected_error_processing": "При обработке что-то пошло не так.",
       "unexpected_error_saving": "При сохранении что-то пошло не так.",
       "unexpected_error_updating_transcription": "При сохранении транскрипта что-то пошло не так.",

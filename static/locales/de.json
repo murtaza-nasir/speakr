@@ -3793,6 +3793,7 @@
       "unexpected_error": "Etwas ist schiefgelaufen.",
       "unexpected_error_deleting": "Beim Löschen ist etwas schiefgelaufen.",
       "unexpected_error_detail": "Etwas ist schiefgelaufen: {{detail}}",
+      "unexpected_error_ref": "Etwas ist schiefgelaufen (Referenz {{ref}}).",
       "unexpected_error_processing": "Bei der Verarbeitung ist etwas schiefgelaufen.",
       "unexpected_error_saving": "Beim Speichern ist etwas schiefgelaufen.",
       "unexpected_error_updating_transcription": "Beim Speichern des Transkripts ist etwas schiefgelaufen.",
