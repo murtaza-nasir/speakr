@@ -24,9 +24,30 @@ permissions:
   contents: read
 
 jobs:
+  # A release whose VERSION file does not match its tag would report the
+  # previous version in the footer, the API and the asset URLs (#645), so
+  # nothing is built for it.
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: VERSION matches the release tag
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          file="$(tr -d '[:space:]' < VERSION)"
+          if [ "$file" != "$TAG" ]; then
+            echo "::error file=VERSION::VERSION reads $file, but the release tag is $TAG"
+            exit 1
+          fi
+          echo "VERSION and tag are both $TAG"
+
   # The Python suite is not run here: the release commit passed it on its
   # ci/ branch (test.yml), which ship.sh waits for before master is moved.
   smoke-lite:
+    needs: version-check
     # Build the lite image for amd64 into the local daemon and open its pages
     # in a browser (tests/e2e/test_image_smoke.py) before anything is pushed.
     # The build jobs below wait for this job, so a broken image is never

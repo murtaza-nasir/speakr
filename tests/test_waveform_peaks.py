@@ -301,6 +301,10 @@ def test_a_long_computation_answers_202_and_runs_once(scene):
         done = _wait_for_ready(client, scene["url"])
         assert done.status_code == 200 and done.data.startswith(peaks.MAGIC)
         assert len(calls) == 1
+    # The file is published before the worker removes its lock in its
+    # finally block, so a 200 can arrive first: wait for the worker to end.
+    for worker in [t for t in threading.enumerate() if t.name.startswith("peaks-")]:
+        worker.join(5)
     assert not any(name.endswith(".lock") for name in _cache_files(scene["id"]))
 
 
