@@ -177,6 +177,20 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
 
 The worker's decision for each kind of request is unit-tested in `static/js/sw.test.js`, the page's side in `static/js/service-worker-client.test.js`, and the `/sw.js` route and the mark the server leaves at sign-out in `tests/test_service_worker.py`.
 
+## Offline recorder browser test
+
+`test_offline_recorder_ui.py` covers recording without a connection and the upload that follows it (#650), in Chromium with a fake microphone (`--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`). A recording made in the app whose upload fails (the browser offline, the upload refused while the browser reports a connection, the answer of a request that reached the server lost) is uploaded once, and two reloads later the server holds it once and no recovery is offered. With the server down after one online visit, the worker answers the offline recorder: it records, lists the waiting recordings, deletes one after its question, returns to the app when the server answers (not during a recording), and the app uploads the recording once. Sign-out removes the recorder's files and its account entry; the offline page then records nothing and shows no user data. A recording saved for one account is not uploaded to another account signed in in the same browser, and is uploaded by its own account afterwards. The recorder is checked in the six UI themes, light and dark, at desktop and phone width, and in the seven languages; with `SPEAKR_E2E_SHOTS` set, a screenshot of each is saved.
+
+The server is stopped and started through the control port of `run_speakr.py` (`--control-port`, `SPEAKR_CONTROL_URL`): to the browser, a stopped server is a server that is down, with `navigator.onLine` still true. The scenarios that need it are skipped without it; the others use the browser context's offline mode, which also reaches the worker's requests in Chromium.
+
+```bash
+python tests/e2e/run_speakr.py --port 8899 --control-port 8898 &
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_CONTROL_URL=http://127.0.0.1:8898 \
+  pytest tests/e2e/test_offline_recorder_ui.py -q --noconftest -rs
+```
+
+The recorder's decisions are unit-tested in `static/js/modules/utils/offline-recorder-model.test.js`, the ties between a failed upload and its other copies in `static/js/modules/utils/pending-uploads.test.js` and `static/js/modules/composables/upload.test.js`, and the worker's part in `static/js/sw.test.js`.
+
 ## Translation payload browser test
 
 `test_i18n_payload_ui.py` covers the translations a page carries (discussion #611): a page in another language than English embeds that language only. On the public share page for a German browser it checks German text, one embedded table and no request for a locale file. With French saved in the browser and two keys taken out of the French file (the file is answered in the browser context), it checks that French is fetched, that English is fetched once from the versioned address for the missing keys, that the two labels end in English, and that the keys themselves are never shown. It also checks the sign-in page of a German browser, and the main page of an English account (English embedded as before; with German saved in the browser, one request for the German file and none for English).

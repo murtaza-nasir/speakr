@@ -1,0 +1,728 @@
+"""Browser test of recording without a connection and of the upload that
+follows it (#650), in Chromium with a fake microphone.
+
+The issue had two parts:
+
+- a recording made in the app while the connection was down was uploaded
+  when it came back, and offered again for recovery at the next start, so
+  it was uploaded a second time;
+- with no connection when the app was opened, the service worker's
+  "You are offline" page was all there was: nothing could be recorded.
+
+Covered here:
+
+1. Online load, a recording made in the app, the connection lost before
+   its upload, the connection back: the recording is uploaded once, and
+   two reloads later the server still holds it once and no recovery is
+   offered.
+2. The server unreachable while the browser reports a connection (only the
+   upload is refused): the recording is saved in the browser and uploaded
+   once at the next load. The same when the first request reached the
+   server but its answer was lost (#626).
+3. The app opened while the server is down, after one online visit: the
+   offline recorder is shown, records, lists the recording, deletes one,
+   goes back to the app when the server is back, and the app uploads the
+   recording once; a reload uploads nothing more. Once with the server
+   stopped, once with the browser offline.
+4. Sign-out deletes the caches and the recorder's entry; the offline page
+   then shows no user data and records nothing. A recording saved for one
+   account is not uploaded to another account signed in in the same
+   browser, and is uploaded by its own account afterwards.
+5. The recorder in the six UI themes, light and dark, at desktop and phone
+   width, and in the seven languages.
+
+Stopping the server is what a server or a connection that is down looks
+like to the browser: navigator.onLine stays true and every request fails.
+The instance is started by ``tests/e2e/run_speakr.py --control-port``,
+whose control port (SPEAKR_CONTROL_URL) stops and starts gunicorn; the
+scenarios that need it are skipped without it. ``context.set_offline``
+also reaches the service worker's requests in this Chromium; scenario 3 is
+run both ways.
+
+It runs only with SPEAKR_BROWSER_SMOKE=1 against a running Speakr at
+SPEAKR_BASE_URL, the instance of the browser smoke test. With
+SPEAKR_E2E_SHOTS set, screenshots of the recorder are saved there.
+"""
+
+import json
+import os
+import sys
+import time
+import urllib.request
+from contextlib import contextmanager
+
+import pytest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
+                                reason="browser test; set SPEAKR_BROWSER_SMOKE=1 with Speakr running")
+
+playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
+
+from browser_checks import ROOT, en, login  # noqa: E402
+from seed_recordings import TITLES  # noqa: E402
+from smoke_env import read_example  # noqa: E402
+
+BASE = os.environ.get("SPEAKR_BASE_URL", "http://127.0.0.1:8899").rstrip("/")
+CONTROL = os.environ.get("SPEAKR_CONTROL_URL", "").rstrip("/")
+SHOTS = os.environ.get("SPEAKR_E2E_SHOTS", "")
+_example = read_example()
+ADMIN_EMAIL = os.environ.get("SPEAKR_SMOKE_USER", _example.get("ADMIN_EMAIL", "admin@example.com"))
+ADMIN_PASSWORD = os.environ.get("SPEAKR_SMOKE_PASSWORD", _example.get("ADMIN_PASSWORD", "changeme"))
+RUN = str(int(time.time()))[-6:]
+
+needs_control = pytest.mark.skipif(not CONTROL, reason="needs run_speakr.py --control-port (SPEAKR_CONTROL_URL)")
+
+FAKE_MEDIA = ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"]
+WAIT = 20000
+LANGUAGES = ("en", "de", "es", "fr", "pt-BR", "ru", "zh")
+THEMES = ("default", "classic", "workspace", "focus", "desk", "cards")
+
+
+def locale_table(code):
+    with open(os.path.join(ROOT, "static", "locales", f"{code}.json"), encoding="utf-8") as f:
+        return json.load(f)
+
+
+# ---- the server -----------------------------------------------------------
+
+def control(action):
+    request = urllib.request.Request(f"{CONTROL}/{action}", method="POST", data=b"")
+    with urllib.request.urlopen(request, timeout=180) as response:
+        state = json.loads(response.read())
+    if action == "start":
+        assert state.get("answering"), f"Speakr did not start again: {state}"
+    return state
+
+
+@contextmanager
+def server_down():
+    """The server stopped: its port refuses connections, as when it is down."""
+    control("stop")
+    try:
+        yield
+    finally:
+        control("start")
+
+
+# ---- fixtures ---------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def pw():
+    with playwright_api.sync_playwright() as p:
+        yield p
+
+
+@pytest.fixture(scope="module")
+def browser(pw):
+    instance = pw.chromium.launch(args=FAKE_MEDIA)
+    yield instance
+    instance.close()
+
+
+@pytest.fixture(scope="module")
+def admin_cookies(browser):
+    """One sign-in through the form for the whole file (sign-ins are rate limited)."""
+    ctx = browser.new_context(locale="en-US")
+    page = ctx.new_page()
+    login(page, BASE, ADMIN_EMAIL, ADMIN_PASSWORD)
+    cookies = ctx.cookies()
+    ctx.close()
+    return cookies
+
+
+@pytest.fixture(scope="module")
+def admin_api(pw, admin_cookies):
+    """The admin's session outside every browser profile, to ask the server what it holds."""
+    api = pw.request.new_context(base_url=BASE, storage_state={"cookies": admin_cookies, "origins": []})
+    yield api
+    api.dispose()
+
+
+@pytest.fixture
+def context(browser):
+    """A browser profile of its own for each test: no worker, no caches, no IndexedDB."""
+    ctx = browser.new_context(viewport={"width": 1400, "height": 900}, locale="en-US", permissions=["microphone"])
+    yield ctx
+    try:
+        ctx.set_offline(False)
+    finally:
+        ctx.close()
+
+
+@pytest.fixture
+def app(context, admin_cookies):
+    """The app, signed in as the admin, its worker in control and the offline recorder stored."""
+    context.add_cookies(admin_cookies)
+    page = context.new_page()
+    page.on("dialog", lambda d: d.dismiss())
+    open_app(page)
+    wait_for_recorder_files(page)
+    return page
+
+
+# ---- helpers ----------------------------------------------------------------
+
+def open_app(page, path="/"):
+    page.goto(f"{BASE}{path}")
+    page.wait_for_load_state("load")
+    assert "/login" not in page.url, "the session of this test file has ended"
+    page.wait_for_function("() => !!document.querySelector('[data-v-app]')", timeout=WAIT)
+    page.wait_for_function("() => !!navigator.serviceWorker.controller", timeout=WAIT)
+
+
+def reload_app(page):
+    page.reload()
+    page.wait_for_load_state("load")
+    page.wait_for_function("() => !!document.querySelector('[data-v-app]')", timeout=WAIT)
+
+
+RECORDER_CACHED = """async () => {
+    const v = new URL(navigator.serviceWorker.controller.scriptURL).searchParams.get('v');
+    const cache = await caches.open('speakr-static-' + v);
+    const has = async (path) => !!(await cache.match(path + '?v=' + encodeURIComponent(v), { ignoreVary: true }));
+    return (await has('/static/offline-recorder.html')) && (await has('/static/js/offline-recorder.js'))
+        && (await has('/static/js/modules/db/failed-uploads.js')) && (await has('/static/locales/en.json'));
+}"""
+
+
+def until(page, script, arg=None, timeout=WAIT, what=""):
+    """Evaluate an async script until it is truthy. (page.wait_for_function
+    takes the promise of an async function for a truthy answer.)"""
+    deadline = time.monotonic() + timeout / 1000
+    while True:
+        value = page.evaluate(script, arg)
+        if value:
+            return value
+        if time.monotonic() > deadline:
+            raise AssertionError(f"timed out waiting for {what or script[:80]}")
+        page.wait_for_timeout(300)
+
+
+def wait_for_recorder_files(page):
+    """The app has written the recorder's entry and the worker holds its files."""
+    until(page, "() => !!localStorage.getItem('speakr.offlineRecorder')", what="the recorder's entry")
+    until(page, RECORDER_CACHED, what="the recorder's files in the cache")
+
+
+PENDING = """() => new Promise((resolve) => {
+    const request = indexedDB.open('SpeakrFailedUploads');
+    request.onupgradeneeded = () => request.transaction.abort();
+    request.onerror = (event) => { event.preventDefault(); resolve([]); };
+    request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('failedUploads')) { db.close(); resolve([]); return; }
+        const all = db.transaction(['failedUploads'], 'readonly').objectStore('failedUploads').getAll();
+        all.onsuccess = () => {
+            db.close();
+            resolve(all.result.map(({ fileData, ...rest }) => ({ ...rest, bytes: fileData ? fileData.byteLength : 0 })));
+        };
+    };
+})"""
+
+LOCAL_SESSION = """() => new Promise((resolve) => {
+    const request = indexedDB.open('SpeakrRecordings');
+    request.onupgradeneeded = () => request.transaction.abort();
+    request.onerror = (event) => { event.preventDefault(); resolve(null); };
+    request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('activeRecording')) { db.close(); resolve(null); return; }
+        const get = db.transaction(['activeRecording'], 'readonly').objectStore('activeRecording').get('current');
+        get.onsuccess = () => {
+            db.close();
+            const s = get.result;
+            resolve(s && s.chunks && s.chunks.length ? { startTime: s.startTime, chunks: s.chunks.length } : null);
+        };
+    };
+})"""
+
+
+def pending(page):
+    return page.evaluate(PENDING)
+
+
+def wait_pending(page, count, timeout=WAIT):
+    until(page, f"async () => (await ({PENDING})()).length === {count}", timeout=timeout, what=f"{count} waiting uploads")
+    return pending(page)
+
+
+def server_ids(admin_api):
+    response = admin_api.get("/api/recordings?per_page=200")
+    assert response.ok, response.status
+    return {r["id"] for r in response.json().get("recordings", [])}
+
+
+def wait_new_recordings(admin_api, before, count, timeout=30):
+    deadline = time.monotonic() + timeout
+    new = set()
+    while time.monotonic() < deadline:
+        new = server_ids(admin_api) - before
+        if len(new) >= count:
+            break
+        time.sleep(0.5)
+    return new
+
+
+def recovery_offered(page):
+    return page.get_by_text(en("recording.recoveryTitle"), exact=True).count() > 0
+
+
+def record_in_app(page, seconds=3):
+    """A recording with the in-app recorder; returns before its upload is asked for."""
+    page.locator(f'button.header-action[aria-label="{en("nav.newRecording")}"]:visible').first.click()
+    page.locator("#upload-tab-record").click()
+    page.locator(".modal-footer button", has_text=en("buttons.startRecording")).click()
+    stop = page.locator("button", has_text=en("recording.stopRecording")).first
+    stop.wait_for(state="visible", timeout=WAIT)
+    page.wait_for_timeout(seconds * 1000)
+    stop.click()
+    upload = page.locator("button", has_text=en("help.uploadRecordingNotes")).first
+    upload.wait_for(state="visible", timeout=WAIT)
+    return upload
+
+
+def shot(page, name):
+    if SHOTS:
+        os.makedirs(SHOTS, exist_ok=True)
+        page.screenshot(path=os.path.join(SHOTS, f"offline-{name}.png"), full_page=True)
+
+
+def open_recorder(page, path="/"):
+    """Navigate while the server is away: the worker answers the offline recorder."""
+    errors = []
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    page.goto(f"{BASE}{path}")
+    page.wait_for_load_state("load")
+    page.wait_for_function("() => !!document.body.dataset.orReady", timeout=WAIT)
+    assert page.evaluate("() => performance.getEntriesByType('navigation')[0].responseStatus") == 503
+    return errors
+
+
+def record_offline(page, seconds=3):
+    page.locator("#or-record").click()
+    page.locator("#or-stop").wait_for(state="visible", timeout=WAIT)
+    page.wait_for_timeout(seconds * 1000)
+    page.locator("#or-stop").click()
+    page.wait_for_function(f"() => document.getElementById('or-status').textContent === {json.dumps(en('offlineRecorder.saved'))}",
+                           timeout=WAIT)
+
+
+def back_online(context, page):
+    """Online again, from a blank page: an offline page would load itself
+    again on the browser's online event and abort the next navigation."""
+    page.goto("about:blank")
+    context.set_offline(False)
+
+
+def no_user_data(page):
+    body = page.inner_text("body")
+    for title in TITLES:
+        assert title not in body, f"a recording of the library is shown offline: {title}"
+    html = page.content()
+    assert "csrf" not in html.lower()
+    assert "/api/" not in html
+
+
+# ---- 1 and 2: the duplicate upload --------------------------------------------
+
+def test_a_recording_whose_upload_failed_offline_is_uploaded_once(context, app, admin_api):
+    page = app
+    before = server_ids(admin_api)
+    upload = record_in_app(page)
+    assert page.evaluate(LOCAL_SESSION), "no crash-recovery copy was kept while recording"
+
+    context.set_offline(True)
+    upload.click()
+    [record] = wait_pending(page, 1)
+    assert record["fromRecorder"] is True and record["recordingSessionStartTime"], record
+    assert record["ownerId"] == page.evaluate("() => document.getElementById('app').dataset.currentUserId")
+    assert record["bytes"] > 1000, record
+    # The whole recording is in the record; the chunks saved while recording are not kept beside it.
+    assert page.evaluate(LOCAL_SESSION) is None
+
+    # The connection is back: the browser says so, and the app sends the record.
+    context.set_offline(False)
+    new = wait_new_recordings(admin_api, before, 1)
+    assert len(new) == 1, new
+    wait_pending(page, 0)
+
+    for _ in range(2):
+        reload_app(page)
+        page.wait_for_timeout(3000)
+        assert not recovery_offered(page), "the uploaded recording is offered for recovery"
+        assert pending(page) == []
+        assert page.evaluate(LOCAL_SESSION) is None
+    assert server_ids(admin_api) - before == new
+
+
+def test_an_upload_the_server_did_not_take_is_saved_and_uploaded_once_at_the_next_load(context, app, admin_api):
+    page = app
+    before = server_ids(admin_api)
+    upload = record_in_app(page)
+    # The browser reports a connection; only the upload is refused, as by a server that is down.
+    refused = []
+    page.route("**/upload", lambda route: (refused.append(route.request.method), route.abort("connectionrefused")))
+    upload.click()
+    wait_pending(page, 1)
+    assert refused == ["POST"]
+    assert page.evaluate("() => navigator.onLine") is True
+    assert server_ids(admin_api) == before
+    page.unroute("**/upload")
+
+    reload_app(page)
+    new = wait_new_recordings(admin_api, before, 1)
+    assert len(new) == 1, new
+    wait_pending(page, 0)
+    reload_app(page)
+    page.wait_for_timeout(3000)
+    assert not recovery_offered(page)
+    assert server_ids(admin_api) - before == new
+
+
+def test_an_upload_whose_answer_was_lost_is_not_stored_twice(context, app, admin_api):
+    """The request reached the server and its answer did not reach the browser (#626, #650)."""
+    page = app
+    before = server_ids(admin_api)
+    upload = record_in_app(page)
+    seen = []
+
+    def lose_the_answer(route):
+        seen.append(route.request.method)
+        route.fetch()  # the server stores the recording
+        route.abort("connectionreset")
+
+    page.route("**/upload", lose_the_answer)
+    upload.click()
+    wait_pending(page, 1)
+    stored = wait_new_recordings(admin_api, before, 1)
+    assert len(stored) == 1 and seen == ["POST"]
+    page.unroute("**/upload")
+
+    reload_app(page)
+    wait_pending(page, 0)
+    page.wait_for_timeout(2000)
+    assert server_ids(admin_api) - before == stored
+    reload_app(page)
+    page.wait_for_timeout(2000)
+    assert server_ids(admin_api) - before == stored
+    assert not recovery_offered(page)
+
+
+# ---- 3: the app opened without a connection ------------------------------------
+
+def _offline_start(context, page, admin_api, away):
+    before = server_ids(admin_api)
+    user_id = page.evaluate("() => document.getElementById('app').dataset.currentUserId")
+    with away():
+        errors = open_recorder(page)
+        assert page.locator("#speakr-offline h1").inner_text() == en("offlineRecorder.title")
+        assert page.locator("#or-lead").inner_text() == en("offlineRecorder.lead")
+        assert page.evaluate("() => document.body.dataset.orReady") == "recorder"
+        assert page.evaluate("() => document.body.dataset.orLocale") == "en", "the locale file was not loaded"
+        no_user_data(page)
+        shot(page, "recorder-ready")
+
+        record_offline(page, 3)
+        record_offline(page, 2)
+        rows = page.locator(".or-item")
+        assert rows.count() == 2
+        meta = rows.first.locator(".or-item-meta").inner_text()
+        assert meta.startswith("0:02") and "KB" in meta, meta
+        assert rows.first.locator(".or-item-name").inner_text().startswith("Recording of ")
+        shot(page, "recorder-two-saved")
+
+        # One is deleted, after the question.
+        rows.first.locator("[data-or-delete]").click()
+        page.locator("[data-or-delete-cancel]").click()
+        assert rows.count() == 2
+        rows.first.locator("[data-or-delete]").click()
+        page.locator("[data-or-delete-confirm]").click()
+        page.wait_for_function("() => document.querySelectorAll('.or-item').length === 1", timeout=WAIT)
+        [record] = pending(page)
+        assert record["source"] == "offline" and record["fromRecorder"] is True and record["ownerId"] == user_id
+        assert 2.5 <= record["duration"] <= 6, record
+        assert page.evaluate(LOCAL_SESSION) is None, "the crash-recovery copy was left after the save"
+        assert errors == [], errors
+        # The page asked nothing but static files and whether the server is back
+        # (every request of this document, as the browser lists them).
+        loaded = page.evaluate("() => performance.getEntriesByType('resource').map((e) => e.name)")
+        asked = {u.split("?")[0][len(BASE):] for u in loaded if u.startswith(BASE)}
+        assert "/static/js/offline-recorder.js" in asked and "/static/locales/en.json" in asked, asked
+        assert all(p.startswith("/static/") or p == "/" for p in asked), asked
+        assert page.evaluate("() => document.body.dataset.orLocale") == "en"
+
+    # The server is back: the page loads the app, and the app uploads the recording.
+    page.wait_for_function("() => !!document.querySelector('[data-v-app]')", timeout=30000)
+    new = wait_new_recordings(admin_api, before, 1)
+    assert len(new) == 1, new
+    wait_pending(page, 0)
+    reload_app(page)
+    page.wait_for_timeout(3000)
+    assert not recovery_offered(page)
+    assert server_ids(admin_api) - before == new
+
+
+@needs_control
+def test_the_app_opened_while_the_server_is_down_records_and_uploads_once(context, app, admin_api):
+    _offline_start(context, app, admin_api, server_down)
+
+
+def test_the_app_opened_while_the_browser_is_offline_records_and_uploads_once(context, app, admin_api):
+    @contextmanager
+    def browser_offline():
+        context.set_offline(True)
+        try:
+            yield
+        finally:
+            context.set_offline(False)
+
+    _offline_start(context, app, admin_api, browser_offline)
+
+
+@needs_control
+def test_the_recorder_waits_for_the_end_of_a_recording_before_it_opens_the_app(context, app, admin_api):
+    page = app
+    before = server_ids(admin_api)
+    control("stop")
+    try:
+        open_recorder(page)
+        page.locator("#or-record").click()
+        page.locator("#or-stop").wait_for(state="visible", timeout=WAIT)
+    finally:
+        control("start")
+    # The server answers again while the recording goes on: the page stays and says so.
+    page.wait_for_function(f"() => document.getElementById('or-status').textContent === {json.dumps(en('offlineRecorder.backWhileRecording'))}",
+                           timeout=20000)
+    assert page.locator("#speakr-offline").count() == 1
+    shot(page, "recorder-back-while-recording")
+    page.locator("#or-stop").click()
+    page.wait_for_function("() => !!document.querySelector('[data-v-app]')", timeout=30000)
+    new = wait_new_recordings(admin_api, before, 1)
+    assert len(new) == 1
+    wait_pending(page, 0)
+
+
+# ---- 4: sign-out and other accounts ---------------------------------------------
+
+def sign_out(page):
+    page.locator("[data-user-menu-toggle]:visible").first.click()
+    page.locator('form[action="/logout"] [type=submit]:visible').first.click()
+
+
+def test_sign_out_removes_the_recorder_and_its_account(context, app):
+    page = app
+    assert page.evaluate("() => JSON.parse(localStorage.getItem('speakr.offlineRecorder')).userId")
+    sign_out(page)
+    page.wait_for_url("**/login*")
+    page.wait_for_load_state("load")
+    page.evaluate("() => window.SpeakrServiceWorker.ready.then(() => true)")
+    assert page.evaluate("() => localStorage.getItem('speakr.offlineRecorder')") is None
+    # What is in Cache Storage now was requested by the sign-in page itself; the recorder is not.
+    cached = page.evaluate("""async () => {
+        const out = [];
+        for (const name of await caches.keys()) {
+            for (const request of await (await caches.open(name)).keys()) out.push(new URL(request.url).pathname);
+        }
+        return out;
+    }""")
+    assert "/static/offline-recorder.html" not in cached and "/static/js/offline-recorder.js" not in cached, cached
+
+    context.set_offline(True)
+    try:
+        page.goto(f"{BASE}/")
+        page.wait_for_load_state("load")
+        # No recorder in the cache: the plain page of the worker.
+        assert page.locator("#speakr-offline h1").inner_text() == "You are offline"
+        assert page.locator("#or-record").count() == 0
+        no_user_data(page)
+    finally:
+        back_online(context, page)
+
+    # Should the recorder's files be in the cache again (asked for from the
+    # sign-in page), it records nothing without an account.
+    page.goto(f"{BASE}/login")
+    page.wait_for_load_state("load")
+    page.wait_for_function("() => !!navigator.serviceWorker.controller", timeout=WAIT)
+    page.evaluate("() => navigator.serviceWorker.controller.postMessage({ type: 'PREPARE_OFFLINE_RECORDER', locale: 'en' })")
+    until(page, RECORDER_CACHED, what="the recorder's files in the cache")
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        assert page.evaluate("() => document.body.dataset.orReady") == "notSignedIn"
+        assert page.locator("#or-unavailable").inner_text() == en("offlineRecorder.notSignedIn")
+        assert not page.locator("#or-record").is_visible()
+        no_user_data(page)
+        shot(page, "recorder-signed-out")
+    finally:
+        back_online(context, page)
+
+
+@pytest.fixture(scope="module")
+def second_user(browser, admin_api, admin_cookies):
+    """Another account, signed in once through the form."""
+    ctx = browser.new_context(locale="en-US")
+    ctx.add_cookies(admin_cookies)
+    page = ctx.new_page()
+    page.goto(f"{BASE}/admin")
+    token = page.locator("meta[name=csrf-token]").get_attribute("content")
+    user = {"username": f"e2eoffline_{RUN}", "email": f"e2eoffline_{RUN}@example.com", "password": f"Pw-{RUN}-offline-1"}
+    r = page.request.post(f"{BASE}/admin/users", headers={"X-CSRFToken": token}, data=user)
+    assert r.status == 201, f"{r.status} {r.text()}"
+    user["id"] = r.json()["id"]
+    ctx.close()
+    other = browser.new_context(locale="en-US")
+    page = other.new_page()
+    login(page, BASE, user["email"], user["password"])
+    user["cookies"] = other.cookies()
+    other.close()
+    yield user
+    ctx = browser.new_context(locale="en-US")
+    ctx.add_cookies(admin_cookies)
+    page = ctx.new_page()
+    page.goto(f"{BASE}/admin")
+    token = page.locator("meta[name=csrf-token]").get_attribute("content")
+    page.request.delete(f"{BASE}/admin/users/{user['id']}", headers={"X-CSRFToken": token})
+    ctx.close()
+
+
+def test_a_recording_saved_for_one_account_is_not_uploaded_to_another(context, app, admin_api, admin_cookies, second_user, pw):
+    page = app
+    admin_id = page.evaluate("() => document.getElementById('app').dataset.currentUserId")
+    before = server_ids(admin_api)
+    other_api = pw.request.new_context(base_url=BASE, storage_state={"cookies": second_user["cookies"], "origins": []})
+    try:
+        other_before = {r["id"] for r in other_api.get("/api/recordings?per_page=50").json().get("recordings", [])}
+        with server_down():
+            open_recorder(page)
+            record_offline(page, 2)
+            # Another account in the same browser before the server is back
+            # (the admin's session replaced without a sign-out).
+            context.clear_cookies()
+            context.add_cookies(second_user["cookies"])
+        # The recorder opens the app, now the other account's.
+        page.wait_for_function("() => !!document.querySelector('[data-v-app]')", timeout=30000)
+        dialog = page.locator("[data-app-dialog]")
+        dialog.wait_for(state="visible", timeout=WAIT)
+        assert en("upload.otherAccountUploadsTitle") in dialog.inner_text()
+        assert en("upload.otherAccountUploadsMessageOne") in dialog.inner_text()
+        shot(page, "other-account-question")
+        page.locator("[data-app-dialog-cancel]").click()  # Keep
+        page.wait_for_timeout(3000)
+        assert [r["ownerId"] for r in pending(page)] == [admin_id]
+        other_now = {r["id"] for r in other_api.get("/api/recordings?per_page=50").json().get("recordings", [])}
+        assert other_now == other_before, "the admin's recording went to the other account"
+        assert server_ids(admin_api) == before
+        assert page.evaluate("() => document.getElementById('app').dataset.currentUserId") == str(second_user["id"])
+
+        # Offline, the other account's recorder lists nothing of the admin's.
+        wait_for_recorder_files(page)
+        context.set_offline(True)
+        try:
+            open_recorder(page)
+            assert page.evaluate("() => document.body.dataset.orReady") == "recorder"
+            assert page.locator(".or-item").count() == 0
+        finally:
+            back_online(context, page)
+    finally:
+        other_api.dispose()
+
+    # The admin again: the recording goes up to the admin's account, once.
+    context.clear_cookies()
+    context.add_cookies(admin_cookies)
+    open_app(page)
+    new = wait_new_recordings(admin_api, before, 1)
+    assert len(new) == 1
+    wait_pending(page, 0)
+    reload_app(page)
+    page.wait_for_timeout(2000)
+    assert server_ids(admin_api) - before == new
+
+
+# ---- 5: themes, widths and languages ---------------------------------------------
+
+LOOK = """() => {
+    const card = document.querySelector('.or-card').getBoundingClientRect();
+    const button = document.getElementById('or-record');
+    const b = button.getBoundingClientRect();
+    const style = (el) => getComputedStyle(el);
+    return {
+        scroll: document.scrollingElement.scrollWidth - window.innerWidth,
+        cardInside: card.left >= 0 && card.right <= window.innerWidth + 0.5,
+        buttonInside: b.left >= card.left && b.right <= card.right && b.width > 100,
+        buttonBg: style(button).backgroundColor,
+        buttonColor: style(button).color,
+        cardBg: style(document.querySelector('.or-card')).backgroundColor,
+        bodyBg: style(document.body).backgroundColor,
+        theme: document.documentElement.dataset.uiTheme,
+        dark: document.documentElement.classList.contains('dark'),
+    };
+}"""
+
+
+def test_the_recorder_in_every_theme_mode_and_width(context, app):
+    page = app
+    results = []
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        for theme in THEMES:
+            for dark in (False, True):
+                # Set on the recorder page itself: the app writes the account's theme at each load.
+                page.evaluate("([t, d]) => { localStorage.setItem('uiTheme', t); localStorage.setItem('darkMode', String(d)); }",
+                              [theme, dark])
+                for width, height in ((1280, 860), (390, 844)):
+                    page.set_viewport_size({"width": width, "height": height})
+                    open_recorder(page)
+                    page.wait_for_timeout(300)
+                    look = page.evaluate(LOOK)
+                    shot(page, f"theme-{theme}-{'dark' if dark else 'light'}-{width}")
+                    assert look["theme"] == theme and look["dark"] == dark, look
+                    assert look["scroll"] <= 0, f"{theme} {dark} {width}: horizontal scroll {look}"
+                    assert look["cardInside"] and look["buttonInside"], f"{theme} {dark} {width}: {look}"
+                    assert look["buttonBg"] != look["cardBg"], f"{theme} {dark} {width}: the record button does not stand out {look}"
+                    assert look["buttonBg"] != look["buttonColor"], look
+                    results.append((theme, dark, width, look["bodyBg"], look["cardBg"]))
+    finally:
+        back_online(context, page)
+    # Dark is dark: the page differs from light in every theme.
+    for theme in THEMES:
+        light = {r[3] for r in results if r[0] == theme and not r[1]}
+        darker = {r[3] for r in results if r[0] == theme and r[1]}
+        assert light.isdisjoint(darker), f"{theme}: the same page background in light and dark"
+    page.set_viewport_size({"width": 1400, "height": 900})
+
+
+def test_the_recorder_speaks_the_language_of_the_app(context, app):
+    page = app
+    # The worker keeps the locale file of the language the app asks for.
+    for code in LANGUAGES:
+        page.evaluate("(code) => navigator.serviceWorker.controller.postMessage({ type: 'PREPARE_OFFLINE_RECORDER', locale: code })", code)
+        until(page, """async (code) => {
+            const v = new URL(navigator.serviceWorker.controller.scriptURL).searchParams.get('v');
+            const cache = await caches.open('speakr-static-' + v);
+            return !!(await cache.match('/static/locales/' + code + '.json?v=' + encodeURIComponent(v), { ignoreVary: true }));
+        }""", code, what=f"the locale file {code}")
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        for code in LANGUAGES:
+            table = locale_table(code)["offlineRecorder"]
+            # The language the app wrote at its last online load.
+            page.evaluate("""(code) => {
+                const entry = JSON.parse(localStorage.getItem('speakr.offlineRecorder'));
+                entry.locale = code;
+                localStorage.setItem('speakr.offlineRecorder', JSON.stringify(entry));
+            }""", code)
+            open_recorder(page)
+            assert page.evaluate("() => document.body.dataset.orLocale") == code
+            assert page.evaluate("() => document.documentElement.lang") == code
+            assert page.title() == table["pageTitle"], code
+            assert page.locator("#or-title").inner_text() == table["title"], code
+            assert page.locator("#or-lead").inner_text() == table["lead"], code
+            assert page.locator("#or-record").inner_text() == table["record"], code
+            if code in ("de", "zh"):
+                shot(page, f"lang-{code}")
+    finally:
+        back_online(context, page)
