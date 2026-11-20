@@ -1,28 +1,33 @@
-"""The effective configuration of an LLM role.
+"""Configured LLM models and the effective configuration of each role.
 
-Speakr uses three LLM roles: ``text`` (summaries and every other text task),
+Speakr has three LLM roles: ``text`` (summaries and every other text task),
 ``chat`` (recording chat and the Inquire/Ambrose assistant) and
-``translation``. A configuration saved in System Settings takes precedence
-over the environment. An empty saved field falls back to the environment
-default. Chat and translation fall back to the text model when no dedicated
-model is configured.
+``translation``. One document in the System Setting ``llm_config_json`` holds
+the configured models ("profiles") and the assignment of each role to a
+profile or to the environment.
+
+A profile carries everything needed to talk to one model: base URL, API key,
+model name, Extra Body and GPT-5 options. The same profile can serve several
+roles. A role with no assignment uses its environment configuration exactly
+as earlier releases did, and chat and translation inherit the text role when
+they have no dedicated environment configuration, so an empty model list
+changes nothing.
 
 The API key is stored in clear text because the OpenAI client needs it. Every
 representation that leaves this module is masked with ``MASKED_API_KEY``; an
-empty or masked key submitted for saving keeps the stored secret.
-
-Clients are cached per role by a signature that covers every connection
-setting, so a configuration change rebuilds the client on the next request.
-Nothing is captured at import time: every read resolves the current values.
+empty or masked key submitted for an update keeps the stored secret, and an
+explicit ``clear_api_key`` removes it.
 """
 
 import json
 import logging
 import os
 import threading
+import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from openai import OpenAI
@@ -34,22 +39,24 @@ logger = logging.getLogger(__name__)
 ROLES = ('text', 'chat', 'translation')
 ROLE_ALIASES = {'ambrose': 'chat', 'inquire': 'chat'}
 MASKED_API_KEY = '***'
-
-SETTING_KEYS = {role: f'llm_{role}_config_json' for role in ROLES}
+SETTING_KEY = 'llm_config_json'
+CONFIG_VERSION = 1
 SETTING_DESCRIPTION = (
-    'Saved LLM configuration for {role} requests. Managed by the LLM '
-    'configuration section of System Settings.'
+    'Configured language models and the role assignment. Managed by the '
+    'Language Models section of System Settings.'
 )
 
-CONFIG_FIELDS = frozenset({
-    'api_key',
+PROFILE_FIELDS = frozenset({
+    'label',
     'base_url',
+    'api_key',
     'model_name',
     'extra_body',
     'gpt5_force',
     'gpt5_reasoning_effort',
     'gpt5_verbosity',
 })
+REQUIRED_PROFILE_FIELDS = ('label', 'base_url', 'model_name')
 
 DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1'
 DEFAULT_TEXT_MODEL = 'openai/gpt-3.5-turbo'
@@ -66,6 +73,42 @@ class LLMConfigError(ValueError):
     """A submitted or stored LLM configuration is unusable."""
 
 
+class LLMModelNotFound(LLMConfigError):
+    """No configured model has the given id."""
+
+
+class LLMModelLabelTaken(LLMConfigError):
+    """Another configured model already uses the label."""
+
+
+class LLMModelInUse(LLMConfigError):
+    """A role is assigned to the model, so it cannot be deleted."""
+
+    def __init__(self, model_id, roles):
+        self.model_id = model_id
+        self.roles = tuple(sorted(roles))
+        super().__init__(
+            f'Model {model_id!r} is assigned to {", ".join(self.roles)}; '
+            'reassign those roles first.')
+
+
+@dataclass(frozen=True)
+class ModelChange:
+    """A created or updated profile and the names of the changed fields."""
+
+    model: dict
+    changed_fields: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class AssignmentChange:
+    """A role assignment and the profile it had before."""
+
+    role: str
+    old: str | None
+    new: str | None
+
+
 def normalize_role(role):
     """The canonical role name; Inquire and Ambrose reuse chat."""
     canonical = ROLE_ALIASES.get(role, role)
@@ -75,7 +118,339 @@ def normalize_role(role):
     return canonical
 
 
-# ---------------------------------------------------------------- environment
+# ---------------------------------------------------------------- values
+
+
+def parse_extra_body(raw, source='Extra Body'):
+    """A JSON object from a submitted Extra Body value."""
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return {}
+    if isinstance(raw, Mapping):
+        return dict(raw)
+    if isinstance(raw, str):
+        try:
+            value = json.loads(raw)
+        except ValueError as error:
+            raise LLMConfigError(f'{source} is not valid JSON ({error})') from error
+    else:
+        raise LLMConfigError(
+            f'{source} must be a JSON object, such as {{"reasoning_effort": "low"}}')
+    if not isinstance(value, dict):
+        raise LLMConfigError(
+            f'{source} must be a JSON object, such as {{"reasoning_effort": "low"}}')
+    return value
+
+
+def merge_api_key(incoming, existing):
+    """The key to store: an empty or masked incoming value keeps the old one."""
+    if incoming is None:
+        return existing or ''
+    if not isinstance(incoming, str):
+        return incoming
+    incoming = incoming.strip()
+    if not incoming or incoming == MASKED_API_KEY:
+        return existing or ''
+    return incoming
+
+
+def _required_text(values, name):
+    value = values.get(name)
+    if not isinstance(value, str) or not value.strip():
+        raise LLMConfigError(f'{name} is required')
+    return value.strip()
+
+
+def _optional_text(value):
+    if value is None or not isinstance(value, str):
+        return ''
+    return value.strip()
+
+
+def _base_url(value):
+    if not isinstance(value, str) or not value.strip():
+        raise LLMConfigError('base_url is required')
+    value = value.strip().rstrip('/')
+    parts = urlsplit(value)
+    if parts.scheme not in ('http', 'https') or not parts.netloc:
+        raise LLMConfigError('base_url must start with http:// or https://')
+    return value
+
+
+def _gpt5_text(values, name):
+    value = values.get(name)
+    if value is None:
+        return DEFAULT_GPT5_SETTING
+    if not isinstance(value, str) or not value.strip():
+        raise LLMConfigError(f'{name} must be a non-empty string')
+    return value.strip()
+
+
+def _bool_value(value, name, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.strip().lower() in ('true', 'false'):
+        return value.strip().lower() == 'true'
+    raise LLMConfigError(f'{name} must be true or false')
+
+
+def _label_taken(models, label, exclude_id=None):
+    key = label.casefold()
+    return any(
+        model['id'] != exclude_id and model.get('label', '').casefold() == key
+        for model in models)
+
+
+# ---------------------------------------------------------------- document
+
+
+def _empty_document():
+    return {
+        'version': CONFIG_VERSION,
+        'models': [],
+        'assignments': {role: None for role in ROLES},
+    }
+
+
+def _stored_text(value):
+    return value.strip() if isinstance(value, str) else ''
+
+
+def _stored_extra_body(raw):
+    if isinstance(raw, Mapping):
+        return dict(raw)
+    if isinstance(raw, str) and raw.strip():
+        try:
+            value = json.loads(raw)
+        except ValueError:
+            logger.warning('Ignoring a stored LLM Extra Body that is not valid JSON')
+            return {}
+        if isinstance(value, dict):
+            return value
+    if raw not in (None, '', {}):
+        logger.warning('Ignoring a stored LLM Extra Body that is not a JSON object')
+    return {}
+
+
+def _stored_model(raw):
+    if not isinstance(raw, dict):
+        return None
+    model_id = raw.get('id')
+    if not isinstance(model_id, str) or not model_id.strip():
+        return None
+    return {
+        'id': model_id.strip(),
+        'label': _stored_text(raw.get('label')),
+        'base_url': _stored_text(raw.get('base_url')).rstrip('/'),
+        'model_name': _stored_text(raw.get('model_name')),
+        'api_key': _stored_text(raw.get('api_key')),
+        'extra_body': _stored_extra_body(raw.get('extra_body')),
+        'gpt5_force': raw.get('gpt5_force') if isinstance(raw.get('gpt5_force'), bool) else False,
+        'gpt5_reasoning_effort': (
+            _stored_text(raw.get('gpt5_reasoning_effort')) or DEFAULT_GPT5_SETTING),
+        'gpt5_verbosity': (
+            _stored_text(raw.get('gpt5_verbosity')) or DEFAULT_GPT5_SETTING),
+    }
+
+
+def _normalize_document(raw):
+    document = _empty_document()
+    if not isinstance(raw, Mapping):
+        return document
+
+    seen = set()
+    for item in raw.get('models') or []:
+        model = _stored_model(item)
+        if model is None or model['id'] in seen:
+            continue
+        seen.add(model['id'])
+        document['models'].append(model)
+
+    assignments = raw.get('assignments')
+    if isinstance(assignments, Mapping):
+        for role in ROLES:
+            value = assignments.get(role)
+            if isinstance(value, str) and value.strip():
+                document['assignments'][role] = value.strip()
+    return document
+
+
+def load_document():
+    """The saved configuration document, normalized, or an empty one."""
+    try:
+        from src.models import SystemSetting
+        row = SystemSetting.query.filter_by(key=SETTING_KEY).first()
+        raw = row.value if row is not None else None
+    except Exception:  # noqa: BLE001 - no app context or database: nothing saved
+        return _empty_document()
+    if not raw:
+        return _empty_document()
+    try:
+        document = json.loads(raw)
+    except (TypeError, ValueError):
+        logger.warning('Ignoring %s: the saved LLM configuration is not valid JSON', SETTING_KEY)
+        return _empty_document()
+    return _normalize_document(document)
+
+
+def _save_document(document):
+    from src.models import SystemSetting
+
+    SystemSetting.set_setting(
+        SETTING_KEY,
+        json.dumps(document, sort_keys=True),
+        description=SETTING_DESCRIPTION,
+        setting_type='string',
+    )
+    clear_client_cache()
+
+
+def _find_model(document, model_id):
+    for index, model in enumerate(document['models']):
+        if model['id'] == model_id:
+            return index, model
+    raise LLMModelNotFound(f'No configured model with id {model_id!r}')
+
+
+def _public_profile(profile, reveal_key=False):
+    result = dict(profile)
+    result['extra_body'] = dict(profile.get('extra_body') or {})
+    if not reveal_key:
+        result['api_key'] = MASKED_API_KEY if profile.get('api_key') else ''
+    return result
+
+
+# ---------------------------------------------------------------- CRUD
+
+
+def list_models():
+    """The configured models, with every API key masked."""
+    return [_public_profile(model) for model in load_document()['models']]
+
+
+def get_model(model_id):
+    """One configured model, with its API key masked."""
+    _, model = _find_model(load_document(), model_id)
+    return _public_profile(model)
+
+
+def create_model(values):
+    """Validate and append a profile. Returns its public form."""
+    if not isinstance(values, Mapping):
+        raise LLMConfigError('The model configuration must be a JSON object')
+    unknown = sorted(set(values) - PROFILE_FIELDS)
+    if unknown:
+        raise LLMConfigError(f"Unknown model field(s): {', '.join(unknown)}")
+
+    label = _required_text(values, 'label')
+    model_name = _required_text(values, 'model_name')
+    base_url = _base_url(values.get('base_url'))
+    api_key = _optional_text(values.get('api_key'))
+    if api_key == MASKED_API_KEY:
+        api_key = ''
+
+    document = load_document()
+    if _label_taken(document['models'], label):
+        raise LLMModelLabelTaken(f'A model labelled {label!r} already exists')
+
+    profile = {
+        'id': f'm_{uuid.uuid4().hex[:8]}',
+        'label': label,
+        'base_url': base_url,
+        'model_name': model_name,
+        'api_key': api_key,
+        'extra_body': parse_extra_body(values.get('extra_body')),
+        'gpt5_force': _bool_value(values.get('gpt5_force'), 'gpt5_force', False),
+        'gpt5_reasoning_effort': _gpt5_text(values, 'gpt5_reasoning_effort'),
+        'gpt5_verbosity': _gpt5_text(values, 'gpt5_verbosity'),
+    }
+    document['models'].append(profile)
+    _save_document(document)
+    return ModelChange(_public_profile(profile), tuple(sorted(set(values) & PROFILE_FIELDS)))
+
+
+def update_model(model_id, values):
+    """Validate and change a profile. Omitted fields keep their value."""
+    if not isinstance(values, Mapping):
+        raise LLMConfigError('The model configuration must be a JSON object')
+    unknown = sorted(set(values) - PROFILE_FIELDS - {'clear_api_key'})
+    if unknown:
+        raise LLMConfigError(f"Unknown model field(s): {', '.join(unknown)}")
+
+    document = load_document()
+    index, existing = _find_model(document, model_id)
+    updated = dict(existing)
+
+    if 'label' in values:
+        label = _required_text(values, 'label')
+        if _label_taken(document['models'], label, exclude_id=model_id):
+            raise LLMModelLabelTaken(f'A model labelled {label!r} already exists')
+        updated['label'] = label
+    if 'base_url' in values:
+        updated['base_url'] = _base_url(values.get('base_url'))
+    if 'model_name' in values:
+        updated['model_name'] = _required_text(values, 'model_name')
+    if values.get('clear_api_key'):
+        updated['api_key'] = ''
+    elif 'api_key' in values:
+        updated['api_key'] = merge_api_key(values.get('api_key'), existing['api_key'])
+    if 'extra_body' in values:
+        updated['extra_body'] = parse_extra_body(values.get('extra_body'))
+    if 'gpt5_force' in values:
+        updated['gpt5_force'] = _bool_value(values.get('gpt5_force'), 'gpt5_force',
+                                            existing['gpt5_force'])
+    if 'gpt5_reasoning_effort' in values:
+        updated['gpt5_reasoning_effort'] = _gpt5_text(values, 'gpt5_reasoning_effort')
+    if 'gpt5_verbosity' in values:
+        updated['gpt5_verbosity'] = _gpt5_text(values, 'gpt5_verbosity')
+
+    changed = tuple(sorted(
+        name for name in PROFILE_FIELDS if existing.get(name) != updated.get(name)))
+    if changed:
+        document['models'][index] = updated
+        _save_document(document)
+    return ModelChange(_public_profile(updated), changed)
+
+
+def delete_model(model_id):
+    """Delete an unassigned profile and return its public form."""
+    document = load_document()
+    index, existing = _find_model(document, model_id)
+    roles = [role for role in ROLES if document['assignments'].get(role) == model_id]
+    if roles:
+        raise LLMModelInUse(model_id, roles)
+    document['models'].pop(index)
+    _save_document(document)
+    return _public_profile(existing)
+
+
+def assign_model(role, model_id):
+    """Assign a profile to a role, or ``None`` to return it to the environment."""
+    role = normalize_role(role)
+    if model_id is not None:
+        if not isinstance(model_id, str) or not model_id.strip():
+            model_id = None
+        else:
+            model_id = model_id.strip()
+
+    document = load_document()
+    if model_id is not None:
+        _find_model(document, model_id)
+    old = document['assignments'].get(role)
+    if old != model_id:
+        document['assignments'][role] = model_id
+        _save_document(document)
+    return AssignmentChange(role, old, model_id)
+
+
+def clear_assignment(role):
+    """Return a role to its environment configuration."""
+    return assign_model(role, None)
+
+
+# ---------------------------------------------------------------- resolution
+
 
 def _env(name, default=None):
     raw = os.environ.get(name)
@@ -92,64 +467,54 @@ def _env_bool(name, default=False):
     return raw.strip().lower() in ('true', '1', 'yes')
 
 
-def parse_extra_body(raw, source='Extra Body'):
-    """A JSON object from a submitted or stored Extra Body value."""
-    if raw is None or (isinstance(raw, str) and not raw.strip()):
-        return {}
-    if isinstance(raw, Mapping):
-        return dict(raw)
-    if isinstance(raw, str):
-        try:
-            value = json.loads(raw)
-        except ValueError as e:
-            raise LLMConfigError(f"{source} is not valid JSON ({e})") from e
-    else:
-        raise LLMConfigError(
-            f'{source} must be a JSON object, such as {{"reasoning_effort": "low"}}')
-    if not isinstance(value, dict):
-        raise LLMConfigError(
-            f'{source} must be a JSON object, such as {{"reasoning_effort": "low"}}')
-    return value
-
-
 def _environment_extra_body(env_name):
     raw = _env(env_name)
     if raw is None:
-        return {}, None
+        return None
     try:
-        return parse_extra_body(raw, env_name), None
-    except LLMConfigError as e:
-        logger.error(f'{e}; requests with this configuration will fail until it is corrected.')
-        return {}, str(e)
+        return parse_extra_body(raw, env_name)
+    except LLMConfigError as error:
+        logger.error('%s; requests with this configuration will fail until it is corrected.', error)
+        return {}
 
 
-def _text_environment():
-    base_url = _env('TEXT_MODEL_BASE_URL', DEFAULT_BASE_URL)
-    extra_body, extra_body_error = _environment_extra_body('TEXT_MODEL_EXTRA_BODY')
+def _environment_text():
+    extra_body = _environment_extra_body('TEXT_MODEL_EXTRA_BODY')
     return {
+        'source': 'environment',
+        'profile': None,
         'api_key': _env('TEXT_MODEL_API_KEY'),
-        'base_url': base_url,
+        'base_url': _env('TEXT_MODEL_BASE_URL', DEFAULT_BASE_URL),
         'base_url_explicit': bool(_env('TEXT_MODEL_BASE_URL')),
         'model_name': _env('TEXT_MODEL_NAME', DEFAULT_TEXT_MODEL),
-        'extra_body': extra_body,
-        'extra_body_error': extra_body_error,
+        'extra_body': extra_body if extra_body is not None else {},
         'gpt5_force': _env_bool('GPT5_FORCE_MODE'),
         'gpt5_reasoning_effort': _env('GPT5_REASONING_EFFORT', DEFAULT_GPT5_SETTING),
         'gpt5_verbosity': _env('GPT5_VERBOSITY', DEFAULT_GPT5_SETTING),
+        'uses_text_model': False,
+        'configured': bool(_env('TEXT_MODEL_API_KEY') or _env('TEXT_MODEL_BASE_URL')),
     }
 
 
-def _role_environment(role, text_environment):
-    """The role's own environment values, without the text fallback."""
+def _environment_role(role, text_environment):
+    """The role's own environment configuration, or None when it inherits text."""
     prefix = role.upper()
-    extra_body, extra_body_error = _environment_extra_body(f'{prefix}_MODEL_EXTRA_BODY')
+    base_url = _env(f'{prefix}_MODEL_BASE_URL')
+    api_key = _env(f'{prefix}_MODEL_API_KEY')
+    model_name = _env(f'{prefix}_MODEL_NAME')
+    if not (model_name and (api_key or base_url)):
+        return None
+
+    extra_body = _environment_extra_body(f'{prefix}_MODEL_EXTRA_BODY')
     return {
-        'api_key': _env(f'{prefix}_MODEL_API_KEY'),
-        'base_url': _env(f'{prefix}_MODEL_BASE_URL'),
-        'base_url_explicit': bool(_env(f'{prefix}_MODEL_BASE_URL')),
-        'model_name': _env(f'{prefix}_MODEL_NAME'),
-        'extra_body': extra_body or text_environment['extra_body'],
-        'extra_body_error': extra_body_error or text_environment['extra_body_error'],
+        'source': 'environment',
+        'profile': None,
+        'api_key': api_key,
+        'base_url': base_url or text_environment['base_url'],
+        'base_url_explicit': bool(base_url),
+        'model_name': model_name,
+        'extra_body': (
+            extra_body if extra_body is not None else text_environment['extra_body']),
         'gpt5_force': _env_bool(f'{prefix}_GPT5_FORCE_MODE'),
         'gpt5_reasoning_effort': (
             _env(f'{prefix}_GPT5_REASONING_EFFORT')
@@ -157,167 +522,71 @@ def _role_environment(role, text_environment):
         'gpt5_verbosity': (
             _env(f'{prefix}_GPT5_VERBOSITY')
             or text_environment['gpt5_verbosity']),
+        'uses_text_model': False,
+        'configured': True,
     }
 
 
-# ---------------------------------------------------------------- saved values
-
-def _stored(role):
-    """The saved configuration of a role, or an empty mapping."""
-    try:
-        from src.models import SystemSetting
-        row = SystemSetting.query.filter_by(key=SETTING_KEYS[role]).first()
-        raw = row.value if row is not None else None
-    except Exception:  # noqa: BLE001 - a missing app context or database means "use the environment"
-        return {}
-    if not raw:
-        return {}
-    try:
-        value = json.loads(raw)
-    except (TypeError, ValueError):
-        logger.warning(
-            'Ignoring %s: the saved LLM configuration is not valid JSON',
-            SETTING_KEYS[role])
-        return {}
-    return value if isinstance(value, dict) else {}
-
-
-def _saved_text(stored, name):
-    value = stored.get(name)
-    if not isinstance(value, str):
-        return None
-    value = value.strip()
-    return value or None
-
-
-def _saved_extra_body(stored):
-    if 'extra_body' not in stored:
-        return None, None
-    try:
-        return parse_extra_body(stored['extra_body']), None
-    except LLMConfigError as e:
-        logger.warning('Ignoring saved Extra Body for an LLM role: %s', e)
-        return {}, str(e)
-
-
-def _saved_bool(stored, name):
-    value = stored.get(name)
-    return value if isinstance(value, bool) else None
-
-
-def _overlay_text(environment, stored):
-    config = dict(environment)
-    config.update(
-        api_key=_saved_text(stored, 'api_key') or environment['api_key'],
-        base_url=_saved_text(stored, 'base_url') or environment['base_url'],
-        model_name=_saved_text(stored, 'model_name') or environment['model_name'],
-        gpt5_reasoning_effort=(
-            _saved_text(stored, 'gpt5_reasoning_effort')
-            or environment['gpt5_reasoning_effort']),
-        gpt5_verbosity=(
-            _saved_text(stored, 'gpt5_verbosity')
-            or environment['gpt5_verbosity']),
-    )
-    config['base_url_explicit'] = (
-        bool(_saved_text(stored, 'base_url')) or environment['base_url_explicit'])
-    saved_force = _saved_bool(stored, 'gpt5_force')
-    if saved_force is not None:
-        config['gpt5_force'] = saved_force
-    extra_body, extra_body_error = _saved_extra_body(stored)
-    if extra_body is not None:
-        config['extra_body'] = extra_body
-        config['extra_body_error'] = extra_body_error
-    config['source'] = 'database' if stored else 'environment'
-    return config
-
-
-def _overlay_role(role, role_environment, stored):
-    """Merge saved role values, then decide whether the role is dedicated."""
-    own_base = _saved_text(stored, 'base_url') or role_environment['base_url']
-    own_key = _saved_text(stored, 'api_key') or role_environment['api_key']
-    model_name = _saved_text(stored, 'model_name') or role_environment['model_name']
-
-    extra_body, extra_body_error = _saved_extra_body(stored)
-    if extra_body is None:
-        extra_body = role_environment['extra_body']
-        extra_body_error = role_environment['extra_body_error']
-
-    gpt5_force = _saved_bool(stored, 'gpt5_force')
-    if gpt5_force is None:
-        gpt5_force = role_environment['gpt5_force']
-
+def _profile_config(role, profile):
     return {
-        'api_key': own_key,
-        'base_url': own_base,
-        'base_url_explicit': bool(own_base),
-        'model_name': model_name,
-        'extra_body': extra_body,
-        'extra_body_error': extra_body_error,
-        'gpt5_force': gpt5_force,
-        'gpt5_reasoning_effort': (
-            _saved_text(stored, 'gpt5_reasoning_effort')
-            or role_environment['gpt5_reasoning_effort']),
-        'gpt5_verbosity': (
-            _saved_text(stored, 'gpt5_verbosity')
-            or role_environment['gpt5_verbosity']),
-        'dedicated': bool(model_name) and bool(own_base or own_key),
-        'source': 'database' if stored else 'environment',
+        'source': 'model',
+        'profile': {'id': profile['id'], 'label': profile['label']},
+        'api_key': profile['api_key'] or None,
+        'base_url': profile['base_url'],
+        'base_url_explicit': bool(profile['base_url']),
+        'model_name': profile['model_name'],
+        'extra_body': dict(profile['extra_body']),
+        'gpt5_force': profile['gpt5_force'],
+        'gpt5_reasoning_effort': profile['gpt5_reasoning_effort'],
+        'gpt5_verbosity': profile['gpt5_verbosity'],
+        'uses_text_model': False,
+        'configured': bool(profile['model_name'] and profile['base_url']),
     }
 
 
-def _text_configured(config):
-    return bool(config['api_key']) or bool(config['base_url_explicit'])
+def _assigned_profile(document, role):
+    model_id = document['assignments'].get(role)
+    if not model_id:
+        return None
+    for model in document['models']:
+        if model['id'] == model_id:
+            return model
+    logger.warning('Role %s is assigned to %s, which no longer exists', role, model_id)
+    return None
 
 
-def _resolve_text(environment):
-    stored = _stored('text')
-    config = _overlay_text(environment, stored)
-    config['role'] = 'text'
-    config['configured'] = _text_configured(config)
-    config['uses_text_model'] = False
-    return config
+def _text_config(document):
+    profile = _assigned_profile(document, 'text')
+    if profile is not None:
+        return _profile_config('text', profile)
+    return _environment_text()
 
 
 def _resolve(role):
     role = normalize_role(role)
-    text_environment = _text_environment()
-    if role == 'text':
-        return _resolve_text(text_environment)
+    document = load_document()
 
-    text_config = _resolve_text(text_environment)
-    stored = _stored(role)
-    role_config = _overlay_role(role, _role_environment(role, text_environment), stored)
+    profile = _assigned_profile(document, role)
+    if profile is not None:
+        config = _profile_config(role, profile)
+    elif role == 'text':
+        config = _environment_text()
+    else:
+        text_environment = _environment_text()
+        config = _environment_role(role, text_environment)
+        if config is None:
+            config = dict(_text_config(document))
+            config['uses_text_model'] = True
 
-    if not role_config['dedicated']:
-        config = dict(text_config)
-        config['role'] = role
-        config['source'] = 'database' if stored else 'environment'
-        config['uses_text_model'] = True
-        return config
-
-    base_url = role_config['base_url'] or text_config['base_url']
-    api_key = role_config['api_key']
-    if not api_key and base_url == text_config['base_url']:
-        # The text key goes only to the text model's server.
-        api_key = text_config['api_key']
-    config = dict(role_config)
-    config.update(
-        role=role,
-        api_key=api_key,
-        base_url=base_url,
-        configured=True,
-        uses_text_model=False,
-    )
+    config['role'] = role
     return config
 
-
-# ---------------------------------------------------------------- public API
 
 def resolve_config(role, reveal_key=False):
     """The effective configuration of a role.
 
-    The API key is masked unless ``reveal_key`` is true; only the request
-    path that builds a client needs the real value.
+    The API key is masked unless ``reveal_key`` is true; only the request path
+    that builds a client needs the real value.
     """
     config = _resolve(role)
     if not reveal_key:
@@ -332,113 +601,6 @@ def public_config(role):
 
 def is_configured(role):
     return bool(resolve_config(role)['configured'])
-
-
-def merge_api_key(incoming, existing):
-    """The key to store: an empty or masked incoming value keeps the old one."""
-    if incoming is None:
-        return existing
-    incoming = incoming.strip() if isinstance(incoming, str) else incoming
-    if not incoming or incoming == MASKED_API_KEY:
-        return existing
-    return incoming
-
-
-def _normalize_saved_values(role, values):
-    unknown = sorted(set(values) - CONFIG_FIELDS)
-    if unknown:
-        raise LLMConfigError(
-            f"Unknown LLM configuration field(s) for {role}: {', '.join(unknown)}")
-
-    normalized = {}
-    for name, raw in values.items():
-        if name == 'extra_body':
-            normalized['extra_body'] = parse_extra_body(raw)
-        elif name == 'gpt5_force':
-            if isinstance(raw, bool):
-                normalized[name] = raw
-            elif isinstance(raw, str) and raw.strip().lower() in ('true', 'false'):
-                normalized[name] = raw.strip().lower() == 'true'
-            else:
-                raise LLMConfigError('gpt5_force must be true or false')
-        elif raw is None:
-            continue
-        elif isinstance(raw, str):
-            if raw.strip():
-                normalized[name] = raw.strip()
-        else:
-            normalized[name] = raw
-    return normalized
-
-
-@dataclass(frozen=True)
-class ChangeResult:
-    """A saved or removed role configuration and the fields that changed."""
-    config: dict
-    changed_fields: tuple[str, ...]
-
-
-def _changed_fields(existing, normalized, kept_key):
-    changed = set()
-    for name in set(existing) | set(normalized):
-        if name == 'api_key':
-            continue
-        if existing.get(name) != normalized.get(name):
-            changed.add(name)
-    if kept_key and kept_key != existing.get('api_key'):
-        changed.add('api_key')
-    return tuple(sorted(changed))
-
-
-def save_config(role, values):
-    """Validate and save a role configuration.
-
-    A rejected value raises LLMConfigError and changes nothing. An empty or
-    masked API key keeps the stored one. A configuration with no fields left
-    is removed, so the environment applies again.
-    """
-    role = normalize_role(role)
-    if not isinstance(values, Mapping):
-        raise LLMConfigError('The LLM configuration must be a JSON object')
-
-    normalized = _normalize_saved_values(role, values)
-    existing = _stored(role)
-    kept_key = merge_api_key(normalized.get('api_key'), existing.get('api_key'))
-    normalized.pop('api_key', None)
-    if kept_key:
-        normalized['api_key'] = kept_key
-    changed = _changed_fields(existing, normalized, kept_key)
-
-    if not normalized:
-        clear_config(role)
-        return ChangeResult(public_config(role), changed or ('all',))
-
-    from src.models import SystemSetting
-
-    SystemSetting.set_setting(
-        SETTING_KEYS[role],
-        json.dumps(normalized, sort_keys=True),
-        description=SETTING_DESCRIPTION.format(role=role),
-        setting_type='string',
-    )
-    clear_client_cache(role)
-    return ChangeResult(public_config(role), changed)
-
-
-def clear_config(role):
-    """Remove the saved configuration, so the environment applies again.
-
-    Returns the names of the removed fields.
-    """
-    role = normalize_role(role)
-    from src.database import db
-    from src.models import SystemSetting
-
-    removed = tuple(sorted(_stored(role))) or ('all',)
-    SystemSetting.query.filter_by(key=SETTING_KEYS[role]).delete()
-    db.session.commit()
-    clear_client_cache(role)
-    return removed
 
 
 # ---------------------------------------------------------------- runtime settings
@@ -469,8 +631,8 @@ def _runtime_raw(setting_key, env_name, default):
             row = SystemSetting.query.filter_by(key=setting_key).first()
             if row is not None and row.value not in (None, ''):
                 return row.value
-    except Exception as e:  # noqa: BLE001 - fall back to the environment on any read failure
-        logger.debug('Could not read the runtime setting %s: %s', setting_key, e)
+    except Exception as error:  # noqa: BLE001 - fall back to the environment on any read failure
+        logger.debug('Could not read the runtime setting %s: %s', setting_key, error)
     return env_fallback(env_name, default)
 
 
@@ -498,10 +660,10 @@ def _as_bool(value, fallback):
 
 def runtime_settings():
     """Timeouts, retries and streaming behavior in effect right now."""
-    values = {}
-    for name, (setting_key, env_name, default) in RUNTIME_SETTINGS.items():
-        values[name] = _runtime_raw(setting_key, env_name, default)
-
+    values = {
+        name: _runtime_raw(setting_key, env_name, default)
+        for name, (setting_key, env_name, default) in RUNTIME_SETTINGS.items()
+    }
     return RuntimeSettings(
         request_timeout=_as_int(values['request_timeout'], 600),
         max_retries=_as_int(values['max_retries'], 2),

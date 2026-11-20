@@ -1,10 +1,11 @@
-"""Effective LLM configuration per role.
+"""Configured LLM models and the effective configuration of each role.
 
-The text, chat and translation roles resolve their configuration from a saved
-System Setting first, then from the environment. Empty saved fields fall back
-to the environment default. Chat and translation fall back to the text model
-when no dedicated model is configured. The API key is masked in every public
-representation and an empty or masked value keeps the stored secret.
+One saved document holds the model profiles and the role assignments. A role
+assigned to a profile uses it; a role without an assignment uses its
+environment configuration, and chat/translation inherit the text role when
+they have no dedicated environment configuration of their own. The API key is
+masked in every public representation and an empty or masked key keeps the
+stored secret.
 """
 
 import json
@@ -22,48 +23,40 @@ from src.services import llm_config
 
 app.config["WTF_CSRF_ENABLED"] = False
 
+ENV_NAMES = (
+    'TEXT_MODEL_API_KEY', 'TEXT_MODEL_BASE_URL', 'TEXT_MODEL_NAME', 'TEXT_MODEL_EXTRA_BODY',
+    'CHAT_MODEL_API_KEY', 'CHAT_MODEL_BASE_URL', 'CHAT_MODEL_NAME', 'CHAT_MODEL_EXTRA_BODY',
+    'TRANSLATION_MODEL_API_KEY', 'TRANSLATION_MODEL_BASE_URL', 'TRANSLATION_MODEL_NAME',
+    'TRANSLATION_MODEL_EXTRA_BODY',
+    'GPT5_FORCE_MODE', 'GPT5_REASONING_EFFORT', 'GPT5_VERBOSITY',
+    'CHAT_GPT5_FORCE_MODE', 'CHAT_GPT5_REASONING_EFFORT', 'CHAT_GPT5_VERBOSITY',
+    'TRANSLATION_GPT5_FORCE_MODE', 'TRANSLATION_GPT5_REASONING_EFFORT',
+    'TRANSLATION_GPT5_VERBOSITY',
+    'LLM_REQUEST_TIMEOUT', 'LLM_MAX_RETRIES', 'LLM_CONNECT_TIMEOUT', 'LLM_WRITE_TIMEOUT',
+    'ENABLE_STREAM_OPTIONS',
+)
+
 
 @pytest.fixture
 def ctx():
     with app.app_context():
-        _clear_saved_configs()
+        _clear_document()
         llm_config.clear_client_cache()
         yield
         db.session.rollback()
-        _clear_saved_configs()
+        _clear_document()
         llm_config.clear_client_cache()
 
 
-def _clear_saved_configs():
-    for key in llm_config.SETTING_KEYS.values():
-        SystemSetting.query.filter_by(key=key).delete()
-    db.session.commit()
-
-
-def _save(role, payload):
-    SystemSetting.set_setting(
-        llm_config.SETTING_KEYS[role],
-        json.dumps(payload),
-        setting_type='string',
-    )
+def _clear_document():
+    SystemSetting.query.filter_by(key=llm_config.SETTING_KEY).delete()
     db.session.commit()
 
 
 @pytest.fixture
 def clean_env(monkeypatch):
-    for name in (
-        'TEXT_MODEL_API_KEY', 'TEXT_MODEL_BASE_URL', 'TEXT_MODEL_NAME', 'TEXT_MODEL_EXTRA_BODY',
-        'CHAT_MODEL_API_KEY', 'CHAT_MODEL_BASE_URL', 'CHAT_MODEL_NAME', 'CHAT_MODEL_EXTRA_BODY',
-        'TRANSLATION_MODEL_API_KEY', 'TRANSLATION_MODEL_BASE_URL', 'TRANSLATION_MODEL_NAME',
-        'TRANSLATION_MODEL_EXTRA_BODY',
-        'GPT5_FORCE_MODE', 'GPT5_REASONING_EFFORT', 'GPT5_VERBOSITY',
-        'CHAT_GPT5_FORCE_MODE', 'CHAT_GPT5_REASONING_EFFORT', 'CHAT_GPT5_VERBOSITY',
-        'TRANSLATION_GPT5_FORCE_MODE',
-        'LLM_REQUEST_TIMEOUT', 'LLM_MAX_RETRIES', 'LLM_CONNECT_TIMEOUT', 'LLM_WRITE_TIMEOUT',
-        'ENABLE_STREAM_OPTIONS',
-    ):
+    for name in ENV_NAMES:
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setenv('TEXT_MODEL_BASE_URL', 'http://llm.lan/v1')
     return monkeypatch
 
 
@@ -73,97 +66,443 @@ def _text_env(monkeypatch, *, key='text-key', base='http://llm.lan/v1', model='t
     monkeypatch.setenv('TEXT_MODEL_NAME', model or '')
 
 
-# ---------------------------------------------------------------- precedence
+def _write_document(document):
+    SystemSetting.set_setting(llm_config.SETTING_KEY, json.dumps(document))
+    db.session.commit()
+    llm_config.clear_client_cache()
 
-def test_environment_configuration_applies_without_a_saved_value(ctx, clean_env):
+
+def _profile(model_id='m_00000001', **overrides):
+    profile = {
+        'id': model_id,
+        'label': f'Model {model_id}',
+        'base_url': 'http://profile.lan/v1',
+        'model_name': f'model-{model_id}',
+        'api_key': 'profile-key',
+        'extra_body': {},
+        'gpt5_force': False,
+        'gpt5_reasoning_effort': 'medium',
+        'gpt5_verbosity': 'medium',
+    }
+    profile.update(overrides)
+    return profile
+
+
+def _document(models=(), assignments=None):
+    return {
+        'version': 1,
+        'models': list(models),
+        'assignments': {role: None for role in llm_config.ROLES} | (assignments or {}),
+    }
+
+
+# ---------------------------------------------------------------- environment
+
+
+def test_with_no_saved_document_each_role_uses_the_environment(ctx, clean_env):
     _text_env(clean_env)
+
     for role in llm_config.ROLES:
         config = llm_config.resolve_config(role, reveal_key=True)
         assert config['source'] == 'environment'
-    text = llm_config.resolve_config('text', reveal_key=True)
-    assert (text['base_url'], text['model_name'], text['api_key']) == (
-        'http://llm.lan/v1', 'text-model', 'text-key')
+        assert config['profile'] is None
+        assert (config['base_url'], config['model_name'], config['api_key']) == (
+            'http://llm.lan/v1', 'text-model', 'text-key')
+
+    assert llm_config.resolve_config('chat')['uses_text_model'] is True
+    assert llm_config.resolve_config('translation')['uses_text_model'] is True
 
 
-def test_a_saved_configuration_takes_precedence(ctx, clean_env):
+def test_a_dedicated_chat_environment_configuration_is_used(ctx, clean_env):
     _text_env(clean_env)
-    _save('text', {'base_url': 'http://db.lan/v1', 'model_name': 'db-model', 'api_key': 'db-key'})
+    clean_env.setenv('CHAT_MODEL_NAME', 'chat-model')
+    clean_env.setenv('CHAT_MODEL_BASE_URL', 'http://chat.lan/v1')
+
+    chat = llm_config.resolve_config('chat', reveal_key=True)
+    assert (chat['model_name'], chat['base_url']) == ('chat-model', 'http://chat.lan/v1')
+    assert chat['uses_text_model'] is False
+    assert chat['source'] == 'environment'
+
+
+def test_a_dedicated_translation_environment_configuration_is_used(ctx, clean_env):
+    _text_env(clean_env)
+    clean_env.setenv('TRANSLATION_MODEL_NAME', 'translation-model')
+    clean_env.setenv('TRANSLATION_MODEL_API_KEY', 'translation-key')
+
+    translation = llm_config.resolve_config('translation', reveal_key=True)
+    assert translation['model_name'] == 'translation-model'
+    assert translation['api_key'] == 'translation-key'
+    assert translation['uses_text_model'] is False
+
+
+def test_per_role_gpt5_settings_are_kept(ctx, clean_env):
+    _text_env(clean_env)
+    clean_env.setenv('GPT5_FORCE_MODE', 'true')
+    clean_env.setenv('CHAT_MODEL_NAME', 'chat-model')
+    clean_env.setenv('CHAT_MODEL_API_KEY', 'chat-key')
+    clean_env.setenv('CHAT_GPT5_FORCE_MODE', 'false')
+    clean_env.setenv('TRANSLATION_GPT5_FORCE_MODE', 'true')
+    clean_env.setenv('TRANSLATION_MODEL_NAME', 'translation-model')
+    clean_env.setenv('TRANSLATION_MODEL_API_KEY', 'translation-key')
+
+    assert llm_config.resolve_config('text')['gpt5_force'] is True
+    assert llm_config.resolve_config('chat')['gpt5_force'] is False
+    assert llm_config.resolve_config('translation')['gpt5_force'] is True
+
+
+# ---------------------------------------------------------------- assigned profiles
+
+
+def test_an_assigned_profile_is_used(ctx, clean_env):
+    _text_env(clean_env)
+    profile = _profile(label='Saved model', base_url='http://db.lan/v1',
+                       model_name='db-model', api_key='db-key')
+    _write_document(_document([profile], {'text': profile['id']}))
 
     config = llm_config.resolve_config('text', reveal_key=True)
-    assert config['source'] == 'database'
+    assert config['source'] == 'model'
+    assert config['profile'] == {'id': profile['id'], 'label': 'Saved model'}
     assert (config['base_url'], config['model_name'], config['api_key']) == (
         'http://db.lan/v1', 'db-model', 'db-key')
+    assert config['configured'] is True
+    assert config['uses_text_model'] is False
 
 
-def test_empty_saved_fields_fall_back_to_the_environment(ctx, clean_env):
-    _text_env(clean_env, model='env-model', base='http://env.lan/v1')
-    _save('text', {'model_name': 'db-model', 'base_url': '   ', 'api_key': ''})
-
-    config = llm_config.resolve_config('text', reveal_key=True)
-    assert config['model_name'] == 'db-model'
-    assert config['base_url'] == 'http://env.lan/v1'
-    assert config['api_key'] == 'text-key'
-
-
-def test_a_saved_change_applies_without_a_restart(ctx, clean_env):
+def test_the_same_profile_serves_several_roles(ctx, clean_env):
     _text_env(clean_env)
-    assert llm_config.resolve_config('text', reveal_key=True)['model_name'] == 'text-model'
-    _save('text', {'model_name': 'first-model'})
-    assert llm_config.resolve_config('text', reveal_key=True)['model_name'] == 'first-model'
-    _save('text', {'model_name': 'second-model'})
-    assert llm_config.resolve_config('text', reveal_key=True)['model_name'] == 'second-model'
+    profile = _profile()
+    _write_document(_document([profile], {'text': profile['id'], 'chat': profile['id']}))
+
+    for role in ('text', 'chat'):
+        config = llm_config.resolve_config(role)
+        assert config['source'] == 'model'
+        assert config['profile']['id'] == profile['id']
+        assert config['uses_text_model'] is False
+
+
+def test_an_unassigned_role_keeps_the_environment_when_another_is_assigned(ctx, clean_env):
+    _text_env(clean_env)
+    profile = _profile()
+    _write_document(_document([profile], {'text': profile['id']}))
+
+    chat = llm_config.resolve_config('chat')
+    assert chat['source'] == 'model'
+    assert chat['uses_text_model'] is True
+    assert chat['profile']['id'] == profile['id']
+
+    translation = llm_config.resolve_config('translation')
+    assert translation['uses_text_model'] is True
+
+
+def test_chat_uses_its_environment_even_when_text_is_assigned(ctx, clean_env):
+    _text_env(clean_env)
+    clean_env.setenv('CHAT_MODEL_NAME', 'chat-model')
+    clean_env.setenv('CHAT_MODEL_API_KEY', 'chat-key')
+    profile = _profile()
+    _write_document(_document([profile], {'text': profile['id']}))
+
+    chat = llm_config.resolve_config('chat', reveal_key=True)
+    assert chat['source'] == 'environment'
+    assert chat['uses_text_model'] is False
+    assert chat['model_name'] == 'chat-model'
+
+
+def test_ambrose_and_inquire_reuse_the_chat_role(ctx, clean_env):
+    _text_env(clean_env)
+    profile = _profile()
+    _write_document(_document([profile], {'chat': profile['id']}))
+
+    for alias in ('ambrose', 'inquire'):
+        config = llm_config.resolve_config(alias)
+        assert config['role'] == 'chat'
+        assert config['profile']['id'] == profile['id']
 
 
 # ---------------------------------------------------------------- masking
 
-def test_public_configuration_masks_the_api_key(ctx, clean_env):
-    _text_env(clean_env, key='secret-key')
-    public = llm_config.public_config('text')
-    assert public['api_key'] == llm_config.MASKED_API_KEY
-    assert public['api_key'] != 'secret-key'
+
+def test_public_models_mask_the_api_key(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'OpenRouter',
+        'base_url': 'https://openrouter.ai/api/v1',
+        'model_name': 'openai/gpt-5',
+        'api_key': 'secret-key',
+    })
+    assert created.model['api_key'] == llm_config.MASKED_API_KEY
+    assert 'secret-key' not in json.dumps(created.model)
+    assert llm_config.list_models()[0]['api_key'] == llm_config.MASKED_API_KEY
+
+
+def test_resolve_masks_the_key_unless_it_is_revealed(ctx, clean_env):
+    _text_env(clean_env)
+    profile = _profile(api_key='secret-key')
+    _write_document(_document([profile], {'text': profile['id']}))
+
     assert llm_config.resolve_config('text')['api_key'] == llm_config.MASKED_API_KEY
+    assert llm_config.resolve_config('text', reveal_key=True)['api_key'] == 'secret-key'
 
 
-@pytest.mark.parametrize('incoming', ['', '   ', llm_config.MASKED_API_KEY])
+def test_a_profile_without_a_key_reports_an_empty_public_key(ctx, clean_env):
+    _text_env(clean_env)
+    profile = _profile(api_key='')
+    _write_document(_document([profile], {'text': profile['id']}))
+
+    assert llm_config.resolve_config('text')['api_key'] == ''
+    assert llm_config.is_configured('text') is True
+
+
+@pytest.mark.parametrize('incoming', ['', '   ', llm_config.MASKED_API_KEY, None])
 def test_an_empty_or_masked_key_keeps_the_stored_secret(ctx, clean_env, incoming):
     _text_env(clean_env)
-    _save('text', {'model_name': 'db-model', 'api_key': 'stored-secret'})
+    created = llm_config.create_model({
+        'label': 'Saved', 'base_url': 'http://profile.lan/v1',
+        'model_name': 'saved-model', 'api_key': 'stored-secret',
+    })
+    values = {} if incoming is None else {'api_key': incoming}
+    llm_config.update_model(created.model['id'], values)
 
-    llm_config.save_config('text', {'model_name': 'db-model', 'api_key': incoming})
-
-    assert llm_config.resolve_config('text', reveal_key=True)['api_key'] == 'stored-secret'
-    assert llm_config.public_config('text')['api_key'] == llm_config.MASKED_API_KEY
+    assert llm_config.list_models()[0]['api_key'] == llm_config.MASKED_API_KEY
+    assert llm_config._find_model(llm_config.load_document(), created.model['id'])[1]['api_key'] == 'stored-secret'
 
 
 def test_a_new_key_replaces_the_stored_secret(ctx, clean_env):
     _text_env(clean_env)
-    _save('text', {'api_key': 'old-secret'})
-    llm_config.save_config('text', {'api_key': 'new-secret'})
-    assert llm_config.resolve_config('text', reveal_key=True)['api_key'] == 'new-secret'
+    created = llm_config.create_model({
+        'label': 'Saved', 'base_url': 'http://profile.lan/v1',
+        'model_name': 'saved-model', 'api_key': 'old-secret',
+    })
+    llm_config.update_model(created.model['id'], {'api_key': 'new-secret'})
+
+    assert llm_config._find_model(llm_config.load_document(), created.model['id'])[1]['api_key'] == 'new-secret'
+
+
+def test_clear_api_key_removes_the_secret(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'Saved', 'base_url': 'http://profile.lan/v1',
+        'model_name': 'saved-model', 'api_key': 'stored-secret',
+    })
+    llm_config.update_model(created.model['id'], {'clear_api_key': True})
+
+    assert llm_config.list_models()[0]['api_key'] == ''
+    assert llm_config.resolve_config('text')['configured'] is True
 
 
 # ---------------------------------------------------------------- validation
 
-@pytest.mark.parametrize('raw', ['{not json}', '["low"]', '"low"', 42])
+
+def test_a_profile_requires_a_label_a_model_name_and_a_base_url(ctx, clean_env):
+    _text_env(clean_env)
+    with pytest.raises(llm_config.LLMConfigError):
+        llm_config.create_model({'base_url': 'http://x.lan/v1', 'model_name': 'm'})
+    with pytest.raises(llm_config.LLMConfigError):
+        llm_config.create_model({'label': 'x', 'base_url': 'http://x.lan/v1'})
+    with pytest.raises(llm_config.LLMConfigError):
+        llm_config.create_model({'label': 'x', 'model_name': 'm'})
+    assert llm_config.load_document()['models'] == []
+
+
+@pytest.mark.parametrize('base_url', ['file:///etc/passwd', 'ftp://x.lan/v1', 'x.lan/v1', ''])
+def test_the_base_url_must_be_http_or_https(ctx, clean_env, base_url):
+    _text_env(clean_env)
+    with pytest.raises(llm_config.LLMConfigError):
+        llm_config.create_model({'label': 'x', 'model_name': 'm', 'base_url': base_url})
+
+
+def test_labels_are_unique_without_case(ctx, clean_env):
+    _text_env(clean_env)
+    llm_config.create_model({'label': 'OpenRouter', 'base_url': 'http://a.lan/v1', 'model_name': 'a'})
+    with pytest.raises(llm_config.LLMModelLabelTaken):
+        llm_config.create_model({'label': 'openrouter', 'base_url': 'http://b.lan/v1', 'model_name': 'b'})
+    assert len(llm_config.load_document()['models']) == 1
+
+
+def test_a_label_can_be_kept_on_update(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'OpenRouter', 'base_url': 'http://a.lan/v1', 'model_name': 'a'})
+    updated = llm_config.update_model(created.model['id'], {'label': 'OpenRouter', 'model_name': 'b'})
+    assert updated.model['label'] == 'OpenRouter'
+    assert updated.model['model_name'] == 'b'
+
+
+@pytest.mark.parametrize('raw', ['{not json}', '["low"]', '"low"', 42, True])
 def test_extra_body_must_be_a_json_object(ctx, clean_env, raw):
-    with pytest.raises(llm_config.LLMConfigError) as error:
-        llm_config.save_config('text', {'extra_body': raw})
-    assert 'JSON object' in str(error.value) or 'valid JSON' in str(error.value)
-    assert SystemSetting.query.filter_by(key=llm_config.SETTING_KEYS['text']).first() is None
+    _text_env(clean_env)
+    with pytest.raises(llm_config.LLMConfigError):
+        llm_config.create_model({
+            'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm', 'extra_body': raw})
+    assert llm_config.load_document()['models'] == []
 
 
 def test_extra_body_is_saved_as_an_object_and_used(ctx, clean_env):
     _text_env(clean_env)
-    llm_config.save_config('text', {'extra_body': '{"reasoning_effort": "low"}'})
+    created = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm',
+        'extra_body': '{"reasoning_effort": "low"}',
+    })
+    assert created.model['extra_body'] == {'reasoning_effort': 'low'}
+    llm_config.assign_model('text', created.model['id'])
     assert llm_config.resolve_config('text')['extra_body'] == {'reasoning_effort': 'low'}
 
 
-def test_unknown_fields_are_rejected(ctx, clean_env):
+def test_an_unknown_field_is_rejected(ctx, clean_env):
+    _text_env(clean_env)
     with pytest.raises(llm_config.LLMConfigError):
-        llm_config.save_config('text', {'modle_name': 'typo'})
+        llm_config.create_model({
+            'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm', 'modle_name': 'typo'})
+    with pytest.raises(llm_config.LLMConfigError):
+        llm_config.create_model({'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm',
+                                 'id': 'm_mine'})
+
+
+def test_gpt5_force_accepts_booleans_and_true_false_strings(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm', 'gpt5_force': 'true'})
+    assert created.model['gpt5_force'] is True
+    updated = llm_config.update_model(created.model['id'], {'gpt5_force': 'false'})
+    assert updated.model['gpt5_force'] is False
+    with pytest.raises(llm_config.LLMConfigError):
+        llm_config.update_model(created.model['id'], {'gpt5_force': 'sometimes'})
+
+
+def test_ids_are_generated_and_do_not_change(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm'})
+    model_id = created.model['id']
+    assert model_id.startswith('m_')
+    assert len(model_id) == 10
+    updated = llm_config.update_model(model_id, {'model_name': 'other'})
+    assert updated.model['id'] == model_id
+
+
+# ---------------------------------------------------------------- assignments and deletion
+
+
+def test_assigning_and_reverting_a_profile(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm'})
+    change = llm_config.assign_model('text', created.model['id'])
+    assert (change.role, change.new) == ('text', created.model['id'])
+    assert llm_config.resolve_config('text')['source'] == 'model'
+
+    reverted = llm_config.clear_assignment('text')
+    assert reverted.old == created.model['id']
+    assert llm_config.resolve_config('text')['source'] == 'environment'
+
+
+def test_assigning_an_unknown_model_is_rejected(ctx, clean_env):
+    _text_env(clean_env)
+    with pytest.raises(llm_config.LLMModelNotFound):
+        llm_config.assign_model('text', 'm_missing')
+    assert llm_config.load_document()['assignments']['text'] is None
+
+
+def test_a_profile_in_use_cannot_be_deleted(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm'})
+    llm_config.assign_model('text', created.model['id'])
+    llm_config.assign_model('chat', created.model['id'])
+
+    with pytest.raises(llm_config.LLMModelInUse) as error:
+        llm_config.delete_model(created.model['id'])
+    assert error.value.roles == ('chat', 'text')
+    assert len(llm_config.load_document()['models']) == 1
+
+
+def test_an_unassigned_profile_can_be_deleted(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm'})
+    removed = llm_config.delete_model(created.model['id'])
+    assert removed['id'] == created.model['id']
+    assert llm_config.load_document()['models'] == []
+    with pytest.raises(llm_config.LLMModelNotFound):
+        llm_config.delete_model(created.model['id'])
+
+
+def test_reassigning_frees_the_old_profile_for_deletion(ctx, clean_env):
+    _text_env(clean_env)
+    first = llm_config.create_model({'label': 'a', 'base_url': 'http://a.lan/v1', 'model_name': 'a'})
+    second = llm_config.create_model({'label': 'b', 'base_url': 'http://b.lan/v1', 'model_name': 'b'})
+    llm_config.assign_model('text', first.model['id'])
+    llm_config.assign_model('text', second.model['id'])
+    llm_config.delete_model(first.model['id'])
+    assert [model['id'] for model in llm_config.list_models()] == [second.model['id']]
+
+
+# ---------------------------------------------------------------- stored state
+
+
+def test_a_dangling_assignment_is_ignored(ctx, clean_env):
+    _text_env(clean_env)
+    _write_document(_document([], {'text': 'm_missing'}))
+
+    config = llm_config.resolve_config('text', reveal_key=True)
+    assert config['source'] == 'environment'
+    assert config['api_key'] == 'text-key'
+
+
+def test_a_malformed_document_falls_back_to_the_environment(ctx, clean_env):
+    _text_env(clean_env)
+    SystemSetting.set_setting(llm_config.SETTING_KEY, '{not json')
+    db.session.commit()
+
+    config = llm_config.resolve_config('text', reveal_key=True)
+    assert config['source'] == 'environment'
+    assert config['model_name'] == 'text-model'
+
+
+def test_an_invalid_stored_extra_body_is_ignored(ctx, clean_env):
+    _text_env(clean_env)
+    profile = _profile(extra_body=['not', 'an', 'object'])
+    _write_document(_document([profile], {'text': profile['id']}))
+
+    assert llm_config.resolve_config('text')['extra_body'] == {}
+
+
+def test_a_profile_change_applies_without_a_restart(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'first'})
+    llm_config.assign_model('text', created.model['id'])
+    assert llm_config.resolve_config('text')['model_name'] == 'first'
+
+    llm_config.update_model(created.model['id'], {'model_name': 'second'})
+    assert llm_config.resolve_config('text')['model_name'] == 'second'
+
+
+def test_the_document_holds_exactly_one_configuration_key(ctx, clean_env):
+    assert llm_config.SETTING_KEY == 'llm_config_json'
+    assert not hasattr(llm_config, 'SETTING_KEYS')
+
+
+# ---------------------------------------------------------------- changes
+
+
+def test_create_reports_the_fields_it_stored(ctx, clean_env):
+    _text_env(clean_env)
+    change = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm', 'api_key': 'k'})
+    assert set(change.changed_fields) == {'label', 'base_url', 'model_name', 'api_key'}
+
+
+def test_update_reports_only_the_changed_fields(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm'})
+    change = llm_config.update_model(created.model['id'], {
+        'model_name': 'other', 'base_url': 'http://a.lan/v1'})
+    assert change.changed_fields == ('model_name',)
 
 
 # ---------------------------------------------------------------- clients
+
 
 class _FakeOpenAI:
     instances: ClassVar[list] = []
@@ -189,8 +528,6 @@ def test_the_client_is_reused_while_its_signature_is_unchanged(ctx, clean_env, f
 
 
 @pytest.mark.parametrize('name,value', [
-    ('TEXT_MODEL_BASE_URL', 'http://other.lan/v1'),
-    ('TEXT_MODEL_API_KEY', 'another-key'),
     ('LLM_REQUEST_TIMEOUT', '120'),
     ('LLM_MAX_RETRIES', '5'),
     ('LLM_CONNECT_TIMEOUT', '5'),
@@ -206,6 +543,18 @@ def test_a_changed_connection_setting_rebuilds_the_client(ctx, clean_env, fake_o
     assert len(fake_openai.instances) == 2
 
 
+def test_a_profile_change_rebuilds_the_client(ctx, clean_env, fake_openai):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm', 'api_key': 'k'})
+    llm_config.assign_model('text', created.model['id'])
+    first = llm_config.get_client('text')
+
+    llm_config.update_model(created.model['id'], {'base_url': 'http://b.lan/v1'})
+    second = llm_config.get_client('text')
+    assert first is not second
+
+
 def test_an_unconfigured_role_has_no_client(ctx, clean_env, fake_openai):
     clean_env.setenv('TEXT_MODEL_API_KEY', '')
     clean_env.setenv('TEXT_MODEL_BASE_URL', '')
@@ -213,11 +562,9 @@ def test_an_unconfigured_role_has_no_client(ctx, clean_env, fake_openai):
     assert fake_openai.instances == []
 
 
-# ---------------------------------------------------------------- configured state
-
 def test_text_is_configured_by_a_key_or_an_explicit_base_url(ctx, clean_env):
-    clean_env.setenv('TEXT_MODEL_BASE_URL', '')
     clean_env.setenv('TEXT_MODEL_API_KEY', '')
+    clean_env.setenv('TEXT_MODEL_BASE_URL', '')
     assert llm_config.is_configured('text') is False
 
     clean_env.setenv('TEXT_MODEL_BASE_URL', 'http://local.lan/v1')
@@ -226,82 +573,3 @@ def test_text_is_configured_by_a_key_or_an_explicit_base_url(ctx, clean_env):
     clean_env.setenv('TEXT_MODEL_BASE_URL', '')
     clean_env.setenv('TEXT_MODEL_API_KEY', 'key')
     assert llm_config.is_configured('text') is True
-
-
-def test_a_dedicated_chat_model_needs_a_name_and_a_key_or_base_url(ctx, clean_env):
-    _text_env(clean_env)
-    clean_env.setenv('CHAT_MODEL_NAME', 'chat-model')
-    assert llm_config.resolve_config('chat', reveal_key=True)['model_name'] == 'text-model'
-
-    clean_env.setenv('CHAT_MODEL_BASE_URL', 'http://chat.lan/v1')
-    chat = llm_config.resolve_config('chat', reveal_key=True)
-    assert chat['model_name'] == 'chat-model'
-    assert chat['base_url'] == 'http://chat.lan/v1'
-    assert chat['api_key'] is None
-
-
-def test_chat_and_translation_fall_back_to_the_saved_text_model(ctx, clean_env):
-    _text_env(clean_env)
-    _save('text', {'model_name': 'db-text', 'api_key': 'db-key', 'base_url': 'http://db.lan/v1'})
-
-    for role in ('chat', 'translation'):
-        config = llm_config.resolve_config(role, reveal_key=True)
-        assert config['model_name'] == 'db-text'
-        assert config['uses_text_model'] is True
-
-
-def test_a_saved_dedicated_chat_configuration_is_used(ctx, clean_env):
-    _text_env(clean_env)
-    _save('chat', {'model_name': 'db-chat', 'api_key': 'chat-key', 'base_url': 'http://chat.lan/v1'})
-
-    chat = llm_config.resolve_config('chat', reveal_key=True)
-    assert (chat['model_name'], chat['base_url'], chat['api_key']) == (
-        'db-chat', 'http://chat.lan/v1', 'chat-key')
-    assert chat['source'] == 'database'
-    assert chat['uses_text_model'] is False
-
-
-def test_ambrose_and_inquire_reuse_the_chat_role(ctx, clean_env):
-    _text_env(clean_env)
-    _save('chat', {'model_name': 'db-chat', 'api_key': 'chat-key'})
-    for alias in ('ambrose', 'inquire'):
-        config = llm_config.resolve_config(alias, reveal_key=True)
-        assert config['role'] == 'chat'
-        assert config['model_name'] == 'db-chat'
-
-
-# ---------------------------------------------------------------- gpt-5
-
-def test_each_role_keeps_its_own_gpt5_force_setting(ctx, clean_env):
-    _text_env(clean_env)
-    _save('chat', {'model_name': 'db-chat', 'api_key': 'chat-key'})
-    _save('translation', {'model_name': 'db-translation', 'api_key': 'translation-key'})
-    clean_env.setenv('GPT5_FORCE_MODE', 'true')
-    clean_env.setenv('CHAT_GPT5_FORCE_MODE', 'false')
-    clean_env.setenv('TRANSLATION_GPT5_FORCE_MODE', 'true')
-
-    assert llm_config.resolve_config('text')['gpt5_force'] is True
-    assert llm_config.resolve_config('chat')['gpt5_force'] is False
-    assert llm_config.resolve_config('translation')['gpt5_force'] is True
-
-
-def test_a_saved_gpt5_setting_overrides_the_environment(ctx, clean_env):
-    _text_env(clean_env)
-    clean_env.setenv('GPT5_FORCE_MODE', 'true')
-    _save('text', {'gpt5_force': False, 'gpt5_reasoning_effort': 'high'})
-
-    text = llm_config.resolve_config('text')
-    assert text['gpt5_force'] is False
-    assert text['gpt5_reasoning_effort'] == 'high'
-
-
-# ---------------------------------------------------------------- revert
-
-def test_revert_returns_the_role_to_its_environment_configuration(ctx, clean_env):
-    _text_env(clean_env)
-    _save('text', {'model_name': 'db-model'})
-    llm_config.clear_config('text')
-    config = llm_config.resolve_config('text', reveal_key=True)
-    assert config['source'] == 'environment'
-    assert config['model_name'] == 'text-model'
-    assert SystemSetting.query.filter_by(key=llm_config.SETTING_KEYS['text']).first() is None
