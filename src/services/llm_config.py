@@ -76,9 +76,17 @@ class LLMConfigError(ValueError):
 class LLMModelNotFound(LLMConfigError):
     """No configured model has the given id."""
 
+    def __init__(self, model_id):
+        self.model_id = model_id
+        super().__init__(f'No configured model with id {model_id!r}')
+
 
 class LLMModelLabelTaken(LLMConfigError):
     """Another configured model already uses the label."""
+
+    def __init__(self, label):
+        self.label = label
+        super().__init__(f'A model labelled {label!r} already exists')
 
 
 class LLMModelInUse(LLMConfigError):
@@ -166,7 +174,7 @@ def _optional_text(value):
     return value.strip()
 
 
-def _base_url(value):
+def normalize_base_url(value):
     if not isinstance(value, str) or not value.strip():
         raise LLMConfigError('base_url is required')
     value = value.strip().rstrip('/')
@@ -310,7 +318,7 @@ def _find_model(document, model_id):
     for index, model in enumerate(document['models']):
         if model['id'] == model_id:
             return index, model
-    raise LLMModelNotFound(f'No configured model with id {model_id!r}')
+    raise LLMModelNotFound(model_id)
 
 
 def _public_profile(profile, reveal_key=False):
@@ -329,10 +337,10 @@ def list_models():
     return [_public_profile(model) for model in load_document()['models']]
 
 
-def get_model(model_id):
-    """One configured model, with its API key masked."""
+def get_model(model_id, reveal_key=False):
+    """One configured model, with its API key masked unless revealed."""
     _, model = _find_model(load_document(), model_id)
-    return _public_profile(model)
+    return _public_profile(model, reveal_key)
 
 
 def create_model(values):
@@ -345,14 +353,14 @@ def create_model(values):
 
     label = _required_text(values, 'label')
     model_name = _required_text(values, 'model_name')
-    base_url = _base_url(values.get('base_url'))
+    base_url = normalize_base_url(values.get('base_url'))
     api_key = _optional_text(values.get('api_key'))
     if api_key == MASKED_API_KEY:
         api_key = ''
 
     document = load_document()
     if _label_taken(document['models'], label):
-        raise LLMModelLabelTaken(f'A model labelled {label!r} already exists')
+        raise LLMModelLabelTaken(label)
 
     profile = {
         'id': f'm_{uuid.uuid4().hex[:8]}',
@@ -385,10 +393,10 @@ def update_model(model_id, values):
     if 'label' in values:
         label = _required_text(values, 'label')
         if _label_taken(document['models'], label, exclude_id=model_id):
-            raise LLMModelLabelTaken(f'A model labelled {label!r} already exists')
+            raise LLMModelLabelTaken(label)
         updated['label'] = label
     if 'base_url' in values:
-        updated['base_url'] = _base_url(values.get('base_url'))
+        updated['base_url'] = normalize_base_url(values.get('base_url'))
     if 'model_name' in values:
         updated['model_name'] = _required_text(values, 'model_name')
     if values.get('clear_api_key'):

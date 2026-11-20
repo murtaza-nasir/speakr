@@ -116,7 +116,11 @@ EVENTS = {
     'admin.user.role_changed': ('admin', frozenset({'old', 'new'})),
     'admin.user.deleted': ('admin', frozenset({'username', 'recordings_deleted'})),
     'admin.setting.changed': ('admin', frozenset({'key', 'old', 'new', 'users_updated'})),
-    'admin.llm_config.changed': ('admin', frozenset({'role', 'fields'})),
+    'admin.llm_model.created': ('admin', frozenset({'model', 'fields'})),
+    'admin.llm_model.changed': ('admin', frozenset({'model', 'fields'})),
+    'admin.llm_model.deleted': ('admin', frozenset({'model'})),
+    'admin.llm_role.assigned': ('admin', frozenset({'role', 'model', 'old'})),
+    'admin.llm_role.reverted': ('admin', frozenset({'role', 'old'})),
     'admin.retention.run': ('admin', frozenset({'checked', 'deleted_audio_only', 'deleted_full', 'errors'})),
     'admin.inquire.processed': ('admin', frozenset({'processed', 'failed', 'total', 'force'})),
     'group.created': ('admin', _NONE),
@@ -1057,11 +1061,30 @@ def setting_changed(key, old_raw, new_raw, users_updated=None):
                         force=known and key.startswith('audit_log_'))
 
 
-def llm_config_changed(role, fields):
-    """admin.llm_config.changed in the transaction of the change.
+def llm_model_created(model_id, fields):
+    """admin.llm_model.created in the transaction of the change."""
+    return record_in_tx('admin.llm_model.created',
+                        details={'model': model_id, 'fields': list(fields)})
 
-    Only the role and the names of the changed fields are stored: never the
-    API key and never a value such as Extra Body.
-    """
-    return record_in_tx('admin.llm_config.changed',
-                        details={'role': role, 'fields': list(fields)})
+
+def llm_model_changed(model_id, fields):
+    """admin.llm_model.changed in the transaction of the change."""
+    return record_in_tx('admin.llm_model.changed',
+                        details={'model': model_id, 'fields': list(fields)})
+
+
+def llm_model_deleted(model_id):
+    """admin.llm_model.deleted in the transaction of the change."""
+    return record_in_tx('admin.llm_model.deleted', details={'model': model_id})
+
+
+def llm_role_assigned(role, model_id, old=None):
+    """admin.llm_role.assigned in the transaction of the change."""
+    return record_in_tx('admin.llm_role.assigned',
+                        details={'role': role, 'model': model_id, 'old': old})
+
+
+def llm_role_reverted(role, old):
+    """admin.llm_role.reverted in the transaction of the change."""
+    return record_in_tx('admin.llm_role.reverted',
+                        details={'role': role, 'old': old})
