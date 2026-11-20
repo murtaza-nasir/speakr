@@ -1,0 +1,289 @@
+/* The offline recorder (static/offline-recorder.html, #650).
+ *
+ * Colours come from the tokens of styles.css, which follow light and dark
+ * mode and the colour scheme; a UI theme's stylesheet (loaded after this
+ * one by offline-recorder-theme.js) sets the font and the page background
+ * and redefines the tokens. Only the page's own classes (or-*) are named.
+ */
+
+/* The hidden attribute wins over the display of the classes below. */
+.or-card [hidden] {
+    display: none !important;
+}
+
+.or-body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.or-page {
+    min-height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+}
+
+.or-card {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 30rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 14px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.08);
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow: visible;
+    flex: none;
+}
+
+.or-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-secondary);
+}
+
+.or-logo {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.or-card h1 {
+    font-size: 24px;
+    line-height: 1.25;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.or-card h2 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0 0 6px;
+    color: var(--text-secondary);
+}
+
+.or-lead,
+.or-note {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.or-note {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.or-recorder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 12px;
+    border-radius: 10px;
+    background: var(--bg-tertiary);
+}
+
+.or-timer {
+    font-size: 34px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.or-is-recording .or-timer::before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 10px;
+    vertical-align: middle;
+    border-radius: 50%;
+    background: var(--bg-danger);
+    animation: or-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes or-pulse {
+    50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .or-is-recording .or-timer::before { animation: none; }
+}
+
+.or-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.or-btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border-secondary);
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.or-btn:hover {
+    background: var(--bg-tertiary);
+}
+
+.or-btn:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
+
+.or-btn[disabled] {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.or-btn--primary {
+    min-width: 10rem;
+    min-height: 48px;
+    font-size: 16px;
+    border-color: transparent;
+    background: var(--bg-button);
+    color: var(--text-button);
+}
+
+.or-btn--primary:hover {
+    background: var(--bg-button-hover);
+}
+
+.or-btn--danger {
+    border-color: transparent;
+    background: var(--bg-danger);
+    color: #fff;
+}
+
+.or-btn--danger:hover {
+    background: var(--bg-danger-hover);
+}
+
+.or-recorder .or-btn--danger {
+    min-width: 10rem;
+    min-height: 48px;
+    font-size: 16px;
+}
+
+.or-btn--quiet {
+    border-color: transparent;
+    color: var(--text-secondary);
+}
+
+.or-status {
+    margin: 0;
+    min-height: 1.4em;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.or-status:empty {
+    display: none;
+}
+
+.or-status[data-kind="error"] {
+    color: var(--text-danger-strong);
+}
+
+.or-status[data-kind="ok"] {
+    color: var(--text-success-strong);
+}
+
+.or-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--border-primary);
+}
+
+.or-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.or-item-text {
+    flex: 1 1 12rem;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.or-item-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+}
+
+.or-item-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.or-confirm {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--bg-danger-light);
+}
+
+.or-confirm p {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-danger-strong);
+}
+
+.or-footer {
+    display: flex;
+    justify-content: center;
+}
+
+@media (max-width: 480px) {
+    .or-page { padding: 16px; align-items: flex-start; }
+    .or-card { padding: 22px 16px; border-radius: 12px; }
+    .or-card h1 { font-size: 22px; }
+    .or-btn--primary,
+    .or-recorder .or-btn--danger { width: 100%; }
+    .or-actions { width: 100%; }
+}

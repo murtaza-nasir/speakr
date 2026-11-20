@@ -3268,7 +3268,12 @@
     "tabRecord": "录制",
     "optionsForAll": "所有文件的选项",
     "sectionOrganize": "整理",
-    "sectionTranscription": "转录"
+    "sectionTranscription": "转录",
+    "otherAccountUploadsTitle": "其他账户的录音",
+    "otherAccountUploadsMessageOne": "此浏览器中有 1 条其他账户的录音未到达服务器。它不会上传到您的账户。",
+    "otherAccountUploadsMessage": "此浏览器中有 {{count}} 条其他账户的录音未到达服务器。它们不会上传到您的账户。",
+    "otherAccountUploadsDelete": "删除",
+    "otherAccountUploadsKeep": "保留"
   },
   "uploadProgress": {
     "title": "上传进度"
@@ -4317,5 +4322,33 @@
     "videoVolume": "调高或调低音量",
     "videoLeave": "退出全屏",
     "focusQuestion": "向 {{name}} 提问"
+  },
+  "offlineRecorder": {
+    "pageTitle": "离线 - Speakr",
+    "title": "您处于离线状态",
+    "lead": "无法连接 Speakr。您可以在此录音：录音保存在此浏览器中，Speakr 恢复后会自动上传。",
+    "leadPlain": "无法连接 Speakr。连接恢复后此页面会重新加载。",
+    "notSignedIn": "在登录状态下联网打开过一次 Speakr 后，才能离线录音。",
+    "incognito": "无痕模式默认开启，因此离线时不录音：离线录音需要保存在此浏览器中。",
+    "noMicrophone": "此浏览器无法在此页面录音。",
+    "microphoneDenied": "Speakr 无权使用麦克风。请在浏览器的网站设置中允许，然后重试。",
+    "record": "录音",
+    "stop": "停止并保存",
+    "recording": "正在录音…",
+    "saving": "正在保存…",
+    "saved": "已保存在此浏览器中。Speakr 恢复后会上传。",
+    "saveFailed": "无法将录音保存在此浏览器中，已改为下载。",
+    "saveLost": "无法保存或下载录音。",
+    "pendingTitle": "等待上传",
+    "itemName": "{{date}} 的录音",
+    "delete": "删除",
+    "deleteQuestion": "从此浏览器中删除这条录音？此操作无法撤销。",
+    "deleteConfirm": "删除",
+    "deleteCancel": "保留",
+    "deleted": "录音已删除。",
+    "backWhileRecording": "Speakr 已恢复。停止录音即可保存，随后会上传。",
+    "backOpening": "Speakr 已恢复，正在打开 Speakr…",
+    "tryAgain": "重试",
+    "leaveWarning": "录音尚未保存。"
   }
 }

@@ -89,11 +89,16 @@ def test_no_code_references_the_play_cdn_build():
 
 
 def test_the_service_worker_fetches_nothing_at_install():
-    """The worker has no list of files to fetch at install: static files are
-    cached as pages ask for them, under the URLs the templates link, and the
-    offline page is part of the worker file. No page is ever in a cache."""
+    """The worker fetches nothing at install: static files are cached as
+    pages ask for them, under the URLs the templates link. The files of the
+    offline recorder are stored when the signed-in app asks for them (the
+    PREPARE_OFFLINE_RECORDER message, #650), and the plain offline page is
+    part of the worker file. No page of the server is ever in a cache."""
     text = open(os.path.join(ROOT, "static", "sw.js"), encoding="utf-8").read()
     assert "addAll" not in text and "cache.add(" not in text
+    install = text[text.index("self.addEventListener('install'"):]
+    install = install[:install.index("});")]
+    assert "fetch(" not in install and "prepareRecorder" not in install and "caches" not in install
     assert "ASSETS_TO_CACHE" not in text and "offline.html" not in text
     assert not os.path.exists(os.path.join(ROOT, "static", "offline.html"))
 

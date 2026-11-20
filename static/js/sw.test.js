@@ -16,6 +16,7 @@ function fakeResponse({ status = 200, type = 'basic', headers = {}, body = '' } 
         body,
         headers: new Headers(headers),
         clone: () => response,
+        text: async () => body,
     };
     return response;
 }
@@ -25,15 +26,16 @@ function fakeRequest(path, { method = 'GET', mode = 'no-cors', destination = '',
     return { url, method, mode, destination, cache, range, headers: { has: (name) => range && name.toLowerCase() === 'range' } };
 }
 
-function loadWorker({ version = '1.2.3', scope = `${ORIGIN}/`, network = () => fakeResponse(), existing = {} } = {}) {
+function loadWorker({ version = '1.2.3', scope = `${ORIGIN}/`, network = () => fakeResponse(), existing = {}, bodies = {} } = {}) {
     const listeners = {};
-    const stores = new Map(Object.entries(existing).map(([name, urls]) => [name, new Map(urls.map((u) => [u, fakeResponse({ body: 'cached' })]))]));
+    const stores = new Map(Object.entries(existing).map(([name, urls]) => [name, new Map(urls.map((u) => [u, fakeResponse({ body: bodies[u] || 'cached' })]))]));
     const cacheOf = (name) => {
         if (!stores.has(name)) stores.set(name, new Map());
         const entries = stores.get(name);
+        const keyOf = (request) => (typeof request === 'string' ? request : request.url);
         return {
-            match: async (request) => entries.get(request.url),
-            put: async (request, response) => { entries.set(request.url, response); },
+            match: async (request) => entries.get(keyOf(request)),
+            put: async (request, response) => { entries.set(keyOf(request), response); },
             keys: async () => [...entries.keys()].map((url) => ({ url })),
         };
     };
@@ -46,7 +48,7 @@ function loadWorker({ version = '1.2.3', scope = `${ORIGIN}/`, network = () => f
     const online = { value: true };
     const fetch = vi.fn(async (request) => {
         if (!online.value) throw new TypeError('Failed to fetch');
-        return network(request);
+        return network(typeof request === 'string' ? { url: request, method: 'GET' } : request);
     });
     const self = {
         location: new URL(`${ORIGIN}/sw.js${version ? `?v=${version}` : ''}`),
@@ -56,7 +58,7 @@ function loadWorker({ version = '1.2.3', scope = `${ORIGIN}/`, network = () => f
         addEventListener: (type, handler) => { listeners[type] = handler; },
     };
     const context = vm.createContext({ self, caches, fetch, URL, URLSearchParams, Response, Promise, console });
-    vm.runInContext(`${SOURCE}\n;self.__api = { routeRequest, mayStore, isPrivatePath, CACHE_NAME, OFFLINE_HTML, PRIVATE_PREFIXES };`, context);
+    vm.runInContext(`${SOURCE}\n;self.__api = { routeRequest, mayStore, isPrivatePath, CACHE_NAME, OFFLINE_HTML, PRIVATE_PREFIXES, RECORDER_FILES, RECORDER_CSP, recorderFiles };`, context);
 
     /** Dispatch a fetch event; resolves with what the worker answered, or undefined when it did not. */
     const dispatchFetch = async (request) => {
@@ -300,7 +302,78 @@ describe('the fetch handler', () => {
             expect(html).toContain('You are offline');
             expect(html).not.toContain('cached');
         }
-        expect(worker.caches.open).not.toHaveBeenCalled();
+        // The cache is read only for the offline recorder's page, which is not there.
+        expect(worker.caches.open.mock.calls.every(([name]) => name === 'speakr-static-1.2.3')).toBe(true);
+    });
+
+    const RECORDER = `${ORIGIN}/static/offline-recorder.html?v=1.2.3`;
+    const RECORDER_JS = `${ORIGIN}/static/js/offline-recorder.js?v=1.2.3`;
+    const RECORDER_BODY = '<html><link href="/static/css/styles.css?v=__SPEAKR_VERSION__"><h1>Recorder</h1>'
+        + '<script type="module" src="/static/js/offline-recorder.js?v=__SPEAKR_VERSION__"></script></html>';
+    const withRecorder = (options = {}) => loadWorker({
+        existing: { 'speakr-static-1.2.3': [RECORDER, RECORDER_JS, `${ORIGIN}/`] },
+        bodies: { [RECORDER]: RECORDER_BODY },
+        ...options,
+    });
+
+    it('answers the offline recorder of its release when a page cannot be fetched (#650)', async () => {
+        const worker = withRecorder();
+        worker.online.value = false;
+        for (const path of ['/', '/recordings/12', '/account', '/login']) {
+            const { response } = await worker.dispatchFetch(fakeRequest(path, { mode: 'navigate', destination: 'document' }));
+            expect(response.status, path).toBe(503);
+            expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+            expect(response.headers.get('Cache-Control')).toBe('no-store');
+            expect(response.headers.get('Content-Security-Policy')).toBe(api.RECORDER_CSP);
+            const html = await response.text();
+            expect(html).toContain('<h1>Recorder</h1>');
+            expect(html).toContain('/static/js/offline-recorder.js?v=1.2.3');
+            expect(html).not.toContain('__SPEAKR_VERSION__');
+            expect(html).not.toContain('cached');
+        }
+        // The answer is built each time; nothing is added to the cache.
+        expect(worker.cached()).toEqual({ 'speakr-static-1.2.3': [RECORDER, RECORDER_JS, `${ORIGIN}/`] });
+    });
+
+    it('allows the recorder its own files only: no inline script, no other origin', () => {
+        expect(api.RECORDER_CSP).toContain("script-src 'self';");
+        expect(api.RECORDER_CSP).not.toMatch(/unsafe-inline|unsafe-eval|https?:/);
+        expect(api.RECORDER_CSP).toContain("media-src 'self' blob:");
+        expect(api.RECORDER_CSP).toContain("connect-src 'self'");
+    });
+
+    it('answers the plain offline page when the recorder\'s script or page is not in the cache', async () => {
+        for (const existing of [[RECORDER], [RECORDER_JS], [`${ORIGIN}/static/offline-recorder.html?v=1.2.2`, RECORDER_JS]]) {
+            const worker = loadWorker({ existing: { 'speakr-static-1.2.3': existing }, bodies: { [RECORDER]: RECORDER_BODY } });
+            worker.online.value = false;
+            const { response } = await worker.dispatchFetch(fakeRequest('/', { mode: 'navigate', destination: 'document' }));
+            expect(await response.text()).toBe(api.OFFLINE_HTML);
+        }
+        // A worker without a release has no recorder.
+        const unversioned = loadWorker({ version: '', existing: { 'speakr-static-unversioned': [RECORDER, RECORDER_JS] } });
+        unversioned.online.value = false;
+        const { response } = await unversioned.dispatchFetch(fakeRequest('/', { mode: 'navigate', destination: 'document' }));
+        expect(await response.text()).toBe(api.OFFLINE_HTML);
+    });
+
+    it('answers the recorder for a proxy\'s 502 or 504 and passes every other answer through', async () => {
+        for (const status of [502, 504]) {
+            const worker = withRecorder({ network: () => fakeResponse({ status, body: 'Bad Gateway' }) });
+            const { response } = await worker.dispatchFetch(fakeRequest('/', { mode: 'navigate', destination: 'document' }));
+            expect(response.status).toBe(503);
+            expect(await response.text()).toContain('<h1>Recorder</h1>');
+        }
+        for (const status of [200, 302, 404, 500, 503]) {
+            const page = fakeResponse({ status, body: 'from the server' });
+            const worker = withRecorder({ network: () => page });
+            const { response } = await worker.dispatchFetch(fakeRequest('/', { mode: 'navigate', destination: 'document' }));
+            expect(response, String(status)).toBe(page);
+        }
+        // Without the recorder, the proxy's page is shown as before.
+        const gateway = fakeResponse({ status: 502, body: 'Bad Gateway' });
+        const plain = loadWorker({ network: () => gateway });
+        const { response } = await plain.dispatchFetch(fakeRequest('/', { mode: 'navigate', destination: 'document' }));
+        expect(response).toBe(gateway);
     });
 
     it('carries an offline page that needs no file and asks the server only whether it is back', () => {
@@ -342,6 +415,32 @@ describe('the fetch handler', () => {
         page.tick();
         await new Promise((resolve) => setTimeout(resolve, 0));
         expect(page.location.reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not count a proxy\'s 502 or 504 as the server being back', async () => {
+        const html = api.OFFLINE_HTML;
+        const script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
+        const status = { value: 502 };
+        const location = { reload: vi.fn() };
+        let tick;
+        const context = vm.createContext({
+            window: { addEventListener: () => {} },
+            document: { visibilityState: 'visible' },
+            location,
+            fetch: vi.fn(async () => ({ status: status.value })),
+            setInterval: (fn) => { tick = fn; },
+        });
+        vm.runInContext(script, context);
+        for (const away of [502, 504]) {
+            status.value = away;
+            tick();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        expect(location.reload).not.toHaveBeenCalled();
+        status.value = 200;
+        tick();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(location.reload).toHaveBeenCalledTimes(1);
     });
 
     it('leaves a request that only the browser cache may answer alone', async () => {
@@ -387,6 +486,47 @@ describe('install, activate and sign-out', () => {
         expect(port.postMessage).toHaveBeenCalledWith({ type: 'SIGNED_OUT' });
     });
 
+    it('stores the recorder\'s files of its release when the app asks, with the locale files of English and the language', async () => {
+        const worker = loadWorker({ network: (request) => fakeResponse({ body: request.url }) });
+        const port = { postMessage: vi.fn() };
+        await worker.dispatch('message', { data: { type: 'PREPARE_OFFLINE_RECORDER', locale: 'de' }, ports: [port] });
+        const stored = worker.cached()['speakr-static-1.2.3'];
+        const expected = [...api.RECORDER_FILES, '/static/locales/en.json', '/static/locales/de.json']
+            .map((path) => `${ORIGIN}${path}?v=1.2.3`);
+        expect(stored.sort()).toEqual(expected.sort());
+        expect(stored.every((url) => new URL(url).pathname.startsWith('/static/'))).toBe(true);
+        expect(port.postMessage).toHaveBeenCalledWith({ type: 'OFFLINE_RECORDER_READY', stored: expected.length });
+        // Asked again: everything is there, nothing is fetched.
+        worker.fetch.mockClear();
+        await worker.dispatch('message', { data: { type: 'PREPARE_OFFLINE_RECORDER', locale: 'de' } });
+        expect(worker.fetch).not.toHaveBeenCalled();
+    });
+
+    it('stores only English for a language it does not know, and nothing a response forbids', async () => {
+        const worker = loadWorker({
+            network: (request) => (request.url.includes('/themes/desk.css')
+                ? fakeResponse({ headers: { 'Cache-Control': 'no-store' } })
+                : request.url.includes('favicon') ? fakeResponse({ status: 404 }) : fakeResponse()),
+        });
+        await worker.dispatch('message', { data: { type: 'PREPARE_OFFLINE_RECORDER', locale: '../../api/recordings' } });
+        const stored = worker.cached()['speakr-static-1.2.3'].map((url) => new URL(url).pathname);
+        expect(stored.filter((path) => path.startsWith('/static/locales/'))).toEqual(['/static/locales/en.json']);
+        expect(stored).not.toContain('/static/css/themes/desk.css');
+        expect(stored).not.toContain('/static/img/favicon.ico');
+        expect(stored.length).toBe(api.RECORDER_FILES.length - 1);
+    });
+
+    it('stores nothing for the recorder without a release, or offline', async () => {
+        const unversioned = loadWorker({ version: '' });
+        await unversioned.dispatch('message', { data: { type: 'PREPARE_OFFLINE_RECORDER', locale: 'en' } });
+        expect(unversioned.fetch).not.toHaveBeenCalled();
+        expect(unversioned.cached()).toEqual({});
+        const offline = loadWorker();
+        offline.online.value = false;
+        await offline.dispatch('message', { data: { type: 'PREPARE_OFFLINE_RECORDER', locale: 'en' } });
+        expect(offline.cached()).toEqual({ 'speakr-static-1.2.3': [] });
+    });
+
     it('ignores every other message', async () => {
         const worker = loadWorker({ existing: { 'speakr-static-1.2.3': ['x'] } });
         for (const data of [null, {}, { type: 'RECORDING_STATE', isRecording: true }, { type: 'SKIP_WAITING' }, { type: 'UPDATE_SHORTCUTS' }]) {
@@ -428,5 +568,47 @@ describe('a registration left at /static/ by an earlier release', () => {
         expect(handled).toBe(false);
         await worker.dispatch('message', { data: { type: 'SIGN_OUT' } });
         expect(worker.cached()).toEqual(existing);
+    });
+});
+
+describe('the offline recorder page (#650)', () => {
+    const read = (path) => readFileSync(fileURLToPath(new URL(`..${path.replace(/^\/static/, '')}`, import.meta.url)), 'utf8');
+    const { api } = loadWorker();
+    const html = read('/static/offline-recorder.html');
+
+    it('is a static file that the worker keeps, as every file it loads', () => {
+        for (const path of api.RECORDER_FILES) expect(() => read(path), path).not.toThrow();
+        const referenced = [...html.matchAll(/(?:src|href)="([^"]*)"/g)].map((m) => m[1]).filter((ref) => ref !== '');
+        expect(referenced.length).toBeGreaterThan(4);
+        for (const ref of referenced) {
+            expect(ref, ref).toMatch(/^\/static\/[^?]+\?v=__SPEAKR_VERSION__$/);
+            expect(api.RECORDER_FILES, ref).toContain(ref.split('?')[0]);
+        }
+        // The modules the page imports and the theme stylesheets it adds.
+        const script = read('/static/js/offline-recorder.js');
+        const modules = [...script.matchAll(/mod\('([^']+)'\)/g)].map((m) => `/static/js/${m[1]}`);
+        expect(modules.length).toBe(4);
+        const theme = read('/static/js/offline-recorder-theme.js');
+        const themes = JSON.parse(theme.match(/var THEMES = (\[[^\]]+\])/)[1].replace(/'/g, '"'));
+        for (const path of [...modules, ...themes.map((id) => `/static/css/themes/${id}.css`)]) {
+            expect(api.RECORDER_FILES, path).toContain(path);
+        }
+        // A module loaded by the page imports nothing: an import would be asked for without ?v=.
+        for (const path of modules) expect(read(path), path).not.toMatch(/^\s*import\s/m);
+    });
+
+    it('holds no user data and runs no inline script', () => {
+        expect(html).not.toMatch(/\{\{|\{%|csrf/i);
+        expect(html).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/);
+        expect(html).not.toMatch(/\son[a-z]+=/i);
+        expect(html).not.toMatch(/\/api\/|\/audio\/|\/recordings/);
+        expect(html).toContain('<h1 id="or-title" data-or-text="title">You are offline</h1>');
+    });
+
+    it('offers a theme stylesheet for every UI theme but the default', () => {
+        const registry = readFileSync(fileURLToPath(new URL('../../src/config/ui_themes.py', import.meta.url)), 'utf8');
+        const ids = [...registry.matchAll(/UiTheme\('(\w+)', available=True\)/g)].map((m) => m[1]);
+        expect(ids.length).toBeGreaterThan(3);
+        for (const id of ids) expect(api.RECORDER_FILES).toContain(`/static/css/themes/${id}.css`);
     });
 });

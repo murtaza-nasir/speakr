@@ -20,8 +20,11 @@
  *      The page that follows (the sign-in page) then clears sessionStorage,
  *      the IndexedDB stores SpeakrRecordings and SpeakrFailedUploads, the
  *      localStorage entry of unfinished uploads in slices (file name, size
- *      and modification time), and every Cache Storage entry, and tells
- *      the worker. Doing this after
+ *      and modification time), the localStorage entry of the offline
+ *      recorder (the account id it saves recordings for), and every Cache
+ *      Storage entry, and tells the worker. The recordings made on the
+ *      offline recorder page are records of SpeakrFailedUploads, so they
+ *      are counted in step 1 and deleted with the others. Doing this after
  *      the server's answer means that a sign-out the person cancels (the
  *      browser's question about a recording in progress) deletes nothing.
  *
@@ -39,6 +42,11 @@
     // (RESUME_KEY and RESUME_TTL_MS in modules/db/sliced-file-upload.js).
     const SLICED_UPLOADS_KEY = 'speakr.slicedUploads';
     const SLICED_UPLOADS_TTL_MS = 24 * 60 * 60 * 1000;
+    // The account and language the offline recorder saves its recordings for
+    // (OFFLINE_CONTEXT_KEY in modules/utils/pending-uploads.js). Without it
+    // the offline recorder records nothing, so after a sign-out nobody can
+    // record offline for the account that signed out.
+    const OFFLINE_RECORDER_KEY = 'speakr.offlineRecorder';
 
     const script = root.document && root.document.currentScript;
     let version = '';
@@ -180,6 +188,7 @@
         // Of localStorage only the entry that names files of the account;
         // preferences of the interface stay.
         try { root.localStorage.removeItem(SLICED_UPLOADS_KEY); } catch (e) { /* unavailable */ }
+        try { root.localStorage.removeItem(OFFLINE_RECORDER_KEY); } catch (e) { /* unavailable */ }
         const results = await Promise.allSettled([clearDatabases(), tellWorker()]);
         // After the worker, so that nothing it was storing is left behind.
         await clearCaches().catch(() => {});

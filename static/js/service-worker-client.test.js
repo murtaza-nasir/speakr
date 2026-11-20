@@ -325,9 +325,22 @@ describe('after a sign-out', () => {
         const { api, localStorage, sessionStorage } = load({ cookie: 'speakr_signed_out=1', local });
         await api.ready;
         expect(local).toEqual({ darkMode: 'true', lastSelectedRecordingId: '42' });
-        expect(localStorage.removeItem.mock.calls).toEqual([['speakr.slicedUploads']]);
+        expect(localStorage.removeItem.mock.calls).toEqual([['speakr.slicedUploads'], ['speakr.offlineRecorder']]);
         // The result of an incognito recording, with its file name and size, is in sessionStorage.
         expect(sessionStorage.clear).toHaveBeenCalledTimes(1);
+    });
+
+    it('removes the entry of the offline recorder, so nobody records offline for the account that signed out', async () => {
+        const local = {
+            'speakr.offlineRecorder': JSON.stringify({ userId: '7', locale: 'de', incognitoDefault: false, savedAt: 1 }),
+            preferredLanguage: 'de',
+        };
+        const { api } = load({ cookie: 'speakr_signed_out=1', local });
+        await api.ready;
+        expect(local).toEqual({ preferredLanguage: 'de' });
+        const helpers = readFileSync(fileURLToPath(new URL('./modules/utils/pending-uploads.js', import.meta.url)), 'utf8');
+        expect(helpers).toContain("export const OFFLINE_CONTEXT_KEY = 'speakr.offlineRecorder';");
+        expect(SOURCE).toContain("const OFFLINE_RECORDER_KEY = 'speakr.offlineRecorder';");
     });
 
     it('uses the key and the lifetime of the upload module', () => {

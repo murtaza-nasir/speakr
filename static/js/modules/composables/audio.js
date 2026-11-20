@@ -1362,9 +1362,16 @@ export function useAudio(state, utils) {
             clientId: queueClientId,
             fromInProgressRecording: true,  // marker: upload-success handler clears RecordingDB session
             recordingSessionStartTime: currentRecordingSessionStartTime,  // clear only this session (#407)
+            // The server session that could not be finished (finalize failed
+            // above): removed once this upload has reached the server, so it
+            // is not offered for recovery as a second recording (#650).
+            serverSessionId: serverSessionId || null,
             error: null,
             willAutoSummarize: false // Server will tell us via SUMMARIZING status
         });
+        // From here the queue item stands for the server session; the next
+        // recording opens a session of its own.
+        if (serverSessionId) _resetServerSessionState();
 
         // Release the in-memory audio resources so the recording view does not
         // keep showing the old waveform, but DO NOT clear the IndexedDB session

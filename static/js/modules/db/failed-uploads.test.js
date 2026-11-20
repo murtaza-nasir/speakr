@@ -231,6 +231,41 @@ describe('IndexedDB transaction lifetime', () => {
         expect(store.size).toBe(0);
     });
 
+    it('storeFailedUpload keeps what ties the record to its recording and account (#650)', async () => {
+        const file = { name: 'recording.webm', size: 64, type: 'audio/webm', arrayBuffer: async () => new ArrayBuffer(4) };
+        const id = await storeFailedUpload({
+            file,
+            clientId: 'client-650',
+            fromRecorder: true,
+            recordingSessionStartTime: '2026-11-20T10:00:00.000Z',
+            serverSessionId: 'sess-1',
+            folderId: 7,
+            duration: 12.5,
+            ownerId: 3,
+            source: 'offline',
+        });
+        expect(store.get(id)).toMatchObject({
+            clientId: 'client-650',
+            fromRecorder: true,
+            recordingSessionStartTime: '2026-11-20T10:00:00.000Z',
+            serverSessionId: 'sess-1',
+            folderId: 7,
+            duration: 12.5,
+            ownerId: '3',
+            source: 'offline',
+            retryCount: 0,
+        });
+    });
+
+    it('storeFailedUpload stores the ties as empty for an upload of a file from disk', async () => {
+        const file = { name: 'talk.mp3', size: 64, type: 'audio/mpeg', arrayBuffer: async () => new ArrayBuffer(4) };
+        const id = await storeFailedUpload({ file, clientId: 'c' });
+        expect(store.get(id)).toMatchObject({
+            fromRecorder: false, recordingSessionStartTime: null, serverSessionId: null,
+            folderId: null, duration: null, ownerId: null, source: null,
+        });
+    });
+
     it('updateRetryCount resolves without writing when the id is absent', async () => {
         await expect(updateRetryCount(999, 1, 'nope')).resolves.not.toThrow();
         expect(store.has(999)).toBe(false);

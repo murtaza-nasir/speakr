@@ -3268,7 +3268,12 @@
     "tabRecord": "Aufnehmen",
     "optionsForAll": "Optionen für alle Dateien",
     "sectionOrganize": "Organisation",
-    "sectionTranscription": "Transkription"
+    "sectionTranscription": "Transkription",
+    "otherAccountUploadsTitle": "Aufnahmen eines anderen Kontos",
+    "otherAccountUploadsMessageOne": "Dieser Browser enthält 1 Aufnahme eines anderen Kontos, die den Server nicht erreicht hat. Sie wird nicht in Ihr Konto hochgeladen.",
+    "otherAccountUploadsMessage": "Dieser Browser enthält {{count}} Aufnahmen eines anderen Kontos, die den Server nicht erreicht haben. Sie werden nicht in Ihr Konto hochgeladen.",
+    "otherAccountUploadsDelete": "Löschen",
+    "otherAccountUploadsKeep": "Behalten"
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"
@@ -4317,5 +4322,33 @@
     "videoVolume": "Lauter oder leiser",
     "videoLeave": "Vollbild verlassen",
     "focusQuestion": "Eine Frage an {{name}} schreiben"
+  },
+  "offlineRecorder": {
+    "pageTitle": "Offline - Speakr",
+    "title": "Sie sind offline",
+    "lead": "Speakr ist nicht erreichbar. Sie können hier aufnehmen: Die Aufnahme bleibt in diesem Browser und wird hochgeladen, sobald Speakr wieder erreichbar ist.",
+    "leadPlain": "Speakr ist nicht erreichbar. Diese Seite wird neu geladen, sobald die Verbindung zurück ist.",
+    "notSignedIn": "Offline aufnehmen ist möglich, nachdem Speakr einmal online geöffnet wurde, während Sie angemeldet sind.",
+    "incognito": "Der Inkognito-Modus ist standardmäßig an, daher wird offline nichts aufgenommen: Eine offline erstellte Aufnahme bliebe in diesem Browser.",
+    "noMicrophone": "Dieser Browser kann auf dieser Seite nicht aufnehmen.",
+    "microphoneDenied": "Speakr darf das Mikrofon nicht verwenden. Erlauben Sie es in den Website-Einstellungen des Browsers und versuchen Sie es dann erneut.",
+    "record": "Aufnehmen",
+    "stop": "Beenden und speichern",
+    "recording": "Aufnahme läuft…",
+    "saving": "Wird gespeichert…",
+    "saved": "In diesem Browser gespeichert. Die Aufnahme wird hochgeladen, sobald Speakr wieder erreichbar ist.",
+    "saveFailed": "Die Aufnahme konnte nicht in diesem Browser gespeichert werden. Sie wurde stattdessen heruntergeladen.",
+    "saveLost": "Die Aufnahme konnte weder gespeichert noch heruntergeladen werden.",
+    "pendingTitle": "Warten auf Upload",
+    "itemName": "Aufnahme vom {{date}}",
+    "delete": "Löschen",
+    "deleteQuestion": "Diese Aufnahme aus diesem Browser löschen? Das kann nicht rückgängig gemacht werden.",
+    "deleteConfirm": "Löschen",
+    "deleteCancel": "Behalten",
+    "deleted": "Aufnahme gelöscht.",
+    "backWhileRecording": "Speakr ist wieder erreichbar. Beenden Sie die Aufnahme, um sie zu speichern; danach wird sie hochgeladen.",
+    "backOpening": "Speakr ist wieder erreichbar. Speakr wird geöffnet…",
+    "tryAgain": "Erneut versuchen",
+    "leaveWarning": "Die Aufnahme ist noch nicht gespeichert."
   }
 }

@@ -1,0 +1,330 @@
+/**
+ * The offline recorder (#650): static/offline-recorder.html, answered by the
+ * service worker (static/sw.js) in place of a page that cannot be loaded.
+ *
+ * The page holds no user data. It records from the microphone and saves the
+ * recording as a record of the IndexedDB store of failed uploads
+ * (modules/db/failed-uploads.js), for the account named in the entry the app
+ * left at its last online load (speakr.offlineRecorder,
+ * modules/db/offline-recorder-context.js). The app uploads such records once
+ * at its next online load (resurfaceFailedUploads in composables/upload.js).
+ *
+ * While it records, the chunks are also saved as the crash-recovery copy of
+ * modules/db/recording-persistence.js, unless that store already holds a
+ * copy of another recording, so that a closed tab does not lose the audio:
+ * the app offers that copy for recovery at its next start. Once the
+ * recording is saved as a record, the copy goes.
+ *
+ * The page lists the records waiting for their upload (name, duration,
+ * size) and lets the person delete one. It asks the server every five
+ * seconds, and when the browser reports a connection, whether it is back,
+ * and then loads the page that was asked for, unless a recording is under
+ * way.
+ *
+ * Every module is loaded with this release's ?v=, the URLs the worker keeps.
+ */
+
+const SELF = new URL(import.meta.url);
+const VERSION = SELF.searchParams.get('v') || '';
+const Q = VERSION ? `?v=${encodeURIComponent(VERSION)}` : '';
+const mod = (path) => import(`/static/js/${path}${Q}`);
+
+const $ = (id) => document.getElementById(id);
+
+async function loadLocale(locale) {
+    const get = async (code) => {
+        try {
+            const response = await fetch(`/static/locales/${code}.json${Q}`);
+            return response.ok ? await response.json() : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    const english = await get('en');
+    const table = locale && locale !== 'en' ? await get(locale) : english;
+    return { table, english };
+}
+
+async function main() {
+    const [Model, Pending, FailedUploads, RecordingDB] = await Promise.all([
+        mod('modules/utils/offline-recorder-model.js'),
+        mod('modules/utils/pending-uploads.js'),
+        mod('modules/db/failed-uploads.js'),
+        mod('modules/db/recording-persistence.js'),
+    ]);
+
+    let rawContext = null;
+    try { rawContext = localStorage.getItem(Pending.OFFLINE_CONTEXT_KEY); } catch (e) { rawContext = null; }
+    const context = Pending.parseOfflineContext(rawContext);
+    const locale = context ? context.locale : Pending.offlineLocale(navigator.language);
+    const { table, english } = await loadLocale(locale);
+    const t = Model.translator(table, english);
+    // Which locale file is in use ('missing': the built-in English texts).
+    document.body.dataset.orLocale = table ? locale : (english ? 'en' : 'missing');
+    if (!table) console.warn('[OfflineRecorder] The locale file is not in the cache:', locale);
+
+    document.documentElement.lang = locale;
+    document.title = t('pageTitle');
+    for (const el of document.querySelectorAll('[data-or-text]')) el.textContent = t(el.dataset.orText);
+
+    const availability = Model.recorderAvailability(context, {
+        mediaDevices: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+        mediaRecorder: typeof MediaRecorder !== 'undefined',
+        indexedDB: typeof indexedDB !== 'undefined',
+    });
+
+    const status = $('or-status');
+    const say = (text, kind = '') => {
+        status.textContent = text || '';
+        status.dataset.kind = kind;
+    };
+
+    const dateFormat = (() => {
+        try {
+            return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+        } catch (e) {
+            return null;
+        }
+    })();
+    const formatDate = (ms) => (dateFormat ? dateFormat.format(new Date(ms)) : new Date(ms).toLocaleString(locale));
+
+    // ---- waiting to upload ------------------------------------------------
+
+    const list = $('or-list');
+    async function renderPending() {
+        let records = [];
+        try { records = await FailedUploads.getFailedUploads(); } catch (e) { records = []; }
+        const rows = Model.pendingRows(records, context && context.userId, {
+            t, formatDate, belongsTo: Pending.belongsTo,
+        });
+        list.replaceChildren();
+        $('or-pending').hidden = rows.length === 0;
+        for (const row of rows) {
+            const li = document.createElement('li');
+            li.className = 'or-item';
+            li.dataset.recordId = String(row.id);
+            const text = document.createElement('div');
+            text.className = 'or-item-text';
+            const name = document.createElement('span');
+            name.className = 'or-item-name';
+            name.textContent = row.name;
+            const meta = document.createElement('span');
+            meta.className = 'or-item-meta';
+            meta.textContent = `${row.duration} · ${row.size}`;
+            text.append(name, meta);
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'or-btn or-btn--quiet';
+            remove.dataset.orDelete = '';
+            remove.textContent = t('delete');
+            remove.addEventListener('click', () => askDelete(li, row.id));
+            li.append(text, remove);
+            list.append(li);
+        }
+    }
+
+    function askDelete(li, id) {
+        if (li.querySelector('.or-confirm')) return;
+        const box = document.createElement('div');
+        box.className = 'or-confirm';
+        box.setAttribute('role', 'group');
+        const question = document.createElement('p');
+        question.textContent = t('deleteQuestion');
+        const yes = document.createElement('button');
+        yes.type = 'button';
+        yes.className = 'or-btn or-btn--danger';
+        yes.dataset.orDeleteConfirm = '';
+        yes.textContent = t('deleteConfirm');
+        const no = document.createElement('button');
+        no.type = 'button';
+        no.className = 'or-btn';
+        no.dataset.orDeleteCancel = '';
+        no.textContent = t('deleteCancel');
+        yes.addEventListener('click', async () => {
+            try { await FailedUploads.deleteFailedUpload(id); } catch (e) { /* listed again below */ }
+            say(t('deleted'));
+            await renderPending();
+        });
+        no.addEventListener('click', () => box.remove());
+        box.append(question, yes, no);
+        li.append(box);
+        no.focus();
+    }
+
+    // ---- recording ----------------------------------------------------------
+
+    const recordButton = $('or-record');
+    const stopButton = $('or-stop');
+    const timer = $('or-timer');
+    let recorder = null;
+    let stream = null;
+    let chunks = [];
+    let startedAt = 0;
+    let tick = null;
+    let saving = false;
+    let sessionStartTime = null;
+    let serverBack = false;
+
+    const elapsed = () => (startedAt ? (Date.now() - startedAt) / 1000 : 0);
+    const showTime = () => { timer.textContent = Model.formatDuration(elapsed()); };
+
+    const setRecording = (on) => {
+        recordButton.hidden = on;
+        stopButton.hidden = !on;
+        timer.hidden = !on;
+        document.body.classList.toggle('or-is-recording', on);
+    };
+
+    async function start() {
+        say('');
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (e) {
+            say(t(e && e.name === 'NotAllowedError' ? 'microphoneDenied' : 'noMicrophone'), 'error');
+            return;
+        }
+        const mimeType = Model.pickMimeType(MediaRecorder.isTypeSupported ? MediaRecorder.isTypeSupported.bind(MediaRecorder) : null);
+        try {
+            recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        } catch (e) {
+            stream.getTracks().forEach((track) => track.stop());
+            say(t('noMicrophone'), 'error');
+            return;
+        }
+        chunks = [];
+        sessionStartTime = null;
+        // The crash-recovery copy, unless it holds another recording.
+        let keepCopy = false;
+        try {
+            const existing = await RecordingDB.checkForRecoverableRecording();
+            keepCopy = !existing;
+            if (keepCopy) {
+                const session = await RecordingDB.startRecordingSession({
+                    mode: 'microphone', mimeType: (recorder.mimeType || mimeType || 'audio/webm').split(';')[0],
+                });
+                sessionStartTime = session ? session.startTime : null;
+            }
+        } catch (e) {
+            keepCopy = false;
+        }
+        let index = 0;
+        recorder.ondataavailable = (event) => {
+            if (!event.data || !event.data.size) return;
+            chunks.push(event.data);
+            if (keepCopy && sessionStartTime) {
+                RecordingDB.saveChunk(event.data, index++)
+                    .then(() => (saving ? null : RecordingDB.updateRecordingMetadata({ duration: Math.round(elapsed()) })))
+                    .catch(() => {});
+            }
+        };
+        recorder.onstop = () => { saveRecording(); };
+        recorder.start(5000);
+        startedAt = Date.now();
+        showTime();
+        tick = setInterval(showTime, 500);
+        setRecording(true);
+        say(t('recording'), 'live');
+    }
+
+    function stop() {
+        if (!recorder || recorder.state === 'inactive') return;
+        saving = true;
+        stopButton.disabled = true;
+        say(t('saving'));
+        recorder.stop();
+    }
+
+    async function saveRecording() {
+        const duration = elapsed();
+        clearInterval(tick);
+        if (stream) stream.getTracks().forEach((track) => track.stop());
+        const type = ((recorder && recorder.mimeType) || 'audio/webm').split(';')[0];
+        const now = new Date();
+        const file = new File(chunks, Model.recordingFileName(now, type), { type, lastModified: now.getTime() });
+        recorder = null;
+        stream = null;
+        startedAt = 0;
+        try {
+            await FailedUploads.storeFailedUpload({
+                file,
+                clientId: Model.offlineClientId(now.getTime(), Math.random().toString(36).slice(2)),
+                fromRecorder: true,
+                recordingSessionStartTime: sessionStartTime,
+                duration: Math.round(duration * 10) / 10,
+                ownerId: context.userId,
+                source: 'offline',
+                error: 'Recorded offline',
+            });
+            if (sessionStartTime) {
+                try { await RecordingDB.clearRecordingSessionIfStartedAt(sessionStartTime); } catch (e) { /* the app removes it */ }
+            }
+            say(t('saved'), 'ok');
+        } catch (e) {
+            const downloaded = FailedUploads.triggerLocalDownload(file, file.name);
+            say(t(downloaded ? 'saveFailed' : 'saveLost'), 'error');
+        }
+        chunks = [];
+        saving = false;
+        stopButton.disabled = false;
+        setRecording(false);
+        await renderPending();
+        if (serverBack) openApp();
+    }
+
+    window.addEventListener('beforeunload', (event) => {
+        if (recorder || saving) {
+            event.preventDefault();
+            event.returnValue = t('leaveWarning');
+        }
+    });
+
+    // ---- what the page shows -------------------------------------------------
+
+    if (availability.canRecord) {
+        $('or-lead').textContent = t('lead');
+        $('or-recorder').hidden = false;
+        recordButton.addEventListener('click', start);
+        stopButton.addEventListener('click', stop);
+    } else {
+        $('or-lead').textContent = t('leadPlain');
+        const note = $('or-unavailable');
+        note.textContent = t(availability.reason);
+        note.hidden = false;
+    }
+    if (context) await renderPending();
+    document.body.dataset.orReady = availability.canRecord ? 'recorder' : availability.reason;
+
+    // ---- back online -----------------------------------------------------------
+
+    function openApp() {
+        say(t('backOpening'), 'ok');
+        const target = Model.returnTarget(location.pathname);
+        if (target) location.assign(target);
+        else location.reload();
+    }
+
+    let asking = false;
+    async function ask() {
+        if (asking) return;
+        asking = true;
+        try {
+            const response = await fetch('/static/manifest.json', { method: 'HEAD', cache: 'no-store' });
+            if (!Model.serverAnswered(response.status)) return;
+            serverBack = true;
+            if (Model.whenServerIsBack({ recording: !!recorder, saving }) === 'open') openApp();
+            else say(t('backWhileRecording'), 'ok');
+        } catch (e) {
+            // Still away.
+        } finally {
+            asking = false;
+        }
+    }
+    window.addEventListener('online', ask);
+    setInterval(() => { if (document.visibilityState === 'visible') ask(); }, 5000);
+}
+
+main().catch((error) => {
+    // The page keeps its static text ("You are offline") and its link to try again.
+    console.error('[OfflineRecorder]', error);
+    document.body.dataset.orReady = 'failed';
+});
