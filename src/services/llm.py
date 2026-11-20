@@ -27,7 +27,7 @@ class TokenBudgetExceeded(Exception):
         super().__init__(message)
 
 from src.services import llm_config
-from src.utils import safe_json_loads, extract_json_object
+from src.utils import extract_json_object, safe_json_loads
 from src.utils.error_text import log_failure
 
 
