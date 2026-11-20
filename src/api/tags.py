@@ -21,6 +21,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import api_error
+from src.utils.request_body import json_object_body
 
 # Create blueprint
 tags_bp = Blueprint('tags', __name__)
@@ -176,7 +177,9 @@ def get_tags():
 @login_required
 def create_tag():
     """Create a new tag (personal or group tag)."""
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
 
     if not data or not data.get('name'):
         return jsonify(api_error('tag_name_required')), 400
@@ -314,7 +317,9 @@ def update_tag(tag_id):
         if tag.user_id != current_user.id:
             return jsonify(api_error('tag_edit_denied')), 403
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     from src.services.auto_shares import regroup_error, regroup_name_error, sharing_state, sync_source_shares
     before = sharing_state(tag)
 
@@ -509,8 +514,11 @@ def create_group_tag(group_id):
     if not membership or membership.role != 'admin':
         return jsonify(api_error('group_tag_create_admin_only')), 403
 
-    data = request.get_json()
-    name = data.get('name', '').strip()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    name = data.get('name')
+    name = name.strip() if isinstance(name, str) else ''
 
     if not name:
         return jsonify(api_error('tag_name_required')), 400

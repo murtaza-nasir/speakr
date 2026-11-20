@@ -38,10 +38,20 @@ def unexpected_error_body(exc):
 
 def internal_error(exc, status=500):
     """The JSON response for an exception a route did not expect; the
-    database session is rolled back first."""
+    database session is rolled back first.
+
+    The 400 and 415 that Flask raises for an unusable JSON body are the
+    client's mistake, not a fault (#653): they keep their status, answer
+    invalid_json (or no_data_provided, body_must_be_object) and are not
+    logged as errors. An explicit status still forces the reference body."""
     try:
         from src.database import db
         db.session.rollback()
     except Exception:
         pass
+    if status == 500:
+        from src.utils.request_body import parse_error_response
+        answer = parse_error_response(exc)
+        if answer is not None:
+            return answer
     return jsonify(unexpected_error_body(exc)), status

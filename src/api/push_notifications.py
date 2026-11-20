@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from src.database import db
 from src.models.push_subscription import PushSubscription
 from src.utils.localization import api_error, translate
+from src.utils.request_body import json_object_body
 
 
 push_bp = Blueprint('push', __name__)
@@ -58,7 +59,9 @@ def subscribe():
         }), 503
 
     try:
-        subscription_data = request.json
+        subscription_data, body_error = json_object_body()
+        if body_error:
+            return body_error
 
         if not subscription_data or 'endpoint' not in subscription_data:
             return jsonify({
@@ -114,7 +117,9 @@ def unsubscribe():
         return jsonify({'success': True, 'message': translate('server.apiMessage.pushNotificationsNotEnabled')})
 
     try:
-        subscription_data = request.json
+        subscription_data, body_error = json_object_body()
+        if body_error:
+            return body_error
 
         if not subscription_data or 'endpoint' not in subscription_data:
             return jsonify({

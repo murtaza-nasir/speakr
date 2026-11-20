@@ -3577,6 +3577,7 @@
       "invalid_message_history": "The conversation history must be a list of messages, each with a role (user or assistant) and text content.",
       "invalid_is_archived": "is_archived must be a boolean",
       "invalid_json": "Invalid JSON",
+      "body_must_be_object": "The request body must be a JSON object",
       "invalid_limit": "limit must be between 1 and 500",
       "invalid_max_segments": "max_segments must be at least 1",
       "invalid_meeting_date": "Invalid meeting_date format",

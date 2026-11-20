@@ -25,6 +25,7 @@ from src.services.public_shares import active_share_or_404, link_is_https, publi
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.log_filters import loggable_error, loggable_locator
 from src.utils.localization import api_error, translate, request_language
+from src.utils.request_body import json_body
 
 # Configuration from environment
 READABLE_PUBLIC_LINKS = os.environ.get('READABLE_PUBLIC_LINKS', 'false').lower() == 'true'
@@ -635,7 +636,10 @@ def share_recording_internal(recording_id):
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     try:
-        data = request.json
+        # A value that is not an object keeps its user_id_required answer
+        data, body_error = json_body()
+        if body_error:
+            return body_error
         if isinstance(data, dict) and ('user_ids' in data or 'identifiers' in data):
             return _share_with_many(recording_id, data)
 

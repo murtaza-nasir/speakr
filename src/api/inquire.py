@@ -25,6 +25,7 @@ from src.utils.speaker_labels import real_speaker_names
 from src.services.assistant_events import FilterError, checked_filters, filters_from_request
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
 from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
+from src.utils.request_body import json_object_body
 
 # Create blueprint
 inquire_bp = Blueprint('inquire', __name__)
@@ -109,7 +110,9 @@ def create_inquire_session():
     if not ENABLE_INQUIRE_MODE:
         return jsonify(api_error('inquire_disabled')), 403
     try:
-        data = request.json
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('no_data_provided')), 400
 
@@ -161,7 +164,9 @@ def inquire_search():
     if not ENABLE_INQUIRE_MODE:
         return jsonify(api_error('inquire_disabled')), 403
     try:
-        data = request.json
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('no_data_provided')), 400
         
@@ -888,7 +893,9 @@ def inquire_chat():
     if not ENABLE_INQUIRE_MODE:
         return jsonify(api_error('inquire_disabled')), 403
     try:
-        data = request.json
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('no_data_provided')), 400
         

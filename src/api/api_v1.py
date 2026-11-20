@@ -21,7 +21,7 @@ from datetime import datetime, date, timedelta, timezone
 from functools import wraps
 
 from src.utils.dates import FILTER_DATE_MAX, FILTER_DATE_MIN, to_utc_naive
-from src.utils.request_body import optional_json_object
+from src.utils.request_body import json_body, json_object_body, is_int, is_int_list
 from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
@@ -2209,9 +2209,13 @@ def update_recording(recording_id):
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify(api_error('permission_denied')), 403
 
-    data = request.get_json()
+    data, body_error = json_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
+    if not isinstance(data, dict):
+        return jsonify(api_error('body_must_be_object')), 400
 
     # `keep_audio_only` is set at upload time and dictates whether the
     # processing pipeline retained the video stream. Allowing PATCH to
@@ -2253,7 +2257,7 @@ def update_recording(recording_id):
                 recording.meeting_date = to_utc_naive(datetime.fromisoformat(data['meeting_date'].replace('Z', '+00:00')))
             else:
                 recording.meeting_date = None
-        except ValueError:
+        except (ValueError, TypeError, AttributeError):
             return jsonify(api_error('invalid_meeting_date')), 400
     if 'is_inbox' in data or 'is_highlighted' in data:
         # Inbox and star are per user: a shared editor sets their own (#599)
@@ -2328,8 +2332,10 @@ def replace_notes(recording_id):
     if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
-    data = request.get_json()
-    if not data or 'notes' not in data:
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    if 'notes' not in data:
         return jsonify(api_error('notes_field_required')), 400
     error = metadata_error({'notes': data['notes']}, {'notes': recording.get_user_notes(current_user)})
     if error:
@@ -2357,8 +2363,10 @@ def replace_summary(recording_id):
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify(api_error('permission_denied')), 403
 
-    data = request.get_json()
-    if not data or 'summary' not in data:
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    if 'summary' not in data:
         return jsonify(api_error('summary_field_required')), 400
     error = metadata_error({'summary': data['summary']}, {'summary': recording.summary})
     if error:
@@ -2574,8 +2582,10 @@ def create_tag():
     """Create a new tag."""
     from src.models.organization import GroupMembership
 
-    data = request.get_json()
-    if not data or not data.get('name'):
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    if not data.get('name'):
         return jsonify(api_error('tag_name_required')), 400
 
     group_id = data.get('group_id')
@@ -2653,7 +2663,9 @@ def update_tag(tag_id):
         if tag.user_id != current_user.id:
             return jsonify(api_error('permission_denied')), 403
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
     from src.services.auto_shares import regroup_error, regroup_name_error, share_scope_refusal, sharing_state, sync_source_shares
@@ -2800,15 +2812,21 @@ def add_tags_to_recording(recording_id):
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify(api_error('permission_denied')), 403
 
-    data = optional_json_object()
-    tag_ids = data.get('tag_ids', [])
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    # The same rule as PUT: a list of integer ids, a boolean is not one (#657)
+    tag_ids = data.get('tag_ids')
+    if tag_ids is not None and not is_int_list(tag_ids):
+        return jsonify({'error': translate('server.apiError.invalid_tag_ids_list'), 'code': 'invalid_parameter'}), 400
     if not tag_ids:
         # Support single tag_id for backward compatibility
         tag_id = data.get('tag_id')
-        if tag_id:
-            tag_ids = [tag_id]
-        else:
+        if tag_id is None:
             return jsonify(api_error('tag_ids_required')), 400
+        if not is_int(tag_id):
+            return jsonify({'error': translate('server.apiError.invalid_integer_value'), 'code': 'invalid_parameter'}), 400
+        tag_ids = [tag_id]
 
     errors = []
     to_add = []
@@ -2860,7 +2878,7 @@ def replace_recording_tags(recording_id):
         return jsonify(api_error('permission_denied')), 403
     data = request.get_json(silent=True) or {}
     tag_ids = data.get('tag_ids')
-    if not isinstance(tag_ids, list) or not all(isinstance(t, int) and not isinstance(t, bool) for t in tag_ids):
+    if not is_int_list(tag_ids):
         return jsonify({'error': translate('server.apiError.invalid_tag_ids_list'), 'code': 'invalid_parameter'}), 400
     wanted, bad = [], []
     for tag_id in dict.fromkeys(tag_ids):
@@ -3216,8 +3234,10 @@ def _speaker_contact_fields(data, speaker):
 @login_required
 def create_speaker():
     """Create a new speaker (name, optional email and aliases)."""
-    data = request.get_json()
-    if not data or not data.get('name'):
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    if not data.get('name') or not isinstance(data['name'], str):
         return jsonify(api_error('speaker_name_required')), 400
 
     name = data['name'].strip()
@@ -3262,7 +3282,9 @@ def update_speaker(speaker_id):
     if speaker.user_id != current_user.id:
         return jsonify(api_error('permission_denied')), 403
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
 
@@ -3432,7 +3454,9 @@ def assign_speakers(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify(api_error('permission_denied')), 403
 
-        data = request.get_json()
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data or 'speaker_map' not in data:
             return jsonify(api_error('speaker_map_required')), 400
 
@@ -3553,7 +3577,9 @@ def start_transcription(recording_id):
 
     # Same checks, clearing and settings as the web reprocess (#412).
     from src.services.reprocessing import queue_transcription_reprocess, ReprocessError
-    data = optional_json_object()
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     overrides = {
         'min_speakers': data.get('min_speakers'),
         'max_speakers': data.get('max_speakers'),
@@ -3594,7 +3620,9 @@ def start_summarization(recording_id):
     # Same checks, clearing and parameters as the web reprocess, including
     # prompt_mode and prompt_variables (#412).
     from src.services.reprocessing import queue_summary_reprocess, ReprocessError
-    data = optional_json_object()
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     try:
         job_id = queue_summary_reprocess(recording, current_user,
                                          custom_prompt=data.get('custom_prompt'),

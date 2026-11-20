@@ -14,7 +14,7 @@ from flask_login import login_required, current_user
 from src.database import db
 from src.models import APIToken
 from src.utils.token_auth import hash_token
-from src.utils.request_body import optional_json_object
+from src.utils.request_body import json_object_body
 from src.utils.localization import api_error, translate
 
 # Create blueprint
@@ -236,7 +236,11 @@ def update_token(token_id):
     if not api_token:
         return jsonify(api_error('token_not_found')), 404
 
-    data = optional_json_object()
+    data, body_error = json_object_body(optional=True)
+
+    if body_error:
+
+        return body_error
     new_name = data.get('name')
     if 'scopes' not in data and not new_name:
         return jsonify(api_error('name_required')), 400

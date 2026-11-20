@@ -3577,6 +3577,7 @@
       "invalid_message_history": "对话历史必须是消息列表，每条消息都有角色（user 或 assistant）和文本内容。",
       "invalid_is_archived": "is_archived 必须是布尔值",
       "invalid_json": "无效的 JSON",
+      "body_must_be_object": "请求正文必须是 JSON 对象",
       "invalid_limit": "limit 必须在 1 到 500 之间",
       "invalid_max_segments": "max_segments 必须至少为 1",
       "invalid_meeting_date": "meeting_date 格式无效",

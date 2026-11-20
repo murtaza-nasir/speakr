@@ -3577,6 +3577,7 @@
       "invalid_message_history": "Der Gesprächsverlauf muss eine Liste von Nachrichten sein, jede mit einer Rolle (user oder assistant) und Textinhalt.",
       "invalid_is_archived": "is_archived muss ein boolescher Wert sein",
       "invalid_json": "Ungültiges JSON",
+      "body_must_be_object": "Der Anfragetext muss ein JSON-Objekt sein",
       "invalid_limit": "limit muss zwischen 1 und 500 liegen",
       "invalid_max_segments": "max_segments muss mindestens 1 sein",
       "invalid_meeting_date": "Ungültiges meeting_date-Format",
