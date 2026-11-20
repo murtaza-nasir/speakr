@@ -21,6 +21,7 @@ from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME
 from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE, TRANSCRIPTION_MODEL_OPTIONS
 from src.services.token_tracking import token_tracker
 from src.services.transcription import TranscriptionCapability
+from src.utils.request_body import json_object_body
 
 # Create blueprint
 system_bp = Blueprint('system', __name__)
@@ -66,10 +67,20 @@ def _user_search_scope():
 @login_required
 def save_user_preferences():
     """Save user preferences including UI language"""
-    data = request.json
-    
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+
+    # A shipped interface locale, stored as its canonical code ('de-AT' is
+    # 'de'), or null for none (#659)
     if 'language' in data:
-        current_user.ui_language = data['language']
+        from src.utils.localization import match_language
+        value = data['language']
+        if value is not None:
+            value = match_language(value)
+            if not value:
+                return jsonify(api_error('invalid_ui_language')), 400
+        current_user.ui_language = value
 
     # Speaker-count entry mode for the transcription UIs (#362):
     # 'range' (min/max fields) or 'single' (one count stored as min == max).

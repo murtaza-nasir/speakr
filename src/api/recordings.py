@@ -24,7 +24,7 @@ from src.services.recording_deletion import delete_recording_completely, cleanup
 from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
-from src.utils.request_body import optional_json_object
+from src.utils.request_body import json_body, json_object_body, is_int_list
 from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
 from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
@@ -290,7 +290,9 @@ def download_chat_word(recording_id):
             return jsonify(api_error('recording_not_found')), 404
 
         # Get chat messages from request
-        data = request.json
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data or 'messages' not in data:
             return jsonify(api_error('no_messages_provided')), 400
 
@@ -624,7 +626,9 @@ def update_speakers(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify(api_error('recording_edit_denied')), 403
 
-        data = request.json
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         speaker_map = data.get('speaker_map')
         regenerate_summary = data.get('regenerate_summary', False)
 
@@ -693,7 +697,9 @@ def update_transcript(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify(api_error('recording_edit_denied')), 403
 
-        data = request.json
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
         transcript_data = data.get('transcript_data')
         speaker_map = data.get('speaker_map', {})
         regenerate_summary = data.get('regenerate_summary', False)
@@ -828,7 +834,9 @@ def reprocess_transcription(recording_id):
 
         # Checks, clearing and settings are shared with every reprocess path (#412).
         from src.services.reprocessing import queue_transcription_reprocess, ReprocessError
-        data = request.json or {}
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
         overrides = {
             'min_speakers': data.get('min_speakers'),
             'max_speakers': data.get('max_speakers'),
@@ -883,7 +891,9 @@ def reprocess_summary(recording_id):
         # Checks, clearing and job parameters are shared with every reprocess
         # path, including API v1 and the bulk action (#412).
         from src.services.reprocessing import queue_summary_reprocess, ReprocessError
-        data = optional_json_object()
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
         try:
             queue_summary_reprocess(recording, current_user,
                                     custom_prompt=data.get('custom_prompt'),
@@ -1692,11 +1702,17 @@ def get_recordings_paginated():
 @login_required
 def save_metadata():
     """Save recording metadata (title, participants, notes, summary, etc.)."""
+    # The body is read before the try, so a body that cannot be read is a
+    # 400 or 415, and the handler below never formats an unread body (#654).
+    data, body_error = json_body()
+    if body_error:
+        return body_error
+    if not data:
+        return jsonify(api_error('no_data_provided')), 400
+    if not isinstance(data, dict):
+        return jsonify(api_error('body_must_be_object')), 400
+    recording_id = data.get('id')
     try:
-        data = request.json
-        if not data:
-            return jsonify(api_error('no_data_provided')), 400
-        recording_id = data.get('id')
         if not recording_id:
             return jsonify(api_error('no_recording_id')), 400
 
@@ -1782,7 +1798,7 @@ def save_metadata():
                             recording.meeting_date = to_utc_naive(datetime.fromisoformat(date_str.replace('Z', '+00:00')))
                     else:
                         recording.meeting_date = None
-                except (ValueError, TypeError) as e:
+                except (ValueError, TypeError, AttributeError) as e:
                     current_app.logger.warning(f"Could not parse meeting_date '{data.get('meeting_date')}': {e}")
 
         # Handle per-user status fields (only requires view permission)
@@ -1813,7 +1829,7 @@ def save_metadata():
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error saving metadata for recording {data.get('id')}: {e}", exc_info=True)
+        current_app.logger.error(f"Error saving metadata for recording {recording_id}: {e}", exc_info=True)
         return jsonify(api_error('unexpected_error_saving')), 500
 
 
@@ -1830,7 +1846,9 @@ def update_transcription(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify(api_error('recording_edit_denied')), 403
 
-        data = request.json or {}
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
         new_transcription = data.get('transcription')
         new_translation = data.get('transcription_translation')
 
@@ -2541,7 +2559,9 @@ def chat_incognito():
         return jsonify(api_error('incognito_disabled')), 403
 
     try:
-        data = request.get_json(silent=True)
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('no_data_provided')), 400
 
@@ -2654,7 +2674,9 @@ def generate_incognito_summary_endpoint():
     from src.utils import md_to_html
 
     try:
-        data = request.json
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('no_data_provided')), 400
 
@@ -2918,7 +2940,9 @@ def get_batch_recording_status():
     Response: {"statuses": {"1": "COMPLETED", "2": "PROCESSING", "3": "FAILED"}}
     """
     try:
-        data = request.get_json()
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data or 'recording_ids' not in data:
             return jsonify(api_error('recording_ids_required')), 400
 
@@ -3380,7 +3404,9 @@ def get_audio(recording_id):
 def chat_with_transcription():
     """Chat with a specific recording's transcription."""
     try:
-        data = request.json
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('no_data_provided')), 400
 
@@ -3544,7 +3570,9 @@ def add_tag_to_recording(recording_id):
         if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
 
-        data = request.get_json()
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         tag_id = data.get('tag_id')
 
         if not tag_id:
@@ -3705,16 +3733,20 @@ def reorder_recording_tags(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify(api_error('recording_modify_denied')), 403
 
-        data = request.get_json()
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data or 'tag_ids' not in data:
             return jsonify(api_error('missing_tag_ids')), 400
 
+        # Every item is checked before the first change (#657)
         tag_ids = data.get('tag_ids', [])
-        if not isinstance(tag_ids, list):
+        if not is_int_list(tag_ids):
             return jsonify(api_error('invalid_tag_ids')), 400
 
-        # Update order for each tag
-        for order, tag_id in enumerate(tag_ids, 1):
+        # Update order for each tag; a repeated id keeps its first place,
+        # so the order stays without gaps
+        for order, tag_id in enumerate(dict.fromkeys(tag_ids), 1):
             recording_tag = RecordingTag.query.filter_by(
                 recording_id=recording_id,
                 tag_id=tag_id
@@ -3746,7 +3778,9 @@ def reorder_recording_tags(recording_id):
 def bulk_delete_recordings():
     """Delete multiple recordings at once."""
     try:
-        data = request.get_json()
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data or 'recording_ids' not in data:
             return jsonify(api_error('missing_recording_ids')), 400
 
@@ -3806,7 +3840,9 @@ def bulk_delete_recordings():
 def bulk_update_tags():
     """Add or remove a tag from multiple recordings."""
     try:
-        data = request.get_json()
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('missing_request_body')), 400
 
@@ -3918,7 +3954,9 @@ def bulk_update_tags():
 def bulk_reprocess():
     """Queue multiple recordings for reprocessing."""
     try:
-        data = request.get_json()
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('missing_request_body')), 400
 
@@ -3985,7 +4023,9 @@ def bulk_reprocess():
 def bulk_toggle():
     """Toggle inbox or highlight for multiple recordings."""
     try:
-        data = request.get_json()
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('missing_request_body')), 400
 

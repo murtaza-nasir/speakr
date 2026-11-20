@@ -1,8 +1,8 @@
 """Limits on the recording metadata a client may write (#624).
 
-Every route that writes title, participants, notes or summary checks the
-body here first, so the API and the web app refuse the same values, and
-SQLite and PostgreSQL answer alike: participants is a VARCHAR(500), which
+Every route that writes title, participants, notes, summary or
+meeting_date checks the body here first, so the API and the web app refuse
+the same values, and SQLite and PostgreSQL answer alike: participants is a VARCHAR(500), which
 SQLite stores past its width and PostgreSQL refuses at flush.
 
 The title has no limit here: the model clips it to 200 characters
@@ -22,18 +22,25 @@ SUMMARY_MAX_CHARS = 200_000
 LIMITS = {'title': None,
           'participants': PARTICIPANTS_MAX_CHARS,
           'notes': NOTES_MAX_CHARS,
-          'summary': SUMMARY_MAX_CHARS}
+          'summary': SUMMARY_MAX_CHARS,
+          # A date as an ISO string, or null to clear it; the route parses
+          # the string (#655).
+          'meeting_date': None}
 
 
 def metadata_error(data, current=None):
     """The 400 body for the first metadata field of `data` that cannot be
     stored, or None when every field can.
 
-    A field is a string or null. A value equal to the one in `current`
+    `data` is the parsed JSON body; a value that is not an object is
+    refused as a whole. A field is a string or null. A value equal to the one in `current`
     (field -> stored value) is accepted as is: the web app sends every
     field on each save, and a stored value written by the pipeline (a long
     participant list from many speakers) must not block a save of notes.
     """
+    if not isinstance(data, dict):
+        return {'error': translate('server.apiError.body_must_be_object'),
+                'code': 'body_must_be_object'}
     current = current or {}
     for field, limit in LIMITS.items():
         if field not in data:
