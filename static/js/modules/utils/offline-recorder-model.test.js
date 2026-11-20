@@ -212,6 +212,9 @@ describe('the limits of a recording', () => {
         expect(limitState({ elapsed: 6, bytes: 72000, maxSeconds: 3600, maxBytes: 90000, step: 2 })).toMatchObject({ stop: true, reason: 'size' });
         expect(limitState({ elapsed: 4, bytes: 48000, maxSeconds: 3600, maxBytes: 90000, step: 2 })).toMatchObject({ warn: true, stop: false });
         expect(limitState({ elapsed: 2, bytes: 24000, maxSeconds: 3600, maxBytes: 90000, step: 2 })).toMatchObject({ warn: false });
+        // A chunk larger than the average (the first one holds the file header) counts as what may still come
+        expect(limitState({ elapsed: 8, bytes: 60000, maxSeconds: 3600, maxBytes: 90000, step: 2, largestChunk: 20000 })).toMatchObject({ stop: true, reason: 'size' });
+        expect(limitState({ elapsed: 8, bytes: 50000, maxSeconds: 3600, maxBytes: 90000, step: 2, largestChunk: 20000 })).toMatchObject({ stop: false, warn: true });
         // Before a byte is known the size has no time; the duration is shown.
         expect(limitState({ elapsed: 0, bytes: 0, maxSeconds: 60, maxBytes: 1000 })).toMatchObject({ binding: 'duration', secondsLeft: 60 });
     });

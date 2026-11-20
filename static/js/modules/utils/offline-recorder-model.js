@@ -230,12 +230,15 @@ export function recordingLimits(limits = {}) {
  * after it), so the storage limit is reached when the free space minus
  * STORAGE_MARGIN_BYTES is no more than the bytes recorded.
  */
-export function limitState({ elapsed = 0, bytes = 0, maxSeconds, maxBytes = null, free = null, step = 0 }) {
+export function limitState({ elapsed = 0, bytes = 0, maxSeconds, maxBytes = null, free = null, step = 0, largestChunk = 0 }) {
     const rate = elapsed >= 1 && bytes > 0 ? bytes / elapsed : null;
-    // The bytes arrive a chunk (step seconds) at a time: the size counts the
-    // chunk to come, so that the recording stops before a chunk would carry
-    // it over the limit, and the warning is not skipped by one chunk.
-    const ahead = rate ? bytes + rate * step : bytes;
+    // The bytes arrive a chunk (step seconds) at a time, and the stop adds
+    // the part recorded since the last chunk. The size therefore counts
+    // what can still arrive: one and a half of the largest chunk seen (or
+    // of an average chunk, if larger), so that the saved recording stays
+    // under the limit and the warning is not skipped by one chunk.
+    const perChunk = Math.max(largestChunk || 0, rate ? rate * step : 0);
+    const ahead = bytes + 1.5 * perChunk;
     const entries = [{ kind: 'duration', fraction: elapsed / maxSeconds, secondsLeft: Math.max(0, maxSeconds - elapsed) }];
     if (maxBytes) {
         entries.push({

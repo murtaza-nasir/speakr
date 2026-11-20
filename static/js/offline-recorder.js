@@ -173,6 +173,7 @@ async function main() {
         }
     };
     let bytes = 0;
+    let largestChunk = 0;
     let free = null;
     let lastEstimate = 0;
     let warned = false;
@@ -202,6 +203,7 @@ async function main() {
         }
         const state = Model.limitState({
             elapsed: elapsed(), bytes, maxSeconds: limits.maxSeconds, maxBytes: limits.maxBytes, free, step: CHUNK_SECONDS,
+            largestChunk,
         });
         if (state.secondsLeft !== null) {
             left.textContent = t('timeLeft', { time: Model.formatDuration(Math.ceil(state.secondsLeft)) });
@@ -251,6 +253,7 @@ async function main() {
         }
         chunks = [];
         bytes = 0;
+        largestChunk = 0;
         warned = false;
         stopReason = null;
         lastEstimate = Date.now();
@@ -275,6 +278,7 @@ async function main() {
             if (!event.data || !event.data.size) return;
             chunks.push(event.data);
             bytes += event.data.size;
+            largestChunk = Math.max(largestChunk, event.data.size);
             if (keepCopy && sessionStartTime) {
                 RecordingDB.saveChunk(event.data, index++)
                     .then(() => (saving ? null : RecordingDB.updateRecordingMetadata({ duration: Math.round(elapsed()) })))
