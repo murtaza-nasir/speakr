@@ -50,6 +50,25 @@ def run_test(name, func):
             raise
 
 
+import pytest as _pytest
+
+
+@_pytest.fixture(autouse=True)
+def _restore_environment():
+    """The tests here clear transcription settings from os.environ and
+    rebuild the connector registry. Both are put back afterwards, so later
+    tests in the same process keep the settings conftest.py made."""
+    saved = dict(os.environ)
+    yield
+    os.environ.clear()
+    os.environ.update(saved)
+    from src.services.transcription import registry
+    registry._registry = None
+    registry.ConnectorRegistry._instance = None
+    registry.ConnectorRegistry._initialized = False
+    registry.ConnectorRegistry._active_connector = None
+
+
 def clear_env():
     """Clear all transcription-related environment variables."""
     keys_to_clear = [
