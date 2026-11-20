@@ -1216,6 +1216,9 @@ def index(recording_id=None, label_name=None):
                          is_team_admin=is_team_admin,
                          server_recording_chunks_enabled=server_recording_chunks_enabled,
                          recording_max_hours=recording_max_hours,
+                         # How long the offline recorder's note lasts after
+                         # this load (REMEMBER_COOKIE_DAYS, #650).
+                         remember_cookie_days=current_app.config['REMEMBER_COOKIE_DURATION'].days,
                          recording_chunk_seconds=recording_chunk_seconds,
                          recording_video_kbps=recording_video_kbps,
                          text_model_configured=_text_model_configured())

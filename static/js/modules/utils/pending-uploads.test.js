@@ -116,19 +116,51 @@ describe('the entry for the offline recorder', () => {
         expect(OFFLINE_CONTEXT_KEY).toBe('speakr.offlineRecorder');
     });
 
-    it('holds the account id, the language and the incognito default, and nothing without an account', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const NOLIMITS = { maxSeconds: null, maxRecorderBytes: null, maxUploadBytes: null };
+
+    it('holds the account id, the language, the incognito default, its expiry and the limits, and nothing without an account', () => {
         expect(offlineContext({ userId: 5, locale: 'fr', incognitoDefault: false, now: 10 }))
-            .toEqual({ userId: '5', locale: 'fr', incognitoDefault: false, savedAt: 10 });
+            .toEqual({ userId: '5', locale: 'fr', incognitoDefault: false, savedAt: 10, expiresAt: 10 + 30 * DAY, limits: NOLIMITS });
+        expect(offlineContext({
+            userId: 5, locale: 'de', now: 0, days: 7, maxSeconds: 28800, maxRecorderBytes: 200 * 1048576, maxUploadBytes: 250 * 1048576,
+        })).toEqual({
+            userId: '5', locale: 'de', incognitoDefault: false, savedAt: 0, expiresAt: 7 * DAY,
+            limits: { maxSeconds: 28800, maxRecorderBytes: 200 * 1048576, maxUploadBytes: 250 * 1048576 },
+        });
         expect(offlineContext({ userId: '', locale: 'fr' })).toBeNull();
         expect(offlineContext({})).toBeNull();
     });
 
-    it('is read back only when well formed', () => {
-        expect(parseOfflineContext(JSON.stringify({ userId: '5', locale: 'pt-BR', incognitoDefault: true, savedAt: 3 })))
-            .toEqual({ userId: '5', locale: 'pt-BR', incognitoDefault: true, savedAt: 3 });
-        for (const raw of [null, '', 'not json', '{}', '{"userId":""}', '[]', '"x"']) {
-            expect(parseOfflineContext(raw), String(raw)).toBeNull();
+    it('lasts 30 days when REMEMBER_COOKIE_DAYS is unknown or not a number, and drops limits that are not numbers', () => {
+        for (const days of [undefined, null, 0, -3, 'x', NaN]) {
+            expect(offlineContext({ userId: 1, now: 0, days }).expiresAt, String(days)).toBe(30 * DAY);
         }
+        expect(offlineContext({ userId: 1, now: 0, maxSeconds: 'x', maxRecorderBytes: -1, maxUploadBytes: 0 }).limits).toEqual(NOLIMITS);
+    });
+
+    it('is read back only when well formed', () => {
+        const raw = JSON.stringify(offlineContext({ userId: '5', locale: 'pt-BR', incognitoDefault: true, now: 3, maxSeconds: 60 }));
+        expect(parseOfflineContext(raw, 4)).toEqual({
+            userId: '5', locale: 'pt-BR', incognitoDefault: true, savedAt: 3, expiresAt: 3 + 30 * DAY,
+            limits: { ...NOLIMITS, maxSeconds: 60 },
+        });
+        for (const bad of [null, '', 'not json', '{}', '{"userId":""}', '[]', '"x"']) {
+            expect(parseOfflineContext(bad), String(bad)).toBeNull();
+        }
+    });
+
+    it('is not read back once it has expired', () => {
+        const raw = JSON.stringify(offlineContext({ userId: '5', now: 1000, days: 2 }));
+        expect(parseOfflineContext(raw, 1000 + 2 * DAY - 1)).not.toBeNull();
+        expect(parseOfflineContext(raw, 1000 + 2 * DAY)).toBeNull();
+        expect(parseOfflineContext(raw, 1000 + 40 * DAY)).toBeNull();
+    });
+
+    it('gives an entry of the first release, without an expiry, 30 days from its save', () => {
+        const raw = JSON.stringify({ userId: '5', locale: 'en', incognitoDefault: false, savedAt: 1000 });
+        expect(parseOfflineContext(raw, 1000 + 29 * DAY)).toMatchObject({ userId: '5', expiresAt: 1000 + 30 * DAY, limits: NOLIMITS });
+        expect(parseOfflineContext(raw, 1000 + 30 * DAY)).toBeNull();
     });
 
     it('names one of the languages of static/locales, else English', () => {

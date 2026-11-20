@@ -19,8 +19,16 @@ describe('rememberForOfflineRecorder', () => {
         expect(context).toMatchObject({ userId: '7', locale: 'fr', incognitoDefault: false });
         expect(JSON.parse(storage.data['speakr.offlineRecorder'])).toMatchObject({ userId: '7', locale: 'fr', incognitoDefault: false });
         expect(Object.keys(JSON.parse(storage.data['speakr.offlineRecorder'])).sort())
-            .toEqual(['incognitoDefault', 'locale', 'savedAt', 'userId']);
+            .toEqual(['expiresAt', 'incognitoDefault', 'limits', 'locale', 'savedAt', 'userId']);
         expect(postMessage).toHaveBeenCalledWith({ type: 'PREPARE_OFFLINE_RECORDER', locale: 'fr' });
+    });
+
+    it('writes the expiry and the limits the app passes', () => {
+        const storage = fakeStorage();
+        rememberForOfflineRecorder({ userId: 7, days: 10, maxSeconds: 3600, maxRecorderBytes: 5, maxUploadBytes: 9 }, { storage });
+        const entry = JSON.parse(storage.data['speakr.offlineRecorder']);
+        expect(entry.expiresAt - entry.savedAt).toBe(10 * 24 * 60 * 60 * 1000);
+        expect(entry.limits).toEqual({ maxSeconds: 3600, maxRecorderBytes: 5, maxUploadBytes: 9 });
     });
 
     it('removes the entry and asks nothing without an account', () => {

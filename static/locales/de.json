@@ -3269,11 +3269,8 @@
     "optionsForAll": "Optionen für alle Dateien",
     "sectionOrganize": "Organisation",
     "sectionTranscription": "Transkription",
-    "otherAccountUploadsTitle": "Aufnahmen eines anderen Kontos",
-    "otherAccountUploadsMessageOne": "Dieser Browser enthält 1 Aufnahme eines anderen Kontos, die den Server nicht erreicht hat. Sie wird nicht in Ihr Konto hochgeladen.",
-    "otherAccountUploadsMessage": "Dieser Browser enthält {{count}} Aufnahmen eines anderen Kontos, die den Server nicht erreicht haben. Sie werden nicht in Ihr Konto hochgeladen.",
-    "otherAccountUploadsDelete": "Löschen",
-    "otherAccountUploadsKeep": "Behalten"
+    "otherAccountCopiesDeletedOne": "1 Aufnahme eines anderen Kontos wurde aus diesem Browser gelöscht.",
+    "otherAccountCopiesDeleted": "{{count}} Aufnahmen eines anderen Kontos wurden aus diesem Browser gelöscht."
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"
@@ -4349,6 +4346,12 @@
     "backWhileRecording": "Speakr ist wieder erreichbar. Beenden Sie die Aufnahme, um sie zu speichern; danach wird sie hochgeladen.",
     "backOpening": "Speakr ist wieder erreichbar. Speakr wird geöffnet…",
     "tryAgain": "Erneut versuchen",
-    "leaveWarning": "Die Aufnahme ist noch nicht gespeichert."
+    "leaveWarning": "Die Aufnahme ist noch nicht gespeichert.",
+    "timeLeft": "Noch {{time}}",
+    "limitWarning": "Die Aufnahme endet von selbst in {{time}}.",
+    "stoppedDuration": "Die Aufnahme hat die maximale Länge von {{limit}} erreicht. Sie wurde beendet und gespeichert.",
+    "stoppedSize": "Die Aufnahme hat die maximale Größe von {{limit}} erreicht. Sie wurde beendet und gespeichert.",
+    "stoppedStorage": "Der Speicher dieses Browsers ist fast voll. Die Aufnahme wurde beendet und gespeichert.",
+    "noStorage": "Dieser Browser hat zu wenig freien Speicher für eine Aufnahme."
   }
 }

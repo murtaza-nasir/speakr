@@ -3269,11 +3269,8 @@
     "optionsForAll": "所有文件的选项",
     "sectionOrganize": "整理",
     "sectionTranscription": "转录",
-    "otherAccountUploadsTitle": "其他账户的录音",
-    "otherAccountUploadsMessageOne": "此浏览器中有 1 条其他账户的录音未到达服务器。它不会上传到您的账户。",
-    "otherAccountUploadsMessage": "此浏览器中有 {{count}} 条其他账户的录音未到达服务器。它们不会上传到您的账户。",
-    "otherAccountUploadsDelete": "删除",
-    "otherAccountUploadsKeep": "保留"
+    "otherAccountCopiesDeletedOne": "已从此浏览器中删除 1 条其他账户的录音。",
+    "otherAccountCopiesDeleted": "已从此浏览器中删除 {{count}} 条其他账户的录音。"
   },
   "uploadProgress": {
     "title": "上传进度"
@@ -4349,6 +4346,12 @@
     "backWhileRecording": "Speakr 已恢复。停止录音即可保存，随后会上传。",
     "backOpening": "Speakr 已恢复，正在打开 Speakr…",
     "tryAgain": "重试",
-    "leaveWarning": "录音尚未保存。"
+    "leaveWarning": "录音尚未保存。",
+    "timeLeft": "剩余 {{time}}",
+    "limitWarning": "录音将在 {{time}} 后自动停止。",
+    "stoppedDuration": "录音已达到最长时长 {{limit}}，已停止并保存。",
+    "stoppedSize": "录音已达到最大大小 {{limit}}，已停止并保存。",
+    "stoppedStorage": "此浏览器的存储空间即将用尽，录音已停止并保存。",
+    "noStorage": "此浏览器剩余存储空间不足，无法录音。"
   }
 }

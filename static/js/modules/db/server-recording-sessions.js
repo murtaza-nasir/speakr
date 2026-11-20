@@ -32,10 +32,18 @@ function csrfToken() {
 
 /** Persist the active session id so we can resume after refresh. */
 function rememberActiveSession(sessionId, mimeType) {
+    let ownerId = null;
+    try {
+        const el = typeof document !== 'undefined' && document.getElementById ? document.getElementById('app') : null;
+        ownerId = (el && el.dataset && el.dataset.currentUserId) || null;
+    } catch (_) { ownerId = null; }
     try {
         localStorage.setItem(PENDING_KEY, JSON.stringify({
             session_id: sessionId,
             mime_type: mimeType,
+            // The account that opened it; another account signing in on
+            // this browser forgets the pointer (#650).
+            owner_id: ownerId,
             stamped_at: Date.now(),
         }));
     } catch (_) { /* private mode: best-effort */ }

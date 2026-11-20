@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import {
     DEFAULT_STRINGS, interpolate, translator, formatDuration, formatSize, recorderAvailability, pendingRows,
     pickMimeType, recordingFileName, offlineClientId, whenServerIsBack, returnTarget, serverAnswered,
+    freeBytes, canStart, recordingLimits, limitState, stoppedMessage, MIN_FREE_BYTES, STORAGE_MARGIN_BYTES,
+    DEFAULT_MAX_SECONDS,
 } from './offline-recorder-model.js';
 import { belongsTo, parseOfflineContext } from './pending-uploads.js';
 
@@ -67,7 +69,7 @@ describe('formatting', () => {
 });
 
 describe('recorderAvailability', () => {
-    const context = (fields) => parseOfflineContext(JSON.stringify({ userId: '3', locale: 'en', ...fields }));
+    const context = (fields) => parseOfflineContext(JSON.stringify({ userId: '3', locale: 'en', savedAt: Date.now(), ...fields }));
 
     it('records nothing without the entry of a signed-in online visit', () => {
         expect(recorderAvailability(null)).toMatchObject({ canRecord: false, reason: 'notSignedIn' });
@@ -81,6 +83,12 @@ describe('recorderAvailability', () => {
         for (const missing of ['mediaDevices', 'mediaRecorder', 'indexedDB']) {
             expect(recorderAvailability(context({}), { [missing]: false }), missing).toMatchObject({ canRecord: false, reason: 'noMicrophone' });
         }
+    });
+
+    it('records nothing once the entry has expired', () => {
+        const raw = JSON.stringify({ userId: '3', locale: 'en', savedAt: 0, expiresAt: 1000 });
+        expect(recorderAvailability(parseOfflineContext(raw, 999))).toMatchObject({ canRecord: true });
+        expect(recorderAvailability(parseOfflineContext(raw, 1000))).toMatchObject({ canRecord: false, reason: 'notSignedIn' });
     });
 
     it('records for the account of the entry', () => {
@@ -157,5 +165,70 @@ describe('back online', () => {
         expect(serverAnswered(502)).toBe(false);
         expect(serverAnswered(504)).toBe(false);
         expect(serverAnswered(undefined)).toBe(false);
+    });
+});
+
+describe('the limits of a recording', () => {
+    const MB = 1024 * 1024;
+    const t = translator(EN, EN);
+
+    it('reads the free storage from navigator.storage.estimate(), unknown when it gives nothing', () => {
+        expect(freeBytes({ quota: 100, usage: 30 })).toBe(70);
+        expect(freeBytes({ quota: 10, usage: 30 })).toBe(0);
+        expect(freeBytes(null)).toBeNull();
+        expect(freeBytes({ quota: 100 })).toBeNull();
+    });
+
+    it('starts only with the minimum free, or when the browser cannot say', () => {
+        expect(canStart(MIN_FREE_BYTES)).toBe(true);
+        expect(canStart(MIN_FREE_BYTES - 1)).toBe(false);
+        expect(canStart(0)).toBe(false);
+        expect(canStart(null)).toBe(true);
+    });
+
+    it('takes RECORDING_MAX_HOURS and the smaller of the two sizes', () => {
+        expect(recordingLimits({ maxSeconds: 3600, maxRecorderBytes: 200 * MB, maxUploadBytes: 250 * MB }))
+            .toEqual({ maxSeconds: 3600, maxBytes: 200 * MB });
+        expect(recordingLimits({ maxSeconds: 3600, maxRecorderBytes: 200 * MB, maxUploadBytes: 100 * MB }).maxBytes).toBe(100 * MB);
+        expect(recordingLimits({ maxRecorderBytes: null, maxUploadBytes: 5 })).toEqual({ maxSeconds: DEFAULT_MAX_SECONDS, maxBytes: 5 });
+        expect(recordingLimits({})).toEqual({ maxSeconds: DEFAULT_MAX_SECONDS, maxBytes: null });
+        expect(recordingLimits(undefined)).toEqual({ maxSeconds: DEFAULT_MAX_SECONDS, maxBytes: null });
+    });
+
+    it('counts down the duration, warns at 80 % and stops at all of it', () => {
+        expect(limitState({ elapsed: 7, bytes: 7000, maxSeconds: 10 })).toMatchObject({ binding: 'duration', secondsLeft: 3, warn: false, stop: false });
+        expect(limitState({ elapsed: 8, bytes: 8000, maxSeconds: 10 })).toMatchObject({ binding: 'duration', warn: true, stop: false });
+        expect(limitState({ elapsed: 10, bytes: 10000, maxSeconds: 10 })).toMatchObject({ stop: true, reason: 'duration', secondsLeft: 0 });
+    });
+
+    it('turns the size limit into time at the rate so far, and stops when the bytes reach it', () => {
+        // 10 kB/s, 1 MB cap, an hour allowed: the size binds.
+        const state = limitState({ elapsed: 50, bytes: 500000, maxSeconds: 3600, maxBytes: 1000000 });
+        expect(state).toMatchObject({ binding: 'size', warn: false, stop: false });
+        expect(state.secondsLeft).toBeCloseTo(50);
+        expect(limitState({ elapsed: 80, bytes: 800000, maxSeconds: 3600, maxBytes: 1000000 })).toMatchObject({ binding: 'size', warn: true });
+        expect(limitState({ elapsed: 100, bytes: 1000000, maxSeconds: 3600, maxBytes: 1000000 })).toMatchObject({ stop: true, reason: 'size' });
+        // With chunks of two seconds the chunk to come counts: no chunk carries it over the limit.
+        expect(limitState({ elapsed: 6, bytes: 72000, maxSeconds: 3600, maxBytes: 90000, step: 2 })).toMatchObject({ stop: true, reason: 'size' });
+        expect(limitState({ elapsed: 4, bytes: 48000, maxSeconds: 3600, maxBytes: 90000, step: 2 })).toMatchObject({ warn: true, stop: false });
+        expect(limitState({ elapsed: 2, bytes: 24000, maxSeconds: 3600, maxBytes: 90000, step: 2 })).toMatchObject({ warn: false });
+        // Before a byte is known the size has no time; the duration is shown.
+        expect(limitState({ elapsed: 0, bytes: 0, maxSeconds: 60, maxBytes: 1000 })).toMatchObject({ binding: 'duration', secondsLeft: 60 });
+    });
+
+    it('stops before the storage runs out, keeping room for the save and a margin', () => {
+        const free = STORAGE_MARGIN_BYTES + 1000000;
+        expect(limitState({ elapsed: 10, bytes: 400000, maxSeconds: 3600, free })).toMatchObject({ binding: 'storage', stop: false });
+        expect(limitState({ elapsed: 10, bytes: 800000, maxSeconds: 3600, free })).toMatchObject({ binding: 'storage', warn: true, stop: false });
+        expect(limitState({ elapsed: 10, bytes: 1000000, maxSeconds: 3600, free })).toMatchObject({ stop: true, reason: 'storage' });
+        // Plenty of storage: the duration binds.
+        expect(limitState({ elapsed: 10, bytes: 1000, maxSeconds: 60, free: 10 * 1024 * MB })).toMatchObject({ binding: 'duration' });
+    });
+
+    it('names the limit reached', () => {
+        expect(stoppedMessage('duration', { maxSeconds: 3600 }, t)).toBe('The recording reached the maximum length of 1:00:00. It was stopped and saved.');
+        expect(stoppedMessage('size', { maxBytes: 200 * MB }, t)).toBe('The recording reached the maximum size of 200 MB. It was stopped and saved.');
+        expect(stoppedMessage('storage', {}, t)).toBe(EN.offlineRecorder.stoppedStorage);
+        expect(stoppedMessage(null, {}, t)).toBe('');
     });
 });

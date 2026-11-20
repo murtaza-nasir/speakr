@@ -176,6 +176,11 @@ describe('recording-persistence', () => {
             expect(mock.stores.get(STORE_NAME).get('current')).toMatchObject({ mode: 'meeting' });
         });
 
+        it('keeps the account it was recorded under, and none when not given (#650)', async () => {
+            expect((await mod.startRecordingSession({ mode: 'microphone', ownerId: 7 })).ownerId).toBe('7');
+            expect((await mod.startRecordingSession({ mode: 'microphone' })).ownerId).toBeNull();
+        });
+
         it('keeps caller-provided values', async () => {
             const session = await mod.startRecordingSession({
                 mode: 'voice', notes: 'hi', tags: ['x'], asrOptions: { diarize: true }, mimeType: 'audio/ogg',

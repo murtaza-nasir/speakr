@@ -156,6 +156,28 @@ async function main() {
     const recordButton = $('or-record');
     const stopButton = $('or-stop');
     const timer = $('or-timer');
+    const left = $('or-left');
+    const limitNote = $('or-limit');
+    // The limits of a recording (the entry's limits, see
+    // Model.recordingLimits): RECORDING_MAX_HOURS, and the smaller of the
+    // in-app recorder's cap and the server's upload limit; the free storage
+    // is asked for before and during a recording.
+    const limits = Model.recordingLimits(context ? context.limits : {});
+    const CHUNK_SECONDS = 2;
+    const storage = typeof navigator !== 'undefined' ? navigator.storage : null;
+    const estimateFree = async () => {
+        try {
+            return storage && storage.estimate ? Model.freeBytes(await storage.estimate()) : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    let bytes = 0;
+    let free = null;
+    let lastEstimate = 0;
+    let warned = false;
+    let stopReason = null;
+    let persistAsked = false;
     let recorder = null;
     let stream = null;
     let chunks = [];
@@ -168,15 +190,51 @@ async function main() {
     const elapsed = () => (startedAt ? (Date.now() - startedAt) / 1000 : 0);
     const showTime = () => { timer.textContent = Model.formatDuration(elapsed()); };
 
+    // Every half second: the time, the time left to the limit reached
+    // first, the warning at 80 % of it, and the stop at all of it. The
+    // storage is asked again every five seconds.
+    function checkLimits() {
+        showTime();
+        if (!recorder || saving) return;
+        if (Date.now() - lastEstimate > 5000) {
+            lastEstimate = Date.now();
+            estimateFree().then((value) => { free = value; });
+        }
+        const state = Model.limitState({
+            elapsed: elapsed(), bytes, maxSeconds: limits.maxSeconds, maxBytes: limits.maxBytes, free, step: CHUNK_SECONDS,
+        });
+        if (state.secondsLeft !== null) {
+            left.textContent = t('timeLeft', { time: Model.formatDuration(Math.ceil(state.secondsLeft)) });
+            left.hidden = false;
+        }
+        if (state.warn && !warned) {
+            warned = true;
+            limitNote.textContent = t('limitWarning', { time: Model.formatDuration(Math.ceil(state.secondsLeft || 0)) });
+            limitNote.hidden = false;
+        }
+        if (state.stop) {
+            stopReason = state.reason;
+            stop();
+        }
+    }
+
     const setRecording = (on) => {
         recordButton.hidden = on;
         stopButton.hidden = !on;
         timer.hidden = !on;
         document.body.classList.toggle('or-is-recording', on);
+        if (!on) left.hidden = true;
     };
 
     async function start() {
         say('');
+        limitNote.hidden = true;
+        delete document.body.dataset.orStopped;
+        free = await estimateFree();
+        if (!Model.canStart(free)) {
+            say(t('noStorage'), 'error');
+            return;
+        }
         try {
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         } catch (e) {
@@ -192,6 +250,10 @@ async function main() {
             return;
         }
         chunks = [];
+        bytes = 0;
+        warned = false;
+        stopReason = null;
+        lastEstimate = Date.now();
         sessionStartTime = null;
         // The crash-recovery copy, unless it holds another recording.
         let keepCopy = false;
@@ -201,6 +263,7 @@ async function main() {
             if (keepCopy) {
                 const session = await RecordingDB.startRecordingSession({
                     mode: 'microphone', mimeType: (recorder.mimeType || mimeType || 'audio/webm').split(';')[0],
+                    ownerId: context.userId,
                 });
                 sessionStartTime = session ? session.startTime : null;
             }
@@ -211,6 +274,7 @@ async function main() {
         recorder.ondataavailable = (event) => {
             if (!event.data || !event.data.size) return;
             chunks.push(event.data);
+            bytes += event.data.size;
             if (keepCopy && sessionStartTime) {
                 RecordingDB.saveChunk(event.data, index++)
                     .then(() => (saving ? null : RecordingDB.updateRecordingMetadata({ duration: Math.round(elapsed()) })))
@@ -218,10 +282,12 @@ async function main() {
             }
         };
         recorder.onstop = () => { saveRecording(); };
-        recorder.start(5000);
+        // A chunk every two seconds: the size is known to that step, and
+        // the crash-recovery copy (rewritten at each chunk) stays cheap.
+        recorder.start(CHUNK_SECONDS * 1000);
         startedAt = Date.now();
         showTime();
-        tick = setInterval(showTime, 500);
+        tick = setInterval(checkLimits, 500);
         setRecording(true);
         say(t('recording'), 'live');
     }
@@ -244,6 +310,14 @@ async function main() {
         recorder = null;
         stream = null;
         startedAt = 0;
+        // Ask once that the browser keep this site's storage; a refusal
+        // changes nothing.
+        if (!persistAsked && storage && storage.persist) {
+            persistAsked = true;
+            try {
+                if (!(storage.persisted && await storage.persisted())) await storage.persist();
+            } catch (e) { /* refused or unavailable */ }
+        }
         try {
             await FailedUploads.storeFailedUpload({
                 file,
@@ -257,6 +331,11 @@ async function main() {
             });
             if (sessionStartTime) {
                 try { await RecordingDB.clearRecordingSessionIfStartedAt(sessionStartTime); } catch (e) { /* the app removes it */ }
+            }
+            if (stopReason) {
+                limitNote.textContent = Model.stoppedMessage(stopReason, limits, t);
+                limitNote.hidden = false;
+                document.body.dataset.orStopped = stopReason;
             }
             say(t('saved'), 'ok');
         } catch (e) {

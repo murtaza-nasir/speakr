@@ -3269,11 +3269,8 @@
     "optionsForAll": "Options for all files",
     "sectionOrganize": "Organization",
     "sectionTranscription": "Transcription",
-    "otherAccountUploadsTitle": "Recordings of another account",
-    "otherAccountUploadsMessageOne": "This browser holds 1 recording of another account that didn't reach the server. It isn't uploaded to your account.",
-    "otherAccountUploadsMessage": "This browser holds {{count}} recordings of another account that didn't reach the server. They aren't uploaded to your account.",
-    "otherAccountUploadsDelete": "Delete",
-    "otherAccountUploadsKeep": "Keep"
+    "otherAccountCopiesDeletedOne": "1 recording of another account was deleted from this browser.",
+    "otherAccountCopiesDeleted": "{{count}} recordings of another account were deleted from this browser."
   },
   "uploadProgress": {
     "title": "Upload progress"
@@ -4349,6 +4346,12 @@
     "backWhileRecording": "Speakr is reachable again. Stop the recording to save it; it is then uploaded.",
     "backOpening": "Speakr is reachable again. Opening Speakr…",
     "tryAgain": "Try again",
-    "leaveWarning": "The recording is not saved yet."
+    "leaveWarning": "The recording is not saved yet.",
+    "timeLeft": "{{time}} left",
+    "limitWarning": "The recording stops by itself in {{time}}.",
+    "stoppedDuration": "The recording reached the maximum length of {{limit}}. It was stopped and saved.",
+    "stoppedSize": "The recording reached the maximum size of {{limit}}. It was stopped and saved.",
+    "stoppedStorage": "This browser is running out of storage. The recording was stopped and saved.",
+    "noStorage": "This browser has too little storage left to record."
   }
 }

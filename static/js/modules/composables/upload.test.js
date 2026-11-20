@@ -31,11 +31,19 @@ vi.mock('../db/failed-uploads.js', () => ({
     updateRetryCount: vi.fn(async (id, retryCount) => { if (store.has(id)) store.get(id).retryCount = retryCount; }),
     triggerLocalDownload: vi.fn(() => true),
 }));
+// The crash-recovery copy and the remembered server session, as the tests set them.
+const local = { session: null, remembered: null };
 vi.mock('../db/recording-persistence.js', () => ({
-    clearRecordingSessionIfStartedAt: vi.fn(async () => true),
+    clearRecordingSessionIfStartedAt: vi.fn(async (startTime) => {
+        if (local.session && local.session.startTime === startTime) { local.session = null; return true; }
+        return false;
+    }),
+    checkForRecoverableRecording: vi.fn(async () => local.session),
 }));
 vi.mock('../db/server-recording-sessions.js', () => ({
     discardSession: vi.fn(async () => ({ ok: true })),
+    getRememberedSession: vi.fn(() => local.remembered),
+    forgetActiveSession: vi.fn(() => { local.remembered = null; }),
 }));
 vi.mock('../db/incognito-storage.js', () => ({}));
 vi.mock('../csrf.js', () => ({
@@ -146,6 +154,8 @@ beforeEach(() => {
     globalThis.navigator = { onLine: true };
     vi.clearAllMocks();
     confirmDialog.mockImplementation(async () => false);
+    local.session = null;
+    local.remembered = null;
 });
 
 afterEach(() => {
@@ -252,42 +262,67 @@ describe('a recording whose upload failed (#650)', () => {
     });
 });
 
-describe('records of another account', () => {
+describe('copies of another account (#650)', () => {
     const seed = (ownerId) => FailedUploads.storeFailedUpload({
         file: new File([new Uint8Array(4)], 'recording-a.webm', { type: 'audio/webm' }),
         clientId: `client-${ownerId}-1234567`, fromRecorder: true, ownerId, source: 'offline',
     });
 
-    it('are never uploaded to the account signed in; kept when the person keeps them', async () => {
+    it('are deleted when another account signs in, with a notice and no question, and never uploaded', async () => {
+        await seed('2');
         await seed('2');
         await seed('1');
-        const { upload } = makeComposable({ userId: '1' });
+        const { upload, utils } = makeComposable({ userId: '1' });
         await upload.resurfaceFailedUploads();
         await flush();
         expect(server.sends.map((s) => s.clientId)).toEqual(['client-1-1234567']);
-        expect(confirmDialog).toHaveBeenCalledTimes(1);
-        expect(confirmDialog.mock.calls[0][0]).toMatchObject({
-            title: 'upload.otherAccountUploadsTitle', message: 'upload.otherAccountUploadsMessageOne',
-            confirmLabel: 'upload.otherAccountUploadsDelete', cancelLabel: 'upload.otherAccountUploadsKeep',
-        });
-        expect([...store.values()].map((r) => r.ownerId)).toEqual(['2']);
-        // Asked once per page.
-        await upload.resurfaceFailedUploads();
+        expect(confirmDialog).not.toHaveBeenCalled();
         await flush();
-        expect(confirmDialog).toHaveBeenCalledTimes(1);
-        expect(server.sends).toHaveLength(1);
+        expect(utils.showToast).toHaveBeenCalledWith('upload.otherAccountCopiesDeleted', 'fa-trash', 8000);
+        expect([...store.values()].filter((r) => r.ownerId === '2')).toHaveLength(0);
     });
 
-    it('are deleted when the person says so', async () => {
+    it('include the crash-recovery copy and the remembered server session of that account', async () => {
         await seed('2');
-        await seed('3');
-        confirmDialog.mockImplementation(async () => true);
-        const { upload } = makeComposable({ userId: '1' });
-        await upload.resurfaceFailedUploads();
+        local.session = { startTime: 'T2', ownerId: '2', chunks: [1] };
+        local.remembered = { session_id: 's2', owner_id: '2' };
+        const { upload, utils } = makeComposable({ userId: '1' });
+        expect(await upload.removeOtherAccountsCopies()).toBe(3);
         await flush();
-        expect(confirmDialog.mock.calls[0][0].message).toBe('upload.otherAccountUploadsMessage');
+        expect(local.session).toBeNull();
+        expect(local.remembered).toBeNull();
         expect(store.size).toBe(0);
-        expect(server.sends).toHaveLength(0);
+        expect(utils.showToast).toHaveBeenCalledTimes(1);
+        expect(utils.showToast.mock.calls[0][0]).toBe('upload.otherAccountCopiesDeleted');
+        // Nothing left: no second notice.
+        expect(await upload.removeOtherAccountsCopies()).toBe(0);
+        await flush();
+        expect(utils.showToast).toHaveBeenCalledTimes(1);
+    });
+
+    it('says "1 recording" for one', async () => {
+        await seed('2');
+        const { upload, utils } = makeComposable({ userId: '1' });
+        expect(await upload.removeOtherAccountsCopies()).toBe(1);
+        await flush();
+        expect(utils.showToast).toHaveBeenCalledWith('upload.otherAccountCopiesDeletedOne', 'fa-trash', 8000);
+    });
+
+    it('leave this account\'s copies and those of an earlier release alone', async () => {
+        await seed('1');
+        await FailedUploads.storeFailedUpload({ file: new File([new Uint8Array(4)], 'old.webm'), clientId: 'client-old-1234567' });
+        local.session = { startTime: 'T1', ownerId: '1', chunks: [1] };
+        local.remembered = { session_id: 's0' };  // no owner: an earlier release
+        const { upload, utils } = makeComposable({ userId: '1' });
+        expect(await upload.removeOtherAccountsCopies()).toBe(0);
+        expect(store.size).toBe(2);
+        expect(local.session).not.toBeNull();
+        expect(local.remembered).not.toBeNull();
+        expect(utils.showToast).not.toHaveBeenCalled();
+        // Without a known account nothing is deleted.
+        await seed('9');
+        expect(await makeComposable({ userId: '' }).upload.removeOtherAccountsCopies()).toBe(0);
+        expect(store.size).toBe(3);
     });
 
     it('are uploaded by the account they belong to, and a record of an earlier release by anyone', async () => {
@@ -297,7 +332,6 @@ describe('records of another account', () => {
         await upload.resurfaceFailedUploads();
         await flush();
         expect(server.sends.map((s) => s.clientId).sort()).toEqual(['client-2-1234567', 'client-old-1234567']);
-        expect(confirmDialog).not.toHaveBeenCalled();
         expect(store.size).toBe(0);
     });
 

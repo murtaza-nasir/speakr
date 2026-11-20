@@ -4547,6 +4547,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // recoverable (already finalized / aborted / expired), we
                 // forget it AND clear the now-redundant local copy so the old
                 // double-prompt + duplicate-restore bug can't recur.
+                // Copies of another account that signed in on this browser
+                // before (a session that ended without a sign-out) are
+                // deleted first, with a notice: they are neither offered
+                // nor uploaded to this account (#650).
+                try { await uploadComposable.removeOtherAccountsCopies(); }
+                catch (error) { console.warn('[App] Copies of other accounts not checked:', error); }
                 try {
                     const ServerSessions = await import('./modules/db/server-recording-sessions.js');
                     const remembered = ServerSessions.getRememberedSession();
@@ -4839,10 +4845,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     const { rememberForOfflineRecorder } = await import('./modules/db/offline-recorder-context.js');
                     const appEl = document.getElementById('app');
+                    const data = (appEl && appEl.dataset) || {};
+                    const MB = 1024 * 1024;
                     rememberForOfflineRecorder({
-                        userId: appEl && appEl.dataset ? appEl.dataset.currentUserId : '',
+                        userId: data.currentUserId || '',
                         locale: (window.i18n && window.i18n.currentLocale) || 'en',
                         incognitoDefault: !!(enableIncognitoMode.value && incognitoMode.value),
+                        // REMEMBER_COOKIE_DAYS: the note lasts as long as a remembered sign-in.
+                        days: parseFloat(data.rememberCookieDays) || 30,
+                        // The limits of the in-app recorder and of the server's upload.
+                        maxSeconds: (parseFloat(data.recordingMaxHours) || 8) * 3600,
+                        maxRecorderBytes: (maxRecordingMB.value || 0) * MB,
+                        maxUploadBytes: (maxFileSizeMB.value || 0) * MB,
                     });
                 } catch (error) {
                     console.warn('[App] Offline recorder not prepared:', error);

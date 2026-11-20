@@ -3269,11 +3269,8 @@
     "optionsForAll": "Opciones para todos los archivos",
     "sectionOrganize": "Organización",
     "sectionTranscription": "Transcripción",
-    "otherAccountUploadsTitle": "Grabaciones de otra cuenta",
-    "otherAccountUploadsMessageOne": "Este navegador contiene 1 grabación de otra cuenta que no llegó al servidor. No se sube a tu cuenta.",
-    "otherAccountUploadsMessage": "Este navegador contiene {{count}} grabaciones de otra cuenta que no llegaron al servidor. No se suben a tu cuenta.",
-    "otherAccountUploadsDelete": "Eliminar",
-    "otherAccountUploadsKeep": "Conservar"
+    "otherAccountCopiesDeletedOne": "Se eliminó de este navegador 1 grabación de otra cuenta.",
+    "otherAccountCopiesDeleted": "Se eliminaron de este navegador {{count}} grabaciones de otra cuenta."
   },
   "uploadProgress": {
     "title": "Progreso de carga"
@@ -4349,6 +4346,12 @@
     "backWhileRecording": "Speakr vuelve a estar disponible. Detén la grabación para guardarla; después se sube.",
     "backOpening": "Speakr vuelve a estar disponible. Abriendo Speakr…",
     "tryAgain": "Reintentar",
-    "leaveWarning": "La grabación aún no se ha guardado."
+    "leaveWarning": "La grabación aún no se ha guardado.",
+    "timeLeft": "Quedan {{time}}",
+    "limitWarning": "La grabación se detendrá sola en {{time}}.",
+    "stoppedDuration": "La grabación alcanzó la duración máxima de {{limit}}. Se detuvo y se guardó.",
+    "stoppedSize": "La grabación alcanzó el tamaño máximo de {{limit}}. Se detuvo y se guardó.",
+    "stoppedStorage": "Este navegador se está quedando sin almacenamiento. La grabación se detuvo y se guardó.",
+    "noStorage": "Este navegador tiene muy poco almacenamiento libre para grabar."
   }
 }

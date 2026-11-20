@@ -140,21 +140,59 @@ export function offlineLocale(value) {
     return OFFLINE_LOCALES.includes(base) ? base : 'en';
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** How long the entry lasts after the last signed-in online load, without REMEMBER_COOKIE_DAYS. */
+export const DEFAULT_OFFLINE_DAYS = 30;
+
+const positive = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : null;
+};
+
 /**
- * The entry the app writes for the offline recorder at each online load:
- * the account the recordings made offline are saved for, the language of
- * its page, and whether incognito mode is the default (then nothing is
- * recorded offline, as nothing of an incognito recording is kept). It holds
- * no name, address or recording. It is removed at sign-out.
+ * The entry the app writes for the offline recorder at each signed-in online
+ * load: the account the recordings made offline are saved for, the language
+ * of its page, whether incognito mode is the default (then nothing is
+ * recorded offline, as nothing of an incognito recording is kept), when it
+ * expires, and the limits of a recording. It holds no name, address or
+ * recording. It is removed at sign-out.
+ *
+ * expiresAt: `days` (REMEMBER_COOKIE_DAYS, default 30) after this load;
+ * the entry is written again, with a new date, at every signed-in load.
+ *
+ * limits, each null when unknown:
+ *   maxSeconds        RECORDING_MAX_HOURS of the in-app recorder;
+ *   maxRecorderBytes  the size at which the in-app recorder stops (maxRecordingMB);
+ *   maxUploadBytes    the server's upload limit for a file (max_file_size_mb).
  */
-export function offlineContext({ userId, locale, incognitoDefault = false, now = Date.now() } = {}) {
+export function offlineContext({
+    userId, locale, incognitoDefault = false, now = Date.now(), days = DEFAULT_OFFLINE_DAYS,
+    maxSeconds = null, maxRecorderBytes = null, maxUploadBytes = null,
+} = {}) {
     const id = asId(userId);
     if (!id) return null;
-    return { userId: id, locale: offlineLocale(locale), incognitoDefault: !!incognitoDefault, savedAt: now };
+    const lifetime = positive(days) || DEFAULT_OFFLINE_DAYS;
+    return {
+        userId: id,
+        locale: offlineLocale(locale),
+        incognitoDefault: !!incognitoDefault,
+        savedAt: now,
+        expiresAt: now + lifetime * DAY_MS,
+        limits: {
+            maxSeconds: positive(maxSeconds),
+            maxRecorderBytes: positive(maxRecorderBytes),
+            maxUploadBytes: positive(maxUploadBytes),
+        },
+    };
 }
 
-/** Read the entry back; null when there is none or it is not well formed. */
-export function parseOfflineContext(raw) {
+/**
+ * Read the entry back; null when there is none, it is not well formed, or it
+ * has expired at `now`. An entry without expiresAt (written by the first
+ * release of the recorder) lasts DEFAULT_OFFLINE_DAYS from savedAt.
+ */
+export function parseOfflineContext(raw, now = Date.now()) {
     if (!raw) return null;
     let value;
     try {
@@ -163,10 +201,20 @@ export function parseOfflineContext(raw) {
         return null;
     }
     if (!value || typeof value !== 'object' || !asId(value.userId)) return null;
+    const savedAt = Number(value.savedAt) || 0;
+    const expiresAt = positive(value.expiresAt) || savedAt + DEFAULT_OFFLINE_DAYS * DAY_MS;
+    if (!(now < expiresAt)) return null;
+    const limits = value.limits && typeof value.limits === 'object' ? value.limits : {};
     return {
         userId: asId(value.userId),
         locale: offlineLocale(value.locale),
         incognitoDefault: !!value.incognitoDefault,
-        savedAt: Number(value.savedAt) || 0,
+        savedAt,
+        expiresAt,
+        limits: {
+            maxSeconds: positive(limits.maxSeconds),
+            maxRecorderBytes: positive(limits.maxRecorderBytes),
+            maxUploadBytes: positive(limits.maxUploadBytes),
+        },
     };
 }

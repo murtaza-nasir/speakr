@@ -114,6 +114,7 @@
          data-default-recording-sort="{{ (current_user.default_recording_sort or 'created_at') if current_user.is_authenticated else 'created_at' }}"
          data-server-recording-chunks="{{ 'True' if server_recording_chunks_enabled else 'False' }}"
          data-recording-max-hours="{{ recording_max_hours }}"
+         data-remember-cookie-days="{{ remember_cookie_days }}"
          data-recording-chunk-seconds="{{ recording_chunk_seconds }}"
          data-recording-video-kbps="{{ recording_video_kbps }}"
          class="h-full flex flex-col opacity-0 transition-opacity duration-500">

@@ -3269,11 +3269,8 @@
     "optionsForAll": "Options pour tous les fichiers",
     "sectionOrganize": "Organisation",
     "sectionTranscription": "Transcription",
-    "otherAccountUploadsTitle": "Enregistrements d’un autre compte",
-    "otherAccountUploadsMessageOne": "Ce navigateur contient 1 enregistrement d’un autre compte qui n’a pas atteint le serveur. Il n’est pas envoyé sur votre compte.",
-    "otherAccountUploadsMessage": "Ce navigateur contient {{count}} enregistrements d’un autre compte qui n’ont pas atteint le serveur. Ils ne sont pas envoyés sur votre compte.",
-    "otherAccountUploadsDelete": "Supprimer",
-    "otherAccountUploadsKeep": "Conserver"
+    "otherAccountCopiesDeletedOne": "1 enregistrement d’un autre compte a été supprimé de ce navigateur.",
+    "otherAccountCopiesDeleted": "{{count}} enregistrements d’un autre compte ont été supprimés de ce navigateur."
   },
   "uploadProgress": {
     "title": "Progression de l'envoi"
@@ -4349,6 +4346,12 @@
     "backWhileRecording": "Speakr est de nouveau joignable. Arrêtez l’enregistrement pour le sauvegarder ; il est ensuite envoyé.",
     "backOpening": "Speakr est de nouveau joignable. Ouverture de Speakr…",
     "tryAgain": "Réessayer",
-    "leaveWarning": "L’enregistrement n’est pas encore sauvegardé."
+    "leaveWarning": "L’enregistrement n’est pas encore sauvegardé.",
+    "timeLeft": "Encore {{time}}",
+    "limitWarning": "L’enregistrement s’arrêtera de lui-même dans {{time}}.",
+    "stoppedDuration": "L’enregistrement a atteint la durée maximale de {{limit}}. Il a été arrêté et sauvegardé.",
+    "stoppedSize": "L’enregistrement a atteint la taille maximale de {{limit}}. Il a été arrêté et sauvegardé.",
+    "stoppedStorage": "Ce navigateur manque d’espace de stockage. L’enregistrement a été arrêté et sauvegardé.",
+    "noStorage": "Ce navigateur n’a plus assez d’espace de stockage pour enregistrer."
   }
 }

@@ -20,7 +20,7 @@ import {
 import { UPLOAD_ACCEPT, isAcceptedUploadFile, isVideoFileName } from '../utils/upload-file-type.js';
 import * as ServerSessions from '../db/server-recording-sessions.js';
 import {
-    failedUploadRecord, partitionByOwner, resurfaceAction, queueItemFromRecord, coveredByPendingUpload,
+    failedUploadRecord, partitionByOwner, belongsTo, resurfaceAction, queueItemFromRecord, coveredByPendingUpload,
 } from '../utils/pending-uploads.js';
 
 export function useUpload(state, utils) {
@@ -1430,12 +1430,6 @@ export function useUpload(state, utils) {
         return true;
     };
 
-    // Auto-retry path for #313: read the failed uploads persisted in IndexedDB,
-    // rebuild a File for each, and resubmit them through the normal upload queue
-    // (correct CSRF, visible in the Processing Queue, works in every browser —
-    // no Background Sync). Triggered on page load and on the browser `online`
-    // event. Items are removed from IndexedDB on success and retry-counted on
-    // failure (see uploadSingleFile).
     // The account signed in on this page (#app data-current-user-id).
     const currentUserId = () => {
         if (utils.currentUserId) return String(utils.currentUserId() || '');
@@ -1447,30 +1441,73 @@ export function useUpload(state, utils) {
         }
     };
 
-    // Records of another account are asked about once per page.
-    let _askedAboutOtherAccounts = false;
-
     // A browser shared by several accounts, or a session that ended without
-    // a sign-out (the sign-out deletes every record): records saved for
-    // another account are not uploaded to this one. The person may delete
-    // them; otherwise they stay for that account.
-    const askAboutOtherAccounts = async (records) => {
-        if (_askedAboutOtherAccounts || !records.length) return;
-        _askedAboutOtherAccounts = true;
-        const remove = await confirmDialog({
-            title: t('upload.otherAccountUploadsTitle'),
-            message: records.length === 1
-                ? t('upload.otherAccountUploadsMessageOne')
-                : t('upload.otherAccountUploadsMessage', { count: records.length }),
-            confirmLabel: t('upload.otherAccountUploadsDelete'),
-            cancelLabel: t('upload.otherAccountUploadsKeep'),
-            danger: true,
-        });
-        if (!remove) return;
-        for (const record of records) {
-            try { await FailedUploads.deleteFailedUpload(record.id); }
-            catch (e) { console.warn('[Upload] Could not delete a record of another account:', e); }
-        }
+    // a sign-out (the sign-out deletes every copy): what waits in this
+    // browser for another account is deleted, never uploaded to this one,
+    // and the person is told how many (#650). That is the failed-upload
+    // records, the crash-recovery copy and the remembered server session of
+    // that account. Copies saved by a release before this rule have no
+    // account and are left as they were.
+    // Resolved when the app's loading overlay (loading.js) is gone, or after 12 s.
+    const pageShown = () => new Promise((resolve) => {
+        if (typeof document === 'undefined' || !document.documentElement) { resolve(); return; }
+        const started = Date.now();
+        const look = () => {
+            if (!document.documentElement.classList.contains('app-loading') || Date.now() - started > 12000) resolve();
+            else setTimeout(look, 200);
+        };
+        look();
+    });
+
+    let _removing = null;
+    const removeOtherAccountsCopies = () => {
+        if (!_removing) _removing = (async () => {
+            const me = currentUserId();
+            if (!me) return 0;
+            let removed = 0;
+            try {
+                const failed = await FailedUploads.getFailedUploads();
+                for (const record of partitionByOwner(failed, me).others) {
+                    try {
+                        await FailedUploads.deleteFailedUpload(record.id);
+                        removed++;
+                    } catch (e) {
+                        console.warn('[Upload] Could not delete a record of another account:', e);
+                    }
+                }
+            } catch (e) {
+                console.warn('[Upload] Could not read the records of other accounts:', e);
+            }
+            try {
+                const session = await RecordingDB.checkForRecoverableRecording();
+                if (session && session.ownerId && !belongsTo(session, me)) {
+                    await RecordingDB.clearRecordingSessionIfStartedAt(session.startTime);
+                    removed++;
+                }
+            } catch (e) {
+                console.warn('[Upload] Could not check the crash-recovery copy:', e);
+            }
+            try {
+                const remembered = ServerSessions.getRememberedSession();
+                if (remembered && remembered.owner_id && !belongsTo({ ownerId: remembered.owner_id }, me)) {
+                    // A session of another account cannot be deleted from this
+                    // one (the server answers 404); its pointer is forgotten and
+                    // the server removes the session when it expires.
+                    ServerSessions.forgetActiveSession();
+                    removed++;
+                }
+            } catch (e) {
+                console.warn('[Upload] Could not check the remembered server session:', e);
+            }
+            if (removed > 0) {
+                // Shown once the loading overlay is gone, so that it is seen.
+                pageShown().then(() => showToast?.(removed === 1
+                    ? t('upload.otherAccountCopiesDeletedOne')
+                    : t('upload.otherAccountCopiesDeleted', { count: removed }), 'fa-trash', 8000));
+            }
+            return removed;
+        })().finally(() => { _removing = null; });
+        return _removing;
     };
 
     // Auto-retry path for #313: read the failed uploads persisted in IndexedDB,
@@ -1484,11 +1521,10 @@ export function useUpload(state, utils) {
         if (_isResurfacing) return;
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
         _isResurfacing = true;
-        let others = [];
         try {
+            await removeOtherAccountsCopies();
             const failed = await FailedUploads.getFailedUploads();
             const split = partitionByOwner(failed, currentUserId());
-            others = split.others.filter(rec => rec && rec.fileData);
             let queued = 0;
             for (const rec of split.mine) {
                 if (!rec || !rec.fileData) continue;
@@ -1531,10 +1567,6 @@ export function useUpload(state, utils) {
         } finally {
             _isResurfacing = false;
         }
-        if (others.length) {
-            try { await askAboutOtherAccounts(others); }
-            catch (e) { console.warn('[Upload] Question about records of another account failed:', e); }
-        }
     };
 
     /**
@@ -1569,6 +1601,7 @@ export function useUpload(state, utils) {
         handleJoinDragEnd,
         resurfaceFailedUploads,
         pendingUploadCovers,
+        removeOtherAccountsCopies,
         handleDragOver,
         handleDragLeave,
         handleDrop,

@@ -104,6 +104,18 @@
     color: var(--text-primary);
 }
 
+.or-left {
+    margin-top: -6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.or-note--warn {
+    background: var(--bg-warn-light);
+    color: var(--text-warn-strong);
+}
+
 .or-is-recording .or-timer::before {
     content: '';
     display: inline-block;

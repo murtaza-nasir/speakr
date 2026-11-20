@@ -150,6 +150,22 @@ describe('abortSession', () => {
 });
 
 
+describe('the remembered session names its account (#650)', () => {
+    afterEach(() => { vi.restoreAllMocks(); delete global.fetch; });
+
+    it('keeps the id of the account signed in on the page, and none without one', async () => {
+        _installDOM();
+        global.document.getElementById = (id) => (id === 'app' ? { dataset: { currentUserId: '12' } } : null);
+        global.fetch = _installFetchMock([{ status: 201, body: { session_id: 's9', mime_type: 'audio/webm' } }]);
+        await createSession('audio/webm');
+        expect(getRememberedSession()).toMatchObject({ session_id: 's9', owner_id: '12' });
+        _installDOM();
+        global.fetch = _installFetchMock([{ status: 201, body: { session_id: 's10', mime_type: 'audio/webm' } }]);
+        await createSession('audio/webm');
+        expect(getRememberedSession()).toMatchObject({ session_id: 's10', owner_id: null });
+    });
+});
+
 describe('discardSession (#650)', () => {
     beforeEach(() => { _installDOM(); });
     afterEach(() => { vi.restoreAllMocks(); delete global.fetch; });

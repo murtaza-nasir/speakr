@@ -951,7 +951,10 @@ export function useAudio(state, utils) {
                         transcription_model: asrTranscriptionModel.value || ''
                     },
                     mimeType,
-                    incognito: !!(incognitoMode && incognitoMode.value)
+                    incognito: !!(incognitoMode && incognitoMode.value),
+                    // The account the copy belongs to: another account
+                    // signing in on this browser deletes it (#650).
+                    ownerId: document.getElementById('app')?.dataset?.currentUserId || null
                 });
                 currentRecordingSessionStartTime = savedSession ? savedSession.startTime : null;
             } catch (dbError) {

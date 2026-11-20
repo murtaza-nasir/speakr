@@ -167,6 +167,9 @@ const startStoredSession = (recordingData) => serializeSessionWrite(async () => 
             chunks: [],
             mimeType: recordingData.mimeType || 'audio/webm',
             duration: 0,
+            // The account it was recorded under; null for a copy saved by an
+            // earlier release (utils/pending-uploads.js, belongsTo).
+            ownerId: recordingData.ownerId ? String(recordingData.ownerId) : null,
             // A stored session is never an incognito one (see inMemoryOnly).
             // The field stays for copies saved by earlier releases.
             incognito: false
