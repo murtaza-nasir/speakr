@@ -393,12 +393,19 @@ def create_session():
         }), 507  # Insufficient Storage
 
     # Storage quota (#413). A sliced upload must fit. A recording can start
-    # only below the quota, and is then accepted whatever its length.
+    # only below the quota, and is then accepted whatever its length; a
+    # recording made in this browser and sent as a file (an upload retried
+    # after a failure, or one made offline) says so with from_recorder, as
+    # on POST /upload. Only a signed-in browser can say so, never an API token.
     from src.services.storage_quota import check_room, StorageQuotaExceeded
-    try:
-        check_room(current_user, total_bytes or 0)
-    except StorageQuotaExceeded as quota_error:
-        return quota_error.response()
+    from src.utils.token_auth import current_api_token
+    recorded_in_app = (upload_filename and data.get('from_recorder') is True
+                       and current_api_token() is None)
+    if not recorded_in_app:
+        try:
+            check_room(current_user, total_bytes or 0)
+        except StorageQuotaExceeded as quota_error:
+            return quota_error.response()
 
     session = RecordingSession(
         user_id=current_user.id,

@@ -168,6 +168,11 @@ describe('uploadFileInSlices', () => {
         expect(progress[progress.length - 1]).toBe(1);
     });
 
+    it('says when the file is a recording made in this browser (#650)', async () => {
+        await uploadFileInSlices(fakeFile(40 * MB), new Map([['from_recorder', 'true']]), {});
+        expect(JSON.parse(fetchCalls[0].options.body).from_recorder).toBe(true);
+    });
+
     it('honours a lower max_chunk_bytes from the server', async () => {
         global.fetch = vi.fn(async (url, options) => ({
             status: 201,

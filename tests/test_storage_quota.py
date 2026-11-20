@@ -343,3 +343,36 @@ def test_storage_figures_follow_the_interface_language(world):
     assert storage["used_label"] == "1,5 MB" and storage["quota_label"] == "10 MB"
     page = client.get("/account").get_data(as_text=True)
     assert '"used": "1,5 MB", "quota": "10 MB"' in page
+
+
+def test_a_sliced_upload_of_a_recording_made_in_the_app_opens_over_the_quota(world):
+    """A recording retried after a failure, or made offline, goes up as a
+    sliced file past 16 MB; like POST /upload it is accepted over the quota (#650)."""
+    u = world["user"](quota_mb=1)
+    world["rec"](u, MB)                                  # already full
+    client = app.test_client()
+    _login(client, u)
+    ok = client.post("/upload/session", json={"filename": "a.webm", "total_bytes": 4 * MB,
+                                              "from_recorder": True})
+    assert ok.status_code == 201
+    client.post(f"/upload/session/{ok.get_json()['session_id']}/abort")
+
+
+@pytest.mark.parametrize("claim", ["true", 1, None])
+def test_only_a_json_true_claims_a_recording_made_in_the_app(world, claim):
+    u = world["user"](quota_mb=1)
+    world["rec"](u, MB)
+    client = app.test_client()
+    _login(client, u)
+    resp = client.post("/upload/session", json={"filename": "a.webm", "total_bytes": 4 * MB,
+                                                "from_recorder": claim})
+    assert resp.status_code == 507
+
+
+def test_a_live_recording_still_cannot_start_over_the_quota_by_claiming_it(world):
+    u = world["user"](quota_mb=1)
+    world["rec"](u, MB)
+    client = app.test_client()
+    _login(client, u)
+    resp = client.post("/upload/session", json={"mime_type": "audio/webm", "from_recorder": True})
+    assert resp.status_code == 507
