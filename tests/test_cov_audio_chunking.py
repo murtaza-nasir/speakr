@@ -507,10 +507,11 @@ def test_calc_chunking_size_only_connector_user_duration(monkeypatch):
     monkeypatch.setenv("CHUNK_LIMIT", "300s")
     specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
     svc = AudioChunkingService()
-    # 15.4MB, 1020s: fits the size cap, but ceil(1020/300)=4 chunks by duration.
+    # 15.4MB, 1020s: fits the size cap, but ceil(1020/300)=4 chunks by duration,
+    # which divide the file without overlapping.
     num, dur = svc.calculate_optimal_chunking(int(15.4 * 1024 * 1024), 1020.0, specs)
     assert num == 4
-    assert dur == pytest.approx(300.0)
+    assert dur == pytest.approx(255.0)
 
 
 def test_calc_chunking_size_cap_raises_chunks_above_user_duration(monkeypatch):
@@ -1112,3 +1113,71 @@ def test_extract_speaker_samples_zero_start_not_dropped(tmp_path):
         out = extract_speaker_samples(str(audio), segments, str(tmp_path))
     assert "A" in out  # 0.0-start speaker no longer dropped
     assert "B" in out
+
+
+def _covered(num, dur, total):
+    """Seconds sent in all, with create_chunks' even step between chunk starts."""
+    return num * dur if num > 1 else min(dur, total)
+
+
+@pytest.mark.parametrize("limit,total,size_mb", [
+    ("60s", 400.0, 6), ("120s", 1300.0, 20), ("300s", 1020.0, 15.4), ("30s", 3000.0, 40),
+])
+def test_a_limit_under_five_minutes_does_not_send_the_same_audio_twice(monkeypatch, limit, total, size_mb):
+    """The 5-minute minimum used to lengthen the chunks at the same count, so
+    they overlapped and the audio was billed several times over."""
+    monkeypatch.setenv("CHUNK_LIMIT", limit)
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
+    num, dur = AudioChunkingService().calculate_optimal_chunking(int(size_mb * 1024 * 1024), total, specs)
+    assert _covered(num, dur, total) == pytest.approx(total)
+
+
+def test_a_limit_under_five_minutes_gives_chunks_of_five_minutes(monkeypatch):
+    monkeypatch.setenv("CHUNK_LIMIT", "60s")
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
+    num, dur = AudioChunkingService().calculate_optimal_chunking(30 * 1024 * 1024, 3000.0, specs)
+    assert (num, dur) == (10, pytest.approx(300.0))
+
+
+def test_the_size_cap_wins_over_the_five_minute_minimum(monkeypatch):
+    monkeypatch.setenv("CHUNK_LIMIT", "60s")
+    specs = make_specs(max_file_size_bytes=5 * 1024 * 1024)  # cap 4MB
+    # 600s of 24MB: 300s chunks would be 12MB, so the cap needs 7 chunks
+    num, dur = AudioChunkingService().calculate_optimal_chunking(24 * 1024 * 1024, 600.0, specs)
+    assert num == 7 and num * dur == pytest.approx(600.0)
+
+
+def test_a_connector_with_a_duration_and_a_size_limit_caps_the_chunk_size(monkeypatch):
+    """openai_transcribe: 1200s chunks of a 320 kbps MP3 are about 46MB, over
+    the 25MB the API accepts."""
+    monkeypatch.delenv("CHUNK_LIMIT", raising=False)
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024, max_duration_seconds=1500,
+                       recommended_chunk_seconds=1200)
+    cfg = get_effective_chunking_config(specs)
+    assert cfg.mode == "duration" and cfg.max_size_mb == pytest.approx(20.0)
+    total, size = 2400.0, int(2400 * 320_000 / 8)
+    num, dur = AudioChunkingService().calculate_optimal_chunking(size, total, specs)
+    assert size / num <= 20 * 1024 * 1024 * 0.95
+    assert dur <= 1200 and num * dur == pytest.approx(total)
+
+
+def test_a_connector_with_a_duration_and_a_size_limit_chunks_a_short_large_file(tmp_path, monkeypatch):
+    monkeypatch.delenv("CHUNK_LIMIT", raising=False)
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024, max_duration_seconds=1500,
+                       recommended_chunk_seconds=1200)
+    audio = tmp_path / "a.mp3"
+    audio.write_bytes(b"x" * (30 * 1024 * 1024))
+    svc = AudioChunkingService()
+    monkeypatch.setattr(svc, "get_audio_duration", lambda path: 700.0)
+    assert svc.needs_chunking(str(audio), connector_specs=specs) is True
+
+
+@pytest.mark.parametrize("limit", ["0s", "0m", "0MB"])
+def test_a_zero_or_negative_chunk_limit_is_ignored(monkeypatch, limit):
+    monkeypatch.setenv("CHUNK_LIMIT", limit)
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
+    cfg = get_effective_chunking_config(specs)
+    assert cfg.mode == "size" and cfg.limit_value == pytest.approx(20.0)
+    num, dur = AudioChunkingService().calculate_optimal_chunking(5 * 1024 * 1024, 30.0, specs)
+    assert (num, dur) == (1, pytest.approx(30.0))
+

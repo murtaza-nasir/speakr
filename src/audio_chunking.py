@@ -44,7 +44,8 @@ class EffectiveChunkingConfig:
     limit_value: float  # MB for size, seconds for duration
     overlap_seconds: int
     source: str  # 'disabled', 'connector_internal', 'env', 'connector_default', 'app_default'
-    max_size_mb: Optional[float] = None  # Per-chunk size cap in MB (duration mode, size-only connector)
+    max_size_mb: Optional[float] = None  # Per-chunk size cap in MB (duration mode, connector with a size limit)
+    max_duration_seconds: Optional[float] = None  # The connector's own per-chunk duration limit
 
 
 def get_effective_chunking_config(
@@ -109,6 +110,13 @@ def get_effective_chunking_config(
                 user_duration_limit = float(re.sub(r'[^0-9.]', '', chunk_limit_upper)) * 60
         except ValueError:
             logger.warning(f"Invalid CHUNK_LIMIT format: {chunk_limit}")
+        # A limit of zero or less cannot be planned; it is ignored like a malformed one
+        if user_duration_limit is not None and user_duration_limit <= 0:
+            logger.warning(f"CHUNK_LIMIT={chunk_limit} is not a positive duration and is ignored")
+            user_duration_limit = None
+        if user_size_limit_mb is not None and user_size_limit_mb <= 0:
+            logger.warning(f"CHUNK_LIMIT={chunk_limit} is not a positive size and is ignored")
+            user_size_limit_mb = None
     elif chunk_size_mb_env:
         try:
             user_size_limit_mb = float(chunk_size_mb_env)
@@ -129,12 +137,16 @@ def get_effective_chunking_config(
                 source = 'connector_limit'
                 logger.info(f"Chunking: Connector requires duration limit {effective_limit}s (max_duration={connector_specs.max_duration_seconds}s)")
 
+            # The connector's size limit caps each chunk as well: an MP3 is
+            # copied at its own bitrate, so a long chunk can exceed it
             return EffectiveChunkingConfig(
                 enabled=True,
                 mode='duration',
                 limit_value=effective_limit,
                 overlap_seconds=overlap_seconds,
-                source=source
+                source=source,
+                max_size_mb=connector_size_limit_mb,
+                max_duration_seconds=connector_duration_limit
             )
 
         # Fall back to size-based if only size limit exists
@@ -165,7 +177,8 @@ def get_effective_chunking_config(
                 mode='size',
                 limit_value=effective_limit,
                 overlap_seconds=overlap_seconds,
-                source=source
+                source=source,
+                max_size_mb=connector_size_limit_mb
             )
 
     # --- Step 4: No hard limits - chunking is optional ---
@@ -521,32 +534,31 @@ class AudioChunkingService:
 
             logger.info(f"Chunking config: mode={mode}, limit={limit_value}, source={chunking_config.source}")
             
+            # Chunks are at least 5 minutes long unless the connector's own
+            # limits require shorter ones. The count is chosen so that the
+            # chunks divide the file: a longer chunk at the same count would
+            # overlap its neighbours and send the same audio twice.
+            min_seconds = 300
             if mode == 'size':
-                # Size-based chunking
                 max_size_bytes = limit_value * 1024 * 1024 * 0.95  # 95% safety factor
                 num_chunks = max(1, math.ceil(converted_size / max_size_bytes))
-                
+                if total_duration / num_chunks < min_seconds:
+                    num_chunks = max(1, math.floor(total_duration / min_seconds))
                 logger.info(f"Size-based chunking: {limit_value}MB limit")
-                logger.info(f"File size {converted_size/1024/1024:.1f}MB requires {num_chunks} chunks")
-                
             else:  # duration-based
-                # Use the limit from the connector/config directly — connectors already
-                # declare their recommended_chunk_seconds with appropriate safety margins
-                num_chunks = max(1, math.ceil(total_duration / limit_value))
-
+                # Connectors declare their recommended_chunk_seconds with a safety margin
+                num_chunks = max(1, math.ceil(total_duration / max(limit_value, min_seconds)))
                 logger.info(f"Duration-based chunking: {limit_value}s limit")
-                logger.info(f"File duration {total_duration:.1f}s requires {num_chunks} chunks")
 
-                # A size-only connector still caps each chunk, so add chunks until it fits
-                if chunking_config.max_size_mb is not None:
-                    max_size_bytes = chunking_config.max_size_mb * 1024 * 1024 * 0.95
-                    num_chunks = max(num_chunks, math.ceil(converted_size / max_size_bytes))
-            
-            # Calculate chunk duration
-            chunk_duration = total_duration / num_chunks
-            
-            # Apply minimum duration (5 minutes) but don't exceed file duration
-            chunk_duration = min(max(300, chunk_duration), total_duration)
+            # The connector's hard limits win over the minimum and the user's choice
+            if chunking_config.max_size_mb:
+                cap_bytes = chunking_config.max_size_mb * 1024 * 1024 * 0.95
+                num_chunks = max(num_chunks, math.ceil(converted_size / cap_bytes))
+            if chunking_config.max_duration_seconds:
+                num_chunks = max(num_chunks, math.ceil(total_duration / chunking_config.max_duration_seconds))
+            logger.info(f"File of {total_duration:.1f}s and {converted_size/1024/1024:.1f}MB requires {num_chunks} chunks")
+
+            chunk_duration = min(total_duration / num_chunks, total_duration)
             
             # Log final chunking plan
             expected_chunk_size_mb = (converted_size / num_chunks) / (1024 * 1024)
