@@ -32,6 +32,7 @@ class TranscriptionCapability(Enum):
     CHUNKING = auto()              # Automatic file chunking for large files
     TIMESTAMPS = auto()            # Word/segment timestamps
     LANGUAGE_DETECTION = auto()    # Auto language detection
+    LANGUAGE_SELECTION = auto()    # Accepts an explicit language (request.language)
     KNOWN_SPEAKERS = auto()        # Support for known speaker references
     SPEAKER_EMBEDDINGS = auto()    # Return speaker embeddings
     SPEAKER_COUNT_CONTROL = auto() # Support for min/max speaker count
@@ -448,6 +449,7 @@ CAPABILITIES: Set[TranscriptionCapability] = {
     TranscriptionCapability.DIARIZATION,      # If you support speaker labels
     TranscriptionCapability.TIMESTAMPS,        # If you return timing info
     TranscriptionCapability.LANGUAGE_DETECTION,# If you can detect language
+    TranscriptionCapability.LANGUAGE_SELECTION,# If you send request.language to the provider
     TranscriptionCapability.SPEAKER_COUNT_CONTROL, # If you support min/max speakers
 }
 ```

@@ -39,6 +39,7 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
     CAPABILITIES: Set[TranscriptionCapability] = {
         TranscriptionCapability.TIMESTAMPS,
         TranscriptionCapability.LANGUAGE_DETECTION,
+        TranscriptionCapability.LANGUAGE_SELECTION,
         TranscriptionCapability.HOTWORDS,
         TranscriptionCapability.INITIAL_PROMPT,
     }

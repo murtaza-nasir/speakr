@@ -34,6 +34,7 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.DIARIZATION,
         TranscriptionCapability.TIMESTAMPS,
         TranscriptionCapability.LANGUAGE_DETECTION,
+        TranscriptionCapability.LANGUAGE_SELECTION,
         # Hotwords are sent as Voxtral's `context_bias` array. Initial prompt
         # is not accepted -- the connector logs a warning and ignores it.
         TranscriptionCapability.HOTWORDS,

@@ -23,6 +23,7 @@ class TranscriptionCapability(Enum):
     HOTWORDS = auto()              # Hotword/keyword biasing (or prompt-based equivalent)
     INITIAL_PROMPT = auto()        # Free-text initial prompt / context hint
     STREAMING = auto()             # Real-time streaming transcription
+    LANGUAGE_SELECTION = auto()    # Accepts an explicit language parameter (request.language)
 
 
 @dataclass
@@ -328,6 +329,11 @@ class BaseTranscriptionConnector(ABC):
     def supports_initial_prompt(self) -> bool:
         """Check if connector accepts an initial prompt / context hint."""
         return TranscriptionCapability.INITIAL_PROMPT in self.CAPABILITIES
+
+    @property
+    def supports_language_selection(self) -> bool:
+        """Check if connector accepts an explicit transcription language."""
+        return TranscriptionCapability.LANGUAGE_SELECTION in self.CAPABILITIES
 
     @property
     def specifications(self) -> ConnectorSpecifications:
