@@ -17,6 +17,28 @@ def _current_release_key():
     return release_key()
 
 
+class OptionalInteger(db.TypeDecorator):
+    """An INTEGER column that reads a stray text value as NULL.
+
+    SQLite stores whatever it is given in a column declared INTEGER, so a raw
+    statement can leave text where the application only writes an int. Adding
+    or dividing by that text raised a TypeError and turned the admin statistics
+    into a 500. Anything that is not an integer reads as None, which these
+    columns already use for "no limit".
+    """
+
+    impl = db.Integer
+    cache_ok = True
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+
 class User(db.Model, UserMixin):
     """User model for authentication and profile management."""
 
@@ -55,13 +77,13 @@ class User(db.Model, UserMixin):
     default_naming_template = db.relationship('NamingTemplate', foreign_keys=[default_naming_template_id])
 
     # Token budget (None = unlimited)
-    monthly_token_budget = db.Column(db.Integer, nullable=True)
+    monthly_token_budget = db.Column(OptionalInteger, nullable=True)
 
     # Transcription budget in seconds (None = unlimited)
-    monthly_transcription_budget = db.Column(db.Integer, nullable=True)
+    monthly_transcription_budget = db.Column(OptionalInteger, nullable=True)
 
     # Storage quota in megabytes (None = unlimited, #413)
-    storage_quota_mb = db.Column(db.Integer, nullable=True)
+    storage_quota_mb = db.Column(OptionalInteger, nullable=True)
 
     # Email verification fields
     email_verified = db.Column(db.Boolean, default=False)
