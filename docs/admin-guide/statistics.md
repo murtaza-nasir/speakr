@@ -42,6 +42,7 @@ This card checks that the transcription backend still produces voice embeddings 
 **Cost by model** lists every model used in the period with its requests, its volume (tokens, or minutes for transcription) and its cost. Language-model and embedding costs come from the provider's response where it reports one, such as OpenRouter, and otherwise from the configured price. Transcription cost is estimated from the connector:
 
 - OpenAI Whisper API: $0.006 per minute
+- OpenAI Transcribe (gpt-transcribe): $0.0045 per minute
 - OpenAI Transcribe (gpt-4o-transcribe): $0.006 per minute
 - OpenAI Transcribe (gpt-4o-mini-transcribe): $0.003 per minute
 - Self-hosted ASR endpoints: $0
