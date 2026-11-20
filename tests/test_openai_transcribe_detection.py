@@ -6,16 +6,20 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tests.test_connector_architecture import clear_env, reset_registry
+from tests.test_connector_architecture import reset_registry
 
 
 @pytest.fixture
 def registry_env(monkeypatch):
-    clear_env()
+    # monkeypatch restores every variable afterwards; clear_env() alone would
+    # leave the suite without the settings later tests in this worker need
+    import os
+    for key in [k for k in os.environ if k.startswith(("TRANSCRIPTION_", "ASR_", "WHISPER_", "AZURE_"))]:
+        monkeypatch.delenv(key)
+    monkeypatch.delenv("USE_ASR_ENDPOINT", raising=False)
     reset_registry()
     monkeypatch.setenv("TRANSCRIPTION_API_KEY", "test-key")
     yield
-    clear_env()
     reset_registry()
 
 
