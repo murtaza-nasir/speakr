@@ -175,6 +175,29 @@ export async function abortSession(sessionId) {
     throw new Error(body?.error || t('errors.recordingAbortFailed', { status: resp.status }, `Abort failed (HTTP ${resp.status})`));
 }
 
+/**
+ * Remove a session whose recording reached the server another way: in one
+ * piece through POST /upload after finalize failed, offline at Stop (#650).
+ * DELETE as abortSession, but the remembered pointer is forgotten only when
+ * it still names this session: the upload may finish while the next
+ * recording, with a session of its own, is under way.
+ */
+export async function discardSession(sessionId) {
+    if (!sessionId) return { ok: true };
+    const remembered = getRememberedSession();
+    const resp = await fetch(`${SESSION_BASE}/${encodeURIComponent(sessionId)}`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': csrfToken() },
+    });
+    if (resp.status === 204 || resp.status === 404) {
+        if (remembered && remembered.session_id === sessionId) forgetActiveSession();
+        return { ok: true };
+    }
+    const body = await safeJson(resp);
+    throw new Error(body?.error || t('errors.recordingAbortFailed', { status: resp.status }, `Abort failed (HTTP ${resp.status})`));
+}
+
 async function safeJson(resp) {
     try { return await resp.json(); } catch (_) { return null; }
 }

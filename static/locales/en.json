@@ -3268,7 +3268,12 @@
     "tabRecord": "Record",
     "optionsForAll": "Options for all files",
     "sectionOrganize": "Organization",
-    "sectionTranscription": "Transcription"
+    "sectionTranscription": "Transcription",
+    "otherAccountUploadsTitle": "Recordings of another account",
+    "otherAccountUploadsMessageOne": "This browser holds 1 recording of another account that didn't reach the server. It isn't uploaded to your account.",
+    "otherAccountUploadsMessage": "This browser holds {{count}} recordings of another account that didn't reach the server. They aren't uploaded to your account.",
+    "otherAccountUploadsDelete": "Delete",
+    "otherAccountUploadsKeep": "Keep"
   },
   "uploadProgress": {
     "title": "Upload progress"
@@ -4312,5 +4317,33 @@
     "videoVolume": "Volume up or down",
     "videoLeave": "Leave full screen",
     "focusQuestion": "Write a question to {{name}}"
+  },
+  "offlineRecorder": {
+    "pageTitle": "Offline - Speakr",
+    "title": "You are offline",
+    "lead": "Speakr cannot be reached. You can record here: the recording is kept in this browser and uploaded when Speakr is back.",
+    "leadPlain": "Speakr cannot be reached. This page is loaded again when the connection is back.",
+    "notSignedIn": "Recording offline is possible once Speakr has been opened online while you are signed in.",
+    "incognito": "Incognito mode is on by default, so nothing is recorded offline: a recording made offline would be kept in this browser.",
+    "noMicrophone": "This browser can't record on this page.",
+    "microphoneDenied": "Speakr may not use the microphone. Allow it in the browser's site settings, then try again.",
+    "record": "Record",
+    "stop": "Stop and save",
+    "recording": "Recording…",
+    "saving": "Saving…",
+    "saved": "Saved in this browser. It is uploaded when Speakr is back.",
+    "saveFailed": "Couldn't keep the recording in this browser. It was downloaded instead.",
+    "saveLost": "Couldn't keep or download the recording.",
+    "pendingTitle": "Waiting to upload",
+    "itemName": "Recording of {{date}}",
+    "delete": "Delete",
+    "deleteQuestion": "Delete this recording from this browser? This can't be undone.",
+    "deleteConfirm": "Delete",
+    "deleteCancel": "Keep",
+    "deleted": "Recording deleted.",
+    "backWhileRecording": "Speakr is reachable again. Stop the recording to save it; it is then uploaded.",
+    "backOpening": "Speakr is reachable again. Opening Speakr…",
+    "tryAgain": "Try again",
+    "leaveWarning": "The recording is not saved yet."
   }
 }

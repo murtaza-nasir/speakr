@@ -3268,7 +3268,12 @@
     "tabRecord": "Enregistrer",
     "optionsForAll": "Options pour tous les fichiers",
     "sectionOrganize": "Organisation",
-    "sectionTranscription": "Transcription"
+    "sectionTranscription": "Transcription",
+    "otherAccountUploadsTitle": "Enregistrements d’un autre compte",
+    "otherAccountUploadsMessageOne": "Ce navigateur contient 1 enregistrement d’un autre compte qui n’a pas atteint le serveur. Il n’est pas envoyé sur votre compte.",
+    "otherAccountUploadsMessage": "Ce navigateur contient {{count}} enregistrements d’un autre compte qui n’ont pas atteint le serveur. Ils ne sont pas envoyés sur votre compte.",
+    "otherAccountUploadsDelete": "Supprimer",
+    "otherAccountUploadsKeep": "Conserver"
   },
   "uploadProgress": {
     "title": "Progression de l'envoi"
@@ -4312,5 +4317,33 @@
     "videoVolume": "Augmenter ou baisser le volume",
     "videoLeave": "Quitter le plein écran",
     "focusQuestion": "Écrire une question à {{name}}"
+  },
+  "offlineRecorder": {
+    "pageTitle": "Hors ligne - Speakr",
+    "title": "Vous êtes hors ligne",
+    "lead": "Speakr est injoignable. Vous pouvez enregistrer ici : l’enregistrement est conservé dans ce navigateur et envoyé dès que Speakr est de retour.",
+    "leadPlain": "Speakr est injoignable. Cette page est rechargée dès que la connexion revient.",
+    "notSignedIn": "L’enregistrement hors ligne est possible une fois Speakr ouvert en ligne alors que vous êtes connecté.",
+    "incognito": "Le mode navigation privée est activé par défaut : rien n’est enregistré hors ligne, car un enregistrement fait hors ligne serait conservé dans ce navigateur.",
+    "noMicrophone": "Ce navigateur ne peut pas enregistrer sur cette page.",
+    "microphoneDenied": "Speakr n’a pas le droit d’utiliser le micro. Autorisez-le dans les paramètres du site du navigateur, puis réessayez.",
+    "record": "Enregistrer",
+    "stop": "Arrêter et sauvegarder",
+    "recording": "Enregistrement…",
+    "saving": "Sauvegarde…",
+    "saved": "Sauvegardé dans ce navigateur. Il est envoyé dès que Speakr est de retour.",
+    "saveFailed": "Impossible de conserver l’enregistrement dans ce navigateur. Il a été téléchargé à la place.",
+    "saveLost": "Impossible de conserver ou de télécharger l’enregistrement.",
+    "pendingTitle": "En attente d’envoi",
+    "itemName": "Enregistrement du {{date}}",
+    "delete": "Supprimer",
+    "deleteQuestion": "Supprimer cet enregistrement de ce navigateur ? Cette action est irréversible.",
+    "deleteConfirm": "Supprimer",
+    "deleteCancel": "Conserver",
+    "deleted": "Enregistrement supprimé.",
+    "backWhileRecording": "Speakr est de nouveau joignable. Arrêtez l’enregistrement pour le sauvegarder ; il est ensuite envoyé.",
+    "backOpening": "Speakr est de nouveau joignable. Ouverture de Speakr…",
+    "tryAgain": "Réessayer",
+    "leaveWarning": "L’enregistrement n’est pas encore sauvegardé."
   }
 }

@@ -4554,7 +4554,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         catch (_) { serverSession = null; }
                     }
 
-                    if (serverSession && serverSession.status === 'recording' && serverSession.chunk_count > 0) {
+                    // A copy whose recording waits in this browser as a failed
+                    // upload is not offered: the upload of that record (below,
+                    // resurfaceFailedUploads) is the one copy that goes up, and
+                    // its success removes the others (#650).
+                    const serverCovered = !!(serverSession && remembered && await uploadComposable.pendingUploadCovers({ sessionId: remembered.session_id }));
+                    if (serverCovered) {
+                        console.log('[App] The remembered server session waits as a failed upload; not offered for recovery');
+                    } else if (serverSession && serverSession.status === 'recording' && serverSession.chunk_count > 0) {
                         // Pull any local metadata (mode/notes) just for display.
                         let localMeta = null;
                         try { localMeta = await audioComposable.checkForRecoverableRecording(); } catch (_) { /* ignore */ }
@@ -4579,7 +4586,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } else {
                         // No server session involved → legacy local recovery.
                         const recoverable = await audioComposable.checkForRecoverableRecording();
-                        if (recoverable && recoverable.chunks && recoverable.chunks.length > 0) {
+                        if (recoverable && recoverable.chunks && recoverable.chunks.length > 0
+                            && await uploadComposable.pendingUploadCovers({ startTime: recoverable.startTime })) {
+                            // The whole recording waits as a failed upload: the
+                            // chunks saved while it was recorded are redundant.
+                            console.log('[App] The local recording waits as a failed upload; its recovery copy is removed');
+                            try { await audioComposable.clearRecordingSession(); } catch (_) { /* ignore */ }
+                        } else if (recoverable && recoverable.chunks && recoverable.chunks.length > 0) {
                             recoverableRecording.value = { source: 'local', ...recoverable };
                             showRecoveryModal.value = true;
                             console.log('[App] Found local recoverable recording, showing recovery dialog');

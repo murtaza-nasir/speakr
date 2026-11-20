@@ -84,7 +84,22 @@ export const storeFailedUpload = async (uploadData) => {
             retryCount: uploadData.retryCount || 0,
             lastError: uploadData.error || '',
             fileData: uploadData.fileData || null, // ArrayBuffer of file
-            mimeType: uploadData.file?.type || uploadData.mimeType || 'audio/webm'
+            mimeType: uploadData.file?.type || uploadData.mimeType || 'audio/webm',
+            // What ties the record to its recording (#650): a recording made
+            // in this browser is sent with from_recorder, and once it is
+            // uploaded its crash-recovery copy (SpeakrRecordings, by start
+            // time) and its session on the server are removed, so that
+            // neither is offered or uploaded a second time.
+            fromRecorder: !!uploadData.fromRecorder,
+            recordingSessionStartTime: uploadData.recordingSessionStartTime || null,
+            serverSessionId: uploadData.serverSessionId || null,
+            folderId: uploadData.folderId || null,
+            duration: Number.isFinite(uploadData.duration) ? uploadData.duration : null,
+            // The account the recording was made under; a record of another
+            // account is not uploaded to the one signed in (utils/pending-uploads.js).
+            ownerId: uploadData.ownerId ? String(uploadData.ownerId) : null,
+            // 'offline': made on the offline recorder page (offline-recorder.html).
+            source: uploadData.source || null
         };
 
         // Convert File to ArrayBuffer if needed. This MUST complete before the

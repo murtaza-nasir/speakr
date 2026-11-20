@@ -3268,7 +3268,12 @@
     "tabRecord": "Grabar",
     "optionsForAll": "Opciones para todos los archivos",
     "sectionOrganize": "Organización",
-    "sectionTranscription": "Transcripción"
+    "sectionTranscription": "Transcripción",
+    "otherAccountUploadsTitle": "Grabaciones de otra cuenta",
+    "otherAccountUploadsMessageOne": "Este navegador contiene 1 grabación de otra cuenta que no llegó al servidor. No se sube a tu cuenta.",
+    "otherAccountUploadsMessage": "Este navegador contiene {{count}} grabaciones de otra cuenta que no llegaron al servidor. No se suben a tu cuenta.",
+    "otherAccountUploadsDelete": "Eliminar",
+    "otherAccountUploadsKeep": "Conservar"
   },
   "uploadProgress": {
     "title": "Progreso de carga"
@@ -4312,5 +4317,33 @@
     "videoVolume": "Subir o bajar el volumen",
     "videoLeave": "Salir de la pantalla completa",
     "focusQuestion": "Escribir una pregunta a {{name}}"
+  },
+  "offlineRecorder": {
+    "pageTitle": "Sin conexión - Speakr",
+    "title": "Estás desconectado",
+    "lead": "No se puede acceder a Speakr. Puedes grabar aquí: la grabación se guarda en este navegador y se sube cuando Speakr vuelva a estar disponible.",
+    "leadPlain": "No se puede acceder a Speakr. Esta página se vuelve a cargar cuando vuelva la conexión.",
+    "notSignedIn": "Se puede grabar sin conexión después de abrir Speakr una vez con conexión y con la sesión iniciada.",
+    "incognito": "El modo incógnito está activado de forma predeterminada, así que no se graba nada sin conexión: una grabación hecha sin conexión se guardaría en este navegador.",
+    "noMicrophone": "Este navegador no puede grabar en esta página.",
+    "microphoneDenied": "Speakr no tiene permiso para usar el micrófono. Permítelo en la configuración del sitio del navegador y vuelve a intentarlo.",
+    "record": "Grabar",
+    "stop": "Detener y guardar",
+    "recording": "Grabando…",
+    "saving": "Guardando…",
+    "saved": "Guardada en este navegador. Se sube cuando Speakr vuelva a estar disponible.",
+    "saveFailed": "No se pudo guardar la grabación en este navegador. Se ha descargado en su lugar.",
+    "saveLost": "No se pudo guardar ni descargar la grabación.",
+    "pendingTitle": "Pendientes de subir",
+    "itemName": "Grabación del {{date}}",
+    "delete": "Eliminar",
+    "deleteQuestion": "¿Eliminar esta grabación de este navegador? No se puede deshacer.",
+    "deleteConfirm": "Eliminar",
+    "deleteCancel": "Conservar",
+    "deleted": "Grabación eliminada.",
+    "backWhileRecording": "Speakr vuelve a estar disponible. Detén la grabación para guardarla; después se sube.",
+    "backOpening": "Speakr vuelve a estar disponible. Abriendo Speakr…",
+    "tryAgain": "Reintentar",
+    "leaveWarning": "La grabación aún no se ha guardado."
   }
 }
