@@ -101,6 +101,8 @@ The connector automatically detects that you want the OpenAI Transcribe connecto
 - `gpt-4o-mini-transcribe` - Cost-effective option
 - `whisper-1` - Legacy model (uses Whisper connector)
 
+> **Note:** OpenAI shuts down `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` and `gpt-4o-transcribe-diarize` on 26 February 2027. Before then, set `TRANSCRIPTION_MODEL=gpt-transcribe`; no other setting needs to change. `gpt-transcribe` does not identify speakers. For speaker identification, use a [self-hosted ASR endpoint](#for-self-hosted-asr-endpoint-recommended-for-best-quality).
+
 > **Note:** For longer files (over ~23 minutes) using `gpt-4o-transcribe-diarize`, speaker tracking across chunks supports up to 4 speakers. Recordings with more speakers may have inconsistent labels across sections.
 
 Now configure the text generation model that powers summaries, titles, and chat features. OpenRouter is recommended here because it provides access to multiple AI models at competitive prices, but you can use any OpenAI-compatible service:
@@ -119,7 +121,7 @@ Many current models reason before they answer, which makes summaries and titles 
 
 #### For Legacy OpenAI Whisper API
 
-If you prefer the legacy Whisper API (without diarization), you can still use the legacy configuration:
+The legacy Whisper API (without diarization) uses the configuration below. OpenAI shuts down `whisper-1` on 26 February 2027, so change `TRANSCRIPTION_MODEL` to `gpt-transcribe` before then.
 
 ```bash
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisper.example -O .env

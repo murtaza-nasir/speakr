@@ -37,7 +37,7 @@ Speakr automatically selects a connector based on your configuration:
 
 1. **Explicit selection** - If `TRANSCRIPTION_CONNECTOR` is set, use that connector
 2. **ASR mode** - If `ASR_BASE_URL` is set, use the ASR Endpoint connector
-3. **OpenAI Transcribe** - If `TRANSCRIPTION_MODEL` contains `gpt-4o` or `gpt-transcribe`, use OpenAI Transcribe connector
+3. **OpenAI Transcribe** - If `TRANSCRIPTION_MODEL` names a model of the OpenAI Transcribe connector, such as `gpt-4o-transcribe` or `gpt-transcribe`, use OpenAI Transcribe connector. Any other name, even one that contains `gpt-4o`, uses the OpenAI Whisper connector
 4. **Default** - Use OpenAI Whisper connector with `TRANSCRIPTION_MODEL` or `whisper-1`
 
 ## Migration Examples

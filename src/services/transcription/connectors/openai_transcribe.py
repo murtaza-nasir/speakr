@@ -118,7 +118,8 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                 - http_client: Optional httpx.Client instance
         """
         # Store model before calling super().__init__ since _validate_config needs it
-        self.model = config.get('model', 'gpt-4o-transcribe')
+        # OpenAI's model names are lower case; 'GPT-Transcribe' is the same model
+        self.model = (config.get('model') or 'gpt-4o-transcribe').strip().lower()
 
         # Set model-specific specifications (override class defaults)
         # Use SPECIFICATIONS (uppercase) to shadow the class attribute
@@ -163,7 +164,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
         if not self.config.get('api_key'):
             raise ConfigurationError("api_key is required for OpenAI Transcribe connector")
 
-        model = self.config.get('model', 'gpt-4o-transcribe')
+        model = self.model
         if model not in self.MODELS:
             raise ConfigurationError(
                 f"Unknown model: {model}. Valid models: {list(self.MODELS.keys())}"
@@ -176,7 +177,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
 
     def transcribe(self, request: TranscriptionRequest) -> TranscriptionResponse:
         """
-        Transcribe audio using GPT-4o Transcribe API.
+        Transcribe audio using the OpenAI Transcribe API.
 
         Args:
             request: Standardized transcription request
@@ -239,8 +240,14 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                             logger.debug(f"Known speaker names: {speaker_names}")
             elif effective_model == 'gpt-transcribe':
                 # gpt-transcribe takes hotwords as a dedicated keywords list
+                # The API rejects the whole request for a keyword with <, > or a
+                # line break, so such an entry is left out and named in the log
                 keywords = [w.strip() for w in (request.hotwords or '').split(',')]
-                keywords = list(dict.fromkeys(w for w in keywords if w and not any(c in w for c in '<>\r\n')))
+                rejected = [w for w in keywords if w and any(c in w for c in '<>\r\n')]
+                if rejected:
+                    logger.warning(f"Left out {len(rejected)} hotword(s) that gpt-transcribe does not accept "
+                                   f"(they contain <, > or a line break): {rejected!r}")
+                keywords = list(dict.fromkeys(w for w in keywords if w and w not in rejected))
                 if keywords:
                     params["keywords"] = keywords
                 if request.prompt:
@@ -255,7 +262,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                 if prompt_parts:
                     params["prompt"] = ". ".join(prompt_parts)
 
-            logger.info(f"Sending request to GPT-4o Transcribe API with model: {effective_model}")
+            logger.info(f"Sending request to OpenAI Transcribe API with model: {effective_model}")
             response = self.client.audio.transcriptions.create(**params)
 
             # Parse response based on format

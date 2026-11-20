@@ -135,7 +135,7 @@ class ConnectorRegistry:
         2. ASR_BASE_URL contains dashscope - use FunASR connector
         3. ASR_BASE_URL is set - use ASR endpoint (smarter detection)
            - USE_ASR_ENDPOINT=true also works (backwards compat, with deprecation warning)
-        4. TRANSCRIPTION_MODEL contains 'gpt-4o' or 'gpt-transcribe' - use OpenAI Transcribe
+        4. TRANSCRIPTION_MODEL names a model of the OpenAI Transcribe connector - use OpenAI Transcribe
         5. TRANSCRIPTION_MODEL is set - use OpenAI Whisper with that model
         6. Default to OpenAI Whisper (whisper-1)
 
@@ -172,11 +172,19 @@ class ConnectorRegistry:
                 connector_name = 'azure_openai_transcribe'
                 logger.info("Auto-detected Azure OpenAI from TRANSCRIPTION_BASE_URL")
             # Priority 4: Model-based detection
-            elif transcription_model and ('gpt-4o' in transcription_model or 'gpt-transcribe' in transcription_model):
+            # (only a model the connector knows: any other name would stop
+            # the connector at startup, so it goes to the Whisper connector)
+            elif transcription_model and self._is_openai_transcribe_model(transcription_model):
                 connector_name = 'openai_transcribe'
                 logger.info(f"Auto-detected OpenAI Transcribe from TRANSCRIPTION_MODEL={transcription_model}")
             # Priority 5 & 6: OpenAI Whisper (with custom or default model)
             else:
+                if transcription_model and any(m in transcription_model.lower() for m in ('gpt-4o', 'gpt-transcribe')):
+                    from .connectors.openai_transcribe import OpenAITranscribeConnector
+                    logger.warning(
+                        f"TRANSCRIPTION_MODEL={transcription_model} is not one of the OpenAI Transcribe "
+                        f"models ({', '.join(m for m in OpenAITranscribeConnector.MODELS if not m.startswith('whisper'))}), so the OpenAI Whisper "
+                        f"connector is used. Set the exact model name to use OpenAI Transcribe.")
                 connector_name = 'openai_whisper'
                 model = transcription_model or whisper_model or 'whisper-1'
                 logger.info(f"Using OpenAI Whisper connector with model: {model}")
@@ -223,6 +231,14 @@ class ConnectorRegistry:
 
         # Default: 30 minutes
         return 1800
+
+    @staticmethod
+    def _is_openai_transcribe_model(model: str) -> bool:
+        """True for a GPT model name of the OpenAI Transcribe connector, in any
+        case. whisper-1 is in its list too, but stays with the Whisper connector."""
+        from .connectors.openai_transcribe import OpenAITranscribeConnector
+        name = model.strip().lower()
+        return name in OpenAITranscribeConnector.MODELS and not name.startswith('whisper')
 
     def _is_azure_endpoint(self) -> bool:
         """Check if the TRANSCRIPTION_BASE_URL points to an Azure OpenAI endpoint."""
