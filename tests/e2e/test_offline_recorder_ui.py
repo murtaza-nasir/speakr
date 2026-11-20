@@ -511,14 +511,32 @@ def sign_out(page):
     page.locator('form[action="/logout"] [type=submit]:visible').first.click()
 
 
-def test_sign_out_removes_the_recorder_and_its_account(context, app):
+def test_sign_out_warns_deletes_the_waiting_recording_and_removes_the_recorder(context, app, admin_api):
     page = app
+    before = server_ids(admin_api)
     assert page.evaluate("() => JSON.parse(localStorage.getItem('speakr.offlineRecorder')).userId")
+    # A recording waits in the browser: its upload was refused.
+    upload = record_in_app(page)
+    page.route("**/upload", lambda route: route.abort("connectionrefused"))
+    upload.click()
+    wait_pending(page, 1)
+    page.unroute("**/upload")
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(500)
+
     sign_out(page)
+    dialog = page.locator("[data-app-dialog]")
+    dialog.wait_for(state="visible", timeout=WAIT)
+    assert en("signOut.localCopiesMessageOne") in dialog.inner_text()
+    shot(page, "sign-out-question")
+    page.locator("[data-app-dialog-confirm]").click()
     page.wait_for_url("**/login*")
     page.wait_for_load_state("load")
     page.evaluate("() => window.SpeakrServiceWorker.ready.then(() => true)")
     assert page.evaluate("() => localStorage.getItem('speakr.offlineRecorder')") is None
+    assert pending(page) == []
+    assert page.evaluate(LOCAL_SESSION) is None
+    assert server_ids(admin_api) == before, "the recording deleted at sign-out was uploaded"
     # What is in Cache Storage now was requested by the sign-in page itself; the recorder is not.
     cached = page.evaluate("""async () => {
         const out = [];
@@ -587,7 +605,22 @@ def second_user(browser, admin_api, admin_cookies):
     ctx.close()
 
 
-def test_a_recording_saved_for_one_account_is_not_uploaded_to_another(context, app, admin_api, admin_cookies, second_user, pw):
+SEED_LOCAL_SESSION = """(owner) => new Promise((resolve, reject) => {
+    const request = indexedDB.open('SpeakrRecordings', 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('activeRecording', { keyPath: 'id' })
+        .createIndex('timestamp', 'timestamp', { unique: false });
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+        const tx = request.result.transaction(['activeRecording'], 'readwrite');
+        tx.objectStore('activeRecording').put({ id: 'current', timestamp: Date.now(), startTime: new Date().toISOString(),
+            mode: 'microphone', notes: '', tags: [], asrOptions: {}, chunks: [{ index: 0, data: new ArrayBuffer(64), size: 64 }],
+            mimeType: 'audio/webm', duration: 3, incognito: false, ownerId: String(owner) });
+        tx.oncomplete = () => { request.result.close(); resolve(true); };
+    };
+})"""
+
+
+def test_another_account_signing_in_deletes_what_waits_for_the_first(context, app, admin_api, admin_cookies, second_user, pw):
     page = app
     admin_id = page.evaluate("() => document.getElementById('app').dataset.currentUserId")
     before = server_ids(admin_api)
@@ -597,47 +630,255 @@ def test_a_recording_saved_for_one_account_is_not_uploaded_to_another(context, a
         with server_down():
             open_recorder(page)
             record_offline(page, 2)
+            # And a crash-recovery copy of the admin, as from a closed tab.
+            page.evaluate(SEED_LOCAL_SESSION, admin_id)
             # Another account in the same browser before the server is back
-            # (the admin's session replaced without a sign-out).
+            # (the admin's session ended without a sign-out).
             context.clear_cookies()
             context.add_cookies(second_user["cookies"])
-        # The recorder opens the app, now the other account's.
+        # The recorder opens the app, now the other account's: both copies
+        # of the admin are deleted, with a notice and no question.
         page.wait_for_function("() => !!document.querySelector('[data-v-app]')", timeout=30000)
-        dialog = page.locator("[data-app-dialog]")
-        dialog.wait_for(state="visible", timeout=WAIT)
-        assert en("upload.otherAccountUploadsTitle") in dialog.inner_text()
-        assert en("upload.otherAccountUploadsMessageOne") in dialog.inner_text()
-        shot(page, "other-account-question")
-        page.locator("[data-app-dialog-cancel]").click()  # Keep
+        notice = page.get_by_text(en("upload.otherAccountCopiesDeleted").replace("{{count}}", "2"))
+        notice.first.wait_for(state="visible", timeout=WAIT)
+        page.wait_for_function("() => !document.documentElement.classList.contains('app-loading')", timeout=WAIT)
+        page.wait_for_timeout(1200)  # the page and the notice fade in
+        shot(page, "account-change-notice")
+        assert page.locator("[data-app-dialog]:visible").count() == 0
+        assert page.evaluate("() => document.getElementById('app').dataset.currentUserId") == str(second_user["id"])
+        assert pending(page) == []
+        assert page.evaluate(LOCAL_SESSION) is None
+        assert not recovery_offered(page)
         page.wait_for_timeout(3000)
-        assert [r["ownerId"] for r in pending(page)] == [admin_id]
         other_now = {r["id"] for r in other_api.get("/api/recordings?per_page=50").json().get("recordings", [])}
         assert other_now == other_before, "the admin's recording went to the other account"
         assert server_ids(admin_api) == before
-        assert page.evaluate("() => document.getElementById('app').dataset.currentUserId") == str(second_user["id"])
-
-        # Offline, the other account's recorder lists nothing of the admin's.
-        wait_for_recorder_files(page)
-        context.set_offline(True)
-        try:
-            open_recorder(page)
-            assert page.evaluate("() => document.body.dataset.orReady") == "recorder"
-            assert page.locator(".or-item").count() == 0
-        finally:
-            back_online(context, page)
     finally:
         other_api.dispose()
 
-    # The admin again: the recording goes up to the admin's account, once.
+    # The admin again: nothing of the admin is left to upload or recover.
     context.clear_cookies()
     context.add_cookies(admin_cookies)
     open_app(page)
+    page.wait_for_timeout(4000)
+    assert pending(page) == []
+    assert not recovery_offered(page)
+    assert server_ids(admin_api) == before
+
+
+# ---- 6: expiry of the note, and the limits of a recording ---------------------------
+
+SET_ENTRY = """(changes) => {
+    const entry = JSON.parse(localStorage.getItem('speakr.offlineRecorder'));
+    for (const [key, value] of Object.entries(changes)) {
+        if (key === 'limits') Object.assign(entry.limits, value); else entry[key] = value;
+    }
+    localStorage.setItem('speakr.offlineRecorder', JSON.stringify(entry));
+    return entry;
+}"""
+DAY_MS = 24 * 3600 * 1000
+
+
+def test_the_note_expires_and_is_renewed_at_each_signed_in_load(context, app, admin_api):
+    page = app
+    entry = page.evaluate("() => JSON.parse(localStorage.getItem('speakr.offlineRecorder'))")
+    now = page.evaluate("() => Date.now()")
+    # REMEMBER_COOKIE_DAYS (30 in the example settings) from this load.
+    assert abs(entry["expiresAt"] - (entry["savedAt"] + 30 * DAY_MS)) < 1000, entry
+    assert abs(entry["savedAt"] - now) < 120000, entry
+    assert entry["limits"]["maxSeconds"] == 8 * 3600, entry
+    assert entry["limits"]["maxRecorderBytes"] == 200 * 1024 * 1024, entry
+    assert entry["limits"]["maxUploadBytes"] > 0, entry
+    before = server_ids(admin_api)
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        # Older than its expiry: the plain offline message, no Record button.
+        page.evaluate(SET_ENTRY, {"expiresAt": now - 1})
+        open_recorder(page)
+        assert page.evaluate("() => document.body.dataset.orReady") == "notSignedIn"
+        assert page.locator("#or-lead").inner_text() == en("offlineRecorder.leadPlain")
+        assert not page.locator("#or-record").is_visible()
+        shot(page, "expired")
+        # Within its expiry: recording works.
+        page.evaluate(SET_ENTRY, {"expiresAt": now + DAY_MS})
+        open_recorder(page)
+        assert page.evaluate("() => document.body.dataset.orReady") == "recorder"
+        record_offline(page, 2)
+    finally:
+        back_online(context, page)
+    # The next signed-in load uploads it, and writes the note again with a new expiry.
+    open_app(page)
+    assert len(wait_new_recordings(admin_api, before, 1)) == 1
+    wait_pending(page, 0)
+    renewed = page.evaluate("() => JSON.parse(localStorage.getItem('speakr.offlineRecorder'))")
+    assert renewed["expiresAt"] > now + 29 * DAY_MS, renewed
+
+
+def _limited_recording(context, page, admin_api, limits, reason, shot_name):
+    before = server_ids(admin_api)
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        page.evaluate(SET_ENTRY, {"limits": limits})
+        open_recorder(page)
+        # Every text the limit note shows, in order, however briefly.
+        page.evaluate("""() => {
+            window.__notes = [];
+            const note = document.getElementById('or-limit');
+            new MutationObserver(() => { if (!note.hidden) window.__notes.push(note.textContent); })
+                .observe(note, { childList: true, characterData: true, subtree: true, attributes: true });
+        }""")
+        page.locator("#or-record").click()
+        page.locator("#or-stop").wait_for(state="visible", timeout=WAIT)
+        # The time left is shown, then the warning at 80 %, then the stop.
+        page.locator("#or-left").wait_for(state="visible", timeout=WAIT)
+        assert page.locator("#or-left").inner_text().endswith(" left")
+        warning = page.locator("#or-limit")
+        warning.wait_for(state="visible", timeout=60000)
+        if page.locator("#or-stop").is_visible():
+            shot(page, f"{shot_name}-warning")
+        page.wait_for_function(f"() => document.body.dataset.orStopped === '{reason}'", timeout=60000)
+        notes = page.evaluate("() => window.__notes")
+        assert notes and notes[0].startswith("The recording stops by itself in "), notes
+        assert page.locator("#or-status").inner_text() == en("offlineRecorder.saved")
+        if reason == "duration":
+            assert warning.inner_text() == en("offlineRecorder.stoppedDuration").replace(
+                "{{limit}}", "0:%02d" % limits["maxSeconds"]), warning.inner_text()
+        else:
+            assert warning.inner_text().endswith("It was stopped and saved."), warning.inner_text()
+        assert page.locator("#or-record").is_visible() and not page.locator("#or-stop").is_visible()
+        shot(page, f"{shot_name}-stopped")
+        [record] = pending(page)
+    finally:
+        back_online(context, page)
+    open_app(page)
     new = wait_new_recordings(admin_api, before, 1)
-    assert len(new) == 1
+    assert len(new) == 1, new
     wait_pending(page, 0)
     reload_app(page)
     page.wait_for_timeout(2000)
     assert server_ids(admin_api) - before == new
+    return record, new.pop()
+
+
+def test_a_recording_stops_at_its_maximum_length(context, app, admin_api):
+    record, rec_id = _limited_recording(context, app, admin_api, {"maxSeconds": 6}, "duration", "limit-duration")
+    assert 5.5 <= record["duration"] <= 7.5, record
+    details = admin_api.get(f"/api/recordings/{rec_id}")
+    assert details.ok
+    # The server knows the length once it has read the file (no ASR service
+    # runs here, so it may not have yet).
+    seconds = details.json().get("audio_duration")
+    print(f"server audio_duration of the stopped recording: {seconds}")
+    if seconds is not None:
+        assert 4.5 <= seconds <= 8, seconds
+
+
+def test_a_recording_stops_at_its_maximum_size(context, app, admin_api):
+    record, _ = _limited_recording(context, app, admin_api, {"maxRecorderBytes": 90000, "maxSeconds": 3600}, "size", "limit-size")
+    # Stopped before the next chunk would have carried it over the limit.
+    assert 50000 <= record["bytes"] <= 90000, record
+    assert record["duration"] < 30, record
+
+
+STORAGE_STUB = """(() => {
+    const mode = localStorage.getItem('e2eStorage');
+    if (!mode || !navigator.storage) return;
+    let calls = 0;
+    const MB = 1024 * 1024;
+    navigator.storage.estimate = async () => {
+        calls += 1;
+        if (mode === 'low') return { quota: 100 * MB, usage: 100 * MB - 10 * MB };
+        // 'shrinking': room to start, then little left.
+        return calls === 1 ? { quota: 100 * MB, usage: 36 * MB } : { quota: 100 * MB, usage: 100 * MB - (16 * MB + 60000) };
+    };
+})()"""
+
+
+def test_little_storage_prevents_a_recording_or_stops_it_with_a_save(context, app, admin_api):
+    page = app
+    context.add_init_script(STORAGE_STUB)
+    before = server_ids(admin_api)
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        page.evaluate("() => localStorage.setItem('e2eStorage', 'low')")
+        open_recorder(page)
+        page.locator("#or-record").click()
+        page.wait_for_function(f"() => document.getElementById('or-status').textContent === {json.dumps(en('offlineRecorder.noStorage'))}",
+                               timeout=WAIT)
+        assert not page.locator("#or-stop").is_visible()
+        assert pending(page) == []
+        shot(page, "storage-low")
+
+        page.evaluate("() => localStorage.setItem('e2eStorage', 'shrinking')")
+        open_recorder(page)
+        page.locator("#or-record").click()
+        page.wait_for_function("() => document.body.dataset.orStopped === 'storage'", timeout=60000)
+        assert page.locator("#or-limit").inner_text() == en("offlineRecorder.stoppedStorage")
+        assert page.locator("#or-status").inner_text() == en("offlineRecorder.saved")
+        [record] = pending(page)
+        assert 0 < record["bytes"] <= 60000 + 40000, record
+        page.evaluate("() => localStorage.removeItem('e2eStorage')")
+    finally:
+        back_online(context, page)
+    open_app(page)
+    assert len(wait_new_recordings(admin_api, before, 1)) == 1
+    wait_pending(page, 0)
+
+
+def test_screens_of_the_new_states_in_light_and_dark_at_two_widths(context, app):
+    """Screenshots (SPEAKR_E2E_SHOTS) of the expired note, the warning, the
+    stop at a limit and the account-change notice; each checked for a
+    horizontal scroll."""
+    page = app
+    scroll = "() => document.scrollingElement.scrollWidth - window.innerWidth"
+    for dark in (False, True):
+        mode = "dark" if dark else "light"
+        for width, height in ((1280, 860), (390, 844)):
+            page.set_viewport_size({"width": width, "height": height})
+            context.set_offline(True)
+            try:
+                open_recorder(page)
+                page.evaluate("(d) => localStorage.setItem('darkMode', String(d))", dark)
+                entry = page.evaluate(SET_ENTRY, {"limits": {"maxSeconds": 5}})
+                page.evaluate(SET_ENTRY, {"expiresAt": 1})
+                open_recorder(page)
+                shot(page, f"state-expired-{mode}-{width}")
+                assert page.evaluate(scroll) <= 0
+                page.evaluate(SET_ENTRY, {"expiresAt": entry["savedAt"] + 30 * DAY_MS})
+                open_recorder(page)
+                page.locator("#or-record").click()
+                page.locator("#or-limit").wait_for(state="visible", timeout=WAIT)
+                shot(page, f"state-warning-{mode}-{width}")
+                assert page.evaluate(scroll) <= 0
+                page.wait_for_function("() => document.body.dataset.orStopped === 'duration'", timeout=WAIT)
+                shot(page, f"state-stopped-{mode}-{width}")
+                assert page.evaluate(scroll) <= 0
+                # Not uploaded: the next step shows it as another account's.
+                page.evaluate("""() => new Promise((resolve) => {
+                    const request = indexedDB.open('SpeakrFailedUploads');
+                    request.onsuccess = () => {
+                        const tx = request.result.transaction(['failedUploads'], 'readwrite');
+                        const store = tx.objectStore('failedUploads');
+                        const all = store.getAll();
+                        all.onsuccess = () => { for (const r of all.result) { r.ownerId = '999999'; store.put(r); } };
+                        tx.oncomplete = () => { request.result.close(); resolve(true); };
+                    };
+                })""")
+            finally:
+                back_online(context, page)
+            open_app(page)
+            page.evaluate("(d) => localStorage.setItem('darkMode', String(d))", dark)
+            notice = page.get_by_text(en("upload.otherAccountCopiesDeletedOne"))
+            notice.first.wait_for(state="visible", timeout=WAIT)
+            page.wait_for_function("() => !document.documentElement.classList.contains('app-loading')", timeout=WAIT)
+            page.wait_for_timeout(1200)  # the page and the notice fade in
+            shot(page, f"state-account-notice-{mode}-{width}")
+            assert pending(page) == []
+    page.evaluate("() => localStorage.removeItem('darkMode')")
+    page.set_viewport_size({"width": 1400, "height": 900})
 
 
 # ---- 5: themes, widths and languages ---------------------------------------------

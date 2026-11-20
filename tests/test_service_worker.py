@@ -176,3 +176,15 @@ def test_the_offline_recorder_page_is_the_same_signed_in(signed_in):
     assert mine.get_data() == anonymous.get_data()
     anonymous.close()
     mine.close()
+
+
+def test_the_app_tells_the_offline_recorder_how_long_its_note_lasts(signed_in):
+    """REMEMBER_COOKIE_DAYS reaches the page as data-remember-cookie-days, beside
+    data-recording-max-hours, for the expiry and the limits of the offline
+    recorder's entry (#650)."""
+    response = signed_in.get("/")
+    html = response.get_data(as_text=True)
+    response.close()
+    days = app.config["REMEMBER_COOKIE_DURATION"].days
+    assert f'data-remember-cookie-days="{days}"' in html
+    assert 'data-recording-max-hours="' in html
