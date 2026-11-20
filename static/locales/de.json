@@ -3855,7 +3855,9 @@
       "invalid_permission_mode": "Ungültiger Wert. Zulässig sind: {{modes}}",
       "invalid_user_default": "Ungültiger Wert für {{setting}}. Erlaubt: {{allowed}}",
       "unknown_user_default": "Unbekannter Standardwert für Benutzer",
-      "invalid_context_chunks": "context_chunks muss zwischen 1 und {{max}} liegen"
+      "invalid_context_chunks": "context_chunks muss zwischen 1 und {{max}} liegen",
+      "invalid_token_budget": "Das monatliche Token-Budget muss eine ganze Zahl ab 0 sein. Für keine Grenze das Feld leer lassen.",
+      "invalid_transcription_budget": "Das monatliche Transkriptionsbudget muss eine ganze Zahl ab 0 sein. Für keine Grenze das Feld leer lassen."
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

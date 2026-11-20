@@ -3855,7 +3855,9 @@
       "invalid_permission_mode": "Недопустимое значение. Допустимые значения: {{modes}}",
       "invalid_user_default": "Недопустимое значение для {{setting}}. Допустимые значения: {{allowed}}",
       "unknown_user_default": "Неизвестное значение по умолчанию для пользователей",
-      "invalid_context_chunks": "context_chunks должен быть от 1 до {{max}}"
+      "invalid_context_chunks": "context_chunks должен быть от 1 до {{max}}",
+      "invalid_token_budget": "Месячный бюджет токенов должен быть целым числом не меньше 0. Оставьте поле пустым, чтобы не задавать лимит.",
+      "invalid_transcription_budget": "Месячный бюджет транскрибации должен быть целым числом не меньше 0. Оставьте поле пустым, чтобы не задавать лимит."
     },
     "apiMessage": {
       "accountUpdated": "Данные учётной записи обновлены",

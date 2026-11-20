@@ -3493,7 +3493,7 @@ Summarization Instructions:
                                 password: newUser.value.password,
                                 is_admin: newUser.value.isAdmin,
                                 monthly_token_budget: newUser.value.monthlyTokenBudget || null,
-                                monthly_transcription_budget: newUser.value.monthlyTranscriptionBudgetMinutes ? newUser.value.monthlyTranscriptionBudgetMinutes * 60 : null,
+                                monthly_transcription_budget: newUser.value.monthlyTranscriptionBudgetMinutes ? Math.round(newUser.value.monthlyTranscriptionBudgetMinutes * 60) : null,
                                 // Left empty, the server applies the default for new accounts.
                                 ...(newUser.value.storageQuotaMb ? { storage_quota_mb: newUser.value.storageQuotaMb } : {})
                             })
@@ -3536,7 +3536,7 @@ Summarization Instructions:
                     try {
                         // Convert transcription budget from minutes to seconds
                         const transcriptionBudgetSeconds = editingUser.value.monthly_transcription_budget_minutes
-                            ? editingUser.value.monthly_transcription_budget_minutes * 60
+                            ? Math.round(editingUser.value.monthly_transcription_budget_minutes * 60)
                             : null;
 
                         const payload = {

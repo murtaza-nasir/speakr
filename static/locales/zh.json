@@ -3855,7 +3855,9 @@
       "invalid_permission_mode": "无效的值。必须是以下之一：{{modes}}",
       "invalid_user_default": "{{setting}} 的值无效。必须是以下之一：{{allowed}}",
       "unknown_user_default": "未知的用户默认设置",
-      "invalid_context_chunks": "context_chunks 必须在 1 到 {{max}} 之间"
+      "invalid_context_chunks": "context_chunks 必须在 1 到 {{max}} 之间",
+      "invalid_token_budget": "每月令牌预算必须是大于或等于 0 的整数。留空表示不设限制。",
+      "invalid_transcription_budget": "每月转录预算必须是大于或等于 0 的整数。留空表示不设限制。"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新",

@@ -417,6 +417,9 @@ def admin_add_user():
         storage_quota = _quota_mb(data['storage_quota_mb']) if 'storage_quota_mb' in data else default_quota_mb()
     except (TypeError, ValueError):
         return jsonify(api_error('invalid_storage_quota')), 400
+    budgets, bad_budget = _budget_fields(data)
+    if bad_budget:
+        return bad_budget
 
     # Create new user
     hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
@@ -425,8 +428,8 @@ def admin_add_user():
         email=email,
         password=hashed_password,
         is_admin=data.get('is_admin', False),
-        monthly_token_budget=data.get('monthly_token_budget'),
-        monthly_transcription_budget=data.get('monthly_transcription_budget'),
+        monthly_token_budget=budgets.get('monthly_token_budget'),
+        monthly_transcription_budget=budgets.get('monthly_transcription_budget'),
         storage_quota_mb=storage_quota,
     )
     from src.services.user_defaults import apply_new_user_defaults
@@ -525,21 +528,13 @@ def admin_update_user(user_id):
     if 'create_groups_granted' in data:
         set_user_grant(CREATE_GROUPS, user.id, bool(data['create_groups_granted']))
 
-    if 'monthly_token_budget' in data:
-        # Allow setting to None (unlimited) or a positive integer
-        budget = data['monthly_token_budget']
-        if budget is None or budget == '' or budget == 0:
-            user.monthly_token_budget = None
-        else:
-            user.monthly_token_budget = int(budget)
-
-    if 'monthly_transcription_budget' in data:
-        # Allow setting to None (unlimited) or a positive integer (in seconds)
-        budget = data['monthly_transcription_budget']
-        if budget is None or budget == '' or budget == 0:
-            user.monthly_transcription_budget = None
-        else:
-            user.monthly_transcription_budget = int(budget)
+    # None, '' or 0 is no limit; the transcription budget is in seconds
+    budgets, bad_budget = _budget_fields(data)
+    if bad_budget:
+        db.session.rollback()
+        return bad_budget
+    for field, value in budgets.items():
+        setattr(user, field, value)
 
     if 'storage_quota_mb' in data:
         try:
@@ -704,14 +699,47 @@ def admin_toggle_admin(user_id):
 
 
 
+def _limit_value(value):
+    """A limit from the admin form or API: a whole number of 0 or more, or None
+    for no limit (None, '', 0 and '0'). Raises ValueError for anything else,
+    such as 'abc', '1.5', -1, True or a list (#651)."""
+    if value is None or isinstance(value, bool):
+        if value is None:
+            return None
+        raise ValueError('a limit is a whole number')
+    if isinstance(value, str):
+        value = value.strip()
+        if value == '':
+            return None
+        if not value.isdigit():
+            raise ValueError('a limit is a whole number')
+        value = int(value)
+    elif isinstance(value, float) and value.is_integer():
+        value = int(value)
+    elif not isinstance(value, int):
+        raise ValueError('a limit is a whole number')
+    if value < 0:
+        raise ValueError('a limit is not negative')
+    return value or None
+
+
 def _quota_mb(value):
     """A storage quota from the admin form: a positive number of MB, or no limit."""
-    if value in (None, '', 0, '0'):
-        return None
-    value = int(value)
-    if value < 0:
-        raise ValueError('storage_quota_mb must be positive')
-    return value
+    return _limit_value(value)
+
+
+def _budget_fields(data):
+    """The budget fields present in a request, checked: ({field: value}, None),
+    or (None, the 400 response) for the first invalid one."""
+    values = {}
+    for field in ('monthly_token_budget', 'monthly_transcription_budget'):
+        if field in data:
+            try:
+                values[field] = _limit_value(data[field])
+            except ValueError:
+                code = 'invalid_token_budget' if field == 'monthly_token_budget' else 'invalid_transcription_budget'
+                return None, (jsonify(api_error(code)), 400)
+    return values, None
 
 
 # --- Audit log ---------------------------------------------------------------

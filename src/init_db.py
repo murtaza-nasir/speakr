@@ -238,6 +238,25 @@ def initialize_database(app):
         _run_migrations(app, engine)
 
 
+def clear_text_user_limits(engine, logger):
+    """Clear a budget or quota that SQLite holds as text (#651); see _run_migrations."""
+    if engine.dialect.name == 'sqlite':
+        with engine.begin() as conn:
+            for column in ('monthly_token_budget', 'monthly_transcription_budget', 'storage_quota_mb'):
+                rows = conn.execute(text(
+                    f'SELECT id FROM "user" WHERE {column} IS NOT NULL '
+                    f"AND typeof({column}) NOT IN ('integer', 'real')"
+                )).fetchall()
+                if rows:
+                    conn.execute(text(
+                        f'UPDATE "user" SET {column} = NULL WHERE {column} IS NOT NULL '
+                        f"AND typeof({column}) NOT IN ('integer', 'real')"
+                    ))
+                    logger.warning(
+                        "Cleared a %s that was not a number for user(s) %s; it is now no limit",
+                        column, ", ".join(str(r[0]) for r in rows))
+
+
 @contextmanager
 def _migration_section(app, failures, name):
     """Contain a failure to one group of migrations instead of all of them.
@@ -1297,6 +1316,14 @@ def _run_migrations(app, engine):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"embedding_identifier compatibility check skipped: {e}")
+
+    with _migration_section(app, failures, "user limits stored as text"):
+        # Before #651 an admin could store a budget or quota such as 'abc'.
+        # SQLite keeps text in an INTEGER column, and the admin user list,
+        # the overview and the token statistics then fail for every admin.
+        # Such a value is cleared (no limit) and the account is logged.
+        # PostgreSQL refused the write, so only SQLite can hold one.
+        clear_text_user_limits(engine, app.logger)
 
     with _migration_section(app, failures, "one-shot data cleanups"):
         # One-time email normalization: lowercase (and trim) existing stored
