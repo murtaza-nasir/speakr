@@ -478,16 +478,16 @@ def _env_bool(name, default=False):
 def _environment_extra_body(env_name):
     raw = _env(env_name)
     if raw is None:
-        return None
+        return None, None
     try:
-        return parse_extra_body(raw, env_name)
+        return parse_extra_body(raw, env_name), None
     except LLMConfigError as error:
         logger.error('%s; requests with this configuration will fail until it is corrected.', error)
-        return {}
+        return {}, str(error)
 
 
 def _environment_text():
-    extra_body = _environment_extra_body('TEXT_MODEL_EXTRA_BODY')
+    extra_body, extra_body_error = _environment_extra_body('TEXT_MODEL_EXTRA_BODY')
     return {
         'source': 'environment',
         'profile': None,
@@ -496,6 +496,7 @@ def _environment_text():
         'base_url_explicit': bool(_env('TEXT_MODEL_BASE_URL')),
         'model_name': _env('TEXT_MODEL_NAME', DEFAULT_TEXT_MODEL),
         'extra_body': extra_body if extra_body is not None else {},
+        'extra_body_error': extra_body_error,
         'gpt5_force': _env_bool('GPT5_FORCE_MODE'),
         'gpt5_reasoning_effort': _env('GPT5_REASONING_EFFORT', DEFAULT_GPT5_SETTING),
         'gpt5_verbosity': _env('GPT5_VERBOSITY', DEFAULT_GPT5_SETTING),
@@ -513,7 +514,7 @@ def _environment_role(role, text_environment):
     if not (model_name and (api_key or base_url)):
         return None
 
-    extra_body = _environment_extra_body(f'{prefix}_MODEL_EXTRA_BODY')
+    extra_body, extra_body_error = _environment_extra_body(f'{prefix}_MODEL_EXTRA_BODY')
     return {
         'source': 'environment',
         'profile': None,
@@ -523,6 +524,9 @@ def _environment_role(role, text_environment):
         'model_name': model_name,
         'extra_body': (
             extra_body if extra_body is not None else text_environment['extra_body']),
+        'extra_body_error': (
+            extra_body_error if extra_body is not None
+            else text_environment['extra_body_error']),
         'gpt5_force': _env_bool(f'{prefix}_GPT5_FORCE_MODE'),
         'gpt5_reasoning_effort': (
             _env(f'{prefix}_GPT5_REASONING_EFFORT')
@@ -544,6 +548,7 @@ def _profile_config(role, profile):
         'base_url_explicit': bool(profile['base_url']),
         'model_name': profile['model_name'],
         'extra_body': dict(profile['extra_body']),
+        'extra_body_error': None,
         'gpt5_force': profile['gpt5_force'],
         'gpt5_reasoning_effort': profile['gpt5_reasoning_effort'],
         'gpt5_verbosity': profile['gpt5_verbosity'],
@@ -725,6 +730,11 @@ def get_client(role):
 
     settings = runtime_settings()
     signature = client_signature(config, settings)
+    if role != 'text':
+        text_config = resolve_config('text', reveal_key=True)
+        if text_config['configured'] and client_signature(text_config, settings) == signature:
+            # Same connection: reuse the text client instead of a second one.
+            return get_client('text')
     with _clients_lock:
         cached = _clients.get(role)
         if cached is not None and cached.signature == signature:

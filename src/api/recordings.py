@@ -1099,8 +1099,8 @@ def _assistant_library_tools():
 
 
 def _text_model_configured():
-    from src.services.llm import TEXT_MODEL_CONFIGURED
-    return TEXT_MODEL_CONFIGURED
+    from src.services import llm
+    return llm.TEXT_MODEL_CONFIGURED
 
 
 @recordings_bp.route('/')
@@ -1910,8 +1910,8 @@ def translate_transcription(recording_id):
         if is_transcription_error(recording.transcription):
             return jsonify(api_error('translation_blocked_transcription_failed')), 400
 
-        from src.services.llm import TRANSLATION_MODEL_CONFIGURED
-        if not TRANSLATION_MODEL_CONFIGURED:
+        from src.services import llm
+        if not llm.TRANSLATION_MODEL_CONFIGURED:
             return jsonify(api_error('translation_llm_not_configured')), 503
 
         data = request.get_json(silent=True) or {}
