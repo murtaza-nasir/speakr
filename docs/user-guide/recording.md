@@ -375,6 +375,14 @@ When you return to Speakr after a crash, you'll see a recovery modal offering to
 
 This feature provides peace of mind for long recordings - you can now record multi-hour sessions without fear of losing everything if something goes wrong.
 
+### Uploads Without a Connection
+
+When the connection or the server is down at the moment a recording is uploaded, the recording is kept in the browser and uploaded once the connection is back: when the browser reports a connection, and at the next start of Speakr. It is uploaded once. The copy kept for crash recovery is removed when the recording is saved for its upload, so no recovery is offered for it at the next start.
+
+When the upload's first request reached the server but its answer was lost, the next attempt is answered with the recording the server already stored, within 24 hours.
+
+With no connection when Speakr is opened, the offline recorder is shown: a page with a **Record** button. Its recordings are uploaded in the same way. See [Without a Connection](pwa.md#without-a-connection).
+
 ### Server-Side Recording Sessions (long recordings)
 
 If your administrator has enabled **server-side recording sessions**, in-app recordings stream their audio chunks to the server as you record, instead of buffering everything in your browser's memory. This unlocks two things:

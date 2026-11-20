@@ -279,7 +279,7 @@ Fine-tune transcription for specific scenarios with custom ASR settings. See [AS
 
 ### Progressive Web App
 
-Install Speakr as a progressive web app for a native-like experience on any device. The application files are kept in the browser for faster loading, and a "You are offline" page is shown when the server cannot be reached; recordings are always loaded from the server. Mobile-optimized interfaces ensure smooth operation on phones and tablets.
+Install Speakr as a progressive web app for a native-like experience on any device. The application files are kept in the browser for faster loading. When the server cannot be reached, a page to record on is shown, and its recordings are uploaded once the server is back; recordings of the library are always loaded from the server. Mobile-optimized interfaces ensure smooth operation on phones and tablets.
 
 ### Dark Mode
 
