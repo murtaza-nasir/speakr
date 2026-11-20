@@ -539,48 +539,6 @@ export function useRecordings(state, utils, reprocessComposable) {
         clearAllFilters();
     };
 
-    const addTagToSelection = (tagId) => {
-        if (!selectedTagIds.value.includes(tagId)) {
-            selectedTagIds.value.push(tagId);
-            applyTagDefaults();
-        }
-    };
-
-    const removeTagFromSelection = (tagId) => {
-        const index = selectedTagIds.value.indexOf(tagId);
-        if (index > -1) {
-            selectedTagIds.value.splice(index, 1);
-            applyTagDefaults();
-        }
-    };
-
-    const applyTagDefaults = () => {
-        const selectedTags = selectedTagIds.value.map(tagId =>
-            availableTags.value.find(tag => tag.id == tagId)
-        ).filter(Boolean);
-
-        const firstTag = selectedTags[0];
-        if (firstTag && connectorSupportsDiarization.value) {
-            if (firstTag.default_language) {
-                uploadLanguage.value = firstTag.default_language;
-            }
-            if (firstTag.default_min_speakers) {
-                uploadMinSpeakers.value = firstTag.default_min_speakers;
-            }
-            if (firstTag.default_max_speakers) {
-                uploadMaxSpeakers.value = firstTag.default_max_speakers;
-            }
-        }
-        if (firstTag) {
-            if (firstTag.default_hotwords) {
-                uploadHotwords.value = firstTag.default_hotwords;
-            }
-            if (firstTag.default_initial_prompt) {
-                uploadInitialPrompt.value = firstTag.default_initial_prompt;
-            }
-        }
-    };
-
     const pollInboxRecordings = async () => {
         try {
             const response = await fetch('/api/recordings/inbox-count');
@@ -616,9 +574,6 @@ export function useRecordings(state, utils, reprocessComposable) {
         applyAdvancedFilters,
         clearAllFilters,
         clearTagFilter,
-        addTagToSelection,
-        removeTagFromSelection,
-        applyTagDefaults,
         pollInboxRecordings
     };
 }

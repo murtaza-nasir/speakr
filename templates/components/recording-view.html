@@ -166,7 +166,7 @@
                                  connector supports any of the options inside — mirrors the
                                  upload modal so in-browser recordings can also set the
                                  initial prompt and hotwords (#375). -->
-                            <div v-if="connectorSupportsDiarization || connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount || connectorSupportsHotwords || connectorSupportsInitialPrompt">
+                            <div v-if="connectorSupportsDiarization || connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount || connectorSupportsHotwords || connectorSupportsInitialPrompt || connectorSupportsLanguage">
                                 <button @click="showAdvancedOptions = !showAdvancedOptions"
                                         class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
                                     <span class="flex items-center gap-2 text-[var(--text-secondary)]">

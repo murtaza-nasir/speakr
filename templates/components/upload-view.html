@@ -307,7 +307,7 @@
 
                 {% include 'components/shared/folder-tag-picker.html' %}
 
-                <template v-if="connectorSupportsDiarization || connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount || connectorSupportsHotwords || connectorSupportsInitialPrompt">
+                <template v-if="connectorSupportsDiarization || connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount || connectorSupportsHotwords || connectorSupportsInitialPrompt || connectorSupportsLanguage">
                 {% with apply_template_fn='applyInitialPromptTemplate',
                         prompt_ref='uploadInitialPrompt', hotwords_ref='uploadHotwords',
                         model_ref='uploadTranscriptionModel', lang_ref='uploadLanguage',

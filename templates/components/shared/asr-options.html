@@ -20,10 +20,10 @@
 #}
 {% set _part = asr_part|default('all') %}
 {% if _part != 'hints' %}
-<section class="option-section">
+<section v-if="connectorSupportsLanguage || connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount || (transcriptionModelOptions && transcriptionModelOptions.length > 1)" class="option-section">
     <h4 class="option-section__title" v-text="t('upload.sectionTranscription')"></h4>
     <div class="option-grid">
-        <div class="option-field">
+        <div v-if="connectorSupportsLanguage" class="option-field">
             <label class="option-label">${ t('form.transcriptionLanguage') }</label>
             <select v-model="{{ lang_ref }}" class="field field--sm">
                 <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>

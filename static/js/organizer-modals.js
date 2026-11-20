@@ -65,6 +65,17 @@
         }
     }
 
+    // The transcription defaults a dialog shows depend on the connector
+    // (speaker counts only with diarization, hotwords and prompt only where
+    // supported). A field the dialog does not show is left out of the
+    // payload, so saving keeps the value the tag or folder already has.
+    const TRANSCRIPTION_DEFAULTS = ['default_language', 'default_min_speakers', 'default_max_speakers', 'default_hotwords', 'default_initial_prompt', 'default_transcription_model'];
+
+    function omitHiddenDefaults(data, isShown) {
+        TRANSCRIPTION_DEFAULTS.forEach((key) => { if (!isShown(key)) delete data[key]; });
+        return data;
+    }
+
     /** Assemble the tag create/update payload from the tag modal form. */
     function buildTagPayload(tagForm) {
         const formData = new FormData(tagForm);
@@ -105,7 +116,7 @@
         } else {
             tagData.group_id = null;
         }
-        return tagData;
+        return omitHiddenDefaults(tagData, (key) => !!(tagForm.elements && tagForm.elements.namedItem(key)));
     }
 
     /** Assemble the folder create/update payload from the folder modal form. */
@@ -155,7 +166,8 @@
         } else if (retention && retention.value) {
             folderData.retention_days = parseInt(retention.value);
         }
-        return folderData;
+        const folderIds = { default_language: 'folderLanguage', default_min_speakers: 'folderMinSpeakers', default_max_speakers: 'folderMaxSpeakers', default_hotwords: 'folderHotwords', default_initial_prompt: 'folderInitialPrompt', default_transcription_model: 'folderTranscriptionModel' };
+        return omitHiddenDefaults(folderData, (key) => !!document.getElementById(folderIds[key]));
     }
 
     function switchOrganizerModalTab(navId, tabClass, contentClass, targetTabId) {

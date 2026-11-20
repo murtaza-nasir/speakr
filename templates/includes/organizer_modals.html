@@ -316,7 +316,7 @@
 
                 <!-- Tab: Transcription & Retention -->
                 <div id="folderTabTranscription" class="folder-modal-tab-content space-y-4">
-                    {% if connector_supports_diarization %}
+                    {% if connector_supports_diarization or connector_supports_language %}
                     <div>
                         <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="folderManagement.transcriptionDefaultSettings">Transcription default settings</h4>
                         <p class="text-xs text-[var(--text-light)] mb-3" data-i18n="folderManagement.tagPriorityNote">Tag settings take priority over folder settings</p>
@@ -325,6 +325,7 @@
                                 <label for="folderLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="folderManagement.defaultLanguage">Default language</label>
                                 <select id="folderLanguage" name="default_language" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"></select>
                             </div>
+                            {% if connector_supports_diarization %}
                             <div class="org-speaker-controls" data-speaker-prefix="folder">
                             <div class="flex items-center justify-between mb-1">
                                 <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="form.speakers">Speakers</span>
@@ -347,6 +348,7 @@
                                 </div>
                             </div>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                     {% endif %}

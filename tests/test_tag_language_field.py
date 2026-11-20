@@ -121,3 +121,30 @@ def test_connector_without_language_hides_language_field(user, path):
     with _page(user, _StubConnector(language=False), path) as page:
         assert 'id="tagLanguage"' not in page
         assert 'id="tagMinSpeakers"' not in page
+
+def _connectors_ignoring_language():
+    from src.services.transcription.connectors.alibaba_funasr import AlibabaFunASRConnector
+    from src.services.transcription.connectors.mossland import MosslandTranscriptionConnector
+    from src.services.transcription.connectors.tencent_asr import TencentASRConnector
+    from src.services.transcription.connectors.vibevoice import VibeVoiceTranscriptionConnector
+    return [AlibabaFunASRConnector, MosslandTranscriptionConnector, TencentASRConnector,
+            VibeVoiceTranscriptionConnector]
+
+
+@pytest.mark.parametrize("cls", _connectors_ignoring_language())
+def test_connectors_that_ignore_language_do_not_declare_it(cls):
+    assert TranscriptionCapability.LANGUAGE_SELECTION not in cls.CAPABILITIES
+
+
+@pytest.mark.parametrize('path', PAGES)
+def test_the_folder_dialog_follows_the_same_rule(user, path):
+    with _page(user, _StubConnector(language=True), path) as page:
+        assert 'id="folderLanguage"' in page and 'id="folderMinSpeakers"' not in page
+    with _page(user, _StubConnector(language=False), path) as page:
+        assert 'id="folderLanguage"' not in page
+
+
+@pytest.mark.parametrize('language', [True, False])
+def test_the_main_page_tells_the_app_whether_a_language_is_used(user, language):
+    with _page(user, _StubConnector(language=language), '/') as page:
+        assert f'data-connector-supports-language="{language}"' in page

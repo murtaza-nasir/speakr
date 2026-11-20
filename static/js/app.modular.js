@@ -1685,6 +1685,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const speakerCountMode = ref('range');           // User pref: 'range' (min/max) or 'single' (one count)
             const connectorSupportsHotwords = ref(false);     // Connector accepts hotword/keyword biasing
             const connectorSupportsInitialPrompt = ref(false); // Connector accepts initial prompt / context hint
+            const connectorSupportsLanguage = ref(false);     // Connector sends a chosen language to the service
             const showTimestampsSimpleView = ref(false);     // User pref: display timestamps in simple view
             const editorAutosave = ref(false);                // User pref: autosave transcript editor
             const audioPlayerPosition = ref('bottom');        // User pref: 'bottom' or 'top' for desktop player placement
@@ -2090,7 +2091,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Dropdown Positioning
 
                 // App Config
-                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsExactSpeakerCount, speakerCountMode, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableAudioRemovedFilter, showUsernamesInUI, userSearchScope,
+                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsExactSpeakerCount, speakerCountMode, connectorSupportsHotwords, connectorSupportsInitialPrompt, connectorSupportsLanguage, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableAudioRemovedFilter, showUsernamesInUI, userSearchScope,
 
                 // Internal Sharing
                 showUnifiedShareModal, internalShareUserSearch, internalShareSearchResults,
@@ -4476,6 +4477,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     speakerCountMode.value = appElement.dataset.speakerCountMode === 'single' ? 'single' : 'range';
                     connectorSupportsHotwords.value = appElement.dataset.connectorSupportsHotwords === 'True';
                     connectorSupportsInitialPrompt.value = appElement.dataset.connectorSupportsInitialPrompt === 'True';
+                    connectorSupportsLanguage.value = appElement.dataset.connectorSupportsLanguage === 'True';
                     showTimestampsSimpleView.value = appElement.dataset.showTimestampsSimpleView === 'True';
                     editorAutosave.value = appElement.dataset.editorAutosave === 'True';
                     const pos = appElement.dataset.audioPlayerPosition;

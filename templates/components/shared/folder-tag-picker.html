@@ -114,7 +114,7 @@
     <div v-if="(foldersEnabled && selectedFolderId && getFolderById(selectedFolderId)?.custom_prompt)
                || selectedTags.length > 1
                || selectedTags.some(tag => tag.custom_prompt)
-               || (selectedTags.length > 0 && connectorSupportsDiarization && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers || tag.default_hotwords || tag.default_initial_prompt))"
+               || (selectedTags.slice(0, 1).some(tag => tag.default_language || tag.default_hotwords || tag.default_initial_prompt || (connectorSupportsDiarization && (tag.default_min_speakers || tag.default_max_speakers))))"
          class="option-field option-field--wide option-notes">
         <p v-if="foldersEnabled && selectedFolderId && getFolderById(selectedFolderId)?.custom_prompt">
             <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>${ t('help.folderHasCustomPrompt') }
@@ -125,7 +125,7 @@
         <p v-if="selectedTags.some(tag => tag.custom_prompt)">
             <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>${ t('help.selectedTagsCustomPrompts') }
         </p>
-        <p v-if="selectedTags.length > 0 && connectorSupportsDiarization && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers || tag.default_hotwords || tag.default_initial_prompt)">
+        <p v-if="selectedTags.slice(0, 1).some(tag => tag.default_language || tag.default_hotwords || tag.default_initial_prompt || (connectorSupportsDiarization && (tag.default_min_speakers || tag.default_max_speakers)))">
             <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>${ t('help.firstTagAsrSettings') } ${selectedTags[0].name}
         </p>
     </div>
