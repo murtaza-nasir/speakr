@@ -71,6 +71,7 @@ REQUIRED = [
     ("POST", "/api/export-templates"),
     ("POST", "/api/initial-prompt-templates"),
     ("POST", "/api/transcript-templates"),
+    ("POST", "/api/user/preferences"),
 ]
 
 # Routes where every field is optional: no body is {} and reaches the

@@ -3618,6 +3618,7 @@
       "invalid_total_bytes": "total_bytes debe ser un número entero positivo",
       "invalid_transcript_data": "Se proporcionaron datos de transcripción no válidos",
       "invalid_ui_theme": "ui_theme no válido",
+      "invalid_ui_language": "Idioma de interfaz no admitido",
       "invalid_updated_since": "updated_since debe ser una fecha y hora ISO 8601",
       "invalid_username_length": "El nombre de usuario debe tener entre 2 y 20 caracteres.",
       "invalid_with_sources": "with_sources debe ser true o false",

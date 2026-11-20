@@ -943,7 +943,9 @@ def account():
             ui_lang = request.form.get('ui_language')
             transcription_lang = request.form.get('transcription_language')
             output_lang = request.form.get('output_language')
-            current_user.ui_language = ui_lang if ui_lang else 'en'
+            # Only a shipped interface locale is stored (#659)
+            from src.utils.localization import match_language
+            current_user.ui_language = match_language(ui_lang) or 'en'
             # Normalize transcription_language so legacy display-name values
             # ("Français", "Deutsch", ...) can't reach the ASR call (issue #256).
             from src.utils.language import normalize_language_code

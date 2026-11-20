@@ -3618,6 +3618,7 @@
       "invalid_total_bytes": "total_bytes должно быть положительным целым числом",
       "invalid_transcript_data": "Переданы недопустимые данные транскрипта",
       "invalid_ui_theme": "Недопустимое значение ui_theme",
+      "invalid_ui_language": "Неподдерживаемый язык интерфейса",
       "invalid_updated_since": "updated_since должно быть датой и временем в формате ISO 8601",
       "invalid_username_length": "Имя пользователя должно содержать от 2 до 20 символов.",
       "invalid_with_sources": "with_sources должно быть true или false",

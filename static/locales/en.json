@@ -3618,6 +3618,7 @@
       "invalid_total_bytes": "total_bytes must be a positive integer",
       "invalid_transcript_data": "Invalid transcript data provided",
       "invalid_ui_theme": "Invalid ui_theme",
+      "invalid_ui_language": "Unsupported interface language",
       "invalid_updated_since": "updated_since must be an ISO 8601 date-time",
       "invalid_username_length": "The username must be 2 to 20 characters.",
       "invalid_with_sources": "with_sources must be true or false",

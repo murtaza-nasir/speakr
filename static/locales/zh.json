@@ -3618,6 +3618,7 @@
       "invalid_total_bytes": "total_bytes 必须是正整数",
       "invalid_transcript_data": "提供的转录数据无效",
       "invalid_ui_theme": "无效的 ui_theme",
+      "invalid_ui_language": "不支持的界面语言",
       "invalid_updated_since": "updated_since 必须是 ISO 8601 日期时间",
       "invalid_username_length": "用户名必须为 2 到 20 个字符。",
       "invalid_with_sources": "with_sources 必须为 true 或 false",
