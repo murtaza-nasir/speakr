@@ -116,6 +116,7 @@ EVENTS = {
     'admin.user.role_changed': ('admin', frozenset({'old', 'new'})),
     'admin.user.deleted': ('admin', frozenset({'username', 'recordings_deleted'})),
     'admin.setting.changed': ('admin', frozenset({'key', 'old', 'new', 'users_updated'})),
+    'admin.llm_config.changed': ('admin', frozenset({'role', 'fields'})),
     'admin.retention.run': ('admin', frozenset({'checked', 'deleted_audio_only', 'deleted_full', 'errors'})),
     'admin.inquire.processed': ('admin', frozenset({'processed', 'failed', 'total', 'force'})),
     'group.created': ('admin', _NONE),
@@ -1054,3 +1055,13 @@ def setting_changed(key, old_raw, new_raw, users_updated=None):
         details['users_updated'] = int(users_updated)
     return record_in_tx('admin.setting.changed', details=details,
                         force=known and key.startswith('audit_log_'))
+
+
+def llm_config_changed(role, fields):
+    """admin.llm_config.changed in the transaction of the change.
+
+    Only the role and the names of the changed fields are stored: never the
+    API key and never a value such as Extra Body.
+    """
+    return record_in_tx('admin.llm_config.changed',
+                        details={'role': role, 'fields': list(fields)})

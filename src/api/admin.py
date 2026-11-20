@@ -8,6 +8,8 @@ import os
 import json
 import time
 from datetime import datetime, timedelta
+
+import httpx
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app
 from flask_login import login_required, current_user, login_user
 from werkzeug.utils import secure_filename
@@ -24,7 +26,7 @@ from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chun
 from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
 from src.services.storage_quota import default_quota_mb
-from src.services import audit, login_lock
+from src.services import audit, llm_config, login_lock
 from src.auth.permissions import CREATE_GROUPS, set_user_grant, user_has_grant
 from src.config.startup import get_file_monitor_functions
 from src.utils.error_text import describe_error
@@ -1357,6 +1359,9 @@ def admin_get_settings():
     settings = SystemSetting.query.order_by(func.lower(SystemSetting.key)).all()
     result = []
     for setting in settings:
+        if setting.key in llm_config.SETTING_KEYS.values():
+            # Managed by the LLM configuration API only.
+            continue
         data = setting.to_dict()
         if setting.key in ENV_BACKED_SETTINGS:
             data['env_backed'] = True
@@ -1391,6 +1396,9 @@ def admin_update_setting():
     
     if not key:
         return jsonify(api_error('setting_key_required')), 400
+
+    if key in llm_config.SETTING_KEYS.values():
+        return jsonify(api_error('llm_config_managed_elsewhere')), 400
     
     # An empty value for a setting that falls back to .env clears the saved
     # value, so the .env value applies again (#567).
@@ -1506,6 +1514,191 @@ def admin_update_setting():
         db.session.rollback()
         current_app.logger.error(f"Error updating setting {key}: {e}")
         return internal_error(e)
+
+
+# --- LLM configuration -------------------------------------------------------
+
+
+def _llm_role_or_error(role):
+    """The canonical role name, or a ready 400 response."""
+    try:
+        return llm_config.normalize_role(role), None
+    except llm_config.LLMConfigError as error:
+        return None, (jsonify(api_error('invalid_llm_config', detail=str(error))), 400)
+
+
+def _llm_form_target(role, payload):
+    """The provider URL and key a form describes, with saved values as defaults.
+
+    A masked or empty key in the payload keeps the saved secret, as saving
+    does, so a discovery request can be made without retyping it.
+    """
+    saved = llm_config.resolve_config(role, reveal_key=True)
+    base_url = str(payload.get('base_url') or '').strip() or saved['base_url']
+    api_key = llm_config.merge_api_key(payload.get('api_key'), saved['api_key'])
+    if not base_url.lower().startswith(('http://', 'https://')):
+        raise llm_config.LLMConfigError('base_url must start with http:// or https://')
+    return base_url.rstrip('/'), api_key
+
+
+def _ask_provider_for_models(base_url, api_key):
+    """The models the provider lists at {base_url}/models."""
+    headers = {'Accept': 'application/json'}
+    if api_key:
+        headers['Authorization'] = f'Bearer {api_key}'
+    response = httpx.get(f'{base_url}/models', headers=headers, timeout=20.0)
+    response.raise_for_status()
+    body = response.json()
+    if not isinstance(body, dict):
+        raise TypeError('the answer is not a JSON object')
+    return [
+        {'id': model['id'], 'owned_by': model.get('owned_by')}
+        for model in (body.get('data') or [])
+        if isinstance(model, dict) and model.get('id')
+    ]
+
+
+def _llm_discovery_failure(base_url, error):
+    """A 502 that says why the provider could not be reached."""
+    if isinstance(error, httpx.HTTPStatusError):
+        body = api_error('llm_provider_http_error',
+                         status=error.response.status_code, url=f'{base_url}/models')
+    elif isinstance(error, httpx.TimeoutException):
+        body = api_error('llm_provider_timeout', url=base_url)
+    elif isinstance(error, httpx.ConnectError):
+        body = api_error('llm_provider_unreachable', url=base_url)
+    else:
+        body = api_error('llm_provider_unexpected_answer', detail=error)
+    return jsonify({**body, 'success': False}), 502
+
+
+@admin_bp.route('/admin/llm-config', methods=['GET'])
+@login_required
+def admin_get_llm_config():
+    """The configuration of every role, with each API key masked."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    return jsonify({
+        'roles': {role: llm_config.public_config(role) for role in llm_config.ROLES},
+        'masked_api_key': llm_config.MASKED_API_KEY,
+    })
+
+
+@admin_bp.route('/admin/llm-config/<role>', methods=['GET'])
+@login_required
+def admin_get_llm_role(role):
+    """The configuration of one role, with the API key masked."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    role, error = _llm_role_or_error(role)
+    if error:
+        return error
+    return jsonify({'role': role, 'config': llm_config.public_config(role)})
+
+
+@admin_bp.route('/admin/llm-config/<role>', methods=['POST'])
+@login_required
+def admin_save_llm_config(role):
+    """Save a role configuration. A rejected value saves nothing."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    role, error = _llm_role_or_error(role)
+    if error:
+        return error
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(api_error('no_data_provided')), 400
+
+    try:
+        result = llm_config.save_config(role, payload)
+    except llm_config.LLMConfigError as error:
+        db.session.rollback()
+        return jsonify(api_error('invalid_llm_config', detail=str(error))), 400
+
+    audit.llm_config_changed(role, result.changed_fields)
+    db.session.commit()
+    return jsonify({'success': True, 'config': result.config})
+
+
+@admin_bp.route('/admin/llm-config/<role>', methods=['DELETE'])
+@login_required
+def admin_revert_llm_config(role):
+    """Remove a saved role configuration, so the environment applies again."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    role, error = _llm_role_or_error(role)
+    if error:
+        return error
+
+    removed = llm_config.clear_config(role)
+    audit.llm_config_changed(role, removed)
+    db.session.commit()
+    return jsonify({'success': True, 'config': llm_config.public_config(role)})
+
+
+@admin_bp.route('/admin/llm-models', methods=['POST'])
+@login_required
+def admin_discover_llm_models():
+    """List the models of the provider a form describes, proxied here.
+
+    The browser never talks to the provider itself, so a key still travels
+    only through this server.
+    """
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    payload = request.get_json(silent=True) or {}
+    role, error = _llm_role_or_error(payload.get('role') or 'text')
+    if error:
+        return error
+
+    try:
+        base_url, api_key = _llm_form_target(role, payload)
+    except llm_config.LLMConfigError as error:
+        return jsonify(api_error('invalid_llm_config', detail=str(error))), 400
+
+    try:
+        models = _ask_provider_for_models(base_url, api_key)
+    except httpx.HTTPError as error:
+        return _llm_discovery_failure(base_url, error)
+    except (TypeError, ValueError) as error:
+        return jsonify({**api_error('llm_provider_unexpected_answer', detail=error),
+                        'success': False}), 502
+
+    return jsonify({'success': True, 'models': models})
+
+
+@admin_bp.route('/admin/llm-config/<role>/test', methods=['POST'])
+@login_required
+def admin_test_llm_config(role):
+    """Test a configuration without saving it first."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    role, error = _llm_role_or_error(role)
+    if error:
+        return error
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        base_url, api_key = _llm_form_target(role, payload)
+    except llm_config.LLMConfigError as error:
+        return jsonify(api_error('invalid_llm_config', detail=str(error))), 400
+
+    try:
+        models = _ask_provider_for_models(base_url, api_key)
+    except httpx.HTTPError as error:
+        return _llm_discovery_failure(base_url, error)
+    except (TypeError, ValueError) as error:
+        return jsonify({**api_error('llm_provider_unexpected_answer', detail=error),
+                        'success': False}), 502
+
+    return jsonify({'success': True, 'models': models})
 
 
 @admin_bp.route('/admin/user-defaults', methods=['GET'])

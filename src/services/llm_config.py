@@ -371,8 +371,27 @@ def _normalize_saved_values(role, values):
     return normalized
 
 
+@dataclass(frozen=True)
+class ChangeResult:
+    """A saved or removed role configuration and the fields that changed."""
+    config: dict
+    changed_fields: tuple[str, ...]
+
+
+def _changed_fields(existing, normalized, kept_key):
+    changed = set()
+    for name in set(existing) | set(normalized):
+        if name == 'api_key':
+            continue
+        if existing.get(name) != normalized.get(name):
+            changed.add(name)
+    if kept_key and kept_key != existing.get('api_key'):
+        changed.add('api_key')
+    return tuple(sorted(changed))
+
+
 def save_config(role, values):
-    """Validate and save a role configuration; returns its public form.
+    """Validate and save a role configuration.
 
     A rejected value raises LLMConfigError and changes nothing. An empty or
     masked API key keeps the stored one. A configuration with no fields left
@@ -388,10 +407,11 @@ def save_config(role, values):
     normalized.pop('api_key', None)
     if kept_key:
         normalized['api_key'] = kept_key
+    changed = _changed_fields(existing, normalized, kept_key)
 
     if not normalized:
         clear_config(role)
-        return public_config(role)
+        return ChangeResult(public_config(role), changed or ('all',))
 
     from src.models import SystemSetting
 
@@ -402,18 +422,23 @@ def save_config(role, values):
         setting_type='string',
     )
     clear_client_cache(role)
-    return public_config(role)
+    return ChangeResult(public_config(role), changed)
 
 
 def clear_config(role):
-    """Remove the saved configuration, so the environment applies again."""
+    """Remove the saved configuration, so the environment applies again.
+
+    Returns the names of the removed fields.
+    """
     role = normalize_role(role)
     from src.database import db
     from src.models import SystemSetting
 
+    removed = tuple(sorted(_stored(role))) or ('all',)
     SystemSetting.query.filter_by(key=SETTING_KEYS[role]).delete()
     db.session.commit()
     clear_client_cache(role)
+    return removed
 
 
 # ---------------------------------------------------------------- runtime settings
