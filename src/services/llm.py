@@ -10,7 +10,7 @@ import sys
 import time
 
 import httpx
-from openai import APITimeoutError, BadRequestError, OpenAI
+from openai import APITimeoutError, BadRequestError
 
 # Use standard logging instead of current_app.logger for context independence
 logger = logging.getLogger(__name__)
@@ -265,53 +265,6 @@ def get_translation_config():
         'extra_body_variable': 'TEXT_MODEL_EXTRA_BODY',
         'extra_body_error': _cfg('TEXT_MODEL_EXTRA_BODY_ERROR'),
     }
-
-
-def _build_chat_client():
-    """The chat client: the main client, or a dedicated one when the chat
-    model has its own key or server. The key is optional, since a local
-    server often runs without one (#403)."""
-    chat_config = get_chat_config()
-    if (chat_config['api_key'], chat_config['base_url']) == (
-            _cfg('TEXT_MODEL_API_KEY'), _cfg('TEXT_MODEL_BASE_URL')):
-        return _cfg('client')
-    if not (_cfg('CHAT_MODEL_API_KEY') or _cfg('CHAT_MODEL_BASE_URL')
-            or _cfg('TEXT_MODEL_CONFIGURED')):
-        return None
-    dedicated = OpenAI(
-        api_key=chat_config['api_key'] or "not-needed",
-        base_url=chat_config['base_url'],
-        http_client=http_client_no_proxy,
-        timeout=_cfg('llm_timeout'),
-        max_retries=_cfg('LLM_MAX_RETRIES'),
-    )
-    logger.info(f"Separate chat client initialized: {chat_config['base_url']} / {chat_config['model_name']}")
-    return dedicated
-
-
-
-
-def _build_translation_client():
-    """The translation client: the main client, or a dedicated one when the
-    translation model has its own key or server."""
-    translation_config = get_translation_config()
-    if (translation_config['api_key'], translation_config['base_url']) == (
-            _cfg('TEXT_MODEL_API_KEY'), _cfg('TEXT_MODEL_BASE_URL')):
-        return _cfg('client')
-    if not (_cfg('TRANSLATION_MODEL_API_KEY') or _cfg('TRANSLATION_MODEL_BASE_URL')
-            or _cfg('TEXT_MODEL_CONFIGURED')):
-        return None
-    dedicated = OpenAI(
-        api_key=translation_config['api_key'] or "not-needed",
-        base_url=translation_config['base_url'],
-        http_client=http_client_no_proxy,
-        timeout=_cfg('llm_timeout'),
-        max_retries=_cfg('LLM_MAX_RETRIES'),
-    )
-    logger.info(f"Separate translation client initialized: {translation_config['base_url']} / {translation_config['model_name']}")
-    return dedicated
-
-
 
 
 def _add_extra_body(completion_args, extra_body, error):

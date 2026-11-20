@@ -48,7 +48,7 @@ def test_skipped_summary_returns_the_recording_to_completed(made):
         db.session.add(r)
         db.session.commit()
         made.append((Recording, r.id))
-        with patch.object(proc, "client", None), patch.object(proc, "emit_summary_result", create=True):
+        with patch.object(proc.llm_config, "is_configured", return_value=False), patch.object(proc, "emit_summary_result", create=True):
             proc.generate_summary_only_task(app.app_context(), r.id)
         db.session.expire_all()
         r = db.session.get(Recording, r.id)

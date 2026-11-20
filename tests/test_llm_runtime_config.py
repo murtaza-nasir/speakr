@@ -17,8 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
 from src.models import SystemSetting
-from src.services import llm_config
-from src.services import llm
+from src.services import llm, llm_config
 from src.services.token_tracking import token_tracker
 
 app.config["WTF_CSRF_ENABLED"] = False

@@ -976,7 +976,7 @@ def _summary_job_with_real_task(track, job_type):
 @contextmanager
 def _real_summary_step(llm):
     import src.tasks.processing as proc
-    with patch.object(proc, "client", MagicMock()), \
+    with patch.object(proc.llm_config, "is_configured", return_value=True), \
          patch.object(proc, "call_llm_completion", llm), \
          patch.object(proc, "apply_team_tag_auto_shares"), \
          patch.object(proc, "export_recording"), \

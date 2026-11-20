@@ -56,7 +56,6 @@ PROFILE_FIELDS = frozenset({
     'gpt5_reasoning_effort',
     'gpt5_verbosity',
 })
-REQUIRED_PROFILE_FIELDS = ('label', 'base_url', 'model_name')
 
 DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1'
 DEFAULT_TEXT_MODEL = 'openai/gpt-3.5-turbo'
@@ -438,9 +437,10 @@ def assign_model(role, model_id):
     role = normalize_role(role)
     if model_id is not None:
         if not isinstance(model_id, str) or not model_id.strip():
-            model_id = None
-        else:
-            model_id = model_id.strip()
+            raise LLMConfigError(
+                'model_id must be the id of a configured model, or null to '
+                'use the environment')
+        model_id = model_id.strip()
 
     document = load_document()
     if model_id is not None:
@@ -468,6 +468,19 @@ def _env(name, default=None):
     return value or default
 
 
+def _env_url(name, default=None):
+    """A base URL from the environment, without a trailing ``#`` comment.
+
+    Earlier releases allowed ``TEXT_MODEL_BASE_URL=http://host/v1#note`` and
+    stripped everything from the ``#``; every other URL setting still does.
+    """
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    value = raw.split('#', 1)[0].strip()
+    return value or default
+
+
 def _env_bool(name, default=False):
     raw = os.environ.get(name)
     if raw is None or not raw.strip():
@@ -492,8 +505,8 @@ def _environment_text():
         'source': 'environment',
         'profile': None,
         'api_key': _env('TEXT_MODEL_API_KEY'),
-        'base_url': _env('TEXT_MODEL_BASE_URL', DEFAULT_BASE_URL),
-        'base_url_explicit': bool(_env('TEXT_MODEL_BASE_URL')),
+        'base_url': _env_url('TEXT_MODEL_BASE_URL', DEFAULT_BASE_URL),
+        'base_url_explicit': bool(_env_url('TEXT_MODEL_BASE_URL')),
         'model_name': _env('TEXT_MODEL_NAME', DEFAULT_TEXT_MODEL),
         'extra_body': extra_body if extra_body is not None else {},
         'extra_body_error': extra_body_error,
@@ -501,32 +514,38 @@ def _environment_text():
         'gpt5_reasoning_effort': _env('GPT5_REASONING_EFFORT', DEFAULT_GPT5_SETTING),
         'gpt5_verbosity': _env('GPT5_VERBOSITY', DEFAULT_GPT5_SETTING),
         'uses_text_model': False,
-        'configured': bool(_env('TEXT_MODEL_API_KEY') or _env('TEXT_MODEL_BASE_URL')),
+        'configured': bool(_env('TEXT_MODEL_API_KEY') or _env_url('TEXT_MODEL_BASE_URL')),
     }
 
 
 def _environment_role(role, text_environment):
     """The role's own environment configuration, or None when it inherits text."""
     prefix = role.upper()
-    base_url = _env(f'{prefix}_MODEL_BASE_URL')
+    base_url = _env_url(f'{prefix}_MODEL_BASE_URL')
     api_key = _env(f'{prefix}_MODEL_API_KEY')
     model_name = _env(f'{prefix}_MODEL_NAME')
     if not (model_name and (api_key or base_url)):
         return None
 
     extra_body, extra_body_error = _environment_extra_body(f'{prefix}_MODEL_EXTRA_BODY')
+    effective_base_url = base_url or text_environment['base_url']
     return {
         'source': 'environment',
         'profile': None,
-        'api_key': api_key,
-        'base_url': base_url or text_environment['base_url'],
+        # The text key goes only to the text model's server, exactly as the
+        # per-role configuration did before profiles existed.
+        'api_key': api_key or (
+            text_environment['api_key']
+            if effective_base_url == text_environment['base_url'] else None),
+        'base_url': effective_base_url,
         'base_url_explicit': bool(base_url),
         'model_name': model_name,
-        'extra_body': (
-            extra_body if extra_body is not None else text_environment['extra_body']),
-        'extra_body_error': (
-            extra_body_error if extra_body is not None
-            else text_environment['extra_body_error']),
+        # A dedicated role does not inherit the text model's Extra Body: the
+        # parameters may not suit a different model or server. Chat and
+        # translation inherit the whole text configuration only when they
+        # have no dedicated environment configuration at all.
+        'extra_body': extra_body if extra_body is not None else {},
+        'extra_body_error': extra_body_error,
         'gpt5_force': _env_bool(f'{prefix}_GPT5_FORCE_MODE'),
         'gpt5_reasoning_effort': (
             _env(f'{prefix}_GPT5_REASONING_EFFORT')

@@ -120,7 +120,7 @@ def test_processing_hands_the_saved_task_to_the_connector(tmp_path):
             with patch("src.services.transcription.get_connector", return_value=connector), \
                  patch.object(proc, "is_video_file", return_value=False), \
                  patch.object(proc, "convert_if_needed", return_value=conversion), \
-                 patch.object(proc, "client", MagicMock()), \
+                 patch.object(proc.llm_config, "is_configured", return_value=True), \
                  patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
                  patch.object(proc, "generate_title_task"), \
                  patch.object(proc, "generate_summary_only_task"), \

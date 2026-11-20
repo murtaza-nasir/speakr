@@ -188,7 +188,7 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
     summary_prompt_params. prompt_variables, when given, replace the
     recording's template variables (sanitised as at upload).
     """
-    from src.services import llm
+    from src.services import llm_config
     from src.services.job_queue import job_queue
     from src.utils.error_formatting import is_transcription_error
     from src.utils.prompt_variables import sanitize_variable_values
@@ -199,7 +199,7 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
         raise ReprocessError('summary_blocked_transcription_failed', 400)
     if recording.status in ('PROCESSING', 'SUMMARIZING'):
         raise ReprocessError('recording_already_processing', 400)
-    if llm.client is None:
+    if not llm_config.is_configured('text'):
         raise ReprocessError('summary_llm_not_configured', 503)
 
     prompt_used = summary_prompt_used(recording, user, custom_prompt, prompt_mode)

@@ -737,7 +737,7 @@
                                 </h4>
                                 <p class="text-xs text-[var(--text-muted)] mt-0.5">${ t('adminDashboard.llmModels.description') }</p>
                             </div>
-                            <button @click="openLlmModelModal()" class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
+                            <button type="button" @click="openLlmModelModal()" class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
                                 <i class="fas fa-plus"></i>
                                 <span>${ t('adminDashboard.llmModels.addModel') }</span>
                             </button>
@@ -785,16 +785,16 @@
                                         </td>
                                         <td class="py-2 px-3">
                                             <div class="flex items-center justify-end gap-1">
-                                                <button @click="testLlmModel(model)" :disabled="llmBusy === model.id"
+                                                <button type="button" @click="testLlmModel(model)" :disabled="llmBusy === model.id"
                                                         class="btn btn--ghost btn--sm" :title="t('adminDashboard.llmModels.test')">
                                                     <i :class="llmBusy === model.id ? 'fas fa-spinner fa-spin' : 'fas fa-plug'"></i>
                                                     <span class="hidden xl:inline">${ t('adminDashboard.llmModels.test') }</span>
                                                 </button>
-                                                <button @click="openLlmModelModal(model)" class="btn btn--ghost btn--sm"
+                                                <button type="button" @click="openLlmModelModal(model)" class="btn btn--ghost btn--sm"
                                                         :title="t('adminDashboard.llmModels.editModel')">
                                                     <i class="fas fa-pen"></i>
                                                 </button>
-                                                <button @click="deleteLlmModel(model)" :disabled="llmBusy === model.id"
+                                                <button type="button" @click="deleteLlmModel(model)" :disabled="llmBusy === model.id"
                                                         class="btn btn--ghost btn--sm" :title="t('adminDashboard.llmModels.deleteModel')">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
@@ -813,7 +813,7 @@
                             <div class="empty__icon"><i class="fas fa-robot"></i></div>
                             <div class="empty__title">${ t('adminDashboard.llmModels.noModels') }</div>
                             <div class="empty__body">${ t('adminDashboard.llmModels.noModelsHelp') }</div>
-                            <button @click="openLlmModelModal()" class="btn btn--primary btn--sm mt-3">
+                            <button type="button" @click="openLlmModelModal()" class="btn btn--primary btn--sm mt-3">
                                 <i class="fas fa-plus"></i>
                                 <span>${ t('adminDashboard.llmModels.addFirstModel') }</span>
                             </button>
@@ -852,14 +852,14 @@
                                     <select :value="llmConfig.assignments[row.role] || ''"
                                             @change="assignLlmModel(row.role, $event.target.value)"
                                             :disabled="llmRoleBusy === row.role"
-                                            class="field field--sm" style="width: 15rem; max-width: 100%;"
+                                            class="field field--sm field--role"
                                             :aria-label="t('adminDashboard.llmModels.assignRole', { role: row.name })">
                                         <option value="">${ t('adminDashboard.llmModels.environmentOption') }</option>
                                         <option v-for="model in llmModels" :key="model.id" :value="model.id">${ model.label }</option>
                                     </select>
                                     <span class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full whitespace-nowrap"
                                           :class="llmRoleBadgeClass(row)">${ llmRoleBadge(row).text }</span>
-                                    <button v-if="row.assigned" @click="revertLlmRole(row.role)" :disabled="llmRoleBusy === row.role"
+                                    <button type="button" v-if="row.assigned" @click="revertLlmRole(row.role)" :disabled="llmRoleBusy === row.role"
                                             class="btn btn--ghost btn--sm" :title="t('adminDashboard.llmModels.revert')">
                                         <i :class="llmRoleBusy === row.role ? 'fas fa-spinner fa-spin' : 'fas fa-rotate-left'"></i>
                                         <span class="hidden xl:inline">${ t('adminDashboard.llmModels.revert') }</span>
@@ -1727,7 +1727,7 @@ Summarization Instructions:
             <div class="modal-panel modal-panel--md">
                 <div class="modal-header">
                     <h3 class="modal-title">${ llmEditingModel ? t('adminDashboard.llmModels.editModel') : t('adminDashboard.llmModels.addModel') }</h3>
-                    <button @click="closeLlmModelModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
+                    <button type="button" @click="closeLlmModelModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <form @submit.prevent="saveLlmModel" class="contents">
                     <div class="modal-body space-y-4">

@@ -100,7 +100,7 @@ def _run_both_calls(app, recording, user):
     summary_messages) as {role: content} dicts."""
     calls, fake_completion = _capture_messages()
     with patch("src.tasks.processing.call_llm_completion", side_effect=fake_completion), \
-         patch("src.tasks.processing.client", new=MagicMock()):
+         patch("src.services.llm_config.is_configured", return_value=True):
         processing._generate_ai_title(recording)
         title_messages = dict((m["role"], m["content"]) for m in calls[-1])
 

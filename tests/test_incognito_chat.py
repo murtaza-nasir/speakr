@@ -54,7 +54,7 @@ def _recording_count():
 def test_incognito_chat_streams_and_saves_nothing(client):
     before = _recording_count()
     with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
-         patch("src.api.recordings.chat_client", object()), \
+         patch("src.services.llm_config.is_configured", return_value=True), \
          patch("src.api.recordings.call_chat_completion", return_value=_chunks("pong")) as call:
         r = client.post(URL, json={"transcription": "The budget is 12.", "message": "What is the budget?",
                                    "message_history": [], "participants": "", "notes": ""})
@@ -72,7 +72,7 @@ def test_incognito_chat_streams_and_saves_nothing(client):
 def test_incognito_chat_prompt_has_participants_notes_and_history(client):
     history = [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}]
     with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
-         patch("src.api.recordings.chat_client", object()), \
+         patch("src.services.llm_config.is_configured", return_value=True), \
          patch("src.api.recordings.call_chat_completion", return_value=_chunks("ok")) as call:
         r = client.post(URL, json={"transcription": "Text.", "message": "Who spoke?",
                                    "message_history": history, "participants": "Ada, Bo",
@@ -88,7 +88,7 @@ def test_incognito_chat_prompt_has_participants_notes_and_history(client):
 def test_incognito_chat_refuses_malformed_history(client):
     """A history that is not a list of messages is a 400, not silently dropped (#633)."""
     with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
-         patch("src.api.recordings.chat_client", object()), \
+         patch("src.services.llm_config.is_configured", return_value=True), \
          patch("src.api.recordings.call_chat_completion", return_value=_chunks("ok")) as call:
         r = client.post(URL, json={"transcription": "Text.", "message": "Q?", "message_history": "nope"})
     assert r.status_code == 400
@@ -112,7 +112,7 @@ def test_incognito_chat_disabled_is_403(client):
 ])
 def test_incognito_chat_missing_fields_are_400(client, payload, code):
     with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
-         patch("src.api.recordings.chat_client", object()), \
+         patch("src.services.llm_config.is_configured", return_value=True), \
          patch("src.api.recordings.call_chat_completion") as call:
         r = client.post(URL, json=payload)
     assert r.status_code == 400

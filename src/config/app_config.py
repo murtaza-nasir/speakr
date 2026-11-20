@@ -176,7 +176,7 @@ def initialize_config(app):
         # Legacy configuration validation
         _validate_legacy_transcription_config(app)
 
-    return None, chunking_service, version
+    return chunking_service, version
 
 
 def _validate_legacy_transcription_config(app):

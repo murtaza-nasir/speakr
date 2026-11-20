@@ -18,7 +18,7 @@ import os
 import secrets
 import sys
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -118,7 +118,7 @@ def world():
 
 
 def _post(uid, url, body, fake):
-    with patch("src.api.recordings.chat_client", MagicMock()), \
+    with patch("src.services.llm_config.is_configured", return_value=True), \
             patch("src.api.recordings.call_chat_completion", side_effect=fake):
         c = app.test_client()
         with c.session_transaction() as sess:
@@ -256,7 +256,7 @@ def test_filter_fields_sent_to_the_panel_are_ignored(world, agent_on):
 
 
 def test_the_ask_page_refuses_a_bad_filter_date(world, agent_on):
-    with patch("src.api.inquire.ENABLE_INQUIRE_MODE", True), patch("src.api.inquire.client", MagicMock()):
+    with patch("src.api.inquire.ENABLE_INQUIRE_MODE", True), patch("src.services.llm_config.is_configured", return_value=True):
         c = app.test_client()
         with c.session_transaction() as sess:
             sess["_user_id"] = str(world["owner"])

@@ -637,7 +637,7 @@ def test_chat_client_unavailable_503(client):
     user_id = _make_user()
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', None):
+         patch('src.services.llm_config.is_configured', return_value=False):
         resp = client.post('/api/inquire/chat', json={'message': 'hi'})
         assert resp.status_code == 503
 
@@ -670,7 +670,7 @@ def test_chat_rejects_malformed_filters(client, body, code):
     user_id = _make_user()
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()):
+         patch('src.services.llm_config.is_configured', return_value=True):
         resp = client.post('/api/inquire/chat', json=dict(body, message='hi'))
         assert resp.status_code == 400 and resp.is_json
         assert resp.get_json()['code'] == code
@@ -683,7 +683,7 @@ def test_chat_direct_path(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.call_llm_completion',
                return_value=_llm_msg("DIRECT")) as router, \
          patch('src.api.inquire.process_streaming_with_thinking',
@@ -720,7 +720,7 @@ def test_chat_rag_path_with_results(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_side_effect), \
          patch('src.api.inquire.semantic_search_chunks',
@@ -746,7 +746,7 @@ def test_chat_rag_no_results(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_side_effect), \
          patch('src.api.inquire.semantic_search_chunks', return_value=[]), \
@@ -772,7 +772,7 @@ def test_chat_router_failure_falls_back_to_rag(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_side_effect), \
          patch('src.api.inquire.semantic_search_chunks',
@@ -804,7 +804,7 @@ def test_chat_enrichment_failure_uses_original_query(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_side_effect), \
          patch('src.api.inquire.semantic_search_chunks', side_effect=search_side_effect), \
@@ -836,7 +836,7 @@ def test_chat_thinking_tags_split_out(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_side_effect), \
          patch('src.api.inquire.semantic_search_chunks',
@@ -869,7 +869,7 @@ def test_chat_full_transcript_request(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_side_effect), \
          patch('src.api.inquire.semantic_search_chunks',
@@ -904,7 +904,7 @@ def test_chat_full_transcript_request_wrong_owner(client):
 
     with _login(client, other), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_side_effect), \
          patch('src.api.inquire.semantic_search_chunks',
@@ -929,7 +929,7 @@ def test_chat_generation_error_emits_error_event(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_side_effect), \
          patch('src.api.inquire.semantic_search_chunks', return_value=[]), \
@@ -953,7 +953,7 @@ def test_chat_token_budget_exceeded(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_side_effect), \
          patch('src.api.inquire.semantic_search_chunks', return_value=[]), \
@@ -1014,7 +1014,7 @@ def test_chat_rag_dedups_repeated_chunks(client):
     captured = {}
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=_rag_router_then('[]')), \
          patch('src.api.inquire.semantic_search_chunks', side_effect=search_se), \
@@ -1047,7 +1047,7 @@ def test_chat_rag_sorts_by_similarity_desc(client):
     captured = {}
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=_rag_router_then('[]')), \
          patch('src.api.inquire.semantic_search_chunks', side_effect=search_se), \
@@ -1101,7 +1101,7 @@ def test_chat_rag_speaker_postfilter(client):
     captured = {}
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=_rag_router_then('[]')), \
          patch('src.api.inquire.semantic_search_chunks', side_effect=search_se), \
@@ -1137,7 +1137,7 @@ def test_chat_rag_uses_enriched_terms(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion',
                side_effect=_rag_router_then('["alphaterm"]')), \
@@ -1161,7 +1161,7 @@ def test_chat_direct_path_passes_stream_true(client):
     router = MagicMock(return_value=_llm_msg("DIRECT"))
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.call_llm_completion', router), \
          patch('src.api.inquire.process_streaming_with_thinking',
                return_value=iter(["data: " + json.dumps({'end_of_stream': True}) + "\n\n"])), \
@@ -1192,7 +1192,7 @@ def test_chat_empty_router_falls_back_to_rag(client):
 
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=llm_se), \
          patch('src.api.inquire.semantic_search_chunks',
@@ -1285,7 +1285,7 @@ def test_chat_rag_present_speaker_not_auto_filtered(client):
     captured = {}
     with _login(client, user_id), \
          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
-         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
          patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
          patch('src.api.inquire.call_llm_completion', side_effect=_rag_router_then('[]')), \
          patch('src.api.inquire.semantic_search_chunks', side_effect=search_se), \
@@ -1307,7 +1307,7 @@ def test_chat_rag_present_speaker_not_auto_filtered(client):
 def test_chat_refuses_a_context_chunks_outside_1_to_50(value, client):
     """context_chunks bounds the chunks given to the model (#628)."""
     user_id = _make_user()
-    with _login(client, user_id),          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True),          patch('src.api.inquire.client', MagicMock()):
+    with _login(client, user_id),          patch('src.api.inquire.ENABLE_INQUIRE_MODE', True),          patch('src.services.llm_config.is_configured', return_value=True):
         response = client.post('/api/inquire/chat', json={'message': 'hello', 'context_chunks': value})
     assert response.status_code == 400
     assert response.get_json()['code'] in ('invalid_integer_value', 'invalid_context_chunks')

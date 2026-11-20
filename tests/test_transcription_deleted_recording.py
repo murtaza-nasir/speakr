@@ -80,7 +80,7 @@ def _run(rid, connector):
         with patch("src.services.transcription.get_connector", return_value=connector), \
              patch.object(proc, "is_video_file", return_value=False), \
              patch.object(proc, "convert_if_needed", return_value=conv), \
-             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
              patch.object(proc, "generate_title_task"), \
              patch.object(proc, "generate_summary_only_task"), \
@@ -192,7 +192,7 @@ def test_a_summary_for_a_reused_id_is_not_stored_on_the_new_upload(rec_id):
         _delete_and_reuse_elsewhere(rec_id)
         return MagicMock(choices=[MagicMock(message=MagicMock(content="Old summary", reasoning=None))])
 
-    with patch.object(proc, "client", MagicMock()), \
+    with patch.object(proc.llm_config, "is_configured", return_value=True), \
          patch.object(proc, "call_llm_completion", side_effect=llm), \
          patch("src.services.webhook_dispatch.emit_webhook_event") as emit:
         with app.app_context():

@@ -1552,9 +1552,20 @@ def _llm_error_response(error):
 
 
 def _llm_roles_response():
-    """The assignments and the effective configuration of every role."""
+    """The assignments and the effective configuration of every role.
+
+    A stored id that no longer matches a configured model reads as
+    unassigned, exactly as it resolves, so the UI never selects an option
+    that is not in the list.
+    """
+    document = llm_config.load_document()
+    model_ids = {model['id'] for model in document['models']}
+    assignments = {
+        role: (model_id if model_id in model_ids else None)
+        for role, model_id in document['assignments'].items()
+    }
     return {
-        'assignments': llm_config.load_document()['assignments'],
+        'assignments': assignments,
         'roles': {role: llm_config.public_config(role) for role in llm_config.ROLES},
     }
 

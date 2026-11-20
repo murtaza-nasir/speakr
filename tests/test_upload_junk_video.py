@@ -259,7 +259,7 @@ def _incognito(user_id, payload, filename):
     with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
          patch("src.services.transcription.get_registry", return_value=registry), \
          patch.object(proc, "VIDEO_PASSTHROUGH_ASR", True), \
-         patch.object(proc, "chunking_service", None), patch.object(proc, "client", None):
+         patch.object(proc, "chunking_service", None), patch.object(proc.llm_config, "is_configured", return_value=False):
         resp = client.post("/api/recordings/incognito",
                            data={"file": (io.BytesIO(payload), filename)},
                            content_type="multipart/form-data")

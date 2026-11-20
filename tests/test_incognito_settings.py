@@ -66,7 +66,7 @@ def test_incognito_resolves_language_hotwords_and_admin_prompt(user, tmp_path):
         with patch("src.services.transcription.get_registry", return_value=registry), \
              patch.object(proc, "is_video_file", return_value=False), \
              patch.object(proc, "convert_if_needed", return_value=MagicMock(was_converted=False)), \
-             patch.object(proc, "chunking_service") as svc, patch.object(proc, "client", None):
+             patch.object(proc, "chunking_service") as svc, patch.object(proc.llm_config, "is_configured", return_value=False):
             svc.needs_chunking.return_value = False
             svc.get_audio_duration.return_value = 30.0
             proc.transcribe_incognito(str(audio), "a.mp3", language="", user=u)
@@ -134,7 +134,7 @@ def _post_incognito_video(user_id, ffmpeg, filename="meeting.mp4", probe=_fake_p
     with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
          patch("src.services.transcription.get_registry", return_value=registry), \
          patch.object(proc, "VIDEO_PASSTHROUGH_ASR", False), \
-         patch.object(proc, "chunking_service", None), patch.object(proc, "client", None), \
+         patch.object(proc, "chunking_service", None), patch.object(proc.llm_config, "is_configured", return_value=False), \
          patch("src.utils.ffprobe.probe", side_effect=probe), \
          patch("src.utils.ffmpeg_utils.subprocess.run", side_effect=ffmpeg) as run:
         resp = client.post("/api/recordings/incognito",
