@@ -735,9 +735,9 @@
                                     <i class="fas fa-robot text-[var(--text-accent)]"></i>
                                     <span>${ t('adminDashboard.llmModels.title') }</span>
                                 </h4>
-                                <p class="text-xs text-[var(--text-muted)] mt-0.5">${ t('adminDashboard.llmModels.description') }</p>
+                                <p class="text-xs text-[var(--text-muted)] mt-0.5" data-llm-description>${ llmModels.length >= llmModelLimit ? llmModelLimitMessage : t('adminDashboard.llmModels.description') }</p>
                             </div>
-                            <button type="button" @click="openLlmModelModal()" class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
+                            <button v-if="llmModels.length < llmModelLimit" type="button" @click="openLlmModelModal()" class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
                                 <i class="fas fa-plus"></i>
                                 <span>${ t('adminDashboard.llmModels.addModel') }</span>
                             </button>
@@ -1723,7 +1723,7 @@ Summarization Instructions:
         <span id="footer-text" style="display: none;"></span>
 
         <!-- Add / edit a language model profile -->
-        <div v-if="showLlmModelModal" @click.self="closeLlmModelModal" class="modal-overlay">
+        <div v-if="showLlmModelModal" @click.self="closeLlmModelModal" class="modal-overlay" data-llm-modal>
             <div class="modal-panel modal-panel--md">
                 <div class="modal-header">
                     <h3 class="modal-title">${ llmEditingModel ? t('adminDashboard.llmModels.editModel') : t('adminDashboard.llmModels.addModel') }</h3>
@@ -1733,18 +1733,39 @@ Summarization Instructions:
                     <div class="modal-body space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.label') }</label>
-                            <input v-model.trim="llmModelForm.label" type="text" required maxlength="80" class="field w-full">
+                            <input v-model.trim="llmModelForm.label" type="text" required maxlength="80" class="field w-full"
+                                   data-llm-field="label">
                             <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.labelHelp') }</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.baseUrl') }</label>
                             <input v-model.trim="llmModelForm.base_url" type="text" required class="field w-full"
-                                   placeholder="https://openrouter.ai/api/v1">
+                                   placeholder="https://openrouter.ai/api/v1" data-llm-field="base_url">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.apiKey') }</label>
-                            <input v-model="llmModelForm.api_key" type="password" autocomplete="new-password"
-                                   class="field w-full" :placeholder="llmApiKeyPlaceholder" :disabled="llmModelForm.clear_api_key">
+                            <div class="relative">
+                                <input v-model="llmModelForm.api_key" :type="llmApiKeyVisible ? 'text' : 'password'"
+                                       autocomplete="new-password" class="field w-full pr-10"
+                                       :placeholder="llmApiKeyPlaceholder" :disabled="llmModelForm.clear_api_key"
+                                       data-llm-api-key>
+                                <button type="button"
+                                        class="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus:outline-none"
+                                        data-llm-api-key-toggle
+                                        :aria-pressed="llmApiKeyVisible ? 'true' : 'false'"
+                                        :aria-label="t('adminDashboard.llmModels.apiKey')"
+                                        @click="llmApiKeyVisible = !llmApiKeyVisible">
+                                    <svg v-if="!llmApiKeyVisible" class="w-4 h-4" fill="none" stroke="currentColor"
+                                         stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor"
+                                         stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.243 4.243L9.88 9.88"/>
+                                    </svg>
+                                </button>
+                            </div>
                             <p class="text-xs text-[var(--text-muted)] mt-1">${ llmEditingModel ? t('adminDashboard.llmModels.apiKeyKept') : t('adminDashboard.llmModels.apiKeyHelp') }</p>
                             <label v-if="llmEditingModel" class="flex items-center gap-2 mt-2 text-xs text-[var(--text-secondary)] cursor-pointer">
                                 <input type="checkbox" v-model="llmModelForm.clear_api_key" class="h-4 w-4">
@@ -1754,9 +1775,10 @@ Summarization Instructions:
                         <div>
                             <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.modelName') }</label>
                             <div class="flex items-center gap-2">
-                                <input v-model.trim="llmModelForm.model_name" type="text" required class="field w-full">
+                                <input v-model.trim="llmModelForm.model_name" type="text" required class="field w-full"
+                                       data-llm-field="model_name">
                                 <button type="button" @click="discoverLlmModels" :disabled="llmDiscovery.loading"
-                                        class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
+                                        class="btn btn--ghost flex-shrink-0 whitespace-nowrap" data-llm-discover>
                                     <i :class="llmDiscovery.loading ? 'fas fa-spinner fa-spin' : 'fas fa-search'"></i>
                                     <span>${ llmDiscovery.loading ? t('adminDashboard.llmModels.discovering') : t('adminDashboard.llmModels.discover') }</span>
                                 </button>
@@ -1766,7 +1788,8 @@ Summarization Instructions:
                                 <i class="fas fa-exclamation-triangle"></i>
                                 <span>${ llmDiscovery.error }</span>
                             </div>
-                            <select v-if="llmDiscovery.models.length" class="field w-full mt-2" @change="pickDiscoveredModel($event)">
+                            <select v-if="llmDiscovery.models.length" class="field w-full mt-2" @change="pickDiscoveredModel($event)"
+                                    data-llm-discovered>
                                 <option value="">${ llmDiscoveryPickLabel }</option>
                                 <option v-for="discovered in llmDiscovery.models" :key="discovered.id" :value="discovered.id">${ discovered.id }${ discovered.owned_by ? ' (' + discovered.owned_by + ')' : '' }</option>
                             </select>
@@ -1774,7 +1797,8 @@ Summarization Instructions:
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.extraBody') }</label>
-                            <textarea v-model="llmModelForm.extra_body" rows="4" class="field w-full font-mono text-xs" placeholder="{}"></textarea>
+                            <textarea v-model="llmModelForm.extra_body" rows="4" class="field w-full font-mono text-xs" placeholder="{}"
+                                      data-llm-field="extra_body"></textarea>
                             <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.extraBodyHelp') }</p>
                             <div class="text-xs text-[var(--text-muted)] mt-1 space-y-0.5">
                                 <p>${ t('adminDashboard.llmModels.extraBodyExamples') }</p>
@@ -1812,9 +1836,10 @@ Summarization Instructions:
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <span v-if="llmModelFormError" class="text-sm text-[var(--text-danger-strong)] mr-auto">${ llmModelFormError }</span>
+                        <span v-if="llmModelFormError" class="text-sm text-[var(--text-danger-strong)] mr-auto"
+                              data-llm-form-error>${ llmModelFormError }</span>
                         <button type="button" @click="closeLlmModelModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>
-                        <button type="submit" :disabled="llmModelSaving" class="btn btn--primary">
+                        <button type="submit" :disabled="llmModelSaving" class="btn btn--primary" data-llm-save>
                             <i :class="llmModelSaving ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
                             <span>${ llmModelSaving ? t('adminDashboard.saving') : t('adminDashboard.llmModels.saveModel') }</span>
                         </button>
@@ -2948,6 +2973,7 @@ Summarization Instructions:
                 const showLlmModelModal = ref(false);
                 const llmEditingModel = ref(null);
                 const llmEditingHasKey = ref(false);
+                const llmApiKeyVisible = ref(false);
                 const llmModelSaving = ref(false);
                 const llmModelFormError = ref('');
                 const llmDiscovery = ref({ loading: false, error: '', models: [], loaded: false });
@@ -2965,6 +2991,9 @@ Summarization Instructions:
                 const llmModelForm = ref(emptyLlmModelForm());
                 let llmAssignmentsTimer = null;
                 const llmModels = computed(() => llmConfig.value.models || []);
+                const llmModelLimit = computed(() => llmConfig.value.model_limit || 12);
+                const llmModelLimitMessage = computed(() =>
+                    t('server.apiError.llm_model_limit_reached', { limit: llmModelLimit.value }));
                 const llmApiKeyPlaceholder = computed(() =>
                     llmEditingHasKey.value
                         ? t('adminDashboard.llmModels.apiKeyStored', { masked: llmMaskedKey.value })
@@ -3065,6 +3094,7 @@ Summarization Instructions:
                 const openLlmModelModal = (model = null) => {
                     llmEditingModel.value = model ? model.id : null;
                     llmEditingHasKey.value = !!(model && model.api_key);
+                    llmApiKeyVisible.value = false;
                     llmModelForm.value = model ? {
                         label: model.label || '',
                         base_url: model.base_url || '',
@@ -3083,6 +3113,7 @@ Summarization Instructions:
                 };
                 const closeLlmModelModal = () => {
                     if (llmModelSaving.value) return;
+                    llmApiKeyVisible.value = false;
                     showLlmModelModal.value = false;
                 };
                 const discoverLlmModels = async () => {
@@ -3161,6 +3192,7 @@ Summarization Instructions:
                         }
                         const savedLabel = (data.model && data.model.label) || form.label;
                         showLlmModelModal.value = false;
+                        llmApiKeyVisible.value = false;
                         llmConfigMessageError.value = false;
                         llmConfigMessage.value = t('adminDashboard.llmModels.modelSaved', { label: savedLabel });
                         llmTestStatus.value = null;
@@ -5679,7 +5711,10 @@ Summarization Instructions:
                     showLlmModelModal,
                     llmEditingModel,
                     llmModelForm,
+                    llmApiKeyVisible,
                     llmApiKeyPlaceholder,
+                    llmModelLimit,
+                    llmModelLimitMessage,
                     llmDiscoveryPickLabel,
                     llmModelFormError,
                     llmModelSaving,

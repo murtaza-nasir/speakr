@@ -289,6 +289,90 @@ def test_clear_api_key_removes_the_secret(ctx, clean_env):
     assert llm_config.resolve_config('text')['configured'] is True
 
 
+def test_a_new_base_url_needs_the_api_key_again(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'Saved', 'base_url': 'http://profile.lan/v1',
+        'model_name': 'saved-model', 'api_key': 'stored-secret',
+    })
+    with pytest.raises(llm_config.LLMConfigError, match='base URL'):
+        llm_config.update_model(created.model['id'], {'base_url': 'http://other.lan/v1'})
+
+    stored = llm_config._find_model(llm_config.load_document(), created.model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == (
+        'http://profile.lan/v1', 'stored-secret')
+
+
+def test_a_new_base_url_with_a_new_key_replaces_the_stored_key(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'Saved', 'base_url': 'http://profile.lan/v1',
+        'model_name': 'saved-model', 'api_key': 'stored-secret',
+    })
+    llm_config.update_model(created.model['id'], {
+        'base_url': 'http://other.lan/v1', 'api_key': 'other-secret'})
+
+    stored = llm_config._find_model(llm_config.load_document(), created.model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == (
+        'http://other.lan/v1', 'other-secret')
+
+
+def test_a_new_base_url_can_clear_the_stored_key(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'Saved', 'base_url': 'http://profile.lan/v1',
+        'model_name': 'saved-model', 'api_key': 'stored-secret',
+    })
+    llm_config.update_model(created.model['id'], {
+        'base_url': 'http://other.lan/v1', 'clear_api_key': True})
+
+    stored = llm_config._find_model(llm_config.load_document(), created.model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == ('http://other.lan/v1', '')
+
+
+def test_at_most_twelve_models_can_be_configured(ctx, clean_env):
+    _text_env(clean_env)
+    for index in range(llm_config.MAX_MODELS):
+        llm_config.create_model({
+            'label': f'Model {index}', 'base_url': f'http://m{index}.lan/v1',
+            'model_name': f'model-{index}'})
+
+    with pytest.raises(llm_config.LLMModelLimitReached) as error:
+        llm_config.create_model({
+            'label': 'Too many', 'base_url': 'http://extra.lan/v1',
+            'model_name': 'extra'})
+    assert error.value.limit == llm_config.MAX_MODELS
+    assert len(llm_config.list_models()) == llm_config.MAX_MODELS
+
+    first = llm_config.list_models()[0]
+    llm_config.delete_model(first['id'])
+    created = llm_config.create_model({
+        'label': 'Replacement', 'base_url': 'http://extra.lan/v1',
+        'model_name': 'extra'})
+    assert created.model['label'] == 'Replacement'
+
+
+@pytest.mark.parametrize('incoming', [{}, ['key'], 42, True])
+def test_an_api_key_that_is_not_a_string_is_rejected(ctx, clean_env, incoming):
+    _text_env(clean_env)
+    with pytest.raises(llm_config.LLMConfigError, match='api_key'):
+        llm_config.create_model({
+            'label': 'x', 'base_url': 'http://a.lan/v1',
+            'model_name': 'm', 'api_key': incoming})
+    assert llm_config.load_document()['models'] == []
+
+
+def test_a_base_url_with_credentials_is_rejected_without_echoing_them(ctx, clean_env):
+    _text_env(clean_env)
+    with pytest.raises(llm_config.LLMConfigError) as error:
+        llm_config.create_model({
+            'label': 'x', 'base_url': 'http://user:topsecret@a.lan/v1',
+            'model_name': 'm'})
+
+    assert 'topsecret' not in str(error.value)
+    assert llm_config.load_document()['models'] == []
+
+
 # ---------------------------------------------------------------- validation
 
 
@@ -550,7 +634,8 @@ def test_a_profile_change_rebuilds_the_client(ctx, clean_env, fake_openai):
     llm_config.assign_model('text', created.model['id'])
     first = llm_config.get_client('text')
 
-    llm_config.update_model(created.model['id'], {'base_url': 'http://b.lan/v1'})
+    llm_config.update_model(created.model['id'],
+                            {'base_url': 'http://b.lan/v1', 'api_key': 'k2'})
     second = llm_config.get_client('text')
     assert first is not second
 

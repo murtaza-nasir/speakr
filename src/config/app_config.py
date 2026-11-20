@@ -135,10 +135,13 @@ def initialize_config(app):
     """Initialize application configuration."""
     try:
         from src.services import llm_config
-        config = llm_config.resolve_config('text', reveal_key=True)
-        if not config['configured']:
-            raise RuntimeError("no text model configured (set TEXT_MODEL_BASE_URL, and TEXT_MODEL_API_KEY for a hosted service)")
-        app.logger.info(f"LLM configured: {config['base_url']} / {config['model_name']}")
+        # This runs at import time, outside a Flask app context, so the
+        # saved configuration can only be read inside one.
+        with app.app_context():
+            config = llm_config.resolve_config('text', reveal_key=True)
+            if not config['configured']:
+                raise RuntimeError("no text model configured (set TEXT_MODEL_BASE_URL, and TEXT_MODEL_API_KEY for a hosted service)")
+            app.logger.info(f"LLM configured: {config['base_url']} / {config['model_name']}")
     except Exception as e:
         app.logger.error(f"Failed to read the LLM configuration: {e}")
 

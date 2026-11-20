@@ -1548,6 +1548,8 @@ def _llm_error_response(error):
             **api_error('llm_model_in_use', roles=', '.join(error.roles)),
             'roles': list(error.roles),
         }), 409
+    if isinstance(error, llm_config.LLMModelLimitReached):
+        return jsonify(api_error('llm_model_limit_reached', limit=error.limit)), 400
     return jsonify(api_error('invalid_llm_config', detail=str(error))), 400
 
 
@@ -1605,7 +1607,9 @@ def _probe_target(payload):
     """The provider URL and key a discovery or test request describes.
 
     A saved model may be given as the base; a masked or empty key then keeps
-    its stored secret, so a test does not ask for the key again.
+    its stored secret, so a test does not ask for the key again. The stored
+    key is bound to the base URL it was saved with: an override for another
+    URL is contacted without it, never with the saved secret.
     """
     model_id = payload.get('model_id')
     saved = llm_config.get_model(model_id, reveal_key=True) if model_id else {}
@@ -1613,7 +1617,10 @@ def _probe_target(payload):
     if not base_url:
         raise llm_config.LLMConfigError('base_url is required')
     base_url = llm_config.normalize_base_url(base_url)
-    api_key = llm_config.merge_api_key(payload.get('api_key'), saved.get('api_key'))
+    saved_key = saved.get('api_key') or ''
+    if base_url != saved.get('base_url'):
+        saved_key = ''
+    api_key = llm_config.merge_api_key(payload.get('api_key'), saved_key)
     return base_url, api_key
 
 
@@ -1644,6 +1651,7 @@ def admin_get_llm_config():
     return jsonify({
         'models': llm_config.list_models(),
         'masked_api_key': llm_config.MASKED_API_KEY,
+        'model_limit': llm_config.MAX_MODELS,
         **_llm_roles_response(),
     })
 
@@ -1765,12 +1773,17 @@ def admin_probe_llm_configuration():
 @admin_bp.route('/admin/llm-config/models/<model_id>/test', methods=['POST'])
 @login_required
 def admin_test_llm_model(model_id):
-    """Test a saved model, with optional field overrides in the body."""
+    """Test a saved model, with optional base_url and api_key overrides."""
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
 
     try:
         payload = _llm_payload()
+        unsupported_fields = payload.keys() - {'base_url', 'api_key'}
+        if unsupported_fields:
+            fields = ', '.join(sorted(unsupported_fields))
+            raise llm_config.LLMConfigError(
+                f'Unsupported model test override field(s): {fields}')
         llm_config.get_model(model_id)
     except llm_config.LLMConfigError as error:
         return _llm_error_response(error)

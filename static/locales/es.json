@@ -3705,6 +3705,7 @@
       "llm_config_managed_elsewhere": "Esta configuración del modelo de lenguaje se gestiona en la pestaña «Modelos de lenguaje» de la configuración del sistema.",
       "llm_model_in_use": "Este modelo está asignado a {{roles}}. Reasigne esos roles antes de eliminarlo.",
       "llm_model_label_taken": "Ya existe un modelo con la etiqueta «{{label}}».",
+      "llm_model_limit_reached": "Se pueden configurar como máximo {{limit}} modelos. Elimine un modelo para añadir otro.",
       "llm_model_not_found": "No hay ningún modelo configurado con el id {{model}}.",
       "llm_provider_http_error": "El proveedor del modelo respondió HTTP {{status}} para {{url}}.",
       "llm_provider_timeout": "El proveedor del modelo en {{url}} no respondió a tiempo.",

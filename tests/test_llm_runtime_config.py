@@ -6,6 +6,7 @@ change made through the configuration API applies to the next call without a
 restart, and token tracking records the model that was actually used.
 """
 
+import logging
 import os
 import sys
 from types import SimpleNamespace
@@ -16,6 +17,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
+from src.config.app_config import initialize_config
 from src.models import SystemSetting
 from src.services import llm, llm_config
 from src.services.token_tracking import token_tracker
@@ -108,6 +110,21 @@ def test_an_assigned_profile_is_sent_by_call_llm_completion(ctx):
     assert 'temperature' not in kwargs
 
 
+def test_a_profile_gpt5_force_false_beats_the_environment(ctx):
+    ctx.setenv('GPT5_FORCE_MODE', 'true')
+    _profile('text', model_name='profile-model', extra_body={})
+    client = _FakeClient()
+    ctx.setattr(llm, 'client', client)
+
+    llm.call_llm_completion(_messages(), max_tokens=100)
+
+    kwargs = client.create.call_args.kwargs
+    assert kwargs['temperature'] == 0.7
+    assert 'reasoning_effort' not in kwargs
+    assert 'verbosity' not in kwargs
+    assert 'max_completion_tokens' not in kwargs
+
+
 def test_a_profile_change_applies_to_the_next_call(ctx):
     model = _profile('text', model_name='first-model')
     client = _FakeClient()
@@ -159,6 +176,26 @@ def test_chat_without_an_assignment_inherits_the_text_profile(ctx):
 
     llm.call_chat_completion(_messages())
     assert client.create.call_args.kwargs['model'] == 'shared-text-model'
+
+
+def test_chat_inheriting_the_text_model_names_the_text_extra_body(ctx):
+    assert llm.get_chat_config()['extra_body_variable'] == 'TEXT_MODEL_EXTRA_BODY'
+
+
+def test_a_dedicated_chat_environment_names_its_own_extra_body(ctx):
+    ctx.setenv('CHAT_MODEL_NAME', 'chat-model')
+    ctx.setenv('CHAT_MODEL_BASE_URL', 'http://chat.lan/v1')
+    assert llm.get_chat_config()['extra_body_variable'] == 'CHAT_MODEL_EXTRA_BODY'
+
+
+def test_translation_inheriting_the_text_model_names_the_text_extra_body(ctx):
+    assert llm.get_translation_config()['extra_body_variable'] == 'TEXT_MODEL_EXTRA_BODY'
+
+
+def test_a_dedicated_translation_environment_names_its_own_extra_body(ctx):
+    ctx.setenv('TRANSLATION_MODEL_NAME', 'translation-model')
+    ctx.setenv('TRANSLATION_MODEL_BASE_URL', 'http://translation.lan/v1')
+    assert llm.get_translation_config()['extra_body_variable'] == 'TRANSLATION_MODEL_EXTRA_BODY'
 
 
 def test_translation_uses_the_profile_assigned_to_it(ctx):
@@ -215,3 +252,33 @@ def test_the_dynamic_configured_flag_follows_the_assignment(ctx):
 
     _profile('text', model_name='db-model', api_key='db-key')
     assert llm.TEXT_MODEL_CONFIGURED is True
+
+
+# ---------------------------------------------------------------- startup
+
+
+def test_startup_reads_the_saved_configuration_without_a_request(monkeypatch, caplog):
+    """initialize_config runs at import time, outside an app context."""
+    for name in ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    with app.app_context():
+        _clear()
+        model = llm_config.create_model({
+            'label': 'startup profile',
+            'base_url': 'http://startup.lan/v1',
+            'model_name': 'startup-model',
+            'api_key': 'startup-key',
+        }).model
+        llm_config.assign_model('text', model['id'])
+
+    try:
+        with caplog.at_level(logging.INFO):
+            initialize_config(app)
+    finally:
+        with app.app_context():
+            _clear()
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert 'LLM configured: http://startup.lan/v1 / startup-model' in messages
+    assert not any(message.startswith('Failed to read the LLM configuration')
+                   for message in messages)

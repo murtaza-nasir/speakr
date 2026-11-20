@@ -41,6 +41,7 @@ ROLE_ALIASES = {'ambrose': 'chat', 'inquire': 'chat'}
 MASKED_API_KEY = '***'
 SETTING_KEY = 'llm_config_json'
 CONFIG_VERSION = 1
+MAX_MODELS = 12
 SETTING_DESCRIPTION = (
     'Configured language models and the role assignment. Managed by the '
     'Language Models section of System Settings.'
@@ -99,6 +100,16 @@ class LLMModelInUse(LLMConfigError):
             'reassign those roles first.')
 
 
+class LLMModelLimitReached(LLMConfigError):
+    """The document already holds the maximum number of models."""
+
+    def __init__(self, limit):
+        self.limit = limit
+        super().__init__(
+            f'At most {limit} models can be configured; delete one before '
+            'adding another')
+
+
 @dataclass(frozen=True)
 class ModelChange:
     """A created or updated profile and the names of the changed fields."""
@@ -153,7 +164,7 @@ def merge_api_key(incoming, existing):
     if incoming is None:
         return existing or ''
     if not isinstance(incoming, str):
-        return incoming
+        raise LLMConfigError('api_key must be a string')
     incoming = incoming.strip()
     if not incoming or incoming == MASKED_API_KEY:
         return existing or ''
@@ -167,12 +178,6 @@ def _required_text(values, name):
     return value.strip()
 
 
-def _optional_text(value):
-    if value is None or not isinstance(value, str):
-        return ''
-    return value.strip()
-
-
 def normalize_base_url(value):
     if not isinstance(value, str) or not value.strip():
         raise LLMConfigError('base_url is required')
@@ -180,6 +185,9 @@ def normalize_base_url(value):
     parts = urlsplit(value)
     if parts.scheme not in ('http', 'https') or not parts.netloc:
         raise LLMConfigError('base_url must start with http:// or https://')
+    if parts.username is not None or parts.password is not None:
+        # Never echo the URL: it would put the credentials in the answer.
+        raise LLMConfigError('base_url must not include credentials')
     return value
 
 
@@ -353,11 +361,11 @@ def create_model(values):
     label = _required_text(values, 'label')
     model_name = _required_text(values, 'model_name')
     base_url = normalize_base_url(values.get('base_url'))
-    api_key = _optional_text(values.get('api_key'))
-    if api_key == MASKED_API_KEY:
-        api_key = ''
+    api_key = merge_api_key(values.get('api_key'), '')
 
     document = load_document()
+    if len(document['models']) >= MAX_MODELS:
+        raise LLMModelLimitReached(MAX_MODELS)
     if _label_taken(document['models'], label):
         raise LLMModelLabelTaken(label)
 
@@ -398,8 +406,19 @@ def update_model(model_id, values):
         updated['base_url'] = normalize_base_url(values.get('base_url'))
     if 'model_name' in values:
         updated['model_name'] = _required_text(values, 'model_name')
+    base_url_changed = (
+        'base_url' in values and updated['base_url'] != existing['base_url'])
     if values.get('clear_api_key'):
         updated['api_key'] = ''
+    elif base_url_changed:
+        # A stored key belongs to the URL it was saved with. A new host must
+        # never receive it in silence; the key is entered again or cleared.
+        api_key = merge_api_key(values.get('api_key'), '')
+        if not api_key and existing['api_key']:
+            raise LLMConfigError(
+                'Changing the base URL requires the API key again, or clear '
+                'the stored key')
+        updated['api_key'] = api_key
     elif 'api_key' in values:
         updated['api_key'] = merge_api_key(values.get('api_key'), existing['api_key'])
     if 'extra_body' in values:

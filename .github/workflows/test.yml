@@ -276,7 +276,7 @@ jobs:
           SPEAKR_BROWSER_SMOKE: '1'
           SPEAKR_BASE_URL: http://127.0.0.1:8899
           SPEAKR_CONTROL_URL: http://127.0.0.1:8898
-        run: pytest tests/e2e/test_browser_smoke.py tests/e2e/test_group_permission_ui.py tests/e2e/test_asr_editor_ui.py tests/e2e/test_transcript_view_ui.py tests/e2e/test_app_dialog_ui.py tests/e2e/test_share_page_ui.py tests/e2e/test_speaker_dialog_ui.py tests/e2e/test_share_window_ui.py tests/e2e/test_phone_layout_ui.py tests/e2e/test_service_worker_ui.py tests/e2e/test_i18n_payload_ui.py tests/e2e/test_toast_queue_ui.py tests/e2e/test_keyboard_shortcuts_ui.py tests/e2e/test_audit_log_ui.py tests/e2e/test_user_defaults_ui.py tests/e2e/test_offline_recorder_ui.py -q -p no:cacheprovider --noconftest -rs
+        run: pytest tests/e2e/test_browser_smoke.py tests/e2e/test_group_permission_ui.py tests/e2e/test_asr_editor_ui.py tests/e2e/test_transcript_view_ui.py tests/e2e/test_app_dialog_ui.py tests/e2e/test_share_page_ui.py tests/e2e/test_speaker_dialog_ui.py tests/e2e/test_share_window_ui.py tests/e2e/test_phone_layout_ui.py tests/e2e/test_service_worker_ui.py tests/e2e/test_i18n_payload_ui.py tests/e2e/test_toast_queue_ui.py tests/e2e/test_keyboard_shortcuts_ui.py tests/e2e/test_audit_log_ui.py tests/e2e/test_llm_admin_ui.py tests/e2e/test_user_defaults_ui.py tests/e2e/test_offline_recorder_ui.py -q -p no:cacheprovider --noconftest -rs
 
       - name: Speakr log
         if: always()

@@ -3705,6 +3705,7 @@
       "llm_config_managed_elsewhere": "Diese Sprachmodell-Einstellung wird im Tab „Sprachmodelle“ der Systemeinstellungen verwaltet.",
       "llm_model_in_use": "Dieses Modell ist den Rollen {{roles}} zugewiesen. Weisen Sie diese Rollen zuerst neu zu.",
       "llm_model_label_taken": "Ein Modell mit der Bezeichnung „{{label}}“ existiert bereits.",
+      "llm_model_limit_reached": "Es können höchstens {{limit}} Modelle konfiguriert werden. Löschen Sie ein Modell, um ein weiteres hinzuzufügen.",
       "llm_model_not_found": "Kein konfiguriertes Modell mit der ID {{model}}.",
       "llm_provider_http_error": "Der Modellanbieter hat auf {{url}} mit HTTP {{status}} geantwortet.",
       "llm_provider_timeout": "Der Modellanbieter unter {{url}} hat nicht rechtzeitig geantwortet.",

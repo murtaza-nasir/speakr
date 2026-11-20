@@ -8,6 +8,7 @@ be deleted, and every change is audited by id and field names only.
 """
 
 import json
+import logging
 import os
 import sys
 import uuid
@@ -182,6 +183,24 @@ def test_a_duplicate_label_is_rejected_without_case(admin_client):
     assert len(_document()['models']) == 1
 
 
+def test_the_model_limit_is_reported_and_enforced(admin_client):
+    limit = admin_client.get('/admin/llm-config').get_json()['model_limit']
+    assert limit == llm_config.MAX_MODELS
+
+    for index in range(limit):
+        response = _create(admin_client, label=f'Model {index}',
+                           base_url=f'http://m{index}.lan/v1')
+        assert response.status_code == 201, response.get_json()
+
+    response = _create(admin_client, label='One more')
+    body = response.get_json()
+    assert response.status_code == 400, body
+    assert body['code'] == 'llm_model_limit_reached'
+    assert str(limit) in body['error']
+    assert '{{' not in body['error']
+    assert len(_document()['models']) == limit
+
+
 def test_update_keeps_omitted_fields_and_the_masked_key(admin_client):
     model = _create(admin_client).get_json()['model']
     response = admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
@@ -337,7 +356,46 @@ def test_discovery_proxies_to_the_provider(admin_client, monkeypatch):
     assert 'provider-key' not in json.dumps(body)
 
 
-def test_discovery_reuses_the_saved_key_for_a_saved_model(admin_client, monkeypatch):
+@pytest.mark.parametrize(
+    'api_key', [None, '', llm_config.MASKED_API_KEY],
+    ids=['omitted', 'empty', 'masked'])
+def test_discovery_reuses_the_saved_key_for_a_saved_model(
+        admin_client, monkeypatch, api_key):
+    model = _create(admin_client).get_json()['model']
+    seen = {}
+
+    def fake_get(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        return _model_response('model-a')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', fake_get)
+    payload = {} if api_key is None else {'api_key': api_key}
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}/test", json=payload)
+    assert response.status_code == 200
+    assert seen['headers']['Authorization'] == 'Bearer stored-secret'
+
+
+def test_model_test_uses_a_base_url_override_for_the_provider_request(
+        admin_client, monkeypatch):
+    model = _create(admin_client).get_json()['model']
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append((url, kwargs))
+        return _model_response('model-a')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', fake_get)
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}/test",
+        json={'base_url': 'http://override.lan/v1'})
+
+    assert response.status_code == 200
+    assert calls[0][0] == 'http://override.lan/v1/models'
+
+
+def test_model_test_uses_an_api_key_override_for_the_provider_request(
+        admin_client, monkeypatch):
     model = _create(admin_client).get_json()['model']
     seen = {}
 
@@ -346,9 +404,159 @@ def test_discovery_reuses_the_saved_key_for_a_saved_model(admin_client, monkeypa
         return _model_response('model-a')
 
     monkeypatch.setattr(admin_api.httpx, 'get', fake_get)
-    response = admin_client.post(f"/admin/llm-config/models/{model['id']}/test", json={})
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}/test",
+        json={'api_key': 'override-secret'})
+
     assert response.status_code == 200
-    assert seen['headers']['Authorization'] == 'Bearer stored-secret'
+    assert seen['headers']['Authorization'] == 'Bearer override-secret'
+
+
+def test_a_base_url_override_does_not_send_the_stored_key(
+        admin_client, monkeypatch):
+    model = _create(admin_client).get_json()['model']
+    seen = []
+
+    def fake_get(url, **kwargs):
+        seen.append((url, kwargs))
+        return _model_response('model-a')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', fake_get)
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}/test",
+        json={'base_url': 'http://other.lan/v1'})
+
+    body = response.get_json()
+    assert response.status_code == 200, body
+    assert seen[0][0] == 'http://other.lan/v1/models'
+    assert 'Authorization' not in seen[0][1]['headers']
+    assert 'stored-secret' not in json.dumps(body)
+
+
+def test_a_base_url_override_uses_an_explicit_key(admin_client, monkeypatch):
+    model = _create(admin_client).get_json()['model']
+    seen = {}
+
+    def fake_get(url, **kwargs):
+        seen.update(kwargs)
+        return _model_response('model-a')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', fake_get)
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}/test",
+        json={'base_url': 'http://other.lan/v1', 'api_key': 'other-secret'})
+
+    assert response.status_code == 200
+    assert seen['headers']['Authorization'] == 'Bearer other-secret'
+    assert 'stored-secret' not in json.dumps(seen)
+
+
+def test_discovery_with_a_changed_base_url_does_not_send_the_stored_key(
+        admin_client, monkeypatch):
+    model = _create(admin_client).get_json()['model']
+    seen = []
+
+    def fake_get(url, **kwargs):
+        seen.append((url, kwargs))
+        return _model_response('model-a')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', fake_get)
+    response = admin_client.post('/admin/llm-config/test', json={
+        'model_id': model['id'], 'base_url': 'http://other.lan/v1'})
+
+    assert response.status_code == 200
+    assert 'Authorization' not in seen[0][1]['headers']
+
+
+def test_changing_the_base_url_without_a_key_is_refused(admin_client):
+    model = _create(admin_client).get_json()['model']
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}",
+        json={'base_url': 'http://other.lan/v1'})
+
+    body = response.get_json()
+    assert response.status_code == 400, body
+    assert body['code'] == 'invalid_llm_config'
+    assert 'API key' in body['error']
+    stored = llm_config._find_model(_document(), model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == (
+        'http://provider.lan/v1', 'stored-secret')
+
+
+def test_changing_the_base_url_with_a_new_key_saves_both(admin_client):
+    model = _create(admin_client).get_json()['model']
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}",
+        json={'base_url': 'http://other.lan/v1', 'api_key': 'other-secret'})
+
+    body = response.get_json()
+    assert response.status_code == 200, body
+    assert body['model']['api_key'] == llm_config.MASKED_API_KEY
+    assert 'other-secret' not in json.dumps(body)
+    stored = llm_config._find_model(_document(), model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == (
+        'http://other.lan/v1', 'other-secret')
+
+
+def test_changing_the_base_url_can_clear_the_stored_key(admin_client):
+    model = _create(admin_client).get_json()['model']
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}",
+        json={'base_url': 'http://other.lan/v1', 'clear_api_key': True})
+
+    assert response.status_code == 200
+    stored = llm_config._find_model(_document(), model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == ('http://other.lan/v1', '')
+
+
+def test_a_non_string_api_key_is_refused(admin_client, monkeypatch):
+    def fail_provider(*args, **kwargs):
+        pytest.fail('the provider must not be called')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', fail_provider)
+    created = admin_client.post('/admin/llm-config/models', json={
+        'label': 'x', 'base_url': 'http://a.lan/v1', 'model_name': 'm',
+        'api_key': {'nested': 'secret'}})
+    assert created.status_code == 400
+    assert created.get_json()['code'] == 'invalid_llm_config'
+    assert 'nested' not in json.dumps(created.get_json())
+    assert _document()['models'] == []
+
+    probe = admin_client.post('/admin/llm-config/test', json={
+        'base_url': 'http://a.lan/v1', 'api_key': ['secret']})
+    assert probe.status_code == 400
+
+
+def test_a_base_url_with_credentials_is_refused_without_echoing_them(admin_client):
+    response = admin_client.post('/admin/llm-config/models', json={
+        'label': 'x', 'base_url': 'http://user:topsecret@a.lan/v1',
+        'model_name': 'm'})
+
+    assert response.status_code == 400
+    assert 'topsecret' not in json.dumps(response.get_json())
+    assert _document()['models'] == []
+
+
+@pytest.mark.parametrize('field,value', [
+    ('extra_body', {'reasoning_effort': 'high'}),
+    ('model_name', 'another-model'),
+    ('model_id', 'another-model-id'),
+])
+def test_model_test_rejects_unsupported_overrides_without_calling_provider(
+        admin_client, monkeypatch, field, value):
+    model = _create(admin_client).get_json()['model']
+    def fail_provider(*args, **kwargs):
+        pytest.fail('the provider must not be called')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', fail_provider)
+
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}/test", json={field: value})
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body['code'] == 'invalid_llm_config'
+    assert field in body['error']
 
 
 def test_discovery_failure_returns_a_clear_error(admin_client, monkeypatch):
@@ -445,6 +653,40 @@ def test_reverting_an_unassigned_role_writes_no_audit_row(admin_client):
     start = _max_audit_id()
     admin_client.delete('/admin/llm-config/assignments/text')
     assert _audit_rows(start, 'admin.llm_role.reverted') == []
+
+
+def test_no_answer_or_audit_row_carries_a_key(admin_client, monkeypatch, caplog):
+    """The key is write-only, as a user's API token is: shown once, never read.
+
+    A provider key cannot be stored as a one-way hash, because Speakr has to
+    send it to the provider. Everything the token pattern does besides hashing
+    applies: no answer, log line or audit row repeats the value.
+    """
+    caplog.set_level(logging.DEBUG)
+    start = _max_audit_id()
+    created = _create(admin_client)
+    model = created.get_json()['model']
+    answers = [created.get_json(), admin_client.get('/admin/llm-config').get_json()]
+
+    updated = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}", json={'api_key': 'second-secret'})
+    answers.append(updated.get_json())
+
+    def refuse(*args, **kwargs):
+        raise httpx.ConnectError('connection refused')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', refuse)
+    failed = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}/test", json={'api_key': 'third-secret'})
+    answers.append(failed.get_json())
+
+    dumped = json.dumps(answers)
+    audited = json.dumps([row.details for row in _audit_rows(start, 'admin.llm_model.created')
+                          + _audit_rows(start, 'admin.llm_model.changed')])
+    for secret in ('stored-secret', 'second-secret', 'third-secret'):
+        assert secret not in dumped
+        assert secret not in audited
+        assert secret not in caplog.text
 
 
 # ---------------------------------------------------------------- generic settings

@@ -174,13 +174,9 @@ def __getattr__(name):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def _gpt5_mode_forced(env_var="GPT5_FORCE_MODE"):
-    """Whether GPT-5 parameter handling is forced on via environment variable.
-
-    The autodetection requires api.openai.com in the base URL, which misses
-    GPT-5 models served through Azure AI Foundry or other gateways (#367).
-    """
-    return str(os.environ.get(env_var, "")).strip().lower() in ("true", "1", "yes")
+def _inherits_text_model(role):
+    """Whether the role has no configuration of its own and reuses the text model."""
+    return bool(llm_config.resolve_config(role).get('uses_text_model'))
 
 
 def get_chat_config():
@@ -212,7 +208,9 @@ def get_chat_config():
             # Like GPT5_FORCE_MODE, the text model's parameters are not
             # inherited: they may not suit a different model or server.
             'extra_body': _cfg('CHAT_MODEL_EXTRA_BODY'),
-            'extra_body_variable': 'CHAT_MODEL_EXTRA_BODY',
+            'extra_body_variable': (
+                'TEXT_MODEL_EXTRA_BODY' if _inherits_text_model('chat')
+                else 'CHAT_MODEL_EXTRA_BODY'),
             'extra_body_error': _cfg('CHAT_MODEL_EXTRA_BODY_ERROR'),
         }
     return {
@@ -251,7 +249,9 @@ def get_translation_config():
                 _cfg('TRANSLATION_GPT5_VERBOSITY') or _cfg('GPT5_VERBOSITY')),
             'gpt5_force': bool(_cfg('TRANSLATION_MODEL_GPT5_FORCE')),
             'extra_body': _cfg('TRANSLATION_MODEL_EXTRA_BODY'),
-            'extra_body_variable': 'TRANSLATION_MODEL_EXTRA_BODY',
+            'extra_body_variable': (
+                'TEXT_MODEL_EXTRA_BODY' if _inherits_text_model('translation')
+                else 'TRANSLATION_MODEL_EXTRA_BODY'),
             'extra_body_error': _cfg('TRANSLATION_MODEL_EXTRA_BODY_ERROR'),
         }
     return {
@@ -365,7 +365,6 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         # Foundry and other gateways the URL check can't detect).
         using_gpt5 = (
             bool(_cfg('TEXT_MODEL_GPT5_FORCE'))
-            or _gpt5_mode_forced()
             or (is_gpt5_model(model_name) and 'api.openai.com' in base_url)
         )
 

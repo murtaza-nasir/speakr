@@ -3705,6 +3705,7 @@
       "llm_config_managed_elsewhere": "此语言模型设置需在系统设置的“语言模型”标签页中管理。",
       "llm_model_in_use": "此模型已分配给 {{roles}}。请先重新分配这些角色，然后再删除。",
       "llm_model_label_taken": "标签为“{{label}}”的模型已存在。",
+      "llm_model_limit_reached": "最多只能配置 {{limit}} 个模型。请删除一个模型以添加另一个。",
       "llm_model_not_found": "没有 id 为 {{model}} 的已配置模型。",
       "llm_provider_http_error": "模型提供商对 {{url}} 返回了 HTTP {{status}}。",
       "llm_provider_timeout": "位于 {{url}} 的模型提供商未及时响应。",
