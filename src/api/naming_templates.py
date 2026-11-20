@@ -7,6 +7,7 @@ metadata, and AI-generated content.
 """
 
 import json
+import re
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
@@ -14,9 +15,32 @@ from flask_login import login_required, current_user
 from src.database import db
 from src.models import NamingTemplate
 from src.utils.localization import api_error, translate
+from src.utils.request_body import bool_field, json_object_body
 
 # Create blueprint
 naming_templates_bp = Blueprint('naming_templates', __name__)
+
+
+def _regex_patterns_json(value):
+    """(stored_text_or_None, error_response) for a regex_patterns value.
+
+    null and {} mean no patterns. Anything else must be an object whose
+    values are non-empty strings that compile (#658); a number, null or a
+    list as a value would fail in re.compile, an empty string would match
+    nothing.
+    """
+    if value is None or value == {}:
+        return None, None
+    if not isinstance(value, dict):
+        return None, (jsonify(api_error('invalid_regex_patterns')), 400)
+    for var_name, pattern in value.items():
+        if not isinstance(pattern, str) or not pattern:
+            return None, (jsonify(api_error('invalid_regex_patterns')), 400)
+        try:
+            re.compile(pattern)
+        except re.error as e:
+            return None, (jsonify(api_error('invalid_regex_pattern', variable=var_name, detail=str(e))), 400)
+    return json.dumps(value), None
 
 
 # --- Routes ---
@@ -33,25 +57,23 @@ def get_naming_templates():
 @login_required
 def create_naming_template():
     """Create a new naming template."""
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data or not data.get('name') or not data.get('template'):
         return jsonify(api_error('name_and_template_required')), 400
 
-    # Validate regex patterns if provided
-    regex_patterns = data.get('regex_patterns', {})
-    if regex_patterns:
-        if not isinstance(regex_patterns, dict):
-            return jsonify(api_error('invalid_regex_patterns')), 400
-        # Validate each regex pattern
-        import re
-        for var_name, pattern in regex_patterns.items():
-            try:
-                re.compile(pattern)
-            except re.error as e:
-                return jsonify(api_error('invalid_regex_pattern', variable=var_name, detail=str(e))), 400
+    regex_json, field_error = _regex_patterns_json(data.get('regex_patterns'))
+    if field_error:
+        return field_error
+
+    # A JSON boolean only, checked before any default is cleared (#658)
+    is_default, field_error = bool_field(data, 'is_default', False, 'invalid_is_default')
+    if field_error:
+        return field_error
 
     # If this is set as default, unset other defaults
-    if data.get('is_default'):
+    if is_default:
         NamingTemplate.query.filter_by(
             user_id=current_user.id,
             is_default=True
@@ -62,8 +84,8 @@ def create_naming_template():
         name=data['name'],
         template=data['template'],
         description=data.get('description'),
-        regex_patterns=json.dumps(regex_patterns) if regex_patterns else None,
-        is_default=data.get('is_default', False)
+        regex_patterns=regex_json,
+        is_default=is_default
     )
 
     db.session.add(template)
@@ -99,25 +121,24 @@ def update_naming_template(template_id):
     if not template:
         return jsonify(api_error('template_not_found')), 404
 
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
 
-    # Validate regex patterns if provided
     if 'regex_patterns' in data:
-        regex_patterns = data['regex_patterns']
-        if regex_patterns:
-            if not isinstance(regex_patterns, dict):
-                return jsonify(api_error('invalid_regex_patterns')), 400
-            import re
-            for var_name, pattern in regex_patterns.items():
-                try:
-                    re.compile(pattern)
-                except re.error as e:
-                    return jsonify(api_error('invalid_regex_pattern', variable=var_name, detail=str(e))), 400
+        regex_json, field_error = _regex_patterns_json(data['regex_patterns'])
+        if field_error:
+            return field_error
+
+    # A JSON boolean only, checked before any default is cleared (#658)
+    is_default, field_error = bool_field(data, 'is_default', template.is_default, 'invalid_is_default')
+    if field_error:
+        return field_error
 
     # If this is set as default, unset other defaults
-    if data.get('is_default'):
+    if data.get('is_default') is True:
         NamingTemplate.query.filter_by(
             user_id=current_user.id,
             is_default=True
@@ -126,11 +147,10 @@ def update_naming_template(template_id):
     template.name = data.get('name', template.name)
     template.template = data.get('template', template.template)
     template.description = data.get('description', template.description)
-    template.is_default = data.get('is_default', template.is_default)
+    template.is_default = is_default
 
     if 'regex_patterns' in data:
-        regex_patterns = data['regex_patterns']
-        template.regex_patterns = json.dumps(regex_patterns) if regex_patterns else None
+        template.regex_patterns = regex_json
 
     template.updated_at = datetime.utcnow()
 

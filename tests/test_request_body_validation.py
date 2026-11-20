@@ -67,6 +67,10 @@ REQUIRED = [
     ("POST", "/api/tags"),
     ("PUT", "/api/tags/{a}"),
     ("POST", "/api/groups/{group}/tags"),
+    ("POST", "/api/naming-templates"),
+    ("POST", "/api/export-templates"),
+    ("POST", "/api/initial-prompt-templates"),
+    ("POST", "/api/transcript-templates"),
 ]
 
 # Routes where every field is optional: no body is {} and reaches the

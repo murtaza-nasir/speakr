@@ -15,6 +15,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import api_error, translate
+from src.utils.request_body import bool_field, json_object_body
 
 # Create blueprint
 templates_bp = Blueprint('templates', __name__)
@@ -49,12 +50,19 @@ def get_transcript_templates():
 @login_required
 def create_transcript_template():
     """Create a new transcript template."""
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data or not data.get('name') or not data.get('template'):
         return jsonify(api_error('name_and_template_required')), 400
 
+    # A JSON boolean only, checked before any default is cleared (#658)
+    is_default, field_error = bool_field(data, 'is_default', False, 'invalid_is_default')
+    if field_error:
+        return field_error
+
     # If this is set as default, unset other defaults
-    if data.get('is_default'):
+    if is_default:
         TranscriptTemplate.query.filter_by(
             user_id=current_user.id,
             is_default=True
@@ -66,7 +74,7 @@ def create_transcript_template():
         template=data['template'],
         description=data.get('description'),
         header=data.get('header'),
-        is_default=data.get('is_default', False)
+        is_default=is_default
     )
 
     db.session.add(template)
@@ -88,12 +96,19 @@ def update_transcript_template(template_id):
     if not template:
         return jsonify(api_error('template_not_found')), 404
 
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
 
+    # A JSON boolean only, checked before any default is cleared (#658)
+    is_default, field_error = bool_field(data, 'is_default', template.is_default, 'invalid_is_default')
+    if field_error:
+        return field_error
+
     # If this is set as default, unset other defaults
-    if data.get('is_default'):
+    if data.get('is_default') is True:
         TranscriptTemplate.query.filter_by(
             user_id=current_user.id,
             is_default=True
@@ -103,7 +118,7 @@ def update_transcript_template(template_id):
     template.template = data.get('template', template.template)
     template.description = data.get('description', template.description)
     template.header = data.get('header', template.header)
-    template.is_default = data.get('is_default', template.is_default)
+    template.is_default = is_default
     template.updated_at = datetime.utcnow()
 
     db.session.commit()

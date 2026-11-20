@@ -14,6 +14,7 @@ from flask_login import login_required, current_user
 from src.database import db
 from src.models import InitialPromptTemplate
 from src.utils.localization import api_error, translate
+from src.utils.request_body import bool_field, json_object_body
 
 # Create blueprint
 initial_prompt_templates_bp = Blueprint('initial_prompt_templates', __name__)
@@ -31,15 +32,22 @@ def get_initial_prompt_templates():
 @login_required
 def create_initial_prompt_template():
     """Create a new transcription template (initial prompt and/or hotwords)."""
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     prompt = (data.get('template') or '') if data else ''
     hotwords = (data.get('hotwords') or '') if data else ''
     # A template needs a name and at least one of prompt / hotwords.
     if not data or not data.get('name') or not (prompt.strip() or hotwords.strip()):
         return jsonify(api_error('name_and_prompt_required')), 400
 
+    # A JSON boolean only, checked before any default is cleared (#658)
+    is_default, field_error = bool_field(data, 'is_default', False, 'invalid_is_default')
+    if field_error:
+        return field_error
+
     # If this is set as default, unset other defaults
-    if data.get('is_default'):
+    if is_default:
         InitialPromptTemplate.query.filter_by(
             user_id=current_user.id,
             is_default=True
@@ -51,7 +59,7 @@ def create_initial_prompt_template():
         template=prompt,
         hotwords=hotwords or None,
         description=data.get('description'),
-        is_default=data.get('is_default', False)
+        is_default=is_default
     )
 
     db.session.add(template)
@@ -72,12 +80,19 @@ def update_initial_prompt_template(template_id):
     if not template:
         return jsonify(api_error('template_not_found')), 404
 
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
 
+    # A JSON boolean only, checked before any default is cleared (#658)
+    is_default, field_error = bool_field(data, 'is_default', template.is_default, 'invalid_is_default')
+    if field_error:
+        return field_error
+
     # If this is set as default, unset other defaults
-    if data.get('is_default'):
+    if data.get('is_default') is True:
         InitialPromptTemplate.query.filter_by(
             user_id=current_user.id,
             is_default=True
@@ -88,7 +103,7 @@ def update_initial_prompt_template(template_id):
     if 'hotwords' in data:
         template.hotwords = data.get('hotwords') or None
     template.description = data.get('description', template.description)
-    template.is_default = data.get('is_default', template.is_default)
+    template.is_default = is_default
     template.updated_at = datetime.utcnow()
 
     db.session.commit()
