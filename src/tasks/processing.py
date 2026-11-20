@@ -80,18 +80,15 @@ from src.services import job_control
 # Default off so existing deployments and prompt-quality behaviour are unchanged
 # unless explicitly opted in. Scope is the title, summary, translation and
 # contextual speaker-identification prompts.
-PREFIX_CACHE_OPTIMIZED_PROMPTS = os.environ.get(
-    'PREFIX_CACHE_OPTIMIZED_PROMPTS', 'false'
-).lower() == 'true'
-
+#
 # Anthropic models (directly or through OpenRouter) cache only up to an
-# explicit cache_control breakpoint (#488). With this on, the shared prefix is
-# sent as its own text part carrying the breakpoint; the text is unchanged, so
-# automatic prefix caching elsewhere still applies. Only used together with
-# PREFIX_CACHE_OPTIMIZED_PROMPTS.
-TEXT_MODEL_CACHE_BREAKPOINTS = os.environ.get(
-    'TEXT_MODEL_CACHE_BREAKPOINTS', 'false'
-).lower() == 'true'
+# explicit cache_control breakpoint (#488). With TEXT_MODEL_CACHE_BREAKPOINTS
+# on, the shared prefix is sent as its own text part carrying the breakpoint;
+# the text is unchanged, so automatic prefix caching elsewhere still applies.
+# Only used together with PREFIX_CACHE_OPTIMIZED_PROMPTS.
+#
+# Both are hot settings (see _SYSTEM_SETTING_MAP below) and are read through
+# the module attribute, so a saved value applies to the next prompt.
 
 
 def prefix_cache_flags():
@@ -101,7 +98,8 @@ def prefix_cache_flags():
     must see the current values, so the flags are read when a prompt is built,
     not captured at import. Every prompt-building site reads them here.
     """
-    return PREFIX_CACHE_OPTIMIZED_PROMPTS, TEXT_MODEL_CACHE_BREAKPOINTS
+    return (bool(_self.PREFIX_CACHE_OPTIMIZED_PROMPTS),
+            bool(_self.TEXT_MODEL_CACHE_BREAKPOINTS))
 
 
 # Longest notes text given to the summarizer (#440)
@@ -3204,6 +3202,10 @@ def translate_transcription_task(app_context, recording_id, user_id=None, target
 from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
+    "PREFIX_CACHE_OPTIMIZED_PROMPTS": (
+        "prefix_cache_optimized_prompts", "PREFIX_CACHE_OPTIMIZED_PROMPTS", False),
+    "TEXT_MODEL_CACHE_BREAKPOINTS": (
+        "text_model_cache_breakpoints", "TEXT_MODEL_CACHE_BREAKPOINTS", False),
     "VIDEO_RETENTION": ("video_retention", "VIDEO_RETENTION", False),
     "VIDEO_PASSTHROUGH_ASR": ("video_passthrough_asr", "VIDEO_PASSTHROUGH_ASR", False),
 }
