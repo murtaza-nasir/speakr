@@ -1671,7 +1671,7 @@ def admin_get_auto_process_status():
         return jsonify(api_error('unauthorized')), 403
     
     try:
-        _, _, get_file_monitor_status = get_file_monitor_functions()
+        _, _, get_file_monitor_status = get_file_monitor_functions(current_app._get_current_object())
         status = get_file_monitor_status()
         
         # Add configuration info
@@ -1702,7 +1702,7 @@ def admin_start_auto_process():
         return jsonify(api_error('unauthorized')), 403
     
     try:
-        start_file_monitor, _, _ = get_file_monitor_functions()
+        start_file_monitor, _, _ = get_file_monitor_functions(current_app._get_current_object())
         start_file_monitor()
         return jsonify({'success': True, 'message': translate('server.apiMessage.autoProcessingStarted')})
     except Exception as e:
@@ -1719,7 +1719,7 @@ def admin_stop_auto_process():
         return jsonify(api_error('unauthorized')), 403
     
     try:
-        _, stop_file_monitor, _ = get_file_monitor_functions()
+        _, stop_file_monitor, _ = get_file_monitor_functions(current_app._get_current_object())
         stop_file_monitor()
         return jsonify({'success': True, 'message': translate('server.apiMessage.autoProcessingStopped')})
     except Exception as e:
