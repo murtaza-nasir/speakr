@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<!--
+  The offline recorder (#650). The service worker (static/sw.js) answers this
+  page in place of a page that cannot be loaded, with __SPEAKR_VERSION__
+  replaced by its release. It holds no user data: no recording of the
+  library, no transcript, no summary, no name. static/js/offline-recorder.js
+  fills it in; without that script it is the "You are offline" page.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Offline - Speakr</title>
+<link rel="icon" href="/static/img/favicon.ico?v=__SPEAKR_VERSION__">
+<link rel="stylesheet" href="/static/css/styles.css?v=__SPEAKR_VERSION__">
+<link rel="stylesheet" href="/static/css/offline-recorder.css?v=__SPEAKR_VERSION__">
+<script src="/static/js/offline-recorder-theme.js?v=__SPEAKR_VERSION__"></script>
+</head>
+<body class="or-body">
+<div class="or-page">
+  <main id="speakr-offline" class="or-card" aria-labelledby="or-title">
+    <div class="or-brand"><img src="/static/img/favicon.ico?v=__SPEAKR_VERSION__" alt="" class="or-logo" width="28" height="28"><span>Speakr</span></div>
+    <h1 id="or-title" data-or-text="title">You are offline</h1>
+    <p id="or-lead" class="or-lead">Speakr cannot be reached. This page is loaded again when the connection is back.</p>
+
+    <section id="or-recorder" class="or-recorder" hidden>
+      <div id="or-timer" class="or-timer" hidden>0:00</div>
+      <div class="or-actions">
+        <button type="button" id="or-record" class="or-btn or-btn--primary" data-or-text="record">Record</button>
+        <button type="button" id="or-stop" class="or-btn or-btn--danger" data-or-text="stop" hidden>Stop and save</button>
+      </div>
+    </section>
+    <p id="or-status" class="or-status" role="status" aria-live="polite"></p>
+    <p id="or-unavailable" class="or-note" hidden></p>
+
+    <section id="or-pending" class="or-pending" aria-labelledby="or-pending-title" hidden>
+      <h2 id="or-pending-title" data-or-text="pendingTitle">Waiting to upload</h2>
+      <ul id="or-list" class="or-list"></ul>
+    </section>
+
+    <div class="or-footer">
+      <a id="or-retry" class="or-btn or-btn--quiet" href="" data-or-text="tryAgain">Try again</a>
+    </div>
+  </main>
+</div>
+<script type="module" src="/static/js/offline-recorder.js?v=__SPEAKR_VERSION__"></script>
+</body>
+</html>

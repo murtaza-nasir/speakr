@@ -4832,6 +4832,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.error('Failed to load config:', error);
                 }
 
+                // The account and language for the offline recorder page,
+                // and its files in the service worker's cache (#650).
+                try {
+                    const { rememberForOfflineRecorder } = await import('./modules/db/offline-recorder-context.js');
+                    const appEl = document.getElementById('app');
+                    rememberForOfflineRecorder({
+                        userId: appEl && appEl.dataset ? appEl.dataset.currentUserId : '',
+                        locale: (window.i18n && window.i18n.currentLocale) || 'en',
+                        incognitoDefault: !!(enableIncognitoMode.value && incognitoMode.value),
+                    });
+                } catch (error) {
+                    console.warn('[App] Offline recorder not prepared:', error);
+                }
+
                 // Initialize UI settings from localStorage
                 uiComposable.initializeUI();
 

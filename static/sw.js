@@ -10,10 +10,23 @@
 //     request goes to the network and the cached copy is used only when
 //     the network fails.
 //   - A navigation (a page) always goes to the network. When the network
-//     fails, a fixed "You are offline" page is answered. It is part of this
-//     file and holds no user data; it loads the requested page again once
-//     the server answers. No page is ever stored: pages embed user
-//     data and CSRF tokens.
+//     fails, or a reverse proxy answers 502 or 504 because Speakr behind it
+//     is down, the offline recorder is answered (static/offline-recorder.html,
+//     #650): a page of static files that holds no user data, on which the
+//     person can record; the recordings wait in the browser (IndexedDB) and
+//     the app uploads them at its next online load. When the recorder's
+//     files are not in the cache, a fixed "You are offline" page is answered
+//     when the network fails (the proxy's answer is passed through), which
+//     is part of this file. Both load the requested page again once
+//     the server answers. No page of the server is ever stored: pages embed
+//     user data and CSRF tokens.
+//   - The recorder's files are stored when the signed-in app asks for them
+//     (the PREPARE_OFFLINE_RECORDER message of
+//     modules/db/offline-recorder-context.js, sent at each online load):
+//     this release's files of the page, its theme stylesheets, and the
+//     locale files of English and of the interface language. They are
+//     static files like the others, under this release's ?v=. Nothing is
+//     fetched at install.
 //   - Everything else is left to the browser, as if no worker existed:
 //     /api/, /audio/, /recording/, /share/, /admin, sign-in and sign-out,
 //     uploads, every request that is not a GET, every cross-origin request,
@@ -23,9 +36,10 @@
 //   - At sign-out every cache is deleted (the SIGN_OUT message of
 //     service-worker-client.js, and the POST /logout request itself).
 //
-// No push, notification, background sync or message feature is implemented:
-// the server sends no push messages, and failed uploads are retried by the
-// page (composables/upload.js).
+// No push, notification or background sync feature is implemented: the
+// server sends no push messages, and failed uploads, the recordings of the
+// offline recorder among them, are uploaded by the page
+// (composables/upload.js).
 //
 // routeRequest() and mayStore() are pure and are tested by
 // static/js/sw.test.js, which also runs the handlers against a fake Cache
@@ -53,6 +67,46 @@ const DOWNLOAD_PREFIXES = ['/api/', '/audio/', '/recording/', '/upload', '/speak
 // again by the browser to register share targets and shortcuts, and the
 // worker file itself is fetched by the browser's update check.
 const STATIC_NETWORK_ONLY = ['/static/manifest.json', '/static/sw.js'];
+
+// The offline recorder (#650): its page and the files it loads, all under
+// /static/ and requested with this release's ?v=. The page names the release
+// as __SPEAKR_VERSION__, which is replaced when it is answered.
+const RECORDER_PAGE = '/static/offline-recorder.html';
+const RECORDER_SCRIPT = '/static/js/offline-recorder.js';
+const RECORDER_FILES = [
+  RECORDER_PAGE,
+  RECORDER_SCRIPT,
+  '/static/js/offline-recorder-theme.js',
+  '/static/js/modules/db/failed-uploads.js',
+  '/static/js/modules/db/recording-persistence.js',
+  '/static/js/modules/utils/pending-uploads.js',
+  '/static/js/modules/utils/offline-recorder-model.js',
+  '/static/css/styles.css',
+  '/static/css/offline-recorder.css',
+  '/static/css/themes/classic.css',
+  '/static/css/themes/workspace.css',
+  '/static/css/themes/focus.css',
+  '/static/css/themes/desk.css',
+  '/static/css/themes/cards.css',
+  '/static/img/favicon.ico',
+];
+const RECORDER_LOCALES = ['en', 'de', 'es', 'fr', 'pt-BR', 'ru', 'zh'];
+const VERSION_MARK = '__SPEAKR_VERSION__';
+// The recorder runs only its own files: no inline script, no other origin.
+const RECORDER_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+  + "font-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; "
+  + "base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
+
+const versioned = (path) => `${path}?v=${encodeURIComponent(VERSION)}`;
+
+/** The files the recorder needs for a language: its own, and the locale files of that language and English. */
+function recorderFiles(locale) {
+  const files = RECORDER_FILES.slice();
+  const languages = ['en'];
+  if (RECORDER_LOCALES.includes(locale) && locale !== 'en') languages.push(locale);
+  for (const language of languages) files.push(`/static/locales/${language}.json`);
+  return files;
+}
 
 const startsWithAny = (path, prefixes) => prefixes.some((prefix) => path.startsWith(prefix));
 
@@ -173,14 +227,15 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 // The page is loaded again once the server answers: asked when the browser
 // reports a connection, and every five seconds while the tab is visible (the
 // server may have been the part that was away). The question is a HEAD
-// request, which the worker leaves to the browser; any answer counts.
+// request, which the worker leaves to the browser; any answer counts but a
+// proxy's 502 or 504 (Speakr behind it is still away).
 (function () {
   var asking = false;
   function ask() {
     if (asking) return;
     asking = true;
     fetch('/static/manifest.json', { method: 'HEAD', cache: 'no-store' })
-      .then(function () { location.reload(); })
+      .then(function (r) { if (r.status === 502 || r.status === 504) asking = false; else location.reload(); })
       .catch(function () { asking = false; });
   }
   window.addEventListener('online', ask);
@@ -240,12 +295,72 @@ const networkFirst = async (event, route) => {
   }
 };
 
-const navigate = async (event) => {
+/**
+ * The offline recorder, when this release's page and script are in the
+ * cache; null otherwise (the "You are offline" page is answered then). Its
+ * status is 503, as for the offline page, and it is never stored.
+ */
+const recorderResponse = async () => {
+  if (!VERSION) return null;
   try {
-    return await fetch(event.request);
-  } catch (error) {
-    return offlineResponse();
+    const cache = await caches.open(CACHE_NAME);
+    const page = await cache.match(`${self.location.origin}${versioned(RECORDER_PAGE)}`, MATCH);
+    if (!page) return null;
+    if (!(await cache.match(`${self.location.origin}${versioned(RECORDER_SCRIPT)}`, MATCH))) return null;
+    const html = (await page.text()).split(VERSION_MARK).join(encodeURIComponent(VERSION));
+    return new Response(html, {
+      status: 503,
+      statusText: 'Offline',
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Content-Security-Policy': RECORDER_CSP,
+      },
+    });
+  } catch (e) {
+    return null;
   }
+};
+
+// A reverse proxy answers 502 or 504 while Speakr behind it is down; Speakr
+// itself never does. Such an answer counts as no connection.
+const GATEWAY_DOWN = [502, 504];
+
+const navigate = async (event) => {
+  let response;
+  try {
+    response = await fetch(event.request);
+  } catch (error) {
+    return (await recorderResponse()) || offlineResponse();
+  }
+  if (GATEWAY_DOWN.includes(response.status)) {
+    const recorder = await recorderResponse();
+    if (recorder) return recorder;
+  }
+  return response;
+};
+
+/**
+ * Store the recorder's files of this release that the cache lacks. Asked
+ * by the signed-in app after it has loaded. Resolves with the number of
+ * files stored; a file that cannot be fetched is left out.
+ */
+const prepareRecorder = async (locale) => {
+  if (!VERSION || LEFTOVER) return 0;
+  const cache = await caches.open(CACHE_NAME);
+  const stored = await Promise.all(recorderFiles(locale).map(async (path) => {
+    const url = `${self.location.origin}${versioned(path)}`;
+    try {
+      if (await cache.match(url, MATCH)) return 0;
+      const response = await fetch(url, { credentials: 'same-origin' });
+      if (!mayStore('static-cache-first', url, responseFacts(response))) return 0;
+      await cache.put(url, response);
+      return 1;
+    } catch (e) {
+      return 0;
+    }
+  }));
+  return stored.reduce((a, b) => a + b, 0);
 };
 
 const deleteCaches = async (keep) => {
@@ -305,7 +420,16 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  if (LEFTOVER || !event.data || event.data.type !== 'SIGN_OUT') return;
+  if (LEFTOVER || !event.data) return;
+  if (event.data.type === 'PREPARE_OFFLINE_RECORDER') {
+    const locale = typeof event.data.locale === 'string' ? event.data.locale : 'en';
+    const done = prepareRecorder(locale).then((stored) => {
+      if (event.ports && event.ports[0]) event.ports[0].postMessage({ type: 'OFFLINE_RECORDER_READY', stored });
+    }).catch(() => {});
+    if (event.waitUntil) event.waitUntil(done);
+    return;
+  }
+  if (event.data.type !== 'SIGN_OUT') return;
   // The worker keeps nothing in memory besides the constants above; the
   // caches are all it holds.
   const done = deleteCaches(null).then(() => {

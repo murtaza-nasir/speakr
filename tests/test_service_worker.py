@@ -128,3 +128,51 @@ def test_static_files_are_not_marked_private_or_no_store(signed_in):
     assert response.status_code == 200
     control = response.headers.get("Cache-Control", "")
     assert "no-store" not in control and "private" not in control
+
+
+def _recorder_files():
+    """RECORDER_FILES of static/sw.js: the offline recorder and what it loads (#650)."""
+    import re
+    source = _worker_source().decode("utf-8")
+    block = source[source.index("const RECORDER_FILES = ["):]
+    block = block[:block.index("];")]
+    names = dict(re.findall(r"const (RECORDER_PAGE|RECORDER_SCRIPT) = '([^']+)';", source))
+    files = []
+    for path, name in re.findall(r"'(/static/[^']+)'|\b(RECORDER_PAGE|RECORDER_SCRIPT)\b", block):
+        files.append(path or names[name])
+    return files
+
+
+def test_the_offline_recorder_files_are_static_files_served_without_a_session():
+    files = _recorder_files()
+    assert "/static/offline-recorder.html" in files and "/static/js/offline-recorder.js" in files
+    assert len(files) == len(set(files)) >= 10
+    client = app.test_client()
+    for path in files:
+        response = client.get(f"{path}?v=1.2.3")
+        assert response.status_code == 200, path
+        assert "no-store" not in response.headers.get("Cache-Control", ""), path
+        assert response.headers.get("Set-Cookie") is None, path
+        response.close()
+
+
+def test_the_offline_recorder_page_has_no_user_data_and_no_template():
+    """It is a static file: no Jinja, no session, the same bytes for everyone."""
+    client = app.test_client()
+    response = client.get("/static/offline-recorder.html")
+    assert response.status_code == 200
+    assert response.mimetype == "text/html"
+    html = response.get_data(as_text=True)
+    response.close()
+    for marker in ("{{", "{%", "csrf", "current_user", "/api/"):
+        assert marker not in html, marker
+    assert "__SPEAKR_VERSION__" in html
+
+
+def test_the_offline_recorder_page_is_the_same_signed_in(signed_in):
+    anonymous = app.test_client().get("/static/offline-recorder.html")
+    mine = signed_in.get("/static/offline-recorder.html")
+    assert mine.status_code == 200
+    assert mine.get_data() == anonymous.get_data()
+    anonymous.close()
+    mine.close()
