@@ -845,6 +845,8 @@
       "gpt5ReasoningEffort": "Усилие рассуждений",
       "gpt5Verbosity": "Многословность",
       "gpt5Help": "Отправляется только при принудительном использовании параметров GPT-5 или если модель является моделью GPT-5.",
+      "gpt5ReasoningEffortValues": "minimal, low, medium, high",
+      "gpt5VerbosityValues": "low, medium, high",
       "test": "Проверить",
       "testFailed": "Не удалось проверить подключение.",
       "testSuccess": "Подключено. Поставщик сообщает количество моделей: {{count}}.",

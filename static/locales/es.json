@@ -845,6 +845,8 @@
       "gpt5ReasoningEffort": "Esfuerzo de razonamiento",
       "gpt5Verbosity": "Verbosidad",
       "gpt5Help": "Se envía solo cuando se fuerzan las opciones de GPT-5 o el modelo es un modelo GPT-5.",
+      "gpt5ReasoningEffortValues": "minimal, low, medium, high",
+      "gpt5VerbosityValues": "low, medium, high",
       "test": "Probar",
       "testFailed": "La prueba de conexión ha fallado.",
       "testSuccess": "Conectado. El proveedor notifica {{count}} modelos.",

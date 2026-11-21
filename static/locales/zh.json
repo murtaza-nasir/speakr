@@ -845,6 +845,8 @@
       "gpt5ReasoningEffort": "推理强度",
       "gpt5Verbosity": "详细程度",
       "gpt5Help": "仅在强制使用 GPT-5 选项或模型为 GPT-5 模型时发送。",
+      "gpt5ReasoningEffortValues": "minimal, low, medium, high",
+      "gpt5VerbosityValues": "low, medium, high",
       "test": "测试",
       "testFailed": "连接测试失败。",
       "testSuccess": "已连接。该提供商报告了 {{count}} 个模型。",

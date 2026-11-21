@@ -1819,10 +1819,12 @@ Summarization Instructions:
                                     <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.gpt5ReasoningEffort') }</label>
                                     <input v-model.trim="llmModelForm.gpt5_reasoning_effort" list="llm-reasoning-effort" class="field w-full">
                                     <datalist id="llm-reasoning-effort">
+                                        <option value="minimal"></option>
                                         <option value="low"></option>
                                         <option value="medium"></option>
                                         <option value="high"></option>
                                     </datalist>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.gpt5ReasoningEffortValues') }</p>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.gpt5Verbosity') }</label>
@@ -1832,6 +1834,7 @@ Summarization Instructions:
                                         <option value="medium"></option>
                                         <option value="high"></option>
                                     </datalist>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.gpt5VerbosityValues') }</p>
                                 </div>
                             </div>
                             <p class="text-xs text-[var(--text-muted)] mt-2">${ t('adminDashboard.llmModels.gpt5Help') }</p>
