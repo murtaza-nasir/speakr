@@ -108,7 +108,7 @@ def _upload(client, connector, chunked=False):
     registry = SimpleNamespace(get_active_connector=lambda: connector)
     with patch.object(rec_api, "ENABLE_INCOGNITO_MODE", True), \
          patch("src.services.transcription.get_registry", return_value=registry), \
-         patch.object(proc, "client", None), \
+         patch.object(proc.llm_config, "is_configured", return_value=False), \
          patch.object(proc.chunking_service, "needs_chunking", return_value=chunked), \
          patch.object(proc.chunking_service, "create_chunks", side_effect=create_chunks), \
          patch("src.audio_chunking.extract_speaker_samples", return_value=[]):

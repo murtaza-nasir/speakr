@@ -18,7 +18,14 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import src.services.llm as llm
+from src.services import llm, llm_config
+
+ENV_NAMES = (
+    'TEXT_MODEL_API_KEY', 'TEXT_MODEL_BASE_URL', 'TEXT_MODEL_NAME', 'TEXT_MODEL_EXTRA_BODY',
+    'CHAT_MODEL_API_KEY', 'CHAT_MODEL_BASE_URL', 'CHAT_MODEL_NAME', 'CHAT_MODEL_EXTRA_BODY',
+    'TRANSLATION_MODEL_API_KEY', 'TRANSLATION_MODEL_BASE_URL', 'TRANSLATION_MODEL_NAME',
+    'TRANSLATION_MODEL_EXTRA_BODY',
+)
 
 
 class _FakeOpenAI:
@@ -28,50 +35,59 @@ class _FakeOpenAI:
 
 @pytest.fixture
 def env(monkeypatch):
-    monkeypatch.setattr(llm, "OpenAI", _FakeOpenAI)
-    main = object()
-    monkeypatch.setattr(llm, "client", main)
+    """The environment of a chat role, and a client built from the live config.
+
+    The client is the one the request paths use (``llm_config.get_client``),
+    rebuilt whenever the configuration it was built from changes.
+    """
+    for name in ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(llm_config, 'OpenAI', _FakeOpenAI)
 
     def configure(text_key=None, text_url="http://llm.lan/v1", chat_key=None, chat_url=None, chat_name=None):
-        monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", text_key)
-        monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", text_url)
-        monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "text-model")
-        monkeypatch.setattr(llm, "CHAT_MODEL_API_KEY", chat_key)
-        monkeypatch.setattr(llm, "CHAT_MODEL_BASE_URL", chat_url)
-        monkeypatch.setattr(llm, "CHAT_MODEL_NAME", chat_name)
-        return main
+        monkeypatch.setenv('TEXT_MODEL_API_KEY', text_key or '')
+        monkeypatch.setenv('TEXT_MODEL_BASE_URL', text_url or '')
+        monkeypatch.setenv('TEXT_MODEL_NAME', 'text-model')
+        monkeypatch.setenv('CHAT_MODEL_API_KEY', chat_key or '')
+        monkeypatch.setenv('CHAT_MODEL_BASE_URL', chat_url or '')
+        monkeypatch.setenv('CHAT_MODEL_NAME', chat_name or '')
+        llm_config.clear_client_cache()
+        return llm_config
+
+    llm_config.clear_client_cache()
     return configure
 
 
-def test_without_any_key_chat_uses_the_main_client(env):
-    main = env()
-    assert llm._build_chat_client() is main
+def test_without_any_key_chat_uses_the_text_client(env):
+    config = env()
+    assert config.get_client('chat') is config.get_client('text')
     assert llm.get_chat_config()["model_name"] == "text-model"
 
 
 def test_a_keyless_chat_server_gets_its_own_client(env):
-    env(chat_url="http://chat.lan/v1", chat_name="chat-model")
-    chat = llm._build_chat_client()
+    config = env(chat_url="http://chat.lan/v1", chat_name="chat-model")
+    chat = config.get_client('chat')
     assert isinstance(chat, _FakeOpenAI)
     assert chat.kwargs["base_url"] == "http://chat.lan/v1" and chat.kwargs["api_key"] == "not-needed"
     assert llm.get_chat_config()["model_name"] == "chat-model"
 
 
 def test_the_text_key_never_goes_to_another_server(env):
-    env(text_key="sk-text", text_url="https://openrouter.ai/api/v1", chat_url="http://chat.lan/v1", chat_name="chat-model")
+    config = env(text_key="sk-text", text_url="https://openrouter.ai/api/v1",
+                 chat_url="http://chat.lan/v1", chat_name="chat-model")
     assert llm.get_chat_config()["api_key"] is None
-    assert llm._build_chat_client().kwargs["api_key"] == "not-needed"
+    assert config.get_client('chat').kwargs["api_key"] == "not-needed"
 
 
 def test_a_chat_model_on_the_text_server_shares_the_key_and_client(env):
-    main = env(text_key="sk-text", chat_key="sk-text", chat_name="chat-model")
+    config = env(text_key="sk-text", chat_key="sk-text", chat_name="chat-model")
     assert llm.get_chat_config()["api_key"] == "sk-text"
-    assert llm._build_chat_client() is main
+    assert config.get_client('chat') is config.get_client('text')
 
 
 def test_a_chat_model_with_its_own_key(env):
-    env(text_key="sk-text", chat_key="sk-chat", chat_name="chat-model")
-    chat = llm._build_chat_client()
+    config = env(text_key="sk-text", chat_key="sk-chat", chat_name="chat-model")
+    chat = config.get_client('chat')
     assert chat.kwargs["api_key"] == "sk-chat" and chat.kwargs["base_url"] == "http://llm.lan/v1"
 
 
@@ -120,9 +136,12 @@ def test_identify_from_conversation_is_disabled_without_a_model(monkeypatch, con
     """The button reads names from the conversation with the text model; voice
     matches need no model and appear as suggestions anyway."""
     import secrets
+
     from src.app import app, db
     from src.models import User
-    monkeypatch.setattr(llm, 'TEXT_MODEL_CONFIGURED', configured)
+    from src.services import llm_config
+
+    monkeypatch.setattr(llm_config, 'is_configured', lambda role: configured and role == 'text')
     app.config['WTF_CSRF_ENABLED'] = False
     with app.app_context():
         s = secrets.token_hex(4)

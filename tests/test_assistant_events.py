@@ -12,7 +12,7 @@ import os
 import secrets
 import sys
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -238,7 +238,7 @@ def _web_chat(uid, rec_id, reply, history=None):
         seen.update(kwargs)
         return _stream(reply)
 
-    with patch("src.api.recordings.chat_client", MagicMock()), \
+    with patch("src.services.llm_config.is_configured", return_value=True), \
             patch("src.api.recordings.call_chat_completion", side_effect=fake):
         c = app.test_client()
         with c.session_transaction() as sess:

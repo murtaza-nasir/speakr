@@ -1165,7 +1165,7 @@ def test_reprocess_summary_enqueues(owner):
     c = new_client()
     login(c, owner)
     # client (the OpenRouter client) must not be None for the endpoint to proceed.
-    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
+    with patch("src.services.llm_config.is_configured", return_value=True), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code in (200, 202)
     assert len(calls) == 1
@@ -1180,7 +1180,7 @@ def test_reprocess_summary_custom_prompt_append(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
+    with patch("src.services.llm_config.is_configured", return_value=True), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary",
                       json={"custom_prompt": "Be brief", "prompt_mode": "append"})
     assert resp.status_code in (200, 202)
@@ -1196,7 +1196,7 @@ def test_reprocess_summary_no_transcription_400(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
+    with patch("src.services.llm_config.is_configured", return_value=True), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code == 400
     assert calls == []
@@ -1209,7 +1209,7 @@ def test_reprocess_summary_transcription_error_400(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
+    with patch("src.services.llm_config.is_configured", return_value=True), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code == 400
     assert calls == []
@@ -1222,7 +1222,7 @@ def test_reprocess_summary_non_owner_denied(owner, other):
 
     c = new_client()
     login(c, other)
-    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
+    with patch("src.services.llm_config.is_configured", return_value=True), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code == 404
     assert calls == []
@@ -1235,7 +1235,7 @@ def test_reprocess_summary_client_unavailable_503(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", None), patch("src.services.llm.client", None), capture_enqueue() as calls:
+    with patch("src.services.llm_config.is_configured", return_value=False), patch("src.services.llm.client", None), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code == 503
     assert calls == []
@@ -1253,7 +1253,7 @@ def test_generate_summary_enqueues(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
+    with patch("src.services.llm_config.is_configured", return_value=True), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/generate_summary", json={})
     assert resp.status_code in (200, 202)
     assert len(calls) == 1
@@ -1267,7 +1267,7 @@ def test_generate_summary_non_owner_denied(owner, other):
 
     c = new_client()
     login(c, other)
-    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
+    with patch("src.services.llm_config.is_configured", return_value=True), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/generate_summary", json={})
     assert resp.status_code == 404
     assert calls == []

@@ -67,7 +67,7 @@ def test_export_filename_date_is_local(rec):
 def test_summary_prompt_recording_date_is_local(rec):
     uid, rid = rec
     seen, fake = _capture()
-    with app.app_context(), patch.object(proc, "client", MagicMock()), \
+    with app.app_context(), patch.object(proc.llm_config, "is_configured", return_value=True), \
          patch.object(proc, "call_llm_completion", side_effect=fake), \
          patch.object(proc, "extract_events_from_transcript"), \
          patch.object(proc, "apply_team_tag_auto_shares"), patch.object(proc, "export_recording"), \
@@ -80,7 +80,7 @@ def test_event_prompt_reference_dates_are_local(rec):
     uid, rid = rec
     seen, fake = _capture()
     with app.app_context(), patch.object(proc, "call_llm_completion", side_effect=fake), \
-         patch.object(proc, "client", MagicMock()):
+         patch.object(proc.llm_config, "is_configured", return_value=True):
         proc.extract_events_from_transcript(rid, "We meet again tomorrow at ten.", "")
     prompt = seen[0]
     assert "MEETING DATE (use this for relative date calculations): Thursday, March 05, 2026" in prompt

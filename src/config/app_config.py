@@ -4,18 +4,9 @@ Application configuration and initialization.
 
 import os
 import sys
-import httpx
-from openai import OpenAI
 
 from src.audio_chunking import AudioChunkingService
 from src.config.version import get_version
-
-# Configuration from environment
-TEXT_MODEL_API_KEY = os.environ.get("TEXT_MODEL_API_KEY")
-TEXT_MODEL_BASE_URL = os.environ.get("TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
-if TEXT_MODEL_BASE_URL:
-    TEXT_MODEL_BASE_URL = TEXT_MODEL_BASE_URL.split('#')[0].strip()
-TEXT_MODEL_NAME = os.environ.get("TEXT_MODEL_NAME", "openai/gpt-3.5-turbo")
 
 transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "")
 transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "")
@@ -142,24 +133,17 @@ chunking_service = AudioChunkingService(CHUNK_SIZE_MB, CHUNK_OVERLAP_SECONDS)
 
 def initialize_config(app):
     """Initialize application configuration."""
-    app_headers = {
-        "HTTP-Referer": "https://github.com/murtaza-nasir/speakr",
-        "X-Title": "Speakr - AI Audio Transcription",
-        "User-Agent": "Speakr/1.0 (https://github.com/murtaza-nasir/speakr)"
-    }
-
-    http_client_no_proxy = httpx.Client(verify=True, headers=app_headers)
-
-    client = None
     try:
-        from src.services.llm import llm_timeout, LLM_MAX_RETRIES, TEXT_MODEL_CONFIGURED
-        if not TEXT_MODEL_CONFIGURED:
-            raise RuntimeError("no text model configured (set TEXT_MODEL_BASE_URL, and TEXT_MODEL_API_KEY for a hosted service)")
-        api_key = TEXT_MODEL_API_KEY or "not-needed"
-        client = OpenAI(api_key=api_key, base_url=TEXT_MODEL_BASE_URL, http_client=http_client_no_proxy, timeout=llm_timeout, max_retries=LLM_MAX_RETRIES)
-        app.logger.info(f"LLM client initialized: {TEXT_MODEL_BASE_URL} / {TEXT_MODEL_NAME}")
+        from src.services import llm_config
+        # This runs at import time, outside a Flask app context, so the
+        # saved configuration can only be read inside one.
+        with app.app_context():
+            config = llm_config.resolve_config('text', reveal_key=True)
+            if not config['configured']:
+                raise RuntimeError("no text model configured (set TEXT_MODEL_BASE_URL, and TEXT_MODEL_API_KEY for a hosted service)")
+            app.logger.info(f"LLM configured: {config['base_url']} / {config['model_name']}")
     except Exception as e:
-        app.logger.error(f"Failed to initialize LLM client: {e}")
+        app.logger.error(f"Failed to read the LLM configuration: {e}")
 
     # Use module-level chunking_service (already created above)
     version = get_version()
@@ -195,7 +179,7 @@ def initialize_config(app):
         # Legacy configuration validation
         _validate_legacy_transcription_config(app)
 
-    return client, chunking_service, version
+    return chunking_service, version
 
 
 def _validate_legacy_transcription_config(app):

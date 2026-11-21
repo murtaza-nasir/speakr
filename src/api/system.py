@@ -17,7 +17,7 @@ from src.utils import *
 from src.utils.route_errors import internal_error
 from src.config.version import get_version
 from src.utils.localization import format_file_size, api_error, translate
-from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME
+from src.services import llm_config
 from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE, TRANSCRIPTION_MODEL_OPTIONS
 from src.services.token_tracking import token_tracker
 from src.services.transcription import TranscriptionCapability
@@ -239,15 +239,16 @@ def get_system_info():
         else:
             active_endpoint = os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1')
 
+        llm = llm_config.resolve_config('text')
         info = {
             'version': version,
-            'llm_model': TEXT_MODEL_NAME,
+            'llm_model': llm['model_name'],
             'asr_enabled': asr_enabled,
             'transcription': transcription_info,
         }
         if current_user.is_admin:
             info.update({
-                'llm_endpoint': TEXT_MODEL_BASE_URL,
+                'llm_endpoint': llm['base_url'],
                 'transcription_endpoint': active_endpoint,  # The actual endpoint being used
                 # Legacy fields for backwards compatibility
                 'whisper_endpoint': os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1'),

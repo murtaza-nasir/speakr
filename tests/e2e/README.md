@@ -208,3 +208,12 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
 SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
   pytest tests/e2e/test_audit_log_ui.py -q --noconftest -rs
 ```
+
+## Language models admin browser test
+
+`test_llm_admin_ui.py` covers three flows of Admin, System settings, Language models that only run in the browser. "Discover models" asks a provider for its model ids, served by `fake_llm_server.py`, and choosing one fills the Model name field. The API key field has an eye button that shows the value being typed and hides it again; a saved key is never sent to the browser. The Extra Body field is checked before a save: invalid JSON (`{bad json`) and a JSON value that is not an object (`[1,2]`) show the validation message and send no POST to `/admin/llm-config/models`; a JSON object passes the check and is saved. At the model limit the panel hides **Add model**, shows the translated limit message, and the API refuses one more model. The discovery step persists nothing, and every model the other steps save is deleted through the admin API at the end of the run. It runs with the same gate and instance as the smoke test:
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
+  pytest tests/e2e/test_llm_admin_ui.py -q --noconftest -rs
+```

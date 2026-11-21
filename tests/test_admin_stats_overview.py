@@ -158,3 +158,31 @@ def test_storage_leaves_out_removed_audio(world):
         db.session.commit()
         row = next(u for u in build_overview(30)["users"] if u["id"] == world["plain"])
     assert row["recordings"] == 2 and row["storage"] == 1000 and row["token_pct"] is None
+
+
+def test_a_budget_stored_as_text_reads_as_no_limit(world):
+    """SQLite keeps text in an INTEGER column; the statistics must not divide by it.
+
+    A raw statement can leave 'abc' where the application writes an int. Before
+    the column read non-integers as NULL, one such row made every percentage
+    raise TypeError and the whole tab answer 500.
+    """
+    from sqlalchemy import text
+
+    with app.app_context():
+        if db.engine.dialect.name != "sqlite":
+            pytest.skip("only SQLite stores text in an INTEGER column")
+        db.session.execute(text(
+            'update "user" set monthly_token_budget = \'abc\', '
+            "monthly_transcription_budget = '60x', storage_quota_mb = 'lots' "
+            "where id = :id"), {'id': world["admin"]})
+        db.session.commit()
+        db.session.expire_all()
+        row = next(u for u in build_overview(7)["users"] if u["id"] == world["admin"])
+        assert (row["token_budget"], row["token_pct"]) == (None, None)
+        assert (row["minutes_budget"], row["minutes_pct"]) == (None, None)
+        assert (row["storage_quota"], row["storage_pct"]) == (None, None)
+
+    response = _client(world["admin"]).get("/admin/stats/overview?days=7")
+    assert response.status_code == 200
+    assert response.get_json()["users"]

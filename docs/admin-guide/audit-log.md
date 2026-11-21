@@ -95,6 +95,11 @@ Rows with `imported` in the details were copied from the table `share_audit_log`
 | `admin.user.unlocked` | An administrator ended the sign-in lock of an account | |
 | `admin.user.role_changed` | The administrator role was given or taken away | `old`, `new` |
 | `admin.setting.changed` | A system setting was saved or cleared | `key`. For settings that hold a switch, a number or a fixed choice: `old` and `new`. For every other setting, only the key. A key that is not a setting of the application is stored as `other`. For a [user default](system-settings.md#user-defaults): `old`, `new` and `users_updated`, the number of existing accounts that got the new default. |
+| `admin.llm_model.created` | An administrator added a configured language model | `model`, the id of the model, and `fields`, the names of the fields that were set. Labels, API keys and field values are never stored. |
+| `admin.llm_model.changed` | An administrator changed a configured language model | `model` and `fields`, the names of the fields that changed. Labels, API keys and field values are never stored. |
+| `admin.llm_model.deleted` | An administrator deleted an unassigned language model | `model` |
+| `admin.llm_role.assigned` | A language model was assigned to the text, chat or translation role | `role`, `model`, and `old`, the previous model id when there was one |
+| `admin.llm_role.reverted` | A role was returned to its environment configuration | `role` and `old`, the model id it used before |
 | `admin.retention.run` | Automatic deletion was started by hand | Counts |
 | `admin.inquire.processed` | An administrator started the processing of recordings for Ask Ambrose on the admin page. The recordings of all accounts are processed. | `processed`, `failed`, `total`, `force` |
 | `group.created`, `group.changed`, `group.deleted` | A group was created, changed or deleted | `fields` |

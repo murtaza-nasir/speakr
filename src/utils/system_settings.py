@@ -131,6 +131,13 @@ ENV_BACKED_SETTINGS: Dict[str, Tuple[str, Any, str, str]] = {
     'audit_log_retention_days': ('AUDIT_LOG_RETENTION_DAYS', 365, 'integer', 'Days after which an audit log row is removed. 0 keeps the rows without limit.'),
     'audit_log_store_ip': ('AUDIT_LOG_STORE_IP', 'full', 'string', 'How the client address is stored in the audit log: full, truncated (the /24 network of an IPv4 address, the /48 network of an IPv6 address) or off.'),
     'audit_log_record_views': ('AUDIT_LOG_RECORD_VIEWS', True, 'boolean', 'Whether opening and playing a recording in the web interface is recorded in the audit log. Downloads, exports, API reads and public link events are recorded in either case.'),
+    'llm_request_timeout': ('LLM_REQUEST_TIMEOUT', 600, 'integer', 'Seconds to wait for a language model answer (the read timeout). Raise it for slow reasoning models.'),
+    'llm_max_retries': ('LLM_MAX_RETRIES', 2, 'integer', 'How often a failed language model request is retried.'),
+    'llm_connect_timeout': ('LLM_CONNECT_TIMEOUT', 30.0, 'float', 'Seconds to wait for a connection to the language model server.'),
+    'llm_write_timeout': ('LLM_WRITE_TIMEOUT', 30.0, 'float', 'Seconds to wait while sending a request to the language model server.'),
+    'enable_stream_options': ('ENABLE_STREAM_OPTIONS', True, 'boolean', 'Whether streaming requests ask for token usage in the final chunk. Turn this off for servers that reject the OpenAI stream_options parameter.'),
+    'prefix_cache_optimized_prompts': ('PREFIX_CACHE_OPTIMIZED_PROMPTS', False, 'boolean', 'Whether prompts are laid out so the provider can reuse the transcript prefix from its prompt cache.'),
+    'text_model_cache_breakpoints': ('TEXT_MODEL_CACHE_BREAKPOINTS', False, 'boolean', 'Whether the shared prompt prefix is sent as its own part with a cache breakpoint, for providers that need an explicit one. Used together with prompt cache optimization.'),
 }
 
 

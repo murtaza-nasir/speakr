@@ -106,7 +106,7 @@ def test_variables_substitute_in_resolved_prompt(app_with_db):
 
     captured, fake_completion = _capture_summary_prompt(app)
     with patch("src.tasks.processing.call_llm_completion", side_effect=fake_completion), \
-         patch("src.tasks.processing.client", new=MagicMock()):
+         patch("src.services.llm_config.is_configured", return_value=True):
         generate_summary_only_task(app.app_context(), recording.id, user_id=user.id)
 
     prompt = captured["user_prompt"] or ""
@@ -126,7 +126,7 @@ def test_variables_substitute_in_appended_custom_prompt(app_with_db):
 
     captured, fake_completion = _capture_summary_prompt(app)
     with patch("src.tasks.processing.call_llm_completion", side_effect=fake_completion), \
-         patch("src.tasks.processing.client", new=MagicMock()):
+         patch("src.services.llm_config.is_configured", return_value=True):
         generate_summary_only_task(
             app.app_context(),
             recording.id,

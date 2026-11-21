@@ -8,6 +8,8 @@ import os
 import json
 import time
 from datetime import datetime, timedelta
+
+import httpx
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app
 from flask_login import login_required, current_user, login_user
 from werkzeug.utils import secure_filename
@@ -24,7 +26,7 @@ from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chun
 from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
 from src.services.storage_quota import default_quota_mb
-from src.services import audit, login_lock
+from src.services import audit, llm_config, login_lock
 from src.auth.permissions import CREATE_GROUPS, set_user_grant, user_has_grant
 from src.config.startup import get_file_monitor_functions
 from src.utils.error_text import describe_error
@@ -1357,6 +1359,9 @@ def admin_get_settings():
     settings = SystemSetting.query.order_by(func.lower(SystemSetting.key)).all()
     result = []
     for setting in settings:
+        if setting.key == llm_config.SETTING_KEY:
+            # Managed by the LLM configuration API only.
+            continue
         data = setting.to_dict()
         if setting.key in ENV_BACKED_SETTINGS:
             data['env_backed'] = True
@@ -1391,6 +1396,9 @@ def admin_update_setting():
     
     if not key:
         return jsonify(api_error('setting_key_required')), 400
+
+    if key == llm_config.SETTING_KEY:
+        return jsonify(api_error('llm_config_managed_elsewhere')), 400
     
     # An empty value for a setting that falls back to .env clears the saved
     # value, so the .env value applies again (#567).
@@ -1506,6 +1514,286 @@ def admin_update_setting():
         db.session.rollback()
         current_app.logger.error(f"Error updating setting {key}: {e}")
         return internal_error(e)
+
+
+# --- LLM models and role assignments ----------------------------------------
+
+
+def _llm_payload():
+    """The JSON object body of a request, or an empty object."""
+    payload = request.get_json(silent=True)
+    if payload is None:
+        return {}
+    if not isinstance(payload, dict):
+        raise llm_config.LLMConfigError('The request body must be a JSON object')
+    return payload
+
+
+def _llm_role_or_error(role):
+    """The canonical role name, or a ready 400 response."""
+    try:
+        return llm_config.normalize_role(role), None
+    except llm_config.LLMConfigError as error:
+        return None, _llm_error_response(error)
+
+
+def _llm_error_response(error):
+    """The response for a rejected LLM model or assignment change."""
+    if isinstance(error, llm_config.LLMModelNotFound):
+        return jsonify(api_error('llm_model_not_found', model=error.model_id)), 404
+    if isinstance(error, llm_config.LLMModelLabelTaken):
+        return jsonify(api_error('llm_model_label_taken', label=error.label)), 400
+    if isinstance(error, llm_config.LLMModelInUse):
+        return jsonify({
+            **api_error('llm_model_in_use', roles=', '.join(error.roles)),
+            'roles': list(error.roles),
+        }), 409
+    if isinstance(error, llm_config.LLMModelLimitReached):
+        return jsonify(api_error('llm_model_limit_reached', limit=error.limit)), 400
+    return jsonify(api_error('invalid_llm_config', detail=str(error))), 400
+
+
+def _llm_roles_response():
+    """The assignments and the effective configuration of every role.
+
+    A stored id that no longer matches a configured model reads as
+    unassigned, exactly as it resolves, so the UI never selects an option
+    that is not in the list.
+    """
+    document = llm_config.load_document()
+    model_ids = {model['id'] for model in document['models']}
+    assignments = {
+        role: (model_id if model_id in model_ids else None)
+        for role, model_id in document['assignments'].items()
+    }
+    return {
+        'assignments': assignments,
+        'roles': {role: llm_config.public_config(role) for role in llm_config.ROLES},
+    }
+
+
+def _ask_provider_for_models(base_url, api_key):
+    """The models the provider lists at {base_url}/models."""
+    headers = {'Accept': 'application/json'}
+    if api_key:
+        headers['Authorization'] = f'Bearer {api_key}'
+    response = httpx.get(f'{base_url}/models', headers=headers, timeout=20.0)
+    response.raise_for_status()
+    body = response.json()
+    if not isinstance(body, dict):
+        raise TypeError('the answer is not a JSON object')
+    return [
+        {'id': model['id'], 'owned_by': model.get('owned_by')}
+        for model in (body.get('data') or [])
+        if isinstance(model, dict) and model.get('id')
+    ]
+
+
+def _llm_discovery_failure(base_url, error):
+    """A 502 that says why the provider could not be reached."""
+    if isinstance(error, httpx.HTTPStatusError):
+        body = api_error('llm_provider_http_error',
+                         status=error.response.status_code, url=f'{base_url}/models')
+    elif isinstance(error, httpx.TimeoutException):
+        body = api_error('llm_provider_timeout', url=base_url)
+    elif isinstance(error, httpx.ConnectError):
+        body = api_error('llm_provider_unreachable', url=base_url)
+    else:
+        body = api_error('llm_provider_unexpected_answer', detail=error)
+    return jsonify({**body, 'success': False}), 502
+
+
+def _probe_target(payload):
+    """The provider URL and key a discovery or test request describes.
+
+    A saved model may be given as the base; a masked or empty key then keeps
+    its stored secret, so a test does not ask for the key again. The stored
+    key goes only to the base URL it was saved with: for another URL, only a
+    key entered now is sent, never an echo of the stored one.
+    """
+    model_id = payload.get('model_id')
+    saved = llm_config.get_model(model_id, reveal_key=True) if model_id else {}
+    base_url = str(payload.get('base_url') or '').strip() or saved.get('base_url')
+    if not base_url:
+        raise llm_config.LLMConfigError('base_url is required')
+    base_url = llm_config.normalize_base_url(base_url)
+    saved_key = saved.get('api_key') or ''
+    if base_url != saved.get('base_url'):
+        api_key = llm_config.new_key(payload.get('api_key'), saved_key)
+    else:
+        api_key = llm_config.merge_api_key(payload.get('api_key'), saved_key)
+    return base_url, api_key
+
+
+def _probe_response(payload):
+    """Ask the provider for its models and answer with the list or an error."""
+    try:
+        base_url, api_key = _probe_target(payload)
+    except llm_config.LLMConfigError as error:
+        return _llm_error_response(error)
+
+    try:
+        models = _ask_provider_for_models(base_url, api_key)
+    except httpx.HTTPError as error:
+        return _llm_discovery_failure(base_url, error)
+    except (TypeError, ValueError) as error:
+        return jsonify({**api_error('llm_provider_unexpected_answer', detail=error),
+                        'success': False}), 502
+    return jsonify({'success': True, 'models': models})
+
+
+@admin_bp.route('/admin/llm-config', methods=['GET'])
+@login_required
+def admin_get_llm_config():
+    """The configured models, their assignments and each role in effect.
+
+    The models carry their stored API keys for the edit form; the roles keep
+    their keys masked.
+    """
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    return jsonify({
+        'models': llm_config.list_models(reveal_key=True),
+        'masked_api_key': llm_config.MASKED_API_KEY,
+        'model_limit': llm_config.MAX_MODELS,
+        **_llm_roles_response(),
+    })
+
+
+@admin_bp.route('/admin/llm-config/models', methods=['POST'])
+@login_required
+def admin_create_llm_model():
+    """Add a configured model."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    try:
+        result = llm_config.create_model(_llm_payload())
+    except llm_config.LLMConfigError as error:
+        db.session.rollback()
+        return _llm_error_response(error)
+
+    audit.llm_model_created(result.model['id'], result.changed_fields)
+    db.session.commit()
+    return jsonify({'success': True, 'model': result.model}), 201
+
+
+@admin_bp.route('/admin/llm-config/models/<model_id>', methods=['POST'])
+@login_required
+def admin_update_llm_model(model_id):
+    """Change a configured model. Omitted fields keep their value."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    try:
+        result = llm_config.update_model(model_id, _llm_payload())
+    except llm_config.LLMConfigError as error:
+        db.session.rollback()
+        return _llm_error_response(error)
+
+    if result.changed_fields:
+        audit.llm_model_changed(model_id, result.changed_fields)
+        db.session.commit()
+    return jsonify({'success': True, 'model': result.model})
+
+
+@admin_bp.route('/admin/llm-config/models/<model_id>', methods=['DELETE'])
+@login_required
+def admin_delete_llm_model(model_id):
+    """Delete a model that no role uses."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    try:
+        removed = llm_config.delete_model(model_id)
+    except llm_config.LLMConfigError as error:
+        db.session.rollback()
+        return _llm_error_response(error)
+
+    audit.llm_model_deleted(removed['id'])
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/admin/llm-config/assignments/<role>', methods=['POST'])
+@login_required
+def admin_assign_llm_model(role):
+    """Assign a model to a role, or revert it to the environment with null."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    role, error = _llm_role_or_error(role)
+    if error:
+        return error
+
+    try:
+        payload = _llm_payload()
+        change = llm_config.assign_model(role, payload.get('model_id'))
+    except llm_config.LLMConfigError as error:
+        db.session.rollback()
+        return _llm_error_response(error)
+
+    if change.old != change.new:
+        if change.new is None:
+            audit.llm_role_reverted(change.role, change.old)
+        else:
+            audit.llm_role_assigned(change.role, change.new, change.old)
+        db.session.commit()
+    return jsonify({'success': True, **_llm_roles_response()})
+
+
+@admin_bp.route('/admin/llm-config/assignments/<role>', methods=['DELETE'])
+@login_required
+def admin_revert_llm_assignment(role):
+    """Return a role to its environment configuration."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    role, error = _llm_role_or_error(role)
+    if error:
+        return error
+
+    change = llm_config.clear_assignment(role)
+    if change.old is not None:
+        audit.llm_role_reverted(role, change.old)
+        db.session.commit()
+    return jsonify({'success': True, **_llm_roles_response()})
+
+
+@admin_bp.route('/admin/llm-config/test', methods=['POST'])
+@login_required
+def admin_probe_llm_configuration():
+    """Discover or test a provider with the values of a form, nothing saved."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    try:
+        payload = _llm_payload()
+    except llm_config.LLMConfigError as error:
+        return _llm_error_response(error)
+    return _probe_response(payload)
+
+
+@admin_bp.route('/admin/llm-config/models/<model_id>/test', methods=['POST'])
+@login_required
+def admin_test_llm_model(model_id):
+    """Test a saved model, with optional base_url and api_key overrides."""
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+
+    try:
+        payload = _llm_payload()
+        unsupported_fields = payload.keys() - {'base_url', 'api_key'}
+        if unsupported_fields:
+            fields = ', '.join(sorted(unsupported_fields))
+            raise llm_config.LLMConfigError(
+                f'Unsupported model test override field(s): {fields}')
+        llm_config.get_model(model_id)
+    except llm_config.LLMConfigError as error:
+        return _llm_error_response(error)
+    payload['model_id'] = model_id
+    return _probe_response(payload)
 
 
 @admin_bp.route('/admin/user-defaults', methods=['GET'])

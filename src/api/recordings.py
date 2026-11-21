@@ -50,7 +50,7 @@ from src.services.document import (
     docx_attachment_response, link_base_url, markdown_attachment_response,
     new_document, process_markdown_to_docx,
 )
-from src.services.llm import client, chat_client, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
+from src.services.llm import call_chat_completion, get_chat_config, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording
 from src.utils.mime import served_media_mime, sandbox_media_response
@@ -561,8 +561,9 @@ def generate_summary_endpoint(recording_id):
         if recording.status in ['PROCESSING', 'SUMMARIZING']:
             return jsonify(api_error('recording_already_processing')), 400
 
-        # Check if OpenRouter client is available
-        if client is None:
+        # Check if a text model is available, resolved for this request so a
+        # model assigned in System Settings applies without a restart.
+        if not _text_model_configured():
             return jsonify(api_error('summary_openrouter_not_configured')), 503
 
         # Optional custom prompt + mode (issue / discussion #253)
@@ -1000,7 +1001,7 @@ def regenerate_title(recording_id):
             if is_transcription_error(recording.transcription):
                 return jsonify(api_error('title_blocked_transcription_failed')), 400
 
-            if client is None:
+            if not _text_model_configured():
                 return jsonify(api_error('title_openrouter_not_configured')), 503
 
         new_title = compute_title(recording, raise_budget_errors=True)
@@ -1099,8 +1100,13 @@ def _assistant_library_tools():
 
 
 def _text_model_configured():
-    from src.services.llm import TEXT_MODEL_CONFIGURED
-    return TEXT_MODEL_CONFIGURED
+    from src.services import llm_config
+    return llm_config.is_configured('text')
+
+
+def _chat_model_configured():
+    from src.services import llm_config
+    return llm_config.is_configured('chat')
 
 
 @recordings_bp.route('/')
@@ -1910,8 +1916,8 @@ def translate_transcription(recording_id):
         if is_transcription_error(recording.transcription):
             return jsonify(api_error('translation_blocked_transcription_failed')), 400
 
-        from src.services.llm import TRANSLATION_MODEL_CONFIGURED
-        if not TRANSLATION_MODEL_CONFIGURED:
+        from src.services import llm
+        if not llm.TRANSLATION_MODEL_CONFIGURED:
             return jsonify(api_error('translation_llm_not_configured')), 503
 
         data = request.get_json(silent=True) or {}
@@ -2588,8 +2594,8 @@ def chat_incognito():
         from src.utils.localization import request_language as _request_language
         history_notice = history_trimmed_event(raw_history, message_history, _request_language())
 
-        # Check if chat client is available
-        if chat_client is None:
+        # Check if a chat model is available
+        if not _chat_model_configured():
             return jsonify(api_error('chat_client_not_configured')), 503
 
         # Same prompt as API v1 chat (src/services/recording_chat.py). An
@@ -2625,6 +2631,7 @@ def chat_incognito():
                 response = call_chat_completion(messages, temperature=chat_temperature, stream=True,
                                                 user_id=user_id, operation_type='chat')
                 stream = process_streaming_with_thinking(response, user_id=user_id, operation_type='chat',
+                                                         model_name=get_chat_config()['model_name'],
                                                          app=app)
                 if history_notice:
                     yield history_notice
@@ -2687,8 +2694,8 @@ def generate_incognito_summary_endpoint():
         if not transcription:
             return jsonify(api_error('no_transcription_provided')), 400
 
-        # Check if LLM client is available
-        if client is None:
+        # Check if a text model is available
+        if not _text_model_configured():
             return jsonify(api_error('summary_llm_not_configured')), 503
 
         incognito_log.info(f"[Incognito Summary] User {current_user.id} requesting summary generation "
@@ -3444,8 +3451,8 @@ def chat_with_transcription():
         if is_transcription_error(recording.transcription):
             return jsonify(api_error('chat_blocked_transcription_failed')), 400
 
-        # Check if chat client is available
-        if chat_client is None:
+        # Check if a chat model is available
+        if not _chat_model_configured():
             return jsonify(api_error('chat_client_not_configured')), 503
 
         # One prompt builder for every recording chat (web panel, incognito,
@@ -3496,8 +3503,11 @@ def chat_with_transcription():
                 user_id=user_id,
                 operation_type='chat'
             )
-            # Thinking tags split off; `source` events are added below.
-            yield from process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', app=app)
+            # Thinking tags split off; `source` events are added below. The
+            # usage row records the chat model the role resolved to.
+            yield from process_streaming_with_thinking(
+                stream, user_id=user_id, operation_type='chat',
+                model_name=get_chat_config()['model_name'], app=app)
 
         # Read here, in the request: the recording is not loaded while the
         # answer streams.

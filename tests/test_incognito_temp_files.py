@@ -54,7 +54,7 @@ def _run(tmp_path, was_converted, was_compressed):
          patch("src.services.transcription.get_registry", return_value=registry), \
          patch.object(proc, "convert_if_needed", side_effect=convert), \
          patch.object(proc.chunking_service, "needs_chunking", return_value=False), \
-         patch.object(proc, "client", None):
+         patch.object(proc.llm_config, "is_configured", return_value=False):
         result = proc.transcribe_incognito(str(upload), "visit.wav", language="en")
     assert result["error"] is None
     assert connector.sent == [str(derived)]

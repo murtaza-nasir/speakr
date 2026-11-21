@@ -352,8 +352,11 @@ def _llm(fake):
     c = fake.client()
     return [patch.object(llm, "client", c), patch.object(llm, "chat_client", c),
             patch.object(llm, "TEXT_MODEL_NAME", "fake-model"),
-            patch.object(proc, "client", c), patch.object(rec_api, "client", c),
-            patch.object(rec_api, "chat_client", c)]
+            # The chat route records the resolved chat model, which inherits
+            # the text model when the chat role has no configuration.
+            patch.object(llm, "CHAT_MODEL_NAME", "fake-model"),
+            patch.object(proc.llm_config, "is_configured", return_value=True),
+            ]
 
 
 class _All:

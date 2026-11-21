@@ -114,7 +114,7 @@ def test_folder_template_is_used_for_the_title(world):
     with app.app_context():
         rec = _setup(world, folder=True)
         with patch.object(processing, "_generate_ai_title", return_value="Launch moved"), \
-             patch.object(processing, "client", object()):
+             patch.object(processing.llm_config, "is_configured", return_value=True):
             assert compute_title(rec) == "FOLDER Launch moved"
 
 
@@ -127,14 +127,14 @@ def test_template_without_ai_title_makes_no_llm_call(world):
         db.session.commit()
         rec = db.session.get(Recording, world["rec"])
         with patch.object(processing, "_generate_ai_title", side_effect=AssertionError("LLM called")), \
-             patch.object(processing, "client", None):
+             patch.object(processing.llm_config, "is_configured", return_value=False):
             assert compute_title(rec) == "2026-10-01 call"
 
 
 def test_no_template_and_no_llm_falls_back_to_the_filename(world):
     with app.app_context():
         rec = _setup(world)
-        with patch.object(processing, "client", None):
+        with patch.object(processing.llm_config, "is_configured", return_value=False):
             assert compute_title(rec) == os.path.splitext(rec.original_filename)[0]
 
 
@@ -146,8 +146,8 @@ def _regenerate(ids):
         with c.session_transaction() as sess:
             sess["_user_id"] = str(ids["user"])
         with patch.object(processing, "_generate_ai_title", return_value="Launch moved"), \
-             patch("src.api.recordings.client", object()), \
-             patch.object(processing, "client", object()), \
+             patch("src.services.llm_config.is_configured", return_value=True), \
+             patch.object(processing.llm_config, "is_configured", return_value=True), \
              patch("src.api.recordings.export_recording") as exp:
             resp = c.post(f"/recording/{ids['rec']}/regenerate_title")
         return resp, exp
@@ -170,7 +170,7 @@ def test_regenerate_with_a_template_only_title_needs_no_llm(world):
         c = _Client(app, app.response_class, use_cookies=True)
         with c.session_transaction() as sess:
             sess["_user_id"] = str(world["user"])
-        with patch("src.api.recordings.client", None), patch.object(processing, "client", None), \
+        with patch.object(processing.llm_config, "is_configured", return_value=False), \
              patch("src.api.recordings.export_recording"):
             resp = c.post(f"/recording/{world['rec']}/regenerate_title")
     assert resp.status_code == 200, resp.get_data(as_text=True)[:300]
@@ -181,7 +181,7 @@ def test_background_task_and_regenerate_give_the_same_title(world):
     with app.app_context():
         _setup(world, folder=True, user=True)
         with patch.object(processing, "_generate_ai_title", return_value="Launch moved"), \
-             patch.object(processing, "client", object()):
+             patch.object(processing.llm_config, "is_configured", return_value=True):
             processing.generate_title_task(app.app_context(), world["rec"], will_auto_summarize=True)
         task_title = db.session.get(Recording, world["rec"]).title
     resp, _ = _regenerate(world)

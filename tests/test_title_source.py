@@ -96,7 +96,7 @@ def test_upload_title_source(value, expected):
 
 def _run_title_step(rid, ai="Launch moved"):
     with patch.object(processing, "_generate_ai_title", return_value=ai), \
-         patch.object(processing, "client", object()):
+         patch.object(processing.llm_config, "is_configured", return_value=True):
         processing.generate_title_task(app.app_context(), rid, will_auto_summarize=True)
 
 
@@ -165,7 +165,7 @@ def test_a_merge_without_a_title_or_llm_keeps_the_old_name(made):
         a = _rec(made, u.id, title="Standup", status="COMPLETED")
         b = _rec(made, u.id, title="Standup part 2", status="COMPLETED")
         m = _merge(made, u, [a, b])
-        with patch.object(processing, "client", None):
+        with patch.object(processing.llm_config, "is_configured", return_value=False):
             processing.generate_title_task(app.app_context(), m.id, will_auto_summarize=True)
         db.session.expire_all()
         assert db.session.get(Recording, m.id).title == "Standup (merged)"

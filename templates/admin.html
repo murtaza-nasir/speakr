@@ -721,6 +721,159 @@
                         </div>
                     </div>
 
+                    <!-- Language Models: the configured provider profiles
+                         and the model each role uses. The whole document is
+                         one System Setting (llm_config_json), managed here
+                         and hidden from the raw settings list below. An empty
+                         model list leaves every role on its environment
+                         configuration, so an upgrade changes nothing until a
+                         model is assigned. -->
+                    <div id="llm-models" class="mb-6 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg overflow-hidden">
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border-primary)]">
+                            <div class="min-w-0">
+                                <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                                    <i class="fas fa-robot text-[var(--text-accent)]"></i>
+                                    <span>${ t('adminDashboard.llmModels.title') }</span>
+                                </h4>
+                                <p class="text-xs text-[var(--text-muted)] mt-0.5" data-llm-description>${ llmModels.length >= llmModelLimit ? llmModelLimitMessage : t('adminDashboard.llmModels.description') }</p>
+                            </div>
+                            <button v-if="llmModels.length < llmModelLimit" type="button" @click="openLlmModelModal()" class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
+                                <i class="fas fa-plus"></i>
+                                <span>${ t('adminDashboard.llmModels.addModel') }</span>
+                            </button>
+                        </div>
+
+                        <div v-if="llmConfigError" class="banner banner--danger mx-4 mt-3">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>${ llmConfigError }</span>
+                        </div>
+
+                        <!-- Configured models -->
+                        <div class="px-4 pt-3">
+                            <h5 class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">${ t('adminDashboard.llmModels.configuredModels') }</h5>
+                        </div>
+
+                        <div v-if="llmModels.length > 0" class="px-1 py-2">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-left t-label">
+                                        <th class="py-2 px-3">${ t('adminDashboard.llmModels.label') }</th>
+                                        <th class="py-2 px-3">${ t('adminDashboard.llmModels.modelName') }</th>
+                                        <th class="py-2 px-3 hidden lg:table-cell">${ t('adminDashboard.llmModels.baseUrl') }</th>
+                                        <th class="py-2 px-3">${ t('adminDashboard.llmModels.apiKey') }</th>
+                                        <th class="py-2 px-3 w-16">${ t('adminDashboard.llmModels.gpt5') }</th>
+                                        <th class="py-2 px-3 w-40 text-right">${ t('adminDashboard.actions') }</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="model in llmModels" :key="model.id"
+                                        class="border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                                        :data-llm-model="model.id">
+                                        <td class="py-2 px-3">
+                                            <span class="font-medium text-[var(--text-primary)]">${ model.label }</span>
+                                            <span class="block font-mono text-xs text-[var(--text-muted)]">${ model.id }</span>
+                                        </td>
+                                        <td class="py-2 px-3 font-mono text-xs text-[var(--text-primary)]">${ model.model_name }</td>
+                                        <td class="py-2 px-3 font-mono text-xs text-[var(--text-muted)] hidden lg:table-cell">${ model.base_url }</td>
+                                        <td class="py-2 px-3 font-mono text-xs text-[var(--text-secondary)]">
+                                            <span v-if="model.api_key" aria-label="********">********</span>
+                                            <span v-else class="text-[var(--text-muted)] italic">${ t('adminDashboard.llmModels.noApiKey') }</span>
+                                        </td>
+                                        <td class="py-2 px-3">
+                                            <span v-if="model.gpt5_force" class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">${ t('adminDashboard.llmModels.gpt5On') }</span>
+                                            <span v-else class="text-xs text-[var(--text-muted)]">-</span>
+                                        </td>
+                                        <td class="py-2 px-3">
+                                            <div class="flex items-center justify-end gap-1">
+                                                <button type="button" @click="testLlmModel(model)" :disabled="llmBusy === model.id"
+                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.llmModels.test')">
+                                                    <i :class="llmBusy === model.id ? 'fas fa-spinner fa-spin' : 'fas fa-plug'"></i>
+                                                    <span class="hidden xl:inline">${ t('adminDashboard.llmModels.test') }</span>
+                                                </button>
+                                                <button type="button" @click="openLlmModelModal(model)" class="btn btn--ghost btn--sm"
+                                                        :title="t('adminDashboard.llmModels.editModel')">
+                                                    <i class="fas fa-pen"></i>
+                                                </button>
+                                                <button type="button" @click="deleteLlmModel(model)" :disabled="llmBusy === model.id"
+                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.llmModels.deleteModel')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div v-else-if="llmConfigLoading" class="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>${ t('common.loading') }
+                        </div>
+
+                        <div v-else-if="!llmConfigError" class="empty">
+                            <div class="empty__icon"><i class="fas fa-robot"></i></div>
+                            <div class="empty__title">${ t('adminDashboard.llmModels.noModels') }</div>
+                            <div class="empty__body">${ t('adminDashboard.llmModels.noModelsHelp') }</div>
+                            <button type="button" @click="openLlmModelModal()" class="btn btn--primary btn--sm mt-3">
+                                <i class="fas fa-plus"></i>
+                                <span>${ t('adminDashboard.llmModels.addFirstModel') }</span>
+                            </button>
+                        </div>
+
+                        <!-- Result of "Test" and the last save/delete -->
+                        <div v-if="llmTestStatus" class="banner mx-4 mb-3"
+                             :class="llmTestStatus.error ? 'banner--danger' : 'banner--success'">
+                            <i :class="llmTestStatus.error ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle'"></i>
+                            <span>${ llmTestStatus.label }: ${ llmTestStatus.message }</span>
+                        </div>
+                        <p v-if="llmConfigMessage" class="mx-4 mb-3 text-sm" role="status"
+                           :class="llmConfigMessageError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">
+                            <i :class="llmConfigMessageError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'" class="mr-1"></i>
+                            ${ llmConfigMessage }
+                        </p>
+
+                        <!-- Role assignments -->
+                        <div id="llm-role-assignments" class="border-t border-[var(--border-primary)] transition-shadow"
+                             :class="{ 'ring-2 ring-inset ring-[var(--border-focus)]': llmAssignmentsAttention }">
+                            <div class="px-4 pt-3">
+                                <h5 class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">${ t('adminDashboard.llmModels.rolesTitle') }</h5>
+                                <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.rolesDescription') }</p>
+                            </div>
+                            <div v-for="row in llmRoleRows" :key="row.role" :data-llm-role="row.role"
+                                 class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 px-4 py-3 border-t border-[var(--border-primary)]">
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
+                                        <i :class="row.icon" class="text-[var(--text-muted)]"></i>
+                                        <span>${ row.name }</span>
+                                    </div>
+                                    <p class="text-xs text-[var(--text-muted)] mt-0.5">${ row.hint }</p>
+                                    <p v-if="row.envVars.length" class="font-mono text-xs text-[var(--text-muted)] mt-1 break-all">${ row.envVars.join(' · ') }</p>
+                                </div>
+                                <div class="flex items-center gap-2 flex-wrap sm:justify-end">
+                                    <select :value="llmConfig.assignments[row.role] || ''"
+                                            @change="assignLlmModel(row.role, $event.target.value)"
+                                            :disabled="llmRoleBusy === row.role"
+                                            class="field field--sm field--role"
+                                            :aria-label="t('adminDashboard.llmModels.assignRole', { role: row.name })">
+                                        <option value="">${ t('adminDashboard.llmModels.environmentOption') }</option>
+                                        <option v-for="model in llmModels" :key="model.id" :value="model.id">${ model.label }</option>
+                                    </select>
+                                    <span class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full whitespace-nowrap"
+                                          :class="llmRoleBadgeClass(row)">${ llmRoleBadge(row).text }</span>
+                                    <button type="button" v-if="row.assigned" @click="revertLlmRole(row.role)" :disabled="llmRoleBusy === row.role"
+                                            class="btn btn--ghost btn--sm" :title="t('adminDashboard.llmModels.revert')">
+                                        <i :class="llmRoleBusy === row.role ? 'fas fa-spinner fa-spin' : 'fas fa-rotate-left'"></i>
+                                        <span class="hidden xl:inline">${ t('adminDashboard.llmModels.revert') }</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-xs text-[var(--text-muted)]">
+                            <i class="fas fa-circle-info mr-1"></i>
+                            ${ t('adminDashboard.llmModels.emptyNote') }
+                        </div>
+                    </div>
+
                     <!-- User defaults (#584): the settings that new accounts
                          start with, each with the control of the Account
                          page. A changed default is saved at once; when
@@ -1568,6 +1721,137 @@ Summarization Instructions:
              --footer-version-text CSS variable. The hidden #footer-text
              span keeps any existing version-loading JS happy. -->
         <span id="footer-text" style="display: none;"></span>
+
+        <!-- Add / edit a language model profile -->
+        <div v-if="showLlmModelModal" @click.self="closeLlmModelModal" class="modal-overlay" data-llm-modal>
+            <div class="modal-panel modal-panel--md">
+                <div class="modal-header">
+                    <h3 class="modal-title">${ llmEditingModel ? t('adminDashboard.llmModels.editModel') : t('adminDashboard.llmModels.addModel') }</h3>
+                    <button type="button" @click="closeLlmModelModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
+                </div>
+                <form @submit.prevent="saveLlmModel" class="contents">
+                    <div class="modal-body space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.label') }</label>
+                            <input v-model.trim="llmModelForm.label" type="text" required maxlength="80" class="field w-full"
+                                   data-llm-field="label">
+                            <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.labelHelp') }</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.baseUrl') }</label>
+                            <input v-model.trim="llmModelForm.base_url" type="text" required class="field w-full"
+                                   placeholder="https://openrouter.ai/api/v1" data-llm-field="base_url">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.apiKey') }</label>
+                            <div class="relative">
+                                <input v-model="llmModelForm.api_key" :type="llmApiKeyVisible ? 'text' : 'password'"
+                                       autocomplete="new-password" class="field w-full pr-10"
+                                       :placeholder="llmApiKeyPlaceholder" :disabled="llmModelForm.clear_api_key"
+                                       @focus="$event.target.select()"
+                                       data-llm-api-key>
+                                <button type="button"
+                                        class="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus:outline-none"
+                                        data-llm-api-key-toggle
+                                        :aria-pressed="llmApiKeyVisible ? 'true' : 'false'"
+                                        :aria-label="t('adminDashboard.llmModels.apiKey')"
+                                        @click="llmApiKeyVisible = !llmApiKeyVisible">
+                                    <svg v-if="!llmApiKeyVisible" class="w-4 h-4" fill="none" stroke="currentColor"
+                                         stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor"
+                                         stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.243 4.243L9.88 9.88"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">${ llmEditingModel ? t('adminDashboard.llmModels.apiKeyKept') : t('adminDashboard.llmModels.apiKeyHelp') }</p>
+                            <p v-if="llmKeyRemovedOnSave" class="text-xs text-[var(--text-warn-strong)] mt-1" data-llm-url-changed>${ t('adminDashboard.llmModels.apiKeyClearedOnUrlChange') }</p>
+                            <label v-if="llmEditingModel" class="flex items-center gap-2 mt-2 text-xs text-[var(--text-secondary)] cursor-pointer">
+                                <input type="checkbox" v-model="llmModelForm.clear_api_key" class="h-4 w-4">
+                                <span>${ t('adminDashboard.llmModels.clearApiKey') }</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.modelName') }</label>
+                            <div class="flex items-center gap-2">
+                                <input v-model.trim="llmModelForm.model_name" type="text" required class="field w-full"
+                                       data-llm-field="model_name">
+                                <button type="button" @click="discoverLlmModels" :disabled="llmDiscovery.loading"
+                                        class="btn btn--ghost flex-shrink-0 whitespace-nowrap" data-llm-discover>
+                                    <i :class="llmDiscovery.loading ? 'fas fa-spinner fa-spin' : 'fas fa-search'"></i>
+                                    <span>${ llmDiscovery.loading ? t('adminDashboard.llmModels.discovering') : t('adminDashboard.llmModels.discover') }</span>
+                                </button>
+                            </div>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.modelNameHelp') }</p>
+                            <div v-if="llmDiscovery.error" class="banner banner--danger mt-2">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>${ llmDiscovery.error }</span>
+                            </div>
+                            <select v-if="llmDiscovery.models.length" class="field w-full mt-2" @change="pickDiscoveredModel($event)"
+                                    data-llm-discovered>
+                                <option value="">${ llmDiscoveryPickLabel }</option>
+                                <option v-for="discovered in llmDiscovery.models" :key="discovered.id" :value="discovered.id">${ discovered.id }${ discovered.owned_by ? ' (' + discovered.owned_by + ')' : '' }</option>
+                            </select>
+                            <p v-else-if="llmDiscovery.loaded && !llmDiscovery.error" class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.discoveryEmpty') }</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.extraBody') }</label>
+                            <textarea v-model="llmModelForm.extra_body" rows="4" class="field w-full font-mono text-xs" placeholder="{}"
+                                      data-llm-field="extra_body"></textarea>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.extraBodyHelp') }</p>
+                            <div class="text-xs text-[var(--text-muted)] mt-1 space-y-0.5">
+                                <p>${ t('adminDashboard.llmModels.extraBodyExamples') }</p>
+                                <p><span class="font-semibold">OpenRouter</span> <code>{"provider": {"order": ["openai"]}}</code></p>
+                                <p><span class="font-semibold">OpenAI</span> <code>{"reasoning_effort": "low"}</code></p>
+                                <p><span class="font-semibold">vLLM/Qwen</span> <code>{"chat_template_kwargs": {"enable_thinking": false}}</code></p>
+                            </div>
+                        </div>
+                        <div class="border border-[var(--border-primary)] rounded-md p-3">
+                            <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
+                                <input type="checkbox" v-model="llmModelForm.gpt5_force" class="h-4 w-4">
+                                <span>${ t('adminDashboard.llmModels.gpt5Force') }</span>
+                            </label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.gpt5ReasoningEffort') }</label>
+                                    <input v-model.trim="llmModelForm.gpt5_reasoning_effort" list="llm-reasoning-effort" class="field w-full">
+                                    <datalist id="llm-reasoning-effort">
+                                        <option value="minimal"></option>
+                                        <option value="low"></option>
+                                        <option value="medium"></option>
+                                        <option value="high"></option>
+                                    </datalist>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.gpt5ReasoningEffortValues') }</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.llmModels.gpt5Verbosity') }</label>
+                                    <input v-model.trim="llmModelForm.gpt5_verbosity" list="llm-verbosity" class="field w-full">
+                                    <datalist id="llm-verbosity">
+                                        <option value="low"></option>
+                                        <option value="medium"></option>
+                                        <option value="high"></option>
+                                    </datalist>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.gpt5VerbosityValues') }</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-[var(--text-muted)] mt-2">${ t('adminDashboard.llmModels.gpt5Help') }</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <span v-if="llmModelFormError" class="text-sm text-[var(--text-danger-strong)] mr-auto"
+                              data-llm-form-error>${ llmModelFormError }</span>
+                        <button type="button" @click="closeLlmModelModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+                        <button type="submit" :disabled="llmModelSaving" class="btn btn--primary" data-llm-save>
+                            <i :class="llmModelSaving ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
+                            <span>${ llmModelSaving ? t('adminDashboard.saving') : t('adminDashboard.llmModels.saveModel') }</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <!-- Add User Modal -->
         <div v-if="showAddUserModal" @click.self="showAddUserModal = false" class="modal-overlay">
@@ -2492,6 +2776,9 @@ Summarization Instructions:
                 };
 
                 const HIDDEN_SETTING_KEYS = new Set([
+                    // Configured models and role assignments: managed by the
+                    // Language Models section above, never as raw JSON.
+                    'llm_config_json',
                     'transcription_models_visible_json',
                     'transcription_default_model',
                     'admin_default_summary_prompt',
@@ -2656,6 +2943,389 @@ Summarization Instructions:
                         modelSaveError.value = true;
                     } finally {
                         savingModels.value = false;
+                    }
+                };
+
+                // Language Models: the configured profiles and the model each
+                // role uses. Everything goes through /admin/llm-config; the
+                // browser never talks to the provider directly.
+                const LLM_ROLES = [
+                    { role: 'text', icon: 'fas fa-file-lines',
+                      nameKey: 'adminDashboard.llmModels.roleText',
+                      hintKey: 'adminDashboard.llmModels.roleTextHint' },
+                    { role: 'chat', icon: 'fas fa-comments',
+                      nameKey: 'adminDashboard.llmModels.roleChat',
+                      hintKey: 'adminDashboard.llmModels.roleChatHint' },
+                    { role: 'translation', icon: 'fas fa-language',
+                      nameKey: 'adminDashboard.llmModels.roleTranslation',
+                      hintKey: 'adminDashboard.llmModels.roleTranslationHint' },
+                ];
+                const LLM_ROLE_ENV_PREFIX = {
+                    text: 'TEXT_MODEL',
+                    chat: 'CHAT_MODEL',
+                    translation: 'TRANSLATION_MODEL',
+                };
+                const llmConfig = ref({ models: [], assignments: {}, roles: {} });
+                const llmConfigLoading = ref(false);
+                const llmConfigError = ref('');
+                const llmConfigMessage = ref('');
+                const llmConfigMessageError = ref(false);
+                const llmBusy = ref('');
+                const llmRoleBusy = ref('');
+                const llmAssignmentsAttention = ref(false);
+                const llmTestStatus = ref(null);
+                const showLlmModelModal = ref(false);
+                const llmEditingModel = ref(null);
+                const llmEditingHasKey = ref(false);
+                const llmEditingBaseUrl = ref('');
+                const llmEditingStoredKey = ref('');
+                const llmApiKeyVisible = ref(false);
+                const llmModelSaving = ref(false);
+                const llmModelFormError = ref('');
+                const llmDiscovery = ref({ loading: false, error: '', models: [], loaded: false });
+                const emptyLlmModelForm = () => ({
+                    label: '',
+                    base_url: 'https://openrouter.ai/api/v1',
+                    api_key: '',
+                    model_name: '',
+                    extra_body: '',
+                    gpt5_force: false,
+                    gpt5_reasoning_effort: 'medium',
+                    gpt5_verbosity: 'medium',
+                    clear_api_key: false,
+                });
+                const llmModelForm = ref(emptyLlmModelForm());
+                let llmAssignmentsTimer = null;
+                const llmModels = computed(() => llmConfig.value.models || []);
+                const llmModelLimit = computed(() => llmConfig.value.model_limit || 12);
+                const llmModelLimitMessage = computed(() =>
+                    t('server.apiError.llm_model_limit_reached', { limit: llmModelLimit.value }));
+                const llmApiKeyPlaceholder = computed(() => t('adminDashboard.llmModels.apiKeyPlaceholder'));
+                // The saved key is removed on save when the URL moved and the
+                // field holds no new key, that is empty or the echoed stored key.
+                const llmKeyRemovedOnSave = computed(() => {
+                    if (!llmEditingModel.value) return false;
+                    const urlChanged = (llmModelForm.value.base_url || '').replace(/\/+$/, '')
+                        !== llmEditingBaseUrl.value.replace(/\/+$/, '');
+                    const key = llmModelForm.value.api_key || '';
+                    return urlChanged && llmEditingHasKey.value && (!key || key === llmEditingStoredKey.value);
+                });
+                // Built here because a Vue interpolation ends at the first
+                // closing brace, so object parameters cannot live in ${ ... }.
+                const llmDiscoveryPickLabel = computed(() =>
+                    t('adminDashboard.llmModels.pickDiscoveredModel', { count: llmDiscovery.value.models.length }));
+                const llmHeaders = () => {
+                    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+                    return headers;
+                };
+                const llmRoleEnvVars = (role, config) => {
+                    if (!config || config.source !== 'environment' || config.uses_text_model || !config.configured) return [];
+                    const prefix = LLM_ROLE_ENV_PREFIX[role];
+                    const vars = [];
+                    if (config.model_name) vars.push(`${prefix}_NAME=${config.model_name}`);
+                    if (config.base_url_explicit) vars.push(`${prefix}_BASE_URL=${config.base_url}`);
+                    if (config.api_key) vars.push(`${prefix}_API_KEY`);
+                    return vars;
+                };
+                const llmRoleRows = computed(() => LLM_ROLES.map(meta => {
+                    const config = llmConfig.value.roles[meta.role] || {};
+                    return {
+                        role: meta.role,
+                        icon: meta.icon,
+                        name: t(meta.nameKey),
+                        hint: t(meta.hintKey),
+                        config,
+                        assigned: !!(llmConfig.value.assignments || {})[meta.role],
+                        envVars: llmRoleEnvVars(meta.role, config),
+                    };
+                }));
+                // What is effective now: the assigned profile, the text model
+                // a role inherits, its own environment, or nothing at all.
+                const llmRoleBadge = (row) => {
+                    const config = row.config || {};
+                    // Checked before source: a chat or translation role that
+                    // inherits text carries the text profile too, with
+                    // uses_text_model set.
+                    if (config.uses_text_model) {
+                        return { text: t('adminDashboard.llmModels.usesTextModel'), tone: 'inherit' };
+                    }
+                    if (config.source === 'model' && config.profile) {
+                        return { text: config.profile.label || config.model_name, tone: 'model' };
+                    }
+                    if (config.configured) {
+                        return { text: t('adminDashboard.llmModels.environment'), tone: 'environment' };
+                    }
+                    return { text: t('adminDashboard.llmModels.notConfigured'), tone: 'none' };
+                };
+                const llmRoleBadgeClass = (row) => ({
+                    model: 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]',
+                    environment: 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]',
+                    inherit: 'bg-[var(--bg-pending-light)] text-[var(--text-pending-strong)]',
+                    none: 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]',
+                }[llmRoleBadge(row).tone]);
+                const applyLlmRoles = (data) => {
+                    if (!data) return;
+                    llmConfig.value = {
+                        ...llmConfig.value,
+                        assignments: data.assignments || llmConfig.value.assignments,
+                        roles: data.roles || llmConfig.value.roles,
+                    };
+                };
+                const loadLlmConfig = async () => {
+                    llmConfigLoading.value = true;
+                    llmConfigError.value = '';
+                    try {
+                        const response = await fetch('/admin/llm-config');
+                        if (!response.ok) throw new Error(t('adminDashboard.llmModels.loadFailed'));
+                        const data = await response.json();
+                        llmConfig.value = {
+                            models: data.models || [],
+                            assignments: data.assignments || {},
+                            roles: data.roles || {},
+                        };
+                    } catch (error) {
+                        console.error('Error loading the language models:', error);
+                        llmConfigError.value = error.message;
+                    } finally {
+                        llmConfigLoading.value = false;
+                    }
+                };
+                // The deletion of a model in use points at the assignment
+                // block instead of retrying: the roles must be reassigned.
+                const focusLlmAssignments = () => {
+                    llmAssignmentsAttention.value = true;
+                    nextTick(() => {
+                        document.getElementById('llm-role-assignments')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    });
+                    if (llmAssignmentsTimer) clearTimeout(llmAssignmentsTimer);
+                    llmAssignmentsTimer = setTimeout(() => { llmAssignmentsAttention.value = false; }, 3000);
+                };
+                const openLlmModelModal = (model = null) => {
+                    llmEditingModel.value = model ? model.id : null;
+                    llmEditingHasKey.value = !!(model && model.api_key);
+                    llmEditingBaseUrl.value = model ? (model.base_url || '') : '';
+                    llmEditingStoredKey.value = model ? (model.api_key || '') : '';
+                    llmApiKeyVisible.value = false;
+                    llmModelForm.value = model ? {
+                        label: model.label || '',
+                        base_url: model.base_url || '',
+                        api_key: model.api_key || '',
+                        model_name: model.model_name || '',
+                        extra_body: (model.extra_body && Object.keys(model.extra_body).length)
+                            ? JSON.stringify(model.extra_body, null, 2) : '',
+                        gpt5_force: !!model.gpt5_force,
+                        gpt5_reasoning_effort: model.gpt5_reasoning_effort || 'medium',
+                        gpt5_verbosity: model.gpt5_verbosity || 'medium',
+                        clear_api_key: false,
+                    } : emptyLlmModelForm();
+                    llmModelFormError.value = '';
+                    llmDiscovery.value = { loading: false, error: '', models: [], loaded: false };
+                    showLlmModelModal.value = true;
+                };
+                const closeLlmModelModal = () => {
+                    if (llmModelSaving.value) return;
+                    llmApiKeyVisible.value = false;
+                    showLlmModelModal.value = false;
+                };
+                const discoverLlmModels = async () => {
+                    llmDiscovery.value = { loading: true, error: '', models: [], loaded: false };
+                    try {
+                        const payload = { base_url: llmModelForm.value.base_url };
+                        if (llmModelForm.value.api_key) payload.api_key = llmModelForm.value.api_key;
+                        // A saved profile supplies its stored key when the
+                        // field is left empty.
+                        if (llmEditingModel.value && !llmModelForm.value.clear_api_key) {
+                            payload.model_id = llmEditingModel.value;
+                        }
+                        const response = await fetch('/admin/llm-config/test', {
+                            method: 'POST',
+                            headers: llmHeaders(),
+                            body: JSON.stringify(payload),
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok || data.success === false) {
+                            throw new Error(data.error || t('adminDashboard.llmModels.discoveryFailed'));
+                        }
+                        llmDiscovery.value = { loading: false, error: '', models: data.models || [], loaded: true };
+                    } catch (error) {
+                        llmDiscovery.value = { loading: false, error: error.message, models: [], loaded: true };
+                    }
+                };
+                const pickDiscoveredModel = (event) => {
+                    const id = event.target.value;
+                    if (id) llmModelForm.value.model_name = id;
+                    event.target.value = '';
+                };
+                const saveLlmModel = async () => {
+                    llmModelFormError.value = '';
+                    const form = llmModelForm.value;
+                    // Extra Body is checked here first so an invalid value is
+                    // caught before saving; the backend stays authoritative.
+                    let extraBody = {};
+                    const rawExtra = (form.extra_body || '').trim();
+                    if (rawExtra) {
+                        try {
+                            extraBody = JSON.parse(rawExtra);
+                        } catch (error) {
+                            llmModelFormError.value = t('adminDashboard.llmModels.extraBodyInvalid');
+                            return;
+                        }
+                        if (!extraBody || typeof extraBody !== 'object' || Array.isArray(extraBody)) {
+                            llmModelFormError.value = t('adminDashboard.llmModels.extraBodyInvalid');
+                            return;
+                        }
+                    }
+                    llmModelSaving.value = true;
+                    try {
+                        const payload = {
+                            label: form.label,
+                            base_url: form.base_url,
+                            model_name: form.model_name,
+                            extra_body: extraBody,
+                            gpt5_force: !!form.gpt5_force,
+                            gpt5_reasoning_effort: form.gpt5_reasoning_effort || 'medium',
+                            gpt5_verbosity: form.gpt5_verbosity || 'medium',
+                        };
+                        if (form.api_key) payload.api_key = form.api_key;
+                        // Emptying the field of a saved key removes it; an
+                        // untouched field keeps it.
+                        const emptiedKey = llmEditingHasKey.value && !form.api_key;
+                        if (llmEditingModel.value && (form.clear_api_key || emptiedKey)) payload.clear_api_key = true;
+                        const url = llmEditingModel.value
+                            ? `/admin/llm-config/models/${encodeURIComponent(llmEditingModel.value)}`
+                            : '/admin/llm-config/models';
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: llmHeaders(),
+                            body: JSON.stringify(payload),
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            llmModelFormError.value = data.error || t('adminDashboard.llmModels.saveFailed');
+                            return;
+                        }
+                        const savedLabel = (data.model && data.model.label) || form.label;
+                        showLlmModelModal.value = false;
+                        llmApiKeyVisible.value = false;
+                        llmConfigMessageError.value = false;
+                        llmConfigMessage.value = t('adminDashboard.llmModels.modelSaved', { label: savedLabel });
+                        llmTestStatus.value = null;
+                        await loadLlmConfig();
+                    } catch (error) {
+                        llmModelFormError.value = error.message;
+                    } finally {
+                        llmModelSaving.value = false;
+                    }
+                };
+                const deleteLlmModel = async (model) => {
+                    const confirmed = await confirmDialog({
+                        message: t('adminDashboard.llmModels.deleteConfirm', { label: model.label }),
+                        confirmLabel: t('common.delete'),
+                        danger: true,
+                    });
+                    if (!confirmed) return;
+                    llmBusy.value = model.id;
+                    llmConfigMessage.value = '';
+                    try {
+                        const response = await fetch(`/admin/llm-config/models/${encodeURIComponent(model.id)}`, {
+                            method: 'DELETE',
+                            headers: llmHeaders(),
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (response.status === 409) {
+                            // Still assigned: name the roles and take the
+                            // administrator where they can reassign them.
+                            llmConfigMessageError.value = true;
+                            llmConfigMessage.value = data.error || t('adminDashboard.llmModels.inUse');
+                            focusLlmAssignments();
+                            return;
+                        }
+                        if (!response.ok) throw new Error(data.error || t('adminDashboard.llmModels.deleteFailed'));
+                        llmConfigMessageError.value = false;
+                        llmConfigMessage.value = t('adminDashboard.llmModels.modelDeleted', { label: model.label });
+                        llmTestStatus.value = null;
+                        await loadLlmConfig();
+                    } catch (error) {
+                        llmConfigMessageError.value = true;
+                        llmConfigMessage.value = error.message;
+                    } finally {
+                        llmBusy.value = '';
+                    }
+                };
+                const testLlmModel = async (model) => {
+                    llmBusy.value = model.id;
+                    llmTestStatus.value = null;
+                    try {
+                        const response = await fetch(`/admin/llm-config/models/${encodeURIComponent(model.id)}/test`, {
+                            method: 'POST',
+                            headers: llmHeaders(),
+                            body: '{}',
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok || data.success === false) {
+                            throw new Error(data.error || t('adminDashboard.llmModels.testFailed'));
+                        }
+                        llmTestStatus.value = {
+                            label: model.label,
+                            message: t('adminDashboard.llmModels.testSuccess', { count: (data.models || []).length }),
+                            error: false,
+                        };
+                    } catch (error) {
+                        llmTestStatus.value = { label: model.label, message: error.message, error: true };
+                    } finally {
+                        llmBusy.value = '';
+                    }
+                };
+                const assignLlmModel = async (role, modelId) => {
+                    const value = modelId || null;
+                    llmRoleBusy.value = role;
+                    llmConfigMessage.value = '';
+                    try {
+                        const response = await fetch(`/admin/llm-config/assignments/${role}`, {
+                            method: 'POST',
+                            headers: llmHeaders(),
+                            body: JSON.stringify({ model_id: value }),
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(data.error || t('adminDashboard.llmModels.assignFailed'));
+                        applyLlmRoles(data);
+                        const row = llmRoleRows.value.find(item => item.role === role);
+                        const roleName = row ? row.name : role;
+                        const model = value ? llmModels.value.find(item => item.id === value) : null;
+                        llmConfigMessageError.value = false;
+                        llmConfigMessage.value = model
+                            ? t('adminDashboard.llmModels.roleAssigned', { role: roleName, model: model.label })
+                            : t('adminDashboard.llmModels.roleReverted', { role: roleName });
+                    } catch (error) {
+                        llmConfigMessageError.value = true;
+                        llmConfigMessage.value = error.message;
+                        await loadLlmConfig();
+                    } finally {
+                        llmRoleBusy.value = '';
+                    }
+                };
+                const revertLlmRole = async (role) => {
+                    llmRoleBusy.value = role;
+                    llmConfigMessage.value = '';
+                    try {
+                        const response = await fetch(`/admin/llm-config/assignments/${role}`, {
+                            method: 'DELETE',
+                            headers: llmHeaders(),
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(data.error || t('adminDashboard.llmModels.assignFailed'));
+                        applyLlmRoles(data);
+                        const row = llmRoleRows.value.find(item => item.role === role);
+                        llmConfigMessageError.value = false;
+                        llmConfigMessage.value = t('adminDashboard.llmModels.roleReverted', { role: row ? row.name : role });
+                    } catch (error) {
+                        llmConfigMessageError.value = true;
+                        llmConfigMessage.value = error.message;
+                        await loadLlmConfig();
+                    } finally {
+                        llmRoleBusy.value = '';
                     }
                 };
 
@@ -2995,6 +3665,7 @@ Summarization Instructions:
                     isLoadingSettings.value = true;
                     try {
                         loadUserDefaults();
+                        loadLlmConfig();
                         const response = await fetch('/admin/settings');
                         if (response.status === 429) {
                             throw new Error('Rate limit exceeded. Please wait a moment and try again.');
@@ -5038,6 +5709,43 @@ Summarization Instructions:
                     addManualTranscriptionModel,
                     saveVisibleTranscriptionModels,
                     loadVisibleTranscriptionModels,
+
+                    // Language Models
+                    llmConfig,
+                    llmModels,
+                    llmConfigLoading,
+                    llmConfigError,
+                    llmConfigMessage,
+                    llmConfigMessageError,
+                    llmBusy,
+                    llmRoleBusy,
+                    llmAssignmentsAttention,
+                    llmTestStatus,
+                    llmRoleRows,
+                    llmRoleBadge,
+                    llmRoleBadgeClass,
+                    showLlmModelModal,
+                    llmEditingModel,
+                    llmModelForm,
+                    llmApiKeyVisible,
+                    llmApiKeyPlaceholder,
+                    llmKeyRemovedOnSave,
+                    llmModelLimit,
+                    llmModelLimitMessage,
+                    llmDiscoveryPickLabel,
+                    llmModelFormError,
+                    llmModelSaving,
+                    llmDiscovery,
+                    loadLlmConfig,
+                    openLlmModelModal,
+                    closeLlmModelModal,
+                    discoverLlmModels,
+                    pickDiscoveredModel,
+                    saveLlmModel,
+                    deleteLlmModel,
+                    testLlmModel,
+                    assignLlmModel,
+                    revertLlmRole,
 
                     // Default Prompts methods
                     loadDefaultPrompt,

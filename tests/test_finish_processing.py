@@ -92,7 +92,7 @@ def test_short_transcription_still_runs_the_finishing_steps(made):
         r = _rec(made, u.id, transcription="hi")
         shares, export, chunks, *flags = _side_effects()
         with shares as m_shares, export as m_export, chunks as m_chunks, flags[0], flags[1], \
-             patch.object(proc, "client", MagicMock()):
+             patch.object(proc.llm_config, "is_configured", return_value=True):
             proc.generate_summary_only_task(app.app_context(), r.id)
         db.session.expire_all()
         out = db.session.get(Recording, r.id)
@@ -109,7 +109,7 @@ def test_normal_summary_runs_each_finishing_step_once(made):
         r = _rec(made, u.id)
         shares, export, chunks, *flags = _side_effects()
         with shares as m_shares, export as m_export, chunks as m_chunks, flags[0], flags[1], \
-             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "call_llm_completion", return_value=_completion("## Summary\nDone.")):
             proc.generate_summary_only_task(app.app_context(), r.id)
         db.session.expire_all()
@@ -161,7 +161,7 @@ def test_without_an_llm_client_the_recording_is_completed_not_stuck(made):
             with patch("src.services.transcription.get_connector", return_value=_make_connector("A full transcript of the meeting.")), \
                  patch.object(proc, "is_video_file", return_value=False), \
                  patch.object(proc, "convert_if_needed", return_value=conv), \
-                 patch.object(proc, "client", None), \
+                 patch.object(proc.llm_config, "is_configured", return_value=False), \
                  patch.object(proc, "chunking_service") as svc, \
                  shares, export, chunks, flags[0], flags[1]:
                 svc.needs_chunking.return_value = False

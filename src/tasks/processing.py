@@ -23,7 +23,8 @@ from openai import OpenAI
 from src.services.llm_settings import get_temperature
 from src.database import db
 from src.models import Recording, Tag, Event, TranscriptChunk, SystemSetting, GroupMembership, RecordingTag, InternalShare, SharedRecordingState, User, NamingTemplate
-from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, TEXT_MODEL_NAME, client, http_client_no_proxy, TokenBudgetExceeded
+from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, http_client_no_proxy, TokenBudgetExceeded
+from src.services import llm_config
 from src.utils import extract_json_object, safe_json_loads
 from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError, has_audio_stream, probe_rejected_input
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, AUDIO_DECODE_FAILED_MESSAGE
@@ -79,18 +80,15 @@ from src.services import job_control
 # Default off so existing deployments and prompt-quality behaviour are unchanged
 # unless explicitly opted in. Scope is the title, summary, translation and
 # contextual speaker-identification prompts.
-PREFIX_CACHE_OPTIMIZED_PROMPTS = os.environ.get(
-    'PREFIX_CACHE_OPTIMIZED_PROMPTS', 'false'
-).lower() == 'true'
-
+#
 # Anthropic models (directly or through OpenRouter) cache only up to an
-# explicit cache_control breakpoint (#488). With this on, the shared prefix is
-# sent as its own text part carrying the breakpoint; the text is unchanged, so
-# automatic prefix caching elsewhere still applies. Only used together with
-# PREFIX_CACHE_OPTIMIZED_PROMPTS.
-TEXT_MODEL_CACHE_BREAKPOINTS = os.environ.get(
-    'TEXT_MODEL_CACHE_BREAKPOINTS', 'false'
-).lower() == 'true'
+# explicit cache_control breakpoint (#488). With TEXT_MODEL_CACHE_BREAKPOINTS
+# on, the shared prefix is sent as its own text part carrying the breakpoint;
+# the text is unchanged, so automatic prefix caching elsewhere still applies.
+# Only used together with PREFIX_CACHE_OPTIMIZED_PROMPTS.
+#
+# Both are hot settings (see _SYSTEM_SETTING_MAP below) and are read through
+# the module attribute, so a saved value applies to the next prompt.
 
 
 def prefix_cache_flags():
@@ -100,7 +98,8 @@ def prefix_cache_flags():
     must see the current values, so the flags are read when a prompt is built,
     not captured at import. Every prompt-building site reads them here.
     """
-    return PREFIX_CACHE_OPTIMIZED_PROMPTS, TEXT_MODEL_CACHE_BREAKPOINTS
+    return (bool(_self.PREFIX_CACHE_OPTIMIZED_PROMPTS),
+            bool(_self.TEXT_MODEL_CACHE_BREAKPOINTS))
 
 
 # Longest notes text given to the summarizer (#440)
@@ -349,7 +348,7 @@ def finish_processing(recording_id, events_transcript=None, events_summary=None,
     loaded_created_at = recording.created_at
     from src.utils.error_formatting import is_transcription_error
     owner = recording.owner
-    if (extract_events and owner and owner.extract_events and client is not None and recording.transcription
+    if (extract_events and owner and owner.extract_events and llm_config.is_configured('text') and recording.transcription
             and len(recording.transcription.strip()) >= 10 and not is_transcription_error(recording.transcription)):
         transcript = events_transcript or format_transcription_for_llm(recording.transcription)
         extract_events_from_transcript(recording_id, transcript, events_summary or "")
@@ -652,7 +651,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             return
         loaded_created_at = recording.created_at
 
-        if client is None:
+        if not llm_config.is_configured('text'):
             current_app.logger.warning(f"Skipping summary generation for {recording_id}: OpenRouter client not configured.")
             recording.summary = "[Summary skipped: OpenRouter client not configured]"
             recording.clear_summary_prompt_used()
@@ -669,7 +668,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         db.session.commit()
         job_control.current().stage('summarizing')
 
-        current_app.logger.info(f"Requesting summary from OpenRouter for recording {recording_id} using model {TEXT_MODEL_NAME}...")
+        current_app.logger.info(f"Requesting summary from OpenRouter for recording {recording_id} using model {llm_config.resolve_config('text')['model_name']}...")
 
         if not recording.transcription or len(recording.transcription.strip()) < 10:
             current_app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping summarization.")
@@ -2528,7 +2527,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             user_disabled = user and user.auto_summarization is False
             # Without an LLM client there is no summary step: the title step
             # finishes the recording (it stayed PROCESSING before, #412).
-            no_client = client is None
+            no_client = not llm_config.is_configured('text')
             will_auto_summarize = not admin_disabled and not user_disabled and not no_client
 
             # Generate title immediately. A cancel from here on keeps the
@@ -3041,7 +3040,7 @@ def _record_incognito_transcription_usage(user, connector, audio_path, duration_
 
 def _generate_incognito_title(transcription_text, user=None):
     """Generate a title for incognito recording without database storage."""
-    if not client:
+    if not llm_config.is_configured('text'):
         return "Incognito Recording"
 
     try:
@@ -3097,7 +3096,7 @@ def generate_incognito_summary(transcription_text, user=None):
 
     Raises TokenBudgetExceeded when the user's monthly token budget is used up.
     """
-    if not client:
+    if not llm_config.is_configured('text'):
         return None
 
     try:
@@ -3203,6 +3202,10 @@ def translate_transcription_task(app_context, recording_id, user_id=None, target
 from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
+    "PREFIX_CACHE_OPTIMIZED_PROMPTS": (
+        "prefix_cache_optimized_prompts", "PREFIX_CACHE_OPTIMIZED_PROMPTS", False),
+    "TEXT_MODEL_CACHE_BREAKPOINTS": (
+        "text_model_cache_breakpoints", "TEXT_MODEL_CACHE_BREAKPOINTS", False),
     "VIDEO_RETENTION": ("video_retention", "VIDEO_RETENTION", False),
     "VIDEO_PASSTHROUGH_ASR": ("video_passthrough_asr", "VIDEO_PASSTHROUGH_ASR", False),
 }

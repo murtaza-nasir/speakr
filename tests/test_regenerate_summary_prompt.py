@@ -322,7 +322,7 @@ def test_an_automatic_summary_still_uses_the_owners_prompt(world):
             seen.append("\n".join(m["content"] for m in messages))
             return MagicMock(choices=[MagicMock(message=MagicMock(content="## Summary", reasoning=None))])
 
-        with patch.object(proc, "client", MagicMock()), patch.object(proc, "call_llm_completion", side_effect=fake), \
+        with patch.object(proc.llm_config, "is_configured", return_value=True), patch.object(proc, "call_llm_completion", side_effect=fake), \
                 patch.object(proc, "finish_processing"):
             proc.generate_summary_only_task(app.app_context(), world["rec"], user_id=world["editor"])
         assert "OWNER TAG" in seen[0] and "EDITOR TAG" not in seen[0]
@@ -334,8 +334,7 @@ def test_generate_summary_accepts_instructions_and_variables(world):
         rec.summary = None
         db.session.commit()
         owner = _user(world, "owner")
-        import src.api.recordings as recordings_module
-        with patch.object(recordings_module, "client", MagicMock()), \
+        with patch("src.services.llm_config.is_configured", return_value=True), \
                 patch.object(job_queue, "enqueue", return_value=1) as enq:
             resp = _client(owner).post(f"/recording/{world['rec']}/generate_summary", json={
                 "additional_instructions": "Agenda", "prompt_variables": {"client": "Acme"}})
