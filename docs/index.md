@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.11.1: User table sorting, audit log refresh, file labels in the log"
-    Every column of the user management table can be sorted, the audit log has a Refresh button and snapshot exports, and every file in the log has an identifier.
+!!! success "Latest Release: v0.11.3: Recording without a connection, gpt-transcribe"
+    OpenAI shuts down `whisper-1` and the GPT-4o transcribe models on 26 February 2027. Users of these models need to set `TRANSCRIPTION_MODEL=gpt-transcribe` before that date. When Speakr cannot be reached, recordings can be made in the browser and are uploaded when Speakr is back.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.1) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.3) for details.
 
 ## Quick Navigation
 

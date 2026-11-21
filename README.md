@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.1-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.3-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -238,30 +238,28 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.11.1)
+## Latest Release (v0.11.3)
+
+- OpenAI shuts down `whisper-1` and the GPT-4o transcribe models on 26 February 2027. Users of these models need to set `TRANSCRIPTION_MODEL=gpt-transcribe` before that date.
+- When Speakr cannot be reached, recordings can be made in the browser. They are uploaded when Speakr is back.
+- `gpt-transcribe` is supported, and `CHUNK_LIMIT` in seconds applies to OpenAI Whisper.
+- The auto-process controls in the admin dashboard work again, and malformed API requests receive a 400 error.
+
+### v0.11.2
+
+- The new recording dialog has two tabs, Upload files and Record, with the options in groups.
+- Admins can set defaults for user settings.
+- The prompt of a summary is stored with the recording and offered first when the summary is regenerated.
+- Words outside ASCII are found in transcripts.
+
+### v0.11.1
 
 - Every column of the user management table can be sorted, and the order holds across pages and with a search.
 - The audit log has a Refresh button, and an export is a snapshot up to the newest event at its start.
 - Every file in the log has an identifier, and stored paths with the original file name are removed from error text.
 
-### v0.11.0
 
-- The phone layout is rebuilt, with one layout in every theme.
-- The processing queue shows active, waiting and failed jobs, and jobs and uploads can be canceled.
-- Site admins have an audit log of sign-ins, access to recordings, changes, shares and admin actions.
-- Keyboard shortcuts are available on the desktop.
-- Incognito requests are logged as metadata only, and speaker labels of every transcription service are stored as `SPEAKER_00`, `SPEAKER_01`.
-
-### v0.10.23-alpha
-
-- The segment editor has a timeline with the waveform, undo and redo, and segments can be moved or resized by clicking and dragging.
-- Long transcripts are shown quickly on the recording page, on public share links and in Identify speakers, and can be searched with Ctrl+F.
-- Site admins can set who can create groups (#576) and who users can find when sharing.
-- With the WhisperX ASR service 0.5.0 or later, transcriptions are submitted as asynchronous jobs.
-- A security fix for shared summaries and notes on public share pages is included.
-
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.1) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.3) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
