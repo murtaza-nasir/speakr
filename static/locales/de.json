@@ -826,6 +826,7 @@
       "apiKey": "API-Schlüssel",
       "apiKeyHelp": "Der Schlüssel, den dieser Anbieter benötigt. Lassen Sie das Feld leer, wenn der Anbieter keinen benötigt.",
       "apiKeyKept": "Lassen Sie den gespeicherten Schlüssel unverändert, um ihn zu behalten, geben Sie einen neuen Schlüssel ein, um ihn zu ersetzen, oder leeren Sie das Feld, um ihn zu entfernen.",
+      "apiKeyClearedOnUrlChange": "Der gespeicherte Schlüssel wird beim Speichern entfernt, weil sich die Basis-URL geändert hat. Geben Sie einen neuen Schlüssel ein, um einen zu behalten.",
       "apiKeyPlaceholder": "Kein Schlüssel gespeichert",
       "clearApiKey": "Gespeicherten API-Schlüssel entfernen",
       "noApiKey": "Kein Schlüssel",

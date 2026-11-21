@@ -826,6 +826,7 @@
       "apiKey": "Clé API",
       "apiKeyHelp": "La clé dont ce fournisseur a besoin. Laissez le champ vide si le fournisseur n'en a pas besoin.",
       "apiKeyKept": "Laissez la clé enregistrée inchangée pour la conserver, saisissez une nouvelle clé pour la remplacer, ou videz le champ pour la supprimer.",
+      "apiKeyClearedOnUrlChange": "La clé enregistrée sera supprimée à l'enregistrement, car l'URL de base a changé. Saisissez une nouvelle clé pour en conserver une.",
       "apiKeyPlaceholder": "Aucune clé enregistrée",
       "clearApiKey": "Supprimer la clé API enregistrée",
       "noApiKey": "Aucune clé",

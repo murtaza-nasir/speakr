@@ -1768,6 +1768,7 @@ Summarization Instructions:
                                 </button>
                             </div>
                             <p class="text-xs text-[var(--text-muted)] mt-1">${ llmEditingModel ? t('adminDashboard.llmModels.apiKeyKept') : t('adminDashboard.llmModels.apiKeyHelp') }</p>
+                            <p v-if="llmKeyRemovedOnSave" class="text-xs text-[var(--text-warn-strong)] mt-1" data-llm-url-changed>${ t('adminDashboard.llmModels.apiKeyClearedOnUrlChange') }</p>
                             <label v-if="llmEditingModel" class="flex items-center gap-2 mt-2 text-xs text-[var(--text-secondary)] cursor-pointer">
                                 <input type="checkbox" v-model="llmModelForm.clear_api_key" class="h-4 w-4">
                                 <span>${ t('adminDashboard.llmModels.clearApiKey') }</span>
@@ -2973,6 +2974,8 @@ Summarization Instructions:
                 const showLlmModelModal = ref(false);
                 const llmEditingModel = ref(null);
                 const llmEditingHasKey = ref(false);
+                const llmEditingBaseUrl = ref('');
+                const llmEditingStoredKey = ref('');
                 const llmApiKeyVisible = ref(false);
                 const llmModelSaving = ref(false);
                 const llmModelFormError = ref('');
@@ -2995,6 +2998,15 @@ Summarization Instructions:
                 const llmModelLimitMessage = computed(() =>
                     t('server.apiError.llm_model_limit_reached', { limit: llmModelLimit.value }));
                 const llmApiKeyPlaceholder = computed(() => t('adminDashboard.llmModels.apiKeyPlaceholder'));
+                // The saved key is removed on save when the URL moved and the
+                // field holds no new key, that is empty or the echoed stored key.
+                const llmKeyRemovedOnSave = computed(() => {
+                    if (!llmEditingModel.value) return false;
+                    const urlChanged = (llmModelForm.value.base_url || '').replace(/\/+$/, '')
+                        !== llmEditingBaseUrl.value.replace(/\/+$/, '');
+                    const key = llmModelForm.value.api_key || '';
+                    return urlChanged && llmEditingHasKey.value && (!key || key === llmEditingStoredKey.value);
+                });
                 // Built here because a Vue interpolation ends at the first
                 // closing brace, so object parameters cannot live in ${ ... }.
                 const llmDiscoveryPickLabel = computed(() =>
@@ -3090,6 +3102,8 @@ Summarization Instructions:
                 const openLlmModelModal = (model = null) => {
                     llmEditingModel.value = model ? model.id : null;
                     llmEditingHasKey.value = !!(model && model.api_key);
+                    llmEditingBaseUrl.value = model ? (model.base_url || '') : '';
+                    llmEditingStoredKey.value = model ? (model.api_key || '') : '';
                     llmApiKeyVisible.value = false;
                     llmModelForm.value = model ? {
                         label: model.label || '',
@@ -5712,6 +5726,7 @@ Summarization Instructions:
                     llmModelForm,
                     llmApiKeyVisible,
                     llmApiKeyPlaceholder,
+                    llmKeyRemovedOnSave,
                     llmModelLimit,
                     llmModelLimitMessage,
                     llmDiscoveryPickLabel,

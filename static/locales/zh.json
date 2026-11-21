@@ -826,6 +826,7 @@
       "apiKey": "API 密钥",
       "apiKeyHelp": "此提供商所需的密钥。如果提供商不需要密钥，请留空。",
       "apiKeyKept": "保持已保存的密钥不变即可保留，输入新密钥即可替换，清空输入框即可删除。",
+      "apiKeyClearedOnUrlChange": "由于基础 URL 已更改，保存时将删除已保存的密钥。输入新密钥即可保留。",
       "apiKeyPlaceholder": "未存储密钥",
       "clearApiKey": "移除已存储的 API 密钥",
       "noApiKey": "无密钥",

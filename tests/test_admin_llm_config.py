@@ -249,18 +249,6 @@ def test_a_changed_key_in_the_edit_form_replaces_the_stored_key(admin_client):
     assert stored['api_key'] == 'edited-secret'
 
 
-def test_changing_the_base_url_keeps_the_stored_key_the_field_carries(admin_client):
-    model = _create(admin_client).get_json()['model']
-    response = admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
-        'base_url': 'http://other.lan/v1',
-        'api_key': 'stored-secret',
-    })
-
-    assert response.status_code == 200, response.get_json()
-    stored = llm_config._find_model(_document(), model['id'])[1]
-    assert (stored['base_url'], stored['api_key']) == ('http://other.lan/v1', 'stored-secret')
-
-
 def test_update_applies_the_new_key_and_can_clear_it(admin_client):
     model = _create(admin_client).get_json()['model']
     admin_client.post(f"/admin/llm-config/models/{model['id']}", json={'api_key': 'new-secret'})
@@ -536,7 +524,7 @@ def test_discovery_with_a_changed_base_url_does_not_send_the_stored_key(
     assert 'Authorization' not in seen[0][1]['headers']
 
 
-def test_changing_the_base_url_without_a_key_field_keeps_the_stored_key(admin_client):
+def test_changing_the_base_url_without_a_new_key_clears_the_stored_key(admin_client):
     model = _create(admin_client).get_json()['model']
     response = admin_client.post(
         f"/admin/llm-config/models/{model['id']}",
@@ -544,8 +532,31 @@ def test_changing_the_base_url_without_a_key_field_keeps_the_stored_key(admin_cl
 
     assert response.status_code == 200, response.get_json()
     stored = llm_config._find_model(_document(), model['id'])[1]
-    assert (stored['base_url'], stored['api_key']) == (
-        'http://other.lan/v1', 'stored-secret')
+    assert (stored['base_url'], stored['api_key']) == ('http://other.lan/v1', '')
+
+
+def test_changing_the_base_url_with_the_echoed_key_clears_the_stored_key(admin_client):
+    model = _create(admin_client).get_json()['model']
+    response = admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
+        'base_url': 'http://other.lan/v1',
+        'api_key': 'stored-secret',
+    })
+
+    assert response.status_code == 200, response.get_json()
+    stored = llm_config._find_model(_document(), model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == ('http://other.lan/v1', '')
+
+
+def test_changing_the_base_url_then_saving_a_new_key_keeps_the_new_key(admin_client):
+    model = _create(admin_client).get_json()['model']
+    response = admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
+        'base_url': 'http://other.lan/v1',
+        'api_key': 'fresh-secret',
+    })
+
+    assert response.status_code == 200, response.get_json()
+    stored = llm_config._find_model(_document(), model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == ('http://other.lan/v1', 'fresh-secret')
 
 
 def test_changing_the_base_url_with_a_new_key_saves_both(admin_client):
@@ -687,6 +698,53 @@ def test_update_is_audited_with_only_the_changed_fields(admin_client):
     rows = _audit_rows(start, 'admin.llm_model.changed')
     assert len(rows) == 1
     assert rows[0].details == {'model': model['id'], 'fields': ['model_name']}
+
+
+def test_a_base_url_change_that_removes_the_key_is_audited_by_field_name(admin_client):
+    model = _create(admin_client).get_json()['model']
+    start = _max_audit_id()
+    admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
+        'base_url': 'http://other.lan/v1',
+        'api_key': 'stored-secret',
+    })
+
+    rows = _audit_rows(start, 'admin.llm_model.changed')
+    assert len(rows) == 1
+    assert rows[0].details == {'model': model['id'], 'fields': ['api_key', 'base_url']}
+    assert 'stored-secret' not in json.dumps(rows[0].details)
+
+
+def test_a_base_url_change_with_a_new_key_is_audited_without_the_value(admin_client):
+    model = _create(admin_client).get_json()['model']
+    start = _max_audit_id()
+    admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
+        'base_url': 'http://other.lan/v1',
+        'api_key': 'fresh-secret',
+    })
+
+    rows = _audit_rows(start, 'admin.llm_model.changed')
+    assert len(rows) == 1
+    assert rows[0].details == {'model': model['id'], 'fields': ['api_key', 'base_url']}
+    dumped = json.dumps(rows[0].details)
+    assert 'fresh-secret' not in dumped
+    assert 'stored-secret' not in dumped
+
+
+def test_discovery_with_the_echoed_key_for_a_new_url_does_not_send_it(admin_client, monkeypatch):
+    model = _create(admin_client).get_json()['model']
+    seen = []
+
+    def fake_get(url, **kwargs):
+        seen.append((url, kwargs))
+        return _model_response('model-a')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', fake_get)
+    response = admin_client.post('/admin/llm-config/test', json={
+        'model_id': model['id'], 'base_url': 'http://other.lan/v1', 'api_key': 'stored-secret'})
+
+    assert response.status_code == 200
+    assert 'Authorization' not in seen[0][1]['headers']
+    assert 'stored-secret' not in json.dumps(response.get_json())
 
 
 def test_delete_is_audited(admin_client):

@@ -826,6 +826,7 @@
       "apiKey": "Clave API",
       "apiKeyHelp": "La clave que necesita este proveedor. Déjela vacía cuando el proveedor no necesite ninguna.",
       "apiKeyKept": "Deje la clave guardada sin cambios para conservarla, escriba una clave nueva para reemplazarla o vacíe el campo para eliminarla.",
+      "apiKeyClearedOnUrlChange": "La clave guardada se eliminará al guardar, porque cambió la URL base. Escriba una clave nueva para conservar una.",
       "apiKeyPlaceholder": "No hay ninguna clave guardada",
       "clearApiKey": "Quitar la clave API guardada",
       "noApiKey": "Sin clave",

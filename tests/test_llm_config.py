@@ -301,20 +301,20 @@ def test_clear_api_key_removes_the_secret(ctx, clean_env):
     assert llm_config.resolve_config('text')['configured'] is True
 
 
-def test_a_new_base_url_keeps_the_stored_key_when_none_is_sent(ctx, clean_env):
+def test_a_new_base_url_clears_the_stored_key_when_no_new_key_is_sent(ctx, clean_env):
     _text_env(clean_env)
     created = llm_config.create_model({
         'label': 'Saved', 'base_url': 'http://profile.lan/v1',
         'model_name': 'saved-model', 'api_key': 'stored-secret',
     })
-    llm_config.update_model(created.model['id'], {'base_url': 'http://other.lan/v1'})
+    change = llm_config.update_model(created.model['id'], {'base_url': 'http://other.lan/v1'})
 
     stored = llm_config._find_model(llm_config.load_document(), created.model['id'])[1]
-    assert (stored['base_url'], stored['api_key']) == (
-        'http://other.lan/v1', 'stored-secret')
+    assert (stored['base_url'], stored['api_key']) == ('http://other.lan/v1', '')
+    assert 'api_key' in change.changed_fields
 
 
-def test_a_new_base_url_keeps_the_key_the_form_echoes(ctx, clean_env):
+def test_a_new_base_url_clears_the_key_the_form_echoes(ctx, clean_env):
     _text_env(clean_env)
     created = llm_config.create_model({
         'label': 'Saved', 'base_url': 'http://profile.lan/v1',
@@ -324,8 +324,16 @@ def test_a_new_base_url_keeps_the_key_the_form_echoes(ctx, clean_env):
         'base_url': 'http://other.lan/v1', 'api_key': 'stored-secret'})
 
     stored = llm_config._find_model(llm_config.load_document(), created.model['id'])[1]
-    assert (stored['base_url'], stored['api_key']) == (
-        'http://other.lan/v1', 'stored-secret')
+    assert (stored['base_url'], stored['api_key']) == ('http://other.lan/v1', '')
+
+
+def test_new_key_is_empty_for_empty_masked_or_echoed_values(ctx, clean_env):
+    assert llm_config.new_key('', 'stored-secret') == ''
+    assert llm_config.new_key(None, 'stored-secret') == ''
+    assert llm_config.new_key(llm_config.MASKED_API_KEY, 'stored-secret') == ''
+    assert llm_config.new_key(' stored-secret ', 'stored-secret') == ''
+    assert llm_config.new_key('other-secret', 'stored-secret') == 'other-secret'
+    assert llm_config.new_key('other-secret', '') == 'other-secret'
 
 
 def test_a_new_base_url_with_a_new_key_replaces_the_stored_key(ctx, clean_env):

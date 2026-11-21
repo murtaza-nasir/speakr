@@ -826,6 +826,7 @@
       "apiKey": "API key",
       "apiKeyHelp": "The key this provider needs. Leave it empty when the provider needs none.",
       "apiKeyKept": "Leave the stored key unchanged to keep it, type a new key to replace it, or empty the field to remove it.",
+      "apiKeyClearedOnUrlChange": "The stored key is removed on save, because the base URL changed. Type a new key to keep one.",
       "apiKeyPlaceholder": "No key stored",
       "clearApiKey": "Remove the stored API key",
       "noApiKey": "No key",

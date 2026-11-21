@@ -13,6 +13,7 @@ in the browser:
   the check and is saved.
 - Editing a saved model shows its stored key in the field, masked until the eye
   button reveals it, and saving with the untouched key keeps the stored key.
+  Changing the base URL shows a warning that the stored key is removed on save.
 
 The second step creates one model profile, so the test deletes it through the
 admin API in a finally block, whichever assertion failed. The discovery step
@@ -246,6 +247,15 @@ def test_editing_shows_the_stored_key_and_saving_keeps_it(admin, llm):
     toggle.click()
     assert key_field.get_attribute("type") == "password", "the eye button did not hide the key again"
     admin.check("stored key")
+
+    # Changing the base URL warns that the stored key goes on save; restoring
+    # the URL removes the warning.
+    warning = page.locator("[data-llm-url-changed]")
+    assert not warning.count() or not warning.is_visible(), "the URL warning shows before any change"
+    page.locator(field("base_url")).fill("http://127.0.0.1:1/v1")
+    warning.wait_for(state="visible", timeout=5000)
+    page.locator(field("base_url")).fill(llm.url)
+    warning.wait_for(state="detached", timeout=5000)
 
     # Saving with the untouched key keeps it on the server.
     with page.expect_response(

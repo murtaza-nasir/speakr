@@ -172,6 +172,12 @@ def merge_api_key(incoming, existing):
     return incoming
 
 
+def new_key(incoming, stored):
+    """A key entered now: empty, masked and echoed values are not new keys."""
+    key = merge_api_key(incoming, '')
+    return '' if key == stored else key
+
+
 def _required_text(values, name):
     value = values.get(name)
     if not isinstance(value, str) or not value.strip():
@@ -407,8 +413,13 @@ def update_model(model_id, values):
         updated['base_url'] = normalize_base_url(values.get('base_url'))
     if 'model_name' in values:
         updated['model_name'] = _required_text(values, 'model_name')
+    base_url_changed = updated['base_url'] != existing['base_url']
     if values.get('clear_api_key'):
         updated['api_key'] = ''
+    elif base_url_changed:
+        # A stored key belongs to the URL it was saved with: a new URL keeps it
+        # only when the request enters a different key.
+        updated['api_key'] = new_key(values.get('api_key'), existing['api_key'])
     elif 'api_key' in values:
         updated['api_key'] = merge_api_key(values.get('api_key'), existing['api_key'])
     if 'extra_body' in values:
