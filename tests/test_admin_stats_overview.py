@@ -170,8 +170,10 @@ def test_a_budget_stored_as_text_reads_as_no_limit(world):
     from sqlalchemy import text
 
     with app.app_context():
+        if db.engine.dialect.name != "sqlite":
+            pytest.skip("only SQLite stores text in an INTEGER column")
         db.session.execute(text(
-            "update user set monthly_token_budget = 'abc', "
+            'update "user" set monthly_token_budget = \'abc\', '
             "monthly_transcription_budget = '60x', storage_quota_mb = 'lots' "
             "where id = :id"), {'id': world["admin"]})
         db.session.commit()
