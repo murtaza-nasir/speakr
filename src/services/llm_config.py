@@ -172,13 +172,6 @@ def merge_api_key(incoming, existing):
     return incoming
 
 
-def unechoed_key(incoming, stored):
-    """The key the caller typed: an echo of the stored key counts as no key."""
-    if isinstance(incoming, str) and stored and incoming.strip() == stored:
-        return None
-    return incoming
-
-
 def _required_text(values, name):
     value = values.get(name)
     if not isinstance(value, str) or not value.strip():
@@ -414,21 +407,8 @@ def update_model(model_id, values):
         updated['base_url'] = normalize_base_url(values.get('base_url'))
     if 'model_name' in values:
         updated['model_name'] = _required_text(values, 'model_name')
-    base_url_changed = (
-        'base_url' in values and updated['base_url'] != existing['base_url'])
     if values.get('clear_api_key'):
         updated['api_key'] = ''
-    elif base_url_changed:
-        # A stored key belongs to the URL it was saved with. A new host must
-        # never receive it in silence; the key is entered again or cleared.
-        # The edit form echoes the stored key, so an unchanged echo is not a
-        # new key for the new host.
-        api_key = merge_api_key(unechoed_key(values.get('api_key'), existing['api_key']), '')
-        if not api_key and existing['api_key']:
-            raise LLMConfigError(
-                'Changing the base URL requires the API key again, or clear '
-                'the stored key')
-        updated['api_key'] = api_key
     elif 'api_key' in values:
         updated['api_key'] = merge_api_key(values.get('api_key'), existing['api_key'])
     if 'extra_body' in values:

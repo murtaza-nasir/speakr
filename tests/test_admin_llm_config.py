@@ -249,35 +249,16 @@ def test_a_changed_key_in_the_edit_form_replaces_the_stored_key(admin_client):
     assert stored['api_key'] == 'edited-secret'
 
 
-def test_the_echoed_stored_key_does_not_satisfy_a_base_url_change(admin_client):
+def test_changing_the_base_url_keeps_the_stored_key_the_field_carries(admin_client):
     model = _create(admin_client).get_json()['model']
     response = admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
         'base_url': 'http://other.lan/v1',
         'api_key': 'stored-secret',
     })
 
-    assert response.status_code == 400, response.get_json()
+    assert response.status_code == 200, response.get_json()
     stored = llm_config._find_model(_document(), model['id'])[1]
-    assert (stored['base_url'], stored['api_key']) == ('http://provider.lan/v1', 'stored-secret')
-
-
-def test_an_echoed_stored_key_is_not_sent_to_a_new_base_url(admin_client, monkeypatch):
-    model = _create(admin_client).get_json()['model']
-    calls = []
-
-    def fake_get(url, **kwargs):
-        calls.append((url, kwargs))
-        return _model_response('model-a')
-
-    monkeypatch.setattr(admin_api.httpx, 'get', fake_get)
-    response = admin_client.post(f"/admin/llm-config/models/{model['id']}/test", json={
-        'base_url': 'http://override.lan/v1',
-        'api_key': 'stored-secret',
-    })
-
-    assert response.status_code == 200
-    assert 'Authorization' not in calls[0][1].get('headers', {})
-    assert 'stored-secret' not in json.dumps(response.get_json())
+    assert (stored['base_url'], stored['api_key']) == ('http://other.lan/v1', 'stored-secret')
 
 
 def test_update_applies_the_new_key_and_can_clear_it(admin_client):
@@ -289,6 +270,28 @@ def test_update_applies_the_new_key_and_can_clear_it(admin_client):
     assert llm_config._find_model(_document(), model['id'])[1]['api_key'] == ''
     listed = admin_client.get('/admin/llm-config').get_json()['models'][0]
     assert listed['api_key'] == ''
+
+
+def test_clear_api_key_empties_the_key_and_no_answer_repeats_the_old_one(admin_client):
+    model = _create(admin_client).get_json()['model']
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}", json={'clear_api_key': True})
+
+    assert response.status_code == 200, response.get_json()
+    assert response.get_json()['model']['api_key'] == ''
+    assert llm_config._find_model(_document(), model['id'])[1]['api_key'] == ''
+    listed = admin_client.get('/admin/llm-config').get_json()
+    assert listed['models'][0]['api_key'] == ''
+    assert 'stored-secret' not in json.dumps([response.get_json(), listed])
+
+
+def test_an_empty_key_field_without_clear_keeps_the_stored_key(admin_client):
+    model = _create(admin_client).get_json()['model']
+    response = admin_client.post(
+        f"/admin/llm-config/models/{model['id']}", json={'api_key': ''})
+
+    assert response.status_code == 200, response.get_json()
+    assert llm_config._find_model(_document(), model['id'])[1]['api_key'] == 'stored-secret'
 
 
 def test_an_unknown_model_is_a_404(admin_client):
@@ -533,19 +536,16 @@ def test_discovery_with_a_changed_base_url_does_not_send_the_stored_key(
     assert 'Authorization' not in seen[0][1]['headers']
 
 
-def test_changing_the_base_url_without_a_key_is_refused(admin_client):
+def test_changing_the_base_url_without_a_key_field_keeps_the_stored_key(admin_client):
     model = _create(admin_client).get_json()['model']
     response = admin_client.post(
         f"/admin/llm-config/models/{model['id']}",
         json={'base_url': 'http://other.lan/v1'})
 
-    body = response.get_json()
-    assert response.status_code == 400, body
-    assert body['code'] == 'invalid_llm_config'
-    assert 'API key' in body['error']
+    assert response.status_code == 200, response.get_json()
     stored = llm_config._find_model(_document(), model['id'])[1]
     assert (stored['base_url'], stored['api_key']) == (
-        'http://provider.lan/v1', 'stored-secret')
+        'http://other.lan/v1', 'stored-secret')
 
 
 def test_changing_the_base_url_with_a_new_key_saves_both(admin_client):

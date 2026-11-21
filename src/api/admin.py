@@ -1607,10 +1607,9 @@ def _probe_target(payload):
     """The provider URL and key a discovery or test request describes.
 
     A saved model may be given as the base; a masked or empty key then keeps
-    its stored secret, so a test does not ask for the key again. The stored
-    key is bound to the base URL it was saved with: an override for another
-    URL is contacted without it, and an echo of the stored key sent with such
-    an override is not sent either.
+    its stored secret, so a test does not ask for the key again. Without a key
+    in the request, the stored key goes only to the base URL it was saved with;
+    a key the request carries, such as the edit form's field, is used as sent.
     """
     model_id = payload.get('model_id')
     saved = llm_config.get_model(model_id, reveal_key=True) if model_id else {}
@@ -1619,11 +1618,9 @@ def _probe_target(payload):
         raise llm_config.LLMConfigError('base_url is required')
     base_url = llm_config.normalize_base_url(base_url)
     saved_key = saved.get('api_key') or ''
-    incoming = payload.get('api_key')
     if base_url != saved.get('base_url'):
         saved_key = ''
-        incoming = llm_config.unechoed_key(incoming, saved.get('api_key') or '')
-    api_key = llm_config.merge_api_key(incoming, saved_key)
+    api_key = llm_config.merge_api_key(payload.get('api_key'), saved_key)
     return base_url, api_key
 
 

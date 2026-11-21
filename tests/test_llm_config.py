@@ -246,13 +246,6 @@ def test_the_administrator_list_reveals_the_stored_key(ctx, clean_env):
     assert llm_config.list_models()[0]['api_key'] == llm_config.MASKED_API_KEY
 
 
-def test_an_echo_of_the_stored_key_is_not_a_new_key(ctx, clean_env):
-    assert llm_config.unechoed_key('stored-secret', 'stored-secret') is None
-    assert llm_config.unechoed_key(' stored-secret ', 'stored-secret') is None
-    assert llm_config.unechoed_key('other-secret', 'stored-secret') == 'other-secret'
-    assert llm_config.unechoed_key('stored-secret', '') == 'stored-secret'
-
-
 def test_resolve_masks_the_key_unless_it_is_revealed(ctx, clean_env):
     _text_env(clean_env)
     profile = _profile(api_key='secret-key')
@@ -308,18 +301,31 @@ def test_clear_api_key_removes_the_secret(ctx, clean_env):
     assert llm_config.resolve_config('text')['configured'] is True
 
 
-def test_a_new_base_url_needs_the_api_key_again(ctx, clean_env):
+def test_a_new_base_url_keeps_the_stored_key_when_none_is_sent(ctx, clean_env):
     _text_env(clean_env)
     created = llm_config.create_model({
         'label': 'Saved', 'base_url': 'http://profile.lan/v1',
         'model_name': 'saved-model', 'api_key': 'stored-secret',
     })
-    with pytest.raises(llm_config.LLMConfigError, match='base URL'):
-        llm_config.update_model(created.model['id'], {'base_url': 'http://other.lan/v1'})
+    llm_config.update_model(created.model['id'], {'base_url': 'http://other.lan/v1'})
 
     stored = llm_config._find_model(llm_config.load_document(), created.model['id'])[1]
     assert (stored['base_url'], stored['api_key']) == (
-        'http://profile.lan/v1', 'stored-secret')
+        'http://other.lan/v1', 'stored-secret')
+
+
+def test_a_new_base_url_keeps_the_key_the_form_echoes(ctx, clean_env):
+    _text_env(clean_env)
+    created = llm_config.create_model({
+        'label': 'Saved', 'base_url': 'http://profile.lan/v1',
+        'model_name': 'saved-model', 'api_key': 'stored-secret',
+    })
+    llm_config.update_model(created.model['id'], {
+        'base_url': 'http://other.lan/v1', 'api_key': 'stored-secret'})
+
+    stored = llm_config._find_model(llm_config.load_document(), created.model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == (
+        'http://other.lan/v1', 'stored-secret')
 
 
 def test_a_new_base_url_with_a_new_key_replaces_the_stored_key(ctx, clean_env):
