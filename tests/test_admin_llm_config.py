@@ -3,8 +3,9 @@
 An administrator reads the configured models and the effective configuration
 of each role, creates, updates and deletes a model, assigns it to a role or
 reverts the role to the environment, and asks the backend to discover the
-models a provider offers. Secrets never leave unmasked, a model in use cannot
-be deleted, and every change is audited by id and field names only.
+models a provider offers. The model list carries the stored keys for the edit
+form and no other answer does; a model in use cannot be deleted, and every
+change is audited by id and field names only.
 """
 
 import json
@@ -132,12 +133,13 @@ def test_get_returns_models_assignments_and_the_effective_roles(admin_client, mo
     assert 'env-secret' not in json.dumps(body)
 
 
-def test_get_lists_a_created_model_with_its_key_masked(admin_client):
+def test_get_lists_a_created_model_with_its_stored_key(admin_client):
     created = _create(admin_client).get_json()['model']
     body = admin_client.get('/admin/llm-config').get_json()
     assert [model['id'] for model in body['models']] == [created['id']]
-    assert body['models'][0]['api_key'] == llm_config.MASKED_API_KEY
-    assert 'stored-secret' not in json.dumps(body)
+    assert body['models'][0]['api_key'] == 'stored-secret'
+    assert body['roles']['text']['api_key'] == llm_config.MASKED_API_KEY
+    assert body['masked_api_key'] == llm_config.MASKED_API_KEY
 
 
 # ---------------------------------------------------------------- create and update
@@ -213,6 +215,69 @@ def test_update_keeps_omitted_fields_and_the_masked_key(admin_client):
     assert body['model']['base_url'] == 'http://provider.lan/v1'
     stored = llm_config._find_model(_document(), model['id'])[1]
     assert stored['api_key'] == 'stored-secret'
+
+
+def test_saving_the_edit_form_with_the_echoed_key_keeps_the_stored_secret(admin_client):
+    model = _create(admin_client).get_json()['model']
+    listed = admin_client.get('/admin/llm-config').get_json()['models'][0]
+    assert listed['api_key'] == 'stored-secret'
+
+    response = admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
+        'label': 'OpenRouter',
+        'base_url': 'http://provider.lan/v1',
+        'model_name': 'openai/gpt-5-mini',
+        'extra_body': {},
+        'gpt5_force': False,
+        'gpt5_reasoning_effort': 'medium',
+        'gpt5_verbosity': 'medium',
+        'api_key': listed['api_key'],
+    })
+    assert response.status_code == 200, response.get_json()
+    assert response.get_json()['model']['api_key'] == llm_config.MASKED_API_KEY
+    stored = llm_config._find_model(_document(), model['id'])[1]
+    assert stored['api_key'] == 'stored-secret'
+
+
+def test_a_changed_key_in_the_edit_form_replaces_the_stored_key(admin_client):
+    model = _create(admin_client).get_json()['model']
+    response = admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
+        'api_key': 'edited-secret',
+    })
+
+    assert response.status_code == 200, response.get_json()
+    stored = llm_config._find_model(_document(), model['id'])[1]
+    assert stored['api_key'] == 'edited-secret'
+
+
+def test_the_echoed_stored_key_does_not_satisfy_a_base_url_change(admin_client):
+    model = _create(admin_client).get_json()['model']
+    response = admin_client.post(f"/admin/llm-config/models/{model['id']}", json={
+        'base_url': 'http://other.lan/v1',
+        'api_key': 'stored-secret',
+    })
+
+    assert response.status_code == 400, response.get_json()
+    stored = llm_config._find_model(_document(), model['id'])[1]
+    assert (stored['base_url'], stored['api_key']) == ('http://provider.lan/v1', 'stored-secret')
+
+
+def test_an_echoed_stored_key_is_not_sent_to_a_new_base_url(admin_client, monkeypatch):
+    model = _create(admin_client).get_json()['model']
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append((url, kwargs))
+        return _model_response('model-a')
+
+    monkeypatch.setattr(admin_api.httpx, 'get', fake_get)
+    response = admin_client.post(f"/admin/llm-config/models/{model['id']}/test", json={
+        'base_url': 'http://override.lan/v1',
+        'api_key': 'stored-secret',
+    })
+
+    assert response.status_code == 200
+    assert 'Authorization' not in calls[0][1].get('headers', {})
+    assert 'stored-secret' not in json.dumps(response.get_json())
 
 
 def test_update_applies_the_new_key_and_can_clear_it(admin_client):
@@ -655,18 +720,17 @@ def test_reverting_an_unassigned_role_writes_no_audit_row(admin_client):
     assert _audit_rows(start, 'admin.llm_role.reverted') == []
 
 
-def test_no_answer_or_audit_row_carries_a_key(admin_client, monkeypatch, caplog):
-    """The key is write-only, as a user's API token is: shown once, never read.
+def test_no_write_answer_audit_row_or_log_carries_a_key(admin_client, monkeypatch, caplog):
+    """The key reaches the administrator's model list and nowhere else.
 
-    A provider key cannot be stored as a one-way hash, because Speakr has to
-    send it to the provider. Everything the token pattern does besides hashing
-    applies: no answer, log line or audit row repeats the value.
+    The edit form needs the stored key, so the model list carries it. Write
+    answers, the test answer, audit rows and log lines never repeat the value.
     """
     caplog.set_level(logging.DEBUG)
     start = _max_audit_id()
     created = _create(admin_client)
     model = created.get_json()['model']
-    answers = [created.get_json(), admin_client.get('/admin/llm-config').get_json()]
+    answers = [created.get_json()]
 
     updated = admin_client.post(
         f"/admin/llm-config/models/{model['id']}", json={'api_key': 'second-secret'})

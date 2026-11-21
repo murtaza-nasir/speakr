@@ -4,8 +4,8 @@ One saved document holds the model profiles and the role assignments. A role
 assigned to a profile uses it; a role without an assignment uses its
 environment configuration, and chat/translation inherit the text role when
 they have no dedicated environment configuration of their own. The API key is
-masked in every public representation and an empty or masked key keeps the
-stored secret.
+masked in the public representations, the administrator's model list reveals
+it, and an empty or masked key keeps the stored secret.
 """
 
 import json
@@ -232,6 +232,25 @@ def test_public_models_mask_the_api_key(ctx, clean_env):
     assert created.model['api_key'] == llm_config.MASKED_API_KEY
     assert 'secret-key' not in json.dumps(created.model)
     assert llm_config.list_models()[0]['api_key'] == llm_config.MASKED_API_KEY
+
+
+def test_the_administrator_list_reveals_the_stored_key(ctx, clean_env):
+    _text_env(clean_env)
+    llm_config.create_model({
+        'label': 'OpenRouter',
+        'base_url': 'https://openrouter.ai/api/v1',
+        'model_name': 'openai/gpt-5',
+        'api_key': 'secret-key',
+    })
+    assert llm_config.list_models(reveal_key=True)[0]['api_key'] == 'secret-key'
+    assert llm_config.list_models()[0]['api_key'] == llm_config.MASKED_API_KEY
+
+
+def test_an_echo_of_the_stored_key_is_not_a_new_key(ctx, clean_env):
+    assert llm_config.unechoed_key('stored-secret', 'stored-secret') is None
+    assert llm_config.unechoed_key(' stored-secret ', 'stored-secret') is None
+    assert llm_config.unechoed_key('other-secret', 'stored-secret') == 'other-secret'
+    assert llm_config.unechoed_key('stored-secret', '') == 'stored-secret'
 
 
 def test_resolve_masks_the_key_unless_it_is_revealed(ctx, clean_env):

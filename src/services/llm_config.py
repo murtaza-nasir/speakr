@@ -13,10 +13,11 @@ as earlier releases did, and chat and translation inherit the text role when
 they have no dedicated environment configuration, so an empty model list
 changes nothing.
 
-The API key is stored in clear text because the OpenAI client needs it. Every
-representation that leaves this module is masked with ``MASKED_API_KEY``; an
-empty or masked key submitted for an update keeps the stored secret, and an
-explicit ``clear_api_key`` removes it.
+The API key is stored in clear text because the OpenAI client needs it. The
+administrator's list of models carries the real key, as the edit form shows
+it; every other representation is masked with ``MASKED_API_KEY``. An empty or
+masked key submitted for an update keeps the stored secret, and an explicit
+``clear_api_key`` removes it.
 """
 
 import json
@@ -168,6 +169,13 @@ def merge_api_key(incoming, existing):
     incoming = incoming.strip()
     if not incoming or incoming == MASKED_API_KEY:
         return existing or ''
+    return incoming
+
+
+def unechoed_key(incoming, stored):
+    """The key the caller typed: an echo of the stored key counts as no key."""
+    if isinstance(incoming, str) and stored and incoming.strip() == stored:
+        return None
     return incoming
 
 
@@ -339,9 +347,9 @@ def _public_profile(profile, reveal_key=False):
 # ---------------------------------------------------------------- CRUD
 
 
-def list_models():
-    """The configured models, with every API key masked."""
-    return [_public_profile(model) for model in load_document()['models']]
+def list_models(reveal_key=False):
+    """The configured models, with their API keys masked unless revealed."""
+    return [_public_profile(model, reveal_key) for model in load_document()['models']]
 
 
 def get_model(model_id, reveal_key=False):
@@ -413,7 +421,9 @@ def update_model(model_id, values):
     elif base_url_changed:
         # A stored key belongs to the URL it was saved with. A new host must
         # never receive it in silence; the key is entered again or cleared.
-        api_key = merge_api_key(values.get('api_key'), '')
+        # The edit form echoes the stored key, so an unchanged echo is not a
+        # new key for the new host.
+        api_key = merge_api_key(unechoed_key(values.get('api_key'), existing['api_key']), '')
         if not api_key and existing['api_key']:
             raise LLMConfigError(
                 'Changing the base URL requires the API key again, or clear '

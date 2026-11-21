@@ -1748,6 +1748,7 @@ Summarization Instructions:
                                 <input v-model="llmModelForm.api_key" :type="llmApiKeyVisible ? 'text' : 'password'"
                                        autocomplete="new-password" class="field w-full pr-10"
                                        :placeholder="llmApiKeyPlaceholder" :disabled="llmModelForm.clear_api_key"
+                                       @focus="$event.target.select()"
                                        data-llm-api-key>
                                 <button type="button"
                                         class="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus:outline-none"
@@ -2961,7 +2962,6 @@ Summarization Instructions:
                     translation: 'TRANSLATION_MODEL',
                 };
                 const llmConfig = ref({ models: [], assignments: {}, roles: {} });
-                const llmMaskedKey = ref('***');
                 const llmConfigLoading = ref(false);
                 const llmConfigError = ref('');
                 const llmConfigMessage = ref('');
@@ -2994,10 +2994,7 @@ Summarization Instructions:
                 const llmModelLimit = computed(() => llmConfig.value.model_limit || 12);
                 const llmModelLimitMessage = computed(() =>
                     t('server.apiError.llm_model_limit_reached', { limit: llmModelLimit.value }));
-                const llmApiKeyPlaceholder = computed(() =>
-                    llmEditingHasKey.value
-                        ? t('adminDashboard.llmModels.apiKeyStored', { masked: llmMaskedKey.value })
-                        : t('adminDashboard.llmModels.apiKeyPlaceholder'));
+                const llmApiKeyPlaceholder = computed(() => t('adminDashboard.llmModels.apiKeyPlaceholder'));
                 // Built here because a Vue interpolation ends at the first
                 // closing brace, so object parameters cannot live in ${ ... }.
                 const llmDiscoveryPickLabel = computed(() =>
@@ -3073,7 +3070,6 @@ Summarization Instructions:
                             assignments: data.assignments || {},
                             roles: data.roles || {},
                         };
-                        llmMaskedKey.value = data.masked_api_key || '***';
                     } catch (error) {
                         console.error('Error loading the language models:', error);
                         llmConfigError.value = error.message;
@@ -3098,7 +3094,7 @@ Summarization Instructions:
                     llmModelForm.value = model ? {
                         label: model.label || '',
                         base_url: model.base_url || '',
-                        api_key: '',
+                        api_key: model.api_key || '',
                         model_name: model.model_name || '',
                         extra_body: (model.extra_body && Object.keys(model.extra_body).length)
                             ? JSON.stringify(model.extra_body, null, 2) : '',
@@ -3176,7 +3172,10 @@ Summarization Instructions:
                             gpt5_verbosity: form.gpt5_verbosity || 'medium',
                         };
                         if (form.api_key) payload.api_key = form.api_key;
-                        if (llmEditingModel.value && form.clear_api_key) payload.clear_api_key = true;
+                        // Emptying the field of a saved key removes it; an
+                        // untouched field keeps it.
+                        const emptiedKey = llmEditingHasKey.value && !form.api_key;
+                        if (llmEditingModel.value && (form.clear_api_key || emptiedKey)) payload.clear_api_key = true;
                         const url = llmEditingModel.value
                             ? `/admin/llm-config/models/${encodeURIComponent(llmEditingModel.value)}`
                             : '/admin/llm-config/models';

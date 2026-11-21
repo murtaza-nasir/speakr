@@ -1609,7 +1609,8 @@ def _probe_target(payload):
     A saved model may be given as the base; a masked or empty key then keeps
     its stored secret, so a test does not ask for the key again. The stored
     key is bound to the base URL it was saved with: an override for another
-    URL is contacted without it, never with the saved secret.
+    URL is contacted without it, and an echo of the stored key sent with such
+    an override is not sent either.
     """
     model_id = payload.get('model_id')
     saved = llm_config.get_model(model_id, reveal_key=True) if model_id else {}
@@ -1618,9 +1619,11 @@ def _probe_target(payload):
         raise llm_config.LLMConfigError('base_url is required')
     base_url = llm_config.normalize_base_url(base_url)
     saved_key = saved.get('api_key') or ''
+    incoming = payload.get('api_key')
     if base_url != saved.get('base_url'):
         saved_key = ''
-    api_key = llm_config.merge_api_key(payload.get('api_key'), saved_key)
+        incoming = llm_config.unechoed_key(incoming, saved.get('api_key') or '')
+    api_key = llm_config.merge_api_key(incoming, saved_key)
     return base_url, api_key
 
 
@@ -1644,12 +1647,16 @@ def _probe_response(payload):
 @admin_bp.route('/admin/llm-config', methods=['GET'])
 @login_required
 def admin_get_llm_config():
-    """The configured models, their assignments and each role in effect."""
+    """The configured models, their assignments and each role in effect.
+
+    The models carry their stored API keys for the edit form; the roles keep
+    their keys masked.
+    """
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
 
     return jsonify({
-        'models': llm_config.list_models(),
+        'models': llm_config.list_models(reveal_key=True),
         'masked_api_key': llm_config.MASKED_API_KEY,
         'model_limit': llm_config.MAX_MODELS,
         **_llm_roles_response(),

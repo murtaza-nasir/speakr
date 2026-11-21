@@ -11,6 +11,8 @@ in the browser:
   a JSON value that is not an object keep the modal open with the validation
   message and send no POST to /admin/llm-config/models. A JSON object passes
   the check and is saved.
+- Editing a saved model shows its stored key in the field, masked until the eye
+  button reveals it, and saving with the untouched key keeps the stored key.
 
 The second step creates one model profile, so the test deletes it through the
 admin API in a finally block, whichever assertion failed. The discovery step
@@ -211,6 +213,51 @@ def test_extra_body_is_checked_before_saving(admin, llm):
     row.wait_for(state="visible", timeout=10000)
     assert label in row.inner_text(), f"the saved model row does not show {label!r}: {row.inner_text()!r}"
     admin.check("saved model")
+
+
+def test_editing_shows_the_stored_key_and_saving_keeps_it(admin, llm):
+    page = admin.page
+    stored = f"e2e-stored-{RUN}"
+    response = admin.api("POST", MODEL_URL, {
+        "label": f"E2E edit {RUN}",
+        "base_url": llm.url,
+        "model_name": "test-model",
+        "api_key": stored,
+    })
+    assert response.status == 201, f"seed: {response.status} {response.text()}"
+    model = response.json()["model"]
+    admin.created.append(model["id"])
+
+    admin.open_settings()
+    row = page.locator(f"#llm-models [data-llm-model='{model['id']}']")
+    row.wait_for(state="visible", timeout=10000)
+    row.locator(f"button[title='{en('adminDashboard.llmModels.editModel')}']").click()
+    page.locator(MODAL).wait_for(state="visible", timeout=10000)
+
+    # The stored key is the field's value, masked until the eye button is used.
+    key_field = page.locator("[data-llm-api-key]")
+    toggle = page.locator("[data-llm-api-key-toggle]")
+    assert key_field.input_value() == stored, "the stored key is not the field value"
+    assert key_field.get_attribute("type") == "password", "the stored key is visible by default"
+
+    toggle.click()
+    assert key_field.get_attribute("type") == "text", "the eye button did not reveal the key"
+    assert key_field.input_value() == stored, "revealing the key changed it"
+    toggle.click()
+    assert key_field.get_attribute("type") == "password", "the eye button did not hide the key again"
+    admin.check("stored key")
+
+    # Saving with the untouched key keeps it on the server.
+    with page.expect_response(
+            lambda r: r.url[len(BASE):].split("?")[0] == f"{MODEL_URL}/{model['id']}" and r.request.method == "POST",
+            timeout=30000) as answer:
+        page.locator(SAVE).click()
+    saved = answer.value
+    assert saved.ok, f"save: {saved.status} {saved.text()}"
+    assert saved.json()["model"]["api_key"] == "***", saved.text()
+    assert stored not in saved.text(), "the save answer repeats the key"
+    page.locator(MODAL).wait_for(state="detached", timeout=10000)
+    admin.check("saved masked key")
 
 
 def test_the_model_limit_hides_add_and_explains_it(admin, llm):
