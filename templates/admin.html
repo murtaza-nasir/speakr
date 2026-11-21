@@ -776,7 +776,7 @@
                                         <td class="py-2 px-3 font-mono text-xs text-[var(--text-primary)]">${ model.model_name }</td>
                                         <td class="py-2 px-3 font-mono text-xs text-[var(--text-muted)] hidden lg:table-cell">${ model.base_url }</td>
                                         <td class="py-2 px-3 font-mono text-xs text-[var(--text-secondary)]">
-                                            <span v-if="model.api_key">${ model.api_key }</span>
+                                            <span v-if="model.api_key" aria-label="********">********</span>
                                             <span v-else class="text-[var(--text-muted)] italic">${ t('adminDashboard.llmModels.noApiKey') }</span>
                                         </td>
                                         <td class="py-2 px-3">

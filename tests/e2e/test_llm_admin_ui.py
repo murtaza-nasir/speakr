@@ -232,6 +232,7 @@ def test_editing_shows_the_stored_key_and_saving_keeps_it(admin, llm):
     admin.open_settings()
     row = page.locator(f"#llm-models [data-llm-model='{model['id']}']")
     row.wait_for(state="visible", timeout=10000)
+    assert stored not in row.inner_text(), "the configured models list shows the stored key"
     row.locator(f"button[title='{en('adminDashboard.llmModels.editModel')}']").click()
     page.locator(MODAL).wait_for(state="visible", timeout=10000)
 
