@@ -30,6 +30,16 @@ Covered here:
    browser, and is uploaded by its own account afterwards.
 5. The recorder in the six UI themes, light and dark, at desktop and phone
    width, and in the seven languages.
+6. The limits of a recording (length, size, storage) and the expiry of the
+   recorder's entry.
+7. The three sources of the in-app recorder (#697): the system audio of a
+   screen share and the microphone mixed with it are recorded and uploaded
+   at the next online load; the source is kept in the crash-recovery copy,
+   which the app offers with that source; a share ended from the browser
+   stops and saves the recording; a share that is canceled or has no audio
+   is refused with the in-app recorder's texts; and every track and the
+   AudioContext are stopped. Chromium's fake capture (FAKE_MEDIA) answers
+   getDisplayMedia with a fake screen and a fake audio track.
 
 Stopping the server is what a server or a connection that is down looks
 like to the browser: navigator.onLine stays true and every request fails.
@@ -897,6 +907,7 @@ def test_screens_of_the_new_states_in_light_and_dark_at_two_widths(context, app)
 
 LOOK = """() => {
     const card = document.querySelector('.or-card').getBoundingClientRect();
+    const items = [...document.querySelectorAll('#or-source [data-or-mode]')].map((el) => el.getBoundingClientRect());
     const button = document.getElementById('or-record');
     const b = button.getBoundingClientRect();
     const style = (el) => getComputedStyle(el);
@@ -904,6 +915,7 @@ LOOK = """() => {
         scroll: document.scrollingElement.scrollWidth - window.innerWidth,
         cardInside: card.left >= 0 && card.right <= window.innerWidth + 0.5,
         buttonInside: b.left >= card.left && b.right <= card.right && b.width > 100,
+        sourceInside: items.length === 3 && items.every((r) => r.left >= card.left && r.right <= card.right && r.height >= 36),
         buttonBg: style(button).backgroundColor,
         buttonColor: style(button).color,
         cardBg: style(document.querySelector('.or-card')).backgroundColor,
@@ -934,6 +946,7 @@ def test_the_recorder_in_every_theme_mode_and_width(context, app):
                     assert look["theme"] == theme and look["dark"] == dark, look
                     assert look["scroll"] <= 0, f"{theme} {dark} {width}: horizontal scroll {look}"
                     assert look["cardInside"] and look["buttonInside"], f"{theme} {dark} {width}: {look}"
+                    assert look["sourceInside"], f"{theme} {dark} {width}: the source picker leaves the card {look}"
                     assert look["buttonBg"] != look["cardBg"], f"{theme} {dark} {width}: the record button does not stand out {look}"
                     assert look["buttonBg"] != look["buttonColor"], look
                     results.append((theme, dark, width, look["bodyBg"], look["cardBg"]))
@@ -979,3 +992,255 @@ def test_the_recorder_speaks_the_language_of_the_app(context, app):
                 shot(page, f"lang-{code}")
     finally:
         back_online(context, page)
+
+
+# ---- 7: system audio and both (#697) ------------------------------------------------
+
+def media_spy(share=""):
+    """An init script that keeps every stream and AudioContext the page makes
+    (window.__media), to check that each is stopped. share: '' as the browser
+    answers; 'cancel' a canceled share; 'silent' a share without audio;
+    'none' a browser without getDisplayMedia."""
+    return """(() => {
+        const share = %s;
+        const md = navigator.mediaDevices;
+        if (!md) return;
+        window.__media = { shares: [], mics: [], contexts: [] };
+        if (share === 'none') { delete MediaDevices.prototype.getDisplayMedia; return; }
+        const display = md.getDisplayMedia.bind(md);
+        md.getDisplayMedia = async (constraints) => {
+            window.__media.asked = constraints;
+            if (share === 'cancel') throw new DOMException('Permission denied', 'NotAllowedError');
+            const stream = await display(constraints);
+            if (share === 'silent') for (const t of stream.getAudioTracks()) { t.stop(); stream.removeTrack(t); }
+            window.__media.shares.push(stream);
+            return stream;
+        };
+        const user = md.getUserMedia.bind(md);
+        md.getUserMedia = async (constraints) => {
+            const stream = await user(constraints);
+            window.__media.mics.push(stream);
+            return stream;
+        };
+        const Base = window.AudioContext;
+        window.AudioContext = class extends Base {
+            constructor(...args) { super(...args); window.__media.contexts.push(this); }
+        };
+    })()""" % json.dumps(share)
+
+
+MEDIA_STATE = """() => {
+    const m = window.__media;
+    const tracks = (list) => list.flatMap((s) => s.getTracks().map((t) => t.kind + ':' + t.readyState));
+    return { shares: tracks(m.shares), mics: tracks(m.mics), contexts: m.contexts.map((c) => c.state),
+             shareCount: m.shares.length, micCount: m.mics.length, asked: m.asked || null };
+}"""
+
+SESSION_MODE = """() => new Promise((resolve) => {
+    const request = indexedDB.open('SpeakrRecordings');
+    request.onupgradeneeded = () => request.transaction.abort();
+    request.onerror = (event) => { event.preventDefault(); resolve(null); };
+    request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('activeRecording')) { db.close(); resolve(null); return; }
+        const get = db.transaction(['activeRecording'], 'readonly').objectStore('activeRecording').get('current');
+        get.onsuccess = () => {
+            db.close();
+            const s = get.result;
+            resolve(s ? { mode: s.mode, chunks: (s.chunks || []).length } : null);
+        };
+    };
+})"""
+
+
+def choose_source(page, mode):
+    page.locator(f'#or-source [data-or-mode="{mode}"]').click()
+    assert page.locator(f'#or-source [data-or-mode="{mode}"]').get_attribute("aria-checked") == "true"
+
+
+def all_stopped(state):
+    return all(t.endswith(":ended") for t in state["shares"] + state["mics"]) and all(c == "closed" for c in state["contexts"])
+
+
+def test_the_recorder_records_system_audio_and_both_and_the_app_uploads_them(context, app, admin_api):
+    page = app
+    context.add_init_script(media_spy())
+    before = server_ids(admin_api)
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        source = page.locator("#or-source")
+        assert source.is_visible()
+        assert source.locator("#or-source-label").inner_text() == en("recording.source")
+        labels = [b.inner_text().strip() for b in source.locator("[data-or-mode]").all()]
+        assert labels == [en("recording.microphone"), en("recording.systemAudio"), en("recording.microphoneAndSystem")], labels
+        assert source.locator('[aria-checked="true"]').get_attribute("data-or-mode") == "microphone"
+        assert not page.locator("#or-source-hint").is_visible()
+        assert source.locator("[data-or-mode]:disabled").count() == 0
+
+        # System audio: the share's audio alone, its video stopped at once.
+        choose_source(page, "system")
+        page.locator("#or-record").click()
+        page.locator("#or-stop").wait_for(state="visible", timeout=WAIT)
+        assert not source.is_visible(), "the source can be changed while recording"
+        state = page.evaluate(MEDIA_STATE)
+        assert state["asked"] == {"video": True, "audio": True, "audioSelection": "preferred"}, state
+        assert state["shares"] == ["audio:live", "video:ended"] and state["micCount"] == 0, state
+        page.wait_for_timeout(3000)
+        assert page.evaluate(SESSION_MODE)["mode"] == "system"
+        page.locator("#or-stop").click()
+        page.wait_for_function(f"() => document.getElementById('or-status').textContent === {json.dumps(en('offlineRecorder.saved'))}",
+                               timeout=WAIT)
+        assert all_stopped(page.evaluate(MEDIA_STATE)), page.evaluate(MEDIA_STATE)
+        assert page.evaluate(LOCAL_SESSION) is None
+
+        # Both: the share first, then the microphone, mixed in an AudioContext.
+        choose_source(page, "both")
+        page.locator("#or-record").click()
+        page.locator("#or-stop").wait_for(state="visible", timeout=WAIT)
+        state = page.evaluate(MEDIA_STATE)
+        assert state["shareCount"] == 2 and state["micCount"] == 1 and state["contexts"] == ["running"], state
+        page.wait_for_timeout(3000)
+        assert page.evaluate(SESSION_MODE)["mode"] == "both"
+        shot(page, "source-both-recording")
+        page.locator("#or-stop").click()
+        page.wait_for_function(f"() => document.getElementById('or-status').textContent === {json.dumps(en('offlineRecorder.saved'))}",
+                               timeout=WAIT)
+        state = page.evaluate(MEDIA_STATE)
+        assert all_stopped(state) and state["contexts"] == ["closed"], state
+
+        records = sorted(pending(page), key=lambda r: r["timestamp"])
+        assert [r["recordingMode"] for r in records] == ["system", "both"], records
+        for record in records:
+            assert record["source"] == "offline" and record["fromRecorder"] is True, record
+            assert record["bytes"] > 1000 and 2.5 <= record["duration"] <= 8, record
+        # The choice is remembered, as in the app.
+        open_recorder(page)
+        assert page.locator('#or-source [aria-checked="true"]').get_attribute("data-or-mode") == "both"
+        shot(page, "source-remembered")
+    finally:
+        back_online(context, page)
+    open_app(page)
+    new = wait_new_recordings(admin_api, before, 2)
+    assert len(new) == 2, new
+    wait_pending(page, 0)
+    reload_app(page)
+    page.wait_for_timeout(2000)
+    assert not recovery_offered(page)
+    assert server_ids(admin_api) - before == new
+    page.evaluate("() => localStorage.removeItem('recordSource')")
+
+
+def test_a_share_ended_from_the_browser_stops_and_saves_the_recording(context, app):
+    page = app
+    context.add_init_script(media_spy())
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        choose_source(page, "both")
+        page.locator("#or-record").click()
+        page.locator("#or-stop").wait_for(state="visible", timeout=WAIT)
+        page.wait_for_timeout(3000)
+        # What the browser's "Stop sharing" does: the share's audio track ends.
+        page.evaluate("() => window.__media.shares[0].getAudioTracks()[0].dispatchEvent(new Event('ended'))")
+        page.wait_for_function(f"() => document.getElementById('or-status').textContent === {json.dumps(en('offlineRecorder.saved'))}",
+                               timeout=WAIT)
+        assert page.locator("#or-record").is_visible() and not page.locator("#or-stop").is_visible()
+        assert all_stopped(page.evaluate(MEDIA_STATE)), page.evaluate(MEDIA_STATE)
+        [record] = pending(page)
+        assert record["recordingMode"] == "both" and record["bytes"] > 1000, record
+        assert page.evaluate(LOCAL_SESSION) is None
+        page.evaluate("() => localStorage.removeItem('recordSource')")
+    finally:
+        back_online(context, page)
+
+
+@pytest.mark.parametrize("share,message", [("cancel", "toasts.screenShareCancelled"), ("silent", "offlineRecorder.noAudioTrack")])
+def test_a_canceled_share_or_one_without_audio_records_nothing(context, app, share, message):
+    page = app
+    context.add_init_script(media_spy(share))
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        for mode in ("system", "both"):
+            choose_source(page, mode)
+            page.locator("#or-record").click()
+            page.wait_for_function(f"() => document.getElementById('or-status').textContent === {json.dumps(en(message))}",
+                                   timeout=WAIT)
+            assert page.locator("#or-record").is_visible() and not page.locator("#or-stop").is_visible()
+            state = page.evaluate(MEDIA_STATE)
+            # No microphone is asked for after a refused share, and nothing is left running.
+            assert state["micCount"] == 0 and all_stopped(state), state
+        shot(page, f"source-{share}")
+        assert pending(page) == []
+        assert page.evaluate(LOCAL_SESSION) is None
+        page.evaluate("() => localStorage.removeItem('recordSource')")
+    finally:
+        back_online(context, page)
+
+
+def test_without_display_capture_only_the_microphone_is_offered(context, app):
+    page = app
+    context.add_init_script(media_spy("none"))
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        # A choice of the app on a browser that could share is not used here.
+        page.evaluate("() => localStorage.setItem('recordSource', 'both')")
+        open_recorder(page)
+        source = page.locator("#or-source")
+        assert source.locator('[aria-checked="true"]').get_attribute("data-or-mode") == "microphone"
+        assert source.locator("[data-or-mode]:disabled").count() == 2
+        assert page.locator("#or-source-hint").inner_text() == en("recording.systemAudioNotSupported")
+        shot(page, "source-unsupported")
+        page.locator("#or-record").click()
+        page.locator("#or-stop").wait_for(state="visible", timeout=WAIT)
+        page.wait_for_timeout(2000)
+        page.locator("#or-stop").click()
+        page.wait_for_function(f"() => document.getElementById('or-status').textContent === {json.dumps(en('offlineRecorder.saved'))}",
+                               timeout=WAIT)
+        [record] = pending(page)
+        assert record["recordingMode"] == "microphone", record
+        assert all_stopped(page.evaluate(MEDIA_STATE))
+        page.evaluate("() => localStorage.removeItem('recordSource')")
+    finally:
+        back_online(context, page)
+
+
+def test_the_app_offers_an_interrupted_recording_with_its_source_and_uploads_it(context, app, admin_api):
+    """A tab closed during a recording of both: the crash-recovery copy has
+    the source, and the app offers it as a recording of both."""
+    page = app
+    before = server_ids(admin_api)
+    context.set_offline(True)
+    try:
+        open_recorder(page)
+        choose_source(page, "both")
+        page.locator("#or-record").click()
+        page.locator("#or-stop").wait_for(state="visible", timeout=WAIT)
+        until(page, f"async () => {{ const s = await ({SESSION_MODE})(); return s && s.chunks >= 2 && s.mode === 'both'; }}",
+              what="two chunks of the crash-recovery copy")
+        page.close(run_before_unload=False)
+    finally:
+        context.set_offline(False)
+    page = context.new_page()
+    page.on("dialog", lambda d: d.dismiss())
+    open_app(page)
+    modal = page.locator(".modal-panel", has=page.get_by_text(en("recording.recoveryTitle"), exact=True))
+    modal.wait_for(state="visible", timeout=WAIT)
+    assert en("recording.modeBoth") in modal.inner_text(), modal.inner_text()
+    page.wait_for_function("() => !document.documentElement.classList.contains('app-loading')", timeout=WAIT)
+    page.wait_for_timeout(1200)  # the page and the dialog fade in
+    shot(page, "source-recovery")
+    modal.locator("button", has_text=en("recording.restoreRecording")).click()
+    upload = page.locator("button", has_text=en("help.uploadRecordingNotes")).first
+    upload.wait_for(state="visible", timeout=WAIT)
+    upload.click()
+    new = wait_new_recordings(admin_api, before, 1)
+    assert len(new) == 1, new
+    reload_app(page)
+    page.wait_for_timeout(3000)
+    assert not recovery_offered(page)
+    assert page.evaluate(LOCAL_SESSION) is None
+    assert server_ids(admin_api) - before == new
+    page.evaluate("() => localStorage.removeItem('recordSource')")
