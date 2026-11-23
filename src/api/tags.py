@@ -21,7 +21,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import api_error
-from src.utils.request_body import id_fields_error, json_object_body
+from src.utils.request_body import PROCESSING_FIELDS, clean_fields, id_fields_error, json_object_body
 
 # Create blueprint
 tags_bp = Blueprint('tags', __name__)
@@ -206,6 +206,10 @@ def create_tag():
     ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
     if ids_error:
         return ids_error
+    # Prompts and defaults of the right type and length, flags parsed (#687)
+    fields_error = clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
 
     color_ok, color_val = _validate_tag_color(data.get('color'))
     if not color_ok:
@@ -352,6 +356,10 @@ def update_tag(tag_id):
     ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
     if ids_error:
         return ids_error
+    # Prompts and defaults of the right type and length, flags parsed (#687)
+    fields_error = clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
     before = sharing_state(tag)
 
     if 'name' in data:
@@ -551,6 +559,10 @@ def create_group_tag(group_id):
     name, name_error = clean_tag_name(data.get('name'))
     if name_error:
         return name_error
+    fields_error = (id_fields_error(data, ('naming_template_id', 'export_template_id'))
+                    or clean_fields(data, PROCESSING_FIELDS))
+    if fields_error:
+        return fields_error
 
     color_ok, color_val = _validate_tag_color(data.get('color'))
     if not color_ok:

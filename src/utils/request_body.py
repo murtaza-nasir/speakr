@@ -233,6 +233,51 @@ def id_args_error(names, code='invalid_integer_value'):
     return None
 
 
+# ------------------------------------------------------------ field specs
+
+def clean_fields(data, spec):
+    """Check the fields of `spec` present in data and normalise them in
+    place; None when every one is usable, else the 400 answer for the
+    first that is not. A spec entry is one of:
+
+    - ('str', max_length or None): a string or null; field_must_be_string,
+      field_too_long;
+    - ('int', low, high): a whole number from low to high, its digits as a
+      string, or null/'' (stored as null); field_out_of_range;
+    - ('flag',): parse_flag; invalid_boolean_flag.
+
+    For the processing fields of folders and tags (#687), whose columns are
+    String(n), Integer and Boolean."""
+    for field, rule in spec.items():
+        if field not in data:
+            continue
+        value = data[field]
+        kind = rule[0]
+        if kind == 'str':
+            if value is None:
+                continue
+            if not isinstance(value, str):
+                return jsonify(api_error('field_must_be_string', field=field)), 400
+            if rule[1] is not None and len(value.strip()) > rule[1]:
+                return jsonify(api_error('field_too_long', field=field, max=rule[1])), 400
+        elif kind == 'int':
+            low, high = rule[1], rule[2]
+            if value is None or value == '':
+                data[field] = None
+                continue
+            if isinstance(value, str) and value.strip().lstrip('-').isdecimal():
+                value = int(value.strip())
+            if not is_int(value) or not low <= value <= high:
+                return jsonify(api_error('field_out_of_range', field=field, min=low, max=high)), 400
+            data[field] = value
+        elif kind == 'flag':
+            parsed = parse_flag(value)
+            if parsed is None:
+                return jsonify(api_error('invalid_boolean_flag', key=field)), 400
+            data[field] = parsed
+    return None
+
+
 def int_args_error(bounds):
     """The 400 answer field_out_of_range for the first query-string
     argument of `bounds` ({name: (low, high)}) that is a whole number
@@ -250,3 +295,23 @@ def int_args_error(bounds):
         if not low <= value <= high:
             return jsonify(api_error('field_out_of_range', field=name, min=low, max=high)), 400
     return None
+
+
+# The processing fields of a folder or a tag, for clean_fields: the columns
+# are Text, String(10), String(120), Integer and Boolean (#687).
+PROCESSING_FIELDS = {
+    'custom_prompt': ('str', None),
+    'title_prompt': ('str', None),
+    'default_language': ('str', 10),
+    'default_min_speakers': ('int', 0, 100),
+    'default_max_speakers': ('int', 0, 100),
+    'default_hotwords': ('str', None),
+    'default_initial_prompt': ('str', None),
+    'default_transcription_model': ('str', 120),
+    # -1 keeps the recordings forever (protected from auto-deletion)
+    'retention_days': ('int', -1, 36500),
+    'protect_from_deletion': ('flag',),
+    'auto_share_on_apply': ('flag',),
+    'share_with_group_lead': ('flag',),
+    'is_auto_process': ('flag',),
+}

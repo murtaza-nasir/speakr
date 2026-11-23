@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from src.database import db
 from src.models import *
 from src.utils.localization import api_error
-from src.utils.request_body import id_fields_error, is_db_id, is_int_list, json_object_body
+from src.utils.request_body import PROCESSING_FIELDS, clean_fields, id_fields_error, is_db_id, is_int_list, json_object_body
 from src.services.auto_shares import (apply_folder_shares, drop_stale_auto_shares, regroup_error,
                                       share_scope_refusal, sharing_state, sync_source_shares)
 
@@ -183,6 +183,10 @@ def create_folder():
     ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
     if ids_error:
         return ids_error
+    # Prompts and defaults of the right type and length, flags parsed (#687)
+    fields_error = clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
 
     name, error_key = _clean_folder_name(data.get('name'))
     if error_key:
@@ -309,6 +313,10 @@ def update_folder(folder_id):
     ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
     if ids_error:
         return ids_error
+    # Prompts and defaults of the right type and length, flags parsed (#687)
+    fields_error = clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
     before = sharing_state(folder)
 
     if 'name' in data:
@@ -519,6 +527,10 @@ def create_group_folder(group_id):
     ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
     if ids_error:
         return ids_error
+    # Prompts and defaults of the right type and length, flags parsed (#687)
+    fields_error = clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
 
     name, error_key = _clean_folder_name(data.get('name'))
     if error_key:

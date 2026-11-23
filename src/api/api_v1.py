@@ -2616,6 +2616,10 @@ def create_tag():
     if name_error:
         return name_error
     data['name'] = name
+    from src.utils.request_body import PROCESSING_FIELDS, clean_fields, id_fields_error
+    fields_error = id_fields_error(data, ('group_id',)) or clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
 
     group_id = data.get('group_id')
 
@@ -2704,6 +2708,10 @@ def update_tag(tag_id):
         if name_error:
             return name_error
         data['name'] = name
+    from src.utils.request_body import PROCESSING_FIELDS, clean_fields, id_fields_error
+    fields_error = id_fields_error(data, ('group_id',)) or clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
     from src.services.auto_shares import regroup_error, regroup_name_error, share_scope_refusal, sharing_state, sync_source_shares
     before = sharing_state(tag)
 
