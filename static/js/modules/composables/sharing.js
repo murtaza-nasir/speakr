@@ -634,7 +634,10 @@ export function useSharing(state, utils) {
             isLoadingPublicShares.value = false;
         }
 
-        // Load existing internal shares
+        // Load existing internal shares. With internal sharing off the
+        // dialog has no section for them, and the route answers 403.
+        recordingInternalShares.value = [];
+        if (!enableInternalSharing.value) return;
         isLoadingInternalShares.value = true;
         try {
             const response = await fetch(`/api/recordings/${recording.id}/shares-internal`);
