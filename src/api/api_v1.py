@@ -21,7 +21,8 @@ from datetime import datetime, date, timedelta, timezone
 from functools import wraps
 
 from src.utils.dates import FILTER_DATE_MAX, FILTER_DATE_MIN, to_utc_naive
-from src.utils.request_body import flag_fields, json_body, json_object_body, is_db_id, is_int_list, parse_flag
+from src.utils.request_body import (flag_fields, json_body, json_object_body, is_db_id, is_int_list, parse_flag,
+                                    str_field)
 from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
@@ -3243,10 +3244,10 @@ def create_speaker():
     data, body_error = json_object_body()
     if body_error:
         return body_error
-    if not data.get('name') or not isinstance(data['name'], str):
-        return jsonify(api_error('speaker_name_required')), 400
-
-    name = data['name'].strip()
+    # A non-blank string: "   " is no name, null or a number not one (#680)
+    name, name_error = str_field(data, 'name', 'speaker_name_required')
+    if name_error:
+        return name_error
     if is_generic_speaker_label(name):
         return jsonify({'error': translate('server.apiError.speaker_name_generic'), 'code': 'invalid_parameter'}), 400
     if speaker_name_too_long(name):
@@ -3301,8 +3302,9 @@ def update_speaker(speaker_id):
 
     renamed = {}
     if 'name' in data:
-        new_name = (data.get('name') or '').strip()
-        if not new_name:
+        # A non-blank string; null or a number is refused, not stripped (#680)
+        new_name, name_error = str_field(data, 'name', 'speaker_name_empty')
+        if name_error:
             db.session.rollback()
             return jsonify({'error': translate('server.apiError.speaker_name_empty'), 'code': 'invalid_parameter'}), 400
         if is_generic_speaker_label(new_name):
