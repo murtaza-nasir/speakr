@@ -72,6 +72,14 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/t
 
 The waveform of the timeline is computed by the instance with ffmpeg (`GET /audio/<id>/peaks`), so ffmpeg must be installed where Speakr runs; `test.yml` installs it in the `browser-smoke` job.
 
+## Trim browser test
+
+`test_trim_ui.py` covers trim mode in the timeline of the segment editor (#660): the Trim button, the start handle dragged on the waveform, an end time typed in its field (and a text that is not a time), the counts of removed and shortened segments, Preview, Esc and Cancel, a trim refused while edits are unsaved, the app's own question before the cut, and the cut itself, checked against the stored recording (its length and its transcript moved to start at 0:00) and the player on the page. A second test takes screenshots of trim mode in all six themes and at phone width, where a handle is dragged with touch events. It cuts the third seeded recording (`TRIM_TITLE` in `seed_recordings.py`), which no other test uses, so the other tests keep their 90-second audio. It runs with the same gate, instance and CI job as the segment editor test.
+
+## Recording header browser test
+
+`test_header_fixes_ui.py` covers the pen beside the title, which puts the cursor in the title field with the title selected (#686), and the share dialog with public sharing switched off and on in System Settings: off, it says that no public link can be created and has no button for one (#685). The setting is put back afterwards.
+
 ## Transcript view browser test
 
 `test_transcript_view_ui.py` covers the transcript on the recording page with a long transcript. The page renders only the part of a transcript that is near the viewport (`static/js/modules/composables/transcript-view.js`); the test stores 20,000 segments and checks that the page stays small (the segments in the DOM and the number of elements in the page) at the top, in the middle and at the end, that scrolling by the wheel moves the text by exactly that much, that the find bar (Ctrl+F) goes to a match far down the transcript and marks it, that a click on a far row seeks the player, that the playing segment is followed, that the bubble view shows the place that was being read, that the segment editor opens over a page that is still rendered and edits cheaply (style and layout time, read from the browser), and a phone-width layout. A last test checks that a short transcript is still rendered whole, with the browser's own find left alone. The 20,000 segments are spread over the seeded audio file's 90 seconds, so a segment far down the list has a time the player can seek to.
