@@ -119,16 +119,22 @@ def check_common(page, problems, path):
     assert not problems.play_cdn, f"{path}: Tailwind Play CDN in use: {problems.play_cdn}"
     # Utilities from the compiled stylesheet apply (a probe element, so the
     # check does not depend on any page's markup).
+    # mt-2 is 0.5rem and px-4 1rem: in px they follow the root font size,
+    # which a theme may change (classic has 14px, desk 13px). Spacing, not
+    # rounded-lg: desk gives the rounded-* classes radii of its own.
     probe = page.evaluate("""() => {
         const el = document.createElement('div');
-        el.className = 'rounded-lg px-4 hidden';
+        el.className = 'mt-2 px-4 hidden';
         document.body.appendChild(el);
         const s = getComputedStyle(el);
-        const out = {display: s.display, radius: s.borderTopLeftRadius, padding: s.paddingLeft};
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const out = {display: s.display, margin: parseFloat(s.marginTop) / rem,
+                     padding: parseFloat(s.paddingLeft) / rem, rem};
         el.remove();
         return out;
     }""")
-    assert probe == {"display": "none", "radius": "8px", "padding": "16px"}, f"{path}: Tailwind utilities not applied: {probe}"
+    assert probe["rem"] > 0 and probe["display"] == "none" and abs(probe["margin"] - 0.5) < 0.01 \
+        and abs(probe["padding"] - 1) < 0.01, f"{path}: Tailwind utilities not applied: {probe}"
 
 
 def clear_finished_jobs(request, base):

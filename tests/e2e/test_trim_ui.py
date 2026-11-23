@@ -281,11 +281,7 @@ def test_trim_mode_in_every_theme_and_on_a_phone(desk):
                 bar = session.page.locator(BAR).bounding_box()
                 modal = session.page.locator(".asr-editor-modal").bounding_box()
                 assert bar["x"] >= modal["x"] - 0.5 and bar["x"] + bar["width"] <= modal["x"] + modal["width"] + 0.5
-                # (check_common's probe of Tailwind's spacing does not hold in
-                # every theme: the problems of the page are checked here)
-                assert not session.problems.failed and not session.problems.errors, \
-                    f"{theme}: {session.problems.failed} {session.problems.errors}"
-                assert not session.native
+                session.check(f"trim mode, {theme} theme")
                 session.action("trim-cancel").click()
                 session.page.locator(BAR).wait_for(state="detached", timeout=5000)
                 session.page.locator(".asr-editor-modal .modal-close").click()
