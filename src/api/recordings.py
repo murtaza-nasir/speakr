@@ -24,7 +24,7 @@ from src.services.recording_deletion import delete_recording_completely, cleanup
 from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
-from src.utils.request_body import json_body, json_object_body, is_int_list
+from src.utils.request_body import json_body, json_object_body, is_db_id, is_int_list
 from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
 from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
@@ -3788,7 +3788,10 @@ def bulk_delete_recordings():
             return jsonify(api_error('missing_recording_ids')), 400
 
         recording_ids = data.get('recording_ids', [])
-        if not isinstance(recording_ids, list) or len(recording_ids) == 0:
+        # A list of ids, every item checked before the first change (#666)
+        if not is_int_list(recording_ids):
+            return jsonify(api_error('invalid_recording_ids_list')), 400
+        if len(recording_ids) == 0:
             return jsonify(api_error('recording_ids_empty')), 400
 
         # Limit bulk operations to prevent abuse
@@ -3855,6 +3858,11 @@ def bulk_update_tags():
 
         if not recording_ids or not tag_id:
             return jsonify(api_error('missing_recording_ids_or_tag_id')), 400
+        # A list of ids, every item checked before the first change (#666)
+        if not is_int_list(recording_ids):
+            return jsonify(api_error('invalid_recording_ids_list')), 400
+        if not is_db_id(tag_id):
+            return jsonify(api_error('invalid_integer_value')), 400
 
         if action not in ['add', 'remove']:
             return jsonify(api_error('invalid_bulk_tag_action')), 400
@@ -3968,6 +3976,9 @@ def bulk_reprocess():
 
         if not recording_ids:
             return jsonify(api_error('missing_recording_ids')), 400
+        # A list of ids, every item checked before the first change (#666)
+        if not is_int_list(recording_ids):
+            return jsonify(api_error('invalid_recording_ids_list')), 400
 
         if reprocess_type not in ['transcription', 'summary']:
             return jsonify(api_error('invalid_reprocess_type')), 400
@@ -4038,6 +4049,9 @@ def bulk_toggle():
 
         if not recording_ids or field is None or value is None:
             return jsonify(api_error('missing_bulk_status_fields')), 400
+        # A list of ids, every item checked before the first change (#666)
+        if not is_int_list(recording_ids):
+            return jsonify(api_error('invalid_recording_ids_list')), 400
 
         if field not in ['inbox', 'highlight', 'archive']:
             return jsonify(api_error('invalid_bulk_status_field')), 400

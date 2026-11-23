@@ -3862,7 +3862,8 @@
       "unknown_user_default": "Valeur par défaut d'utilisateur inconnue",
       "invalid_context_chunks": "context_chunks doit être compris entre 1 et {{max}}",
       "invalid_token_budget": "Le budget mensuel de jetons doit être un nombre entier positif ou nul. Laissez le champ vide pour ne fixer aucune limite.",
-      "invalid_transcription_budget": "Le budget mensuel de transcription doit être un nombre entier positif ou nul. Laissez le champ vide pour ne fixer aucune limite."
+      "invalid_transcription_budget": "Le budget mensuel de transcription doit être un nombre entier positif ou nul. Laissez le champ vide pour ne fixer aucune limite.",
+      "invalid_updates": "updates doit être un objet"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",

@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from src.database import db
 from src.models import *
 from src.utils.localization import api_error
+from src.utils.request_body import is_db_id, is_int_list, json_object_body
 from src.services.auto_shares import (apply_folder_shares, drop_stale_auto_shares, regroup_error,
                                       share_scope_refusal, sharing_state, sync_source_shares)
 
@@ -631,8 +632,13 @@ def assign_recording_folder(recording_id):
         if recording.user_id != current_user.id:
             return jsonify(api_error('recording_modify_denied')), 403
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     folder_id = data.get('folder_id')
+    # An id, or null to leave the folder (#664, #677)
+    if folder_id is not None and not is_db_id(folder_id):
+        return jsonify(api_error('invalid_folder_id')), 400
 
     if folder_id:
         # Verify folder exists and user has access
@@ -710,12 +716,19 @@ def bulk_assign_folder():
     if not folders_enabled:
         return jsonify(api_error('folders_disabled')), 403
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     recording_ids = data.get('recording_ids', [])
     folder_id = data.get('folder_id')  # Can be None to remove from folder
 
     if not recording_ids:
         return jsonify(api_error('no_recordings_specified')), 400
+    # A list of ids, every item checked before the first change (#666)
+    if not is_int_list(recording_ids):
+        return jsonify(api_error('invalid_recording_ids_list')), 400
+    if folder_id is not None and not is_db_id(folder_id):
+        return jsonify(api_error('invalid_folder_id')), 400
 
     # Verify folder if specified
     folder = None

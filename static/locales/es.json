@@ -3862,7 +3862,8 @@
       "unknown_user_default": "Valor predeterminado de usuario desconocido",
       "invalid_context_chunks": "context_chunks debe estar entre 1 y {{max}}",
       "invalid_token_budget": "El presupuesto mensual de tokens debe ser un número entero de 0 o más. Déjelo vacío para no poner límite.",
-      "invalid_transcription_budget": "El presupuesto mensual de transcripción debe ser un número entero de 0 o más. Déjelo vacío para no poner límite."
+      "invalid_transcription_budget": "El presupuesto mensual de transcripción debe ser un número entero de 0 o más. Déjelo vacío para no poner límite.",
+      "invalid_updates": "updates debe ser un objeto"
     },
     "apiMessage": {
       "accountUpdated": "Datos de la cuenta actualizados",

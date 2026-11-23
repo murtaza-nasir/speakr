@@ -3930,7 +3930,9 @@ def download_audio(recording_id):
 @login_required
 def batch_update_recordings():
     """Batch update multiple recordings."""
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
 
@@ -3939,6 +3941,14 @@ def batch_update_recordings():
 
     if not recording_ids:
         return jsonify(api_error('recording_ids_required')), 400
+    # Every id and every update is checked before the first change (#666)
+    if not is_int_list(recording_ids):
+        return jsonify(api_error('invalid_recording_ids_list')), 400
+    if not isinstance(updates, dict):
+        return jsonify(api_error('invalid_updates')), 400
+    for key in ('add_tag_ids', 'remove_tag_ids'):
+        if key in updates and not is_int_list(updates[key]):
+            return jsonify(api_error('invalid_tag_ids')), 400
 
     # If folder_id is being set on the batch, validate target folder access
     # once up front. The same destination folder applies to every recording
@@ -4097,13 +4107,18 @@ def batch_update_recordings():
 @audit.emits('recording.deleted')
 def batch_delete_recordings():
     """Batch delete multiple recordings."""
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
 
     recording_ids = data.get('recording_ids', [])
     if not recording_ids:
         return jsonify(api_error('recording_ids_required')), 400
+    # A list of ids, every item checked before the first change (#666)
+    if not is_int_list(recording_ids):
+        return jsonify(api_error('invalid_recording_ids_list')), 400
 
     from src.models import SystemSetting
     USERS_CAN_DELETE = bool(SystemSetting.get_setting('users_can_delete', os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'))
@@ -4150,13 +4165,18 @@ def batch_transcribe_recordings():
     """Batch queue transcriptions for multiple recordings."""
     from src.services.job_queue import job_queue
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
 
     recording_ids = data.get('recording_ids', [])
     if not recording_ids:
         return jsonify(api_error('recording_ids_required')), 400
+    # A list of ids, every item checked before the first change (#666)
+    if not is_int_list(recording_ids):
+        return jsonify(api_error('invalid_recording_ids_list')), 400
 
     results = []
     for recording_id in recording_ids:
