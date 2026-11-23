@@ -659,6 +659,55 @@ if os.environ.get("RATELIMIT_STORAGE_URI"):
 limiter.init_app(app)
 
 
+def _gunicorn_worker_count():
+    """The number of gunicorn workers, as far as this process can tell;
+    None when it is not running under gunicorn or the number is not known.
+
+    gunicorn does not publish it. A worker is forked from the master and
+    shares its command line, so --workers/-w is read from sys.argv, then
+    from GUNICORN_CMD_ARGS, then from WEB_CONCURRENCY (gunicorn's own
+    default). A gunicorn.conf.py that sets workers is not read: None."""
+    import shlex
+    if 'gunicorn' not in os.path.basename(sys.argv[0] if sys.argv else ''):
+        return None
+    for args in (sys.argv[1:], shlex.split(os.environ.get('GUNICORN_CMD_ARGS', ''))):
+        for i, arg in enumerate(args):
+            value = None
+            if arg in ('-w', '--workers') and i + 1 < len(args):
+                value = args[i + 1]
+            elif arg.startswith('--workers='):
+                value = arg.split('=', 1)[1]
+            elif arg.startswith('-w') and arg[2:].isdigit():
+                value = arg[2:]
+            if value is not None and value.strip().isdigit():
+                return int(value)
+    concurrency = os.environ.get('WEB_CONCURRENCY', '')
+    return int(concurrency) if concurrency.strip().isdigit() else None
+
+
+def _log_rate_limit_storage():
+    """One log line at startup, once per process (each gunicorn worker
+    imports the app), when the limits count in this process's memory
+    (#678): a WARNING when more than one worker is known to run, since
+    every limit is then in effect multiplied by their number; an INFO when
+    the number of workers cannot be told."""
+    if not _RATELIMIT_ENABLED or app.config.get('RATELIMIT_STORAGE_URI'):
+        return
+    workers = _gunicorn_worker_count()
+    if workers is not None and workers > 1:
+        app.logger.warning(
+            "Rate limits are counted in the memory of each of the %d gunicorn workers, so each limit "
+            "allows up to %d times its number. Set RATELIMIT_STORAGE_URI (for example redis://...) "
+            "to count them in one place.", workers, workers)
+    elif workers is None and 'gunicorn' in os.path.basename(sys.argv[0] if sys.argv else ''):
+        app.logger.info(
+            "Rate limits are counted in this process's memory; with several gunicorn workers each "
+            "limit allows that many times its number. RATELIMIT_STORAGE_URI counts them in one place.")
+
+
+_log_rate_limit_storage()
+
+
 from flask_limiter.errors import RateLimitExceeded as _RateLimitExceeded
 
 
@@ -849,9 +898,21 @@ def csrf_token_aware_check():
     # If a valid header API token is presented, this request is from a
     # programmatic client and CSRF does not apply. The token is validated
     # against the DB by load_user_from_token_headers_only().
-    from src.utils.token_auth import load_user_from_token_headers_only
+    from src.utils.token_auth import extract_token_from_request, load_user_from_token_headers_only
     if load_user_from_token_headers_only() is not None:
         return
+
+    # A token in a header that is not valid (unknown, expired or revoked)
+    # comes from a programmatic client, which needs to hear that its
+    # credentials failed: 401, not a CSRF 400 (#672). The request is
+    # refused either way, so no check is skipped. A browser session keeps
+    # the CSRF check, and a request without any credentials (a login or
+    # register form among them) still gets it too.
+    if extract_token_from_request(headers_only=True) and not session.get('_user_id'):
+        resp = jsonify(api_error('authentication_required'))
+        resp.status_code = 401
+        resp.headers['WWW-Authenticate'] = 'Bearer error="invalid_token"'
+        return resp
 
     # Otherwise, fall through to the standard CSRF check. If validation
     # fails, csrf.protect() raises a CSRFError which Flask-WTF's error
