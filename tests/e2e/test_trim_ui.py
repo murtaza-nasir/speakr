@@ -35,7 +35,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, en  # noqa: E402
+from browser_checks import PageProblems, check_common, clear_finished_jobs, en  # noqa: E402
 from seed_recordings import TRIM_TITLE  # noqa: E402
 from test_asr_editor_ui import BASE, CANVAS, DIALOG, TL, Editor  # noqa: E402
 
@@ -88,12 +88,7 @@ def clear_trim_jobs(session):
     No other job of the admin runs on this instance. It uses a session that
     is signed in already: the login form is rate limited."""
     page = session.page
-    page.goto(f"{BASE}/")
-    page.wait_for_load_state("load")
-    headers = {"X-CSRFToken": session.csrf(), "Content-Type": "application/json"}
-    for kind in ("completed", "failed"):
-        response = page.request.post(f"{BASE}/api/recordings/jobs/clear-{kind}", headers=headers, data="{}")
-        assert response.ok, f"could not clear the {kind} jobs: HTTP {response.status}"
+    clear_finished_jobs(page.request, BASE)
     status = page.request.get(f"{BASE}/api/recordings/job-queue-status")
     assert status.ok
     left = [j for j in status.json().get("jobs", []) if j.get("job_type") == "trim"]

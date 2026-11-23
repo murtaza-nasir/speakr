@@ -48,6 +48,13 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
 
 `--noconftest` keeps the repository's `conftest.py`, which imports the app, out of a run that only needs Playwright.
 
+### One instance for every browser test
+
+CI runs `tests/e2e/test_browser_smoke.py tests/e2e/test_*_ui.py` against one instance, in alphabetical order. Two rules keep the files independent of that order:
+
+- `run_speakr.py` starts the instance with `RATELIMIT_ENABLED=false`. Every request of the suite comes from 127.0.0.1, so the per-IP limits (1000 requests an hour, ten sign-ins a minute) are reached by the suite itself and answer 429 to whichever test comes next. No browser test relies on a real limit (`test_share_window_ui.py` fakes its 429 with `page.route`); the limits are covered by the Python tests. The published image's smoke test (`smoke_env.py`) keeps the limits.
+- A file leaves no rows in the admin's processing queue or inbox behind: a finished job is a row of the queue on every page, and the phone layout test measures the page. `clear_finished_jobs()` in `browser_checks.py` removes the completed and failed jobs; the offline recorder, trim and toast tests call it (and delete what they uploaded) when they end, and the phone layout test calls it before it measures.
+
 ## Group permission browser test
 
 `test_group_permission_ui.py` covers who can create groups (#576) in the browser: the `permission_create_groups` radio buttons in System settings, the "Can create groups" toggle in the edit-user dialog, the "Members can create groups" toggle in the group dialog, the Group Management entry in the account menu, and group creation, duplicate names, members added by exact username, group admins and deletion on `/group-management`. Setup goes through the app's HTTP API as the seeded admin (internal sharing on, four users with generated passwords, one group); every user signs in through the login form, and the settings are restored afterwards. The checks for failed responses, JavaScript errors and template text are in `browser_checks.py`, shared with the smoke test; a step that expects a refusal (a duplicate name, an unknown username) registers it. It runs with the same gate and instance as the smoke test, in the same `browser-smoke` job:

@@ -131,6 +131,20 @@ def check_common(page, problems, path):
     assert probe == {"display": "none", "radius": "8px", "padding": "16px"}, f"{path}: Tailwind utilities not applied: {probe}"
 
 
+def clear_finished_jobs(request, base):
+    """Remove the signed-in user's completed and failed jobs. A finished job
+    is a row of the processing queue on every page, and the row changes the
+    layout: a file that leaves one behind changes what a later file measures.
+    `request` is a signed-in Playwright request context (page.request or
+    playwright.request.new_context with the session's cookies)."""
+    token = request.get(f"{base}/api/csrf-token").json()["csrf_token"]
+    headers = {"X-CSRFToken": token, "Content-Type": "application/json"}
+    for kind in ("completed", "failed"):
+        response = request.post(f"{base}/api/recordings/jobs/clear-{kind}", headers=headers, data="{}")
+        assert response.ok, f"could not clear the {kind} jobs: HTTP {response.status}"
+    return token
+
+
 _strings = None
 
 

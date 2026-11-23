@@ -61,7 +61,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import ROOT, en, login  # noqa: E402
+from browser_checks import ROOT, clear_finished_jobs, en, login  # noqa: E402
 from seed_recordings import TITLES  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
@@ -135,10 +135,22 @@ def admin_cookies(browser):
 
 @pytest.fixture(scope="module")
 def admin_api(pw, admin_cookies):
-    """The admin's session outside every browser profile, to ask the server what it holds."""
+    """The admin's session outside every browser profile, to ask the server what it holds.
+
+    Afterwards the recordings this file uploaded and their finished jobs are
+    removed: they would be rows of the processing queue and of the inbox in
+    the browser test files that run after this one (test_phone_layout_ui
+    measures both)."""
     api = pw.request.new_context(base_url=BASE, storage_state={"cookies": admin_cookies, "origins": []})
+    before = server_ids(api)
     yield api
-    api.dispose()
+    try:
+        token = clear_finished_jobs(api, BASE)
+        for recording_id in server_ids(api) - before:
+            api.delete(f"{BASE}/recording/{recording_id}", headers={"X-CSRFToken": token})
+        clear_finished_jobs(api, BASE)
+    finally:
+        api.dispose()
 
 
 @pytest.fixture
