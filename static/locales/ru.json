@@ -3864,7 +3864,8 @@
       "invalid_transcription_budget": "Месячный бюджет транскрибации должен быть целым числом не меньше 0. Оставьте поле пустым, чтобы не задавать лимит.",
       "invalid_updates": "updates должно быть объектом",
       "tag_name_too_long": "Название тега может содержать не более {{max}} символов",
-      "message_contains_nul": "Вопрос не может содержать символ NUL"
+      "message_contains_nul": "Вопрос не может содержать символ NUL",
+      "field_out_of_range": "{{field}} должно быть целым числом от {{min}} до {{max}}"
     },
     "apiMessage": {
       "accountUpdated": "Данные учётной записи обновлены",

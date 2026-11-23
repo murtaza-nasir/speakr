@@ -21,8 +21,8 @@ from datetime import datetime, date, timedelta, timezone
 from functools import wraps
 
 from src.utils.dates import FILTER_DATE_MAX, FILTER_DATE_MIN, to_utc_naive
-from src.utils.request_body import (flag_fields, json_body, json_object_body, is_db_id, is_int_list, parse_flag,
-                                    str_field)
+from src.utils.request_body import (flag_fields, id_args_error, json_body, json_object_body, is_db_id, is_int_list,
+                                    parse_flag, str_field)
 from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
@@ -1428,6 +1428,10 @@ def list_recordings():
         date_field: What date_from and date_to filter: created_at (default)
                     or meeting_date
     """
+    # An id or page past the column range names nothing: 400 (#664)
+    arg_error = id_args_error(('tag_id', 'folder_id', 'owner_id', 'page', 'per_page'))
+    if arg_error:
+        return arg_error
     # Parse query parameters
     page = request.args.get('page', 1, type=int)
     per_page = min(request.args.get('per_page', 25, type=int), 100)
@@ -1678,6 +1682,10 @@ def search_recordings_v1():
     page (keyword mode).
     """
     from src.services import search_v1
+    # An id or page past the column range names nothing: 400 (#664)
+    arg_error = id_args_error(('tag_id', 'folder_id', 'recording_ids', 'page', 'limit'))
+    if arg_error:
+        return arg_error
     args = request.args
     q = (args.get('q') or '').strip()
     if not 2 <= len(q) <= 500:
@@ -1905,6 +1913,9 @@ def list_recording_changes():
     from src.services.recording_changes import (CursorError, cursor_expired, decode_cursor,
                                                 iso_z, read_changes)
     cursor = request.args.get('cursor') or None
+    arg_error = id_args_error(('limit',))
+    if arg_error:
+        return arg_error
     limit = request.args.get('limit', 100, type=int)
     if limit is None or not 1 <= limit <= 500:
         return jsonify({'error': translate('server.apiError.invalid_limit'), 'code': 'invalid_parameter'}), 400
@@ -2043,6 +2054,9 @@ def get_transcript(recording_id):
         translation: true/1/yes renders the stored translation instead
         template_id: format=text only, one of the user's transcript templates
     """
+    arg_error = id_args_error(('template_id',))
+    if arg_error:
+        return arg_error
     recording = db.session.get(Recording, recording_id)
     if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404

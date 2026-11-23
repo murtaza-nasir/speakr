@@ -3864,7 +3864,8 @@
       "invalid_transcription_budget": "Das monatliche Transkriptionsbudget muss eine ganze Zahl ab 0 sein. Für keine Grenze das Feld leer lassen.",
       "invalid_updates": "updates muss ein Objekt sein",
       "tag_name_too_long": "Tag-Namen dürfen höchstens {{max}} Zeichen lang sein",
-      "message_contains_nul": "Die Frage darf kein NUL-Zeichen enthalten"
+      "message_contains_nul": "Die Frage darf kein NUL-Zeichen enthalten",
+      "field_out_of_range": "{{field}} muss eine ganze Zahl von {{min}} bis {{max}} sein"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

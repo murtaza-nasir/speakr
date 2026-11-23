@@ -24,7 +24,8 @@ from src.services.recording_deletion import delete_recording_completely, cleanup
 from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
-from src.utils.request_body import flag_fields, json_body, json_object_body, is_db_id, is_int_list, parse_flag
+from src.utils.request_body import (flag_fields, id_args_error, json_body, json_object_body, is_db_id, is_int_list,
+                                    parse_flag)
 from src.utils.assistant_limits import checked_history, checked_question, history_trimmed_event
 from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
@@ -130,6 +131,9 @@ def init_recordings_helpers(**kwargs):
 @audit.access('recording.downloaded', details=lambda: {'part': 'transcript', 'format': audit.code(request.args.get('format'), ('txt', 'md'), 'txt')})
 def download_transcript_with_template(recording_id):
     """Download transcript with custom template formatting."""
+    arg_error = id_args_error(('template_id',))
+    if arg_error:
+        return arg_error
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording or not has_recording_access(recording, current_user):
@@ -1301,6 +1305,10 @@ def get_recordings():
 def get_recordings_paginated():
     """Get recordings with pagination and server-side filtering (includes shared recordings)."""
     import re
+    # A folder id or page past the column range names nothing: 400 (#664)
+    arg_error = id_args_error(('folder', 'page', 'per_page'))
+    if arg_error:
+        return arg_error
     try:
         # Parse query parameters
         page = request.args.get('page', 1, type=int)

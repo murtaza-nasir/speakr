@@ -3864,7 +3864,8 @@
       "invalid_transcription_budget": "O orçamento mensal de transcrição deve ser um número inteiro igual ou maior que 0. Deixe em branco para não haver limite.",
       "invalid_updates": "updates deve ser um objeto",
       "tag_name_too_long": "Os nomes de etiqueta podem ter no máximo {{max}} caracteres",
-      "message_contains_nul": "A pergunta não pode conter um caractere NUL"
+      "message_contains_nul": "A pergunta não pode conter um caractere NUL",
+      "field_out_of_range": "{{field}} deve ser um número inteiro de {{min}} a {{max}}"
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",

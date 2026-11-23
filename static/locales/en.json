@@ -3864,7 +3864,8 @@
       "invalid_transcription_budget": "The monthly transcription budget must be a whole number of 0 or more. Leave it empty for no limit.",
       "invalid_updates": "updates must be an object",
       "tag_name_too_long": "Tag names can be at most {{max}} characters long",
-      "message_contains_nul": "The question cannot contain a NUL character"
+      "message_contains_nul": "The question cannot contain a NUL character",
+      "field_out_of_range": "{{field}} must be a whole number from {{min}} to {{max}}"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated",

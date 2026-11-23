@@ -17,7 +17,7 @@ from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
 from src.utils.localization import translate, api_error
-from src.utils.request_body import json_object_body
+from src.utils.request_body import DB_INT_MAX, id_args_error, int_args_error, json_object_body
 from src.utils.search import contains_pattern, LIKE_ESCAPE
 from src.services.retention import (is_recording_exempt_from_deletion, get_retention_days_for_recording,
                                     process_auto_deletion)
@@ -246,6 +246,9 @@ def admin_get_users():
         page = 1
     if page < 1:
         page = 1
+    # Clamped like per_page: a page past the column range is an empty page,
+    # not an offset that overflows the query (#664)
+    page = min(page, DB_INT_MAX)
 
     # Cap kept high enough for admin tooling/exports while still bounding
     # response size and query cost. Out-of-range values are clamped to the
@@ -840,6 +843,9 @@ def admin_audit_log():
     """
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
+    arg_error = id_args_error(('user', 'recording_id', 'before_id', 'after_id'), code='invalid_audit_filter')
+    if arg_error:
+        return arg_error
     try:
         filters, used = _audit_filters()
         before_id = request.args.get('before_id', type=int)
@@ -1132,6 +1138,9 @@ def admin_get_daily_token_stats():
         return jsonify(api_error('unauthorized')), 403
 
     try:
+        arg_error = id_args_error(('user_id',)) or int_args_error({'days': (1, 3650)})
+        if arg_error:
+            return arg_error
         days = request.args.get('days', 30, type=int)
         user_id = request.args.get('user_id', type=int)
 
@@ -1155,6 +1164,9 @@ def admin_get_monthly_token_stats():
         return jsonify(api_error('unauthorized')), 403
 
     try:
+        arg_error = int_args_error({'months': (1, 1200)})
+        if arg_error:
+            return arg_error
         months = request.args.get('months', 12, type=int)
 
         monthly_stats = token_tracker.get_monthly_stats(months=months)
@@ -1238,6 +1250,9 @@ def admin_get_daily_transcription_stats():
         return jsonify(api_error('unauthorized')), 403
 
     try:
+        arg_error = id_args_error(('user_id',)) or int_args_error({'days': (1, 3650)})
+        if arg_error:
+            return arg_error
         days = request.args.get('days', 30, type=int)
         user_id = request.args.get('user_id', type=int)
 
@@ -1261,6 +1276,9 @@ def admin_get_monthly_transcription_stats():
         return jsonify(api_error('unauthorized')), 403
 
     try:
+        arg_error = int_args_error({'months': (1, 1200)})
+        if arg_error:
+            return arg_error
         months = request.args.get('months', 12, type=int)
 
         monthly_stats = transcription_tracker.get_monthly_stats(months=months)

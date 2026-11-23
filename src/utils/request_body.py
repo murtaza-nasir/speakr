@@ -209,3 +209,44 @@ def id_fields_error(data, fields, code='invalid_integer_value'):
         if not is_db_id(value):
             return _answer(code, 400)
     return None
+
+
+# ------------------------------------------------------------ query string
+
+def id_args_error(names, code='invalid_integer_value'):
+    """The 400 answer with `code` when one of the query-string arguments
+    `names` is a whole number past the range of an Integer column, else
+    None. Values that are not whole numbers are left to the route, which
+    reads them as before (most ignore them); only an id that would
+    overflow the lookup is refused here (#664)."""
+    for name in names:
+        raw = request.args.get(name)
+        if raw is None:
+            continue
+        for part in raw.split(','):
+            try:
+                value = int(part)
+            except ValueError:
+                continue
+            if not DB_INT_MIN <= value <= DB_INT_MAX:
+                return _answer(code, 400)
+    return None
+
+
+def int_args_error(bounds):
+    """The 400 answer field_out_of_range for the first query-string
+    argument of `bounds` ({name: (low, high)}) that is a whole number
+    outside its range, else None. For counts such as days, months and page
+    sizes, where a huge number would overflow a date or an offset (#664).
+    Values that are not whole numbers are left to the route."""
+    for name, (low, high) in bounds.items():
+        raw = request.args.get(name)
+        if raw is None:
+            continue
+        try:
+            value = int(raw)
+        except ValueError:
+            continue
+        if not low <= value <= high:
+            return jsonify(api_error('field_out_of_range', field=name, min=low, max=high)), 400
+    return None
