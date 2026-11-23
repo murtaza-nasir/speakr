@@ -73,6 +73,12 @@ JOB_RUNNERS = {
 BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
 
 
+# What a commit raises when the job's row or its recording was deleted by
+# another session after this one loaded it (#681).
+from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
+_ROW_GONE = (StaleDataError, ObjectDeletedError)
+
+
 class StitchTargetMismatch(Exception):
     """A stitch job's session belongs to another recording (#596).
 
@@ -575,12 +581,16 @@ class FairJobQueue:
                 if isinstance(e, StitchTargetMismatch):
                     # The same session and recording would mismatch again, so
                     # no retry; the recording row is not this job's (#596).
-                    job = own_job()
-                    if job:
-                        job.status = 'failed'
-                        job.error_message = error_str
-                        job.completed_at = datetime.utcnow()
-                        db.session.commit()
+                    try:
+                        job = own_job()
+                        if job:
+                            job.status = 'failed'
+                            job.error_message = error_str
+                            job.completed_at = datetime.utcnow()
+                            db.session.commit()
+                    except _ROW_GONE:
+                        self._row_gone_while_storing(job_id, recording_id)
+                        return
                     logger.error(f"Job {job_id} failed: {error_str}")
                     return
 
@@ -607,88 +617,108 @@ class FairJobQueue:
                     logger.warning(f"Job {job_id}: error text could not be shortened: {describe_error(scrub_error)}")
                     error_str = f"{type(e).__name__} (the error text is in the log at DEBUG)"
 
-                # Re-fetch job to update it
-                job = own_job()
-                if job:
-                    job.error_message = error_str
-                    job.retry_count += 1
+                # Re-fetch job to update it. The recording can be deleted
+                # while this runs, and its jobs with it: the commit then
+                # finds no row to update (#681).
+                notify_failure = False
+                try:
+                    job = own_job()
+                    if job:
+                        job.error_message = error_str
+                        job.retry_count += 1
 
-                    # Only retry if: not a permanent error AND under retry limit
-                    if not is_permanent_error and job.retry_count < MAX_RETRIES:
-                        # Re-queue for retry
-                        job.status = 'queued'
-                        job.started_at = None
-                        logger.info(f"Job {job_id} re-queued for retry ({job.retry_count}/{MAX_RETRIES})")
-                        if isinstance(e, SummaryStepFailed):
-                            # The summary step set FAILED before the queue
-                            # decided to retry; the summary is still pending.
-                            recording = db.session.get(Recording, recording_id)
-                            if recording:
-                                recording.status = 'SUMMARIZING'
-                    else:
-                        job.status = 'failed'
-                        job.completed_at = datetime.utcnow()
-                        job.restore_state = None
-                        # No attempt is left to poll a job still saved from
-                        # this one, so it is removed from the ASR service.
-                        self._release_remote_task(job)
-                        recording = db.session.get(Recording, recording_id)
-
-                        if is_permanent_error:
-                            logger.info(f"Job {job_id} failed with permanent error (no retry): {describe_error(e)}")
-
-                        # Always keep recordings with FAILED status so users can see the error
-                        # and reprocess later (e.g., when ASR server recovers)
-                        if recording and not is_background(job_type):
-                            # Keep the recording with FAILED status so user can see the error and fix settings
-                            recording.status = 'FAILED'
-                            # Format the error for nice display. A failed summary
-                            # job keeps the transcript and shows the error as the
-                            # summary; it used to overwrite a good transcript (#412).
-                            from src.utils.error_formatting import format_error_for_storage
+                        # Only retry if: not a permanent error AND under retry limit
+                        if not is_permanent_error and job.retry_count < MAX_RETRIES:
+                            # Re-queue for retry
+                            job.status = 'queued'
+                            job.started_at = None
+                            logger.info(f"Job {job_id} re-queued for retry ({job.retry_count}/{MAX_RETRIES})")
                             if isinstance(e, SummaryStepFailed):
-                                # The summary step stored its own error text
-                                # and error_message (#583); keep them.
-                                if e.stored_summary:
-                                    recording.summary = e.stored_summary
-                                    recording.clear_summary_prompt_used()
-                            elif job_type in ('summarize', 'reprocess_summary'):
-                                recording.summary = format_error_for_storage(error_str)
-                                recording.clear_summary_prompt_used()
-                            else:
-                                recording.transcription = format_error_for_storage(error_str)
-                            if not isinstance(e, SummaryStepFailed):
-                                # The v1 API reports error_message for FAILED
-                                # recordings; this path never set it (#583).
-                                try:
-                                    from src.utils.error_formatting import sanitize_error_message
-                                    recording.error_message = sanitize_error_message(error_str)
-                                except Exception:
-                                    recording.error_message = error_str[:1000]
-
-                        if is_permanent_error:
-                            logger.error(f"Job {job_id} failed permanently (non-retryable error)")
+                                # The summary step set FAILED before the queue
+                                # decided to retry; the summary is still pending.
+                                recording = db.session.get(Recording, recording_id)
+                                if recording:
+                                    recording.status = 'SUMMARIZING'
                         else:
-                            logger.error(f"Job {job_id} failed permanently after {MAX_RETRIES} retries")
+                            job.status = 'failed'
+                            job.completed_at = datetime.utcnow()
+                            job.restore_state = None
+                            # No attempt is left to poll a job still saved from
+                            # this one, so it is removed from the ASR service.
+                            self._release_remote_task(job)
+                            recording = db.session.get(Recording, recording_id)
 
-                        # Webhook fan-out for permanent failure (#275). The
-                        # retryable-failure case does not emit because the
-                        # subscriber will see the eventual success or
-                        # permanent failure that follows the retry loop.
-                        # Background jobs send no webhooks or emails.
-                        if not is_background(job_type):
-                            try:
-                                self._emit_failure_webhook(job_type, recording_id, error_str)
-                            except Exception as e:
-                                logger.warning(f"Webhook emit on job {job_id} failure failed: {e}")
+                            if is_permanent_error:
+                                logger.info(f"Job {job_id} failed with permanent error (no retry): {describe_error(e)}")
 
-                        if not is_background(job_type):
-                            try:
-                                self._emit_failure_email(job_type, recording_id, error_str)
-                            except Exception as e:
-                                logger.warning(f"Failure email for job {job_id} failed: {e}")
+                            # Always keep recordings with FAILED status so users can see the error
+                            # and reprocess later (e.g., when ASR server recovers)
+                            if recording and not is_background(job_type):
+                                # Keep the recording with FAILED status so user can see the error and fix settings
+                                recording.status = 'FAILED'
+                                # Format the error for nice display. A failed summary
+                                # job keeps the transcript and shows the error as the
+                                # summary; it used to overwrite a good transcript (#412).
+                                from src.utils.error_formatting import format_error_for_storage
+                                if isinstance(e, SummaryStepFailed):
+                                    # The summary step stored its own error text
+                                    # and error_message (#583); keep them.
+                                    if e.stored_summary:
+                                        recording.summary = e.stored_summary
+                                        recording.clear_summary_prompt_used()
+                                elif job_type in ('summarize', 'reprocess_summary'):
+                                    recording.summary = format_error_for_storage(error_str)
+                                    recording.clear_summary_prompt_used()
+                                else:
+                                    recording.transcription = format_error_for_storage(error_str)
+                                if not isinstance(e, SummaryStepFailed):
+                                    # The v1 API reports error_message for FAILED
+                                    # recordings; this path never set it (#583).
+                                    try:
+                                        from src.utils.error_formatting import sanitize_error_message
+                                        recording.error_message = sanitize_error_message(error_str)
+                                    except Exception:
+                                        recording.error_message = error_str[:1000]
 
-                    db.session.commit()
+                            if is_permanent_error:
+                                logger.error(f"Job {job_id} failed permanently (non-retryable error)")
+                            else:
+                                logger.error(f"Job {job_id} failed permanently after {MAX_RETRIES} retries")
+
+                            # Webhook fan-out for permanent failure (#275), sent
+                            # once the failure is stored. The retryable-failure
+                            # case does not emit because the subscriber will
+                            # see the eventual success or permanent failure
+                            # that follows the retry loop. Background jobs send
+                            # no webhooks or emails.
+                            notify_failure = not is_background(job_type)
+
+                        db.session.commit()
+                except _ROW_GONE:
+                    self._row_gone_while_storing(job_id, recording_id)
+                    return
+
+                if notify_failure:
+                    try:
+                        self._emit_failure_webhook(job_type, recording_id, error_str)
+                    except Exception as emit_error:
+                        logger.warning(f"Webhook emit on job {job_id} failure failed: {emit_error}")
+                    try:
+                        self._emit_failure_email(job_type, recording_id, error_str)
+                    except Exception as emit_error:
+                        logger.warning(f"Failure email for job {job_id} failed: {emit_error}")
+
+
+    @staticmethod
+    def _row_gone_while_storing(job_id, recording_id):
+        """The job's row or its recording was deleted before the outcome was stored (#681)."""
+        from src.database import db
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        logger.info(f"Job {job_id}: recording {recording_id} or its job was deleted while the job's "
+                    f"outcome was stored; nothing more is stored or sent")
 
     @staticmethod
     def _own_job(job_id, recording_id, created_at):
