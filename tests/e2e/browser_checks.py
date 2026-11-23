@@ -86,14 +86,36 @@ class PageProblems:
         self.unanswered.clear()
 
 
-def login(page, base, user, password):
-    """Sign in through the login form; fails when the form does not accept it."""
+# The session cookies of each account signed in during this run, by (base, user)
+_signed_in = {}
+
+
+def login(page, base, user, password, form=False):
+    """Sign in; fails when the form does not accept the account.
+
+    The first sign-in of an account in a run goes through the login form. A
+    later one gives the page's context the cookies of that session and opens
+    the app, so a run does not post the form again and again (the form is
+    limited to ten requests a minute per address on an instance with limits
+    on). When those cookies no longer sign in (the session was ended, the
+    password changed), or with form=True, the form is used again.
+    """
+    key = (base, user)
+    cookies = None if form else _signed_in.get(key)
+    if cookies:
+        page.context.add_cookies(cookies)
+        page.goto(f"{base}/")
+        page.wait_for_load_state("load")
+        if "/login" not in page.url:
+            return
+        page.context.clear_cookies()
     page.goto(f"{base}/login")
     page.fill("input[name=email]", user)
     page.fill("input[name=password]", password)
     page.locator("form:has(input[name=password]) [type=submit]:visible").first.click()
     page.wait_for_load_state("load")
     assert "/login" not in page.url, f"could not log in as {user}"
+    _signed_in[key] = page.context.cookies()
 
 
 def open_page(page, problems, base, path, settle_ms=2500):

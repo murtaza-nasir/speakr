@@ -53,7 +53,9 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
 CI runs `tests/e2e/test_browser_smoke.py tests/e2e/test_*_ui.py` against one instance, in alphabetical order. Two rules keep the files independent of that order:
 
 - `run_speakr.py` starts the instance with `RATELIMIT_ENABLED=false`. Every request of the suite comes from 127.0.0.1, so the per-IP limits (1000 requests an hour, ten sign-ins a minute) are reached by the suite itself and answer 429 to whichever test comes next. No browser test relies on a real limit (`test_share_window_ui.py` fakes its 429 with `page.route`); the limits are covered by the Python tests. The published image's smoke test (`smoke_env.py`) keeps the limits.
-- A file leaves no rows in the admin's processing queue or inbox behind: a finished job is a row of the queue on every page, and the phone layout test measures the page. `clear_finished_jobs()` in `browser_checks.py` removes the completed and failed jobs; the offline recorder, trim and toast tests call it (and delete what they uploaded) when they end, and the phone layout test calls it before it measures.
+- A file leaves no rows in the admin's processing queue or inbox behind: a finished job is a row of the queue on every page, and the phone layout test measures the page. `clear_finished_jobs()` in `browser_checks.py` removes the completed and failed jobs; the offline recorder and trim tests call it when they end (the offline recorder test also deletes what it uploaded, and the toast test removes its upload and jobs itself), and the phone layout test calls it before it measures.
+- A file that changes the account's look puts back what it found: the theme and the dark mode as a freshly loaded page shows them.
+- `login()` signs each account in through the form once per run and reuses that session afterwards; `check_common()` measures its Tailwind probe in rem, so it holds in themes with another root font size.
 
 ## Group permission browser test
 
