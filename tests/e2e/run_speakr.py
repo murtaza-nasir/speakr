@@ -61,6 +61,12 @@ def main():
         "AUTO_EXPORT_DIR": f"{work}/exports",
         "AUTO_PROCESS_WATCH_DIR": f"{work}/auto-process",
         "PYTHONUNBUFFERED": "1",
+        # The browser tests all come from 127.0.0.1, so the per-IP limits
+        # (1000 requests an hour, ten sign-ins a minute) are reached by the
+        # suite itself and answer 429 to whichever test comes next. No browser
+        # test relies on a real limit (test_share_window_ui fakes its 429 with
+        # page.route); the limits are covered by the Python tests.
+        "RATELIMIT_ENABLED": "false",
     })
 
     def run(cmd):
