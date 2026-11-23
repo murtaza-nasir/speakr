@@ -1989,7 +1989,8 @@ def admin_save_visible_models():
         from src.models import SystemSetting
         import json as _json
 
-        data, body_error = json_object_body(optional=True)
+        # A body is required, as before ({} for the defaults)
+        data, body_error = json_object_body()
         if body_error:
             return body_error
         options = data.get('options', [])
@@ -2063,7 +2064,8 @@ def admin_process_recordings_for_inquire():
         return jsonify(api_error('unauthorized')), 403
 
     try:
-        data, body_error = json_object_body(optional=True)
+        # A body is required, as before ({} for the defaults)
+        data, body_error = json_object_body()
         if body_error:
             return body_error
         # Whole numbers and a flag, checked before any work (#687)
