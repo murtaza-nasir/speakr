@@ -264,7 +264,10 @@ def record_timezone():
     chose a zone in Account settings keeps it.
     """
     from src.utils.timezones import record_browser_timezone, user_timezone, MODE_AUTO
-    data = request.get_json(silent=True) or {}
+    from src.utils.request_body import json_object_body
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     if record_browser_timezone(current_user, data.get('timezone')):
         db.session.commit()
     return jsonify({

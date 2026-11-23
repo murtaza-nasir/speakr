@@ -17,6 +17,7 @@ from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
 from src.utils.localization import translate, api_error
+from src.utils.request_body import json_object_body
 from src.utils.search import contains_pattern, LIKE_ESCAPE
 from src.services.retention import (is_recording_exempt_from_deletion, get_retention_days_for_recording,
                                     process_auto_deletion)
@@ -1317,7 +1318,10 @@ def admin_set_llm_temperatures():
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
     from src.services.llm_settings import TEMPERATURES, parse_temperature, setting_key, temperatures_status
-    values = (request.get_json(silent=True) or {}).get('values')
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    values = data.get('values')
     if not isinstance(values, dict) or not values:
         return jsonify(api_error('invalid_temperature_values')), 400
     unknown = [k for k in values if k not in TEMPERATURES]

@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from src.database import db
 from src.models import *
 from src.utils.localization import api_error
-from src.utils.request_body import is_db_id, is_int_list, json_object_body
+from src.utils.request_body import id_fields_error, is_db_id, is_int_list, json_object_body
 from src.services.auto_shares import (apply_folder_shares, drop_stale_auto_shares, regroup_error,
                                       share_scope_refusal, sharing_state, sync_source_shares)
 
@@ -86,7 +86,8 @@ def _parent_for_write(parent_id, user_id, group_id):
     """
     if parent_id in (None, ''):
         return None, None
-    if isinstance(parent_id, bool) or not isinstance(parent_id, int):
+    # An id past the column range names no folder (#664)
+    if not is_db_id(parent_id):
         return None, 'folder_parent_invalid'
     parent = db.session.get(Folder, parent_id)
     if not parent:
@@ -178,6 +179,10 @@ def create_folder():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify(api_error('folder_name_required')), 400
+    # Every id is a whole number in the column range, or none (#664, #687)
+    ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
+    if ids_error:
+        return ids_error
 
     name, error_key = _clean_folder_name(data.get('name'))
     if error_key:
@@ -300,6 +305,10 @@ def update_folder(folder_id):
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         data = {}
+    # Every id is a whole number in the column range, or none (#664, #687)
+    ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
+    if ids_error:
+        return ids_error
     before = sharing_state(folder)
 
     if 'name' in data:
@@ -506,6 +515,10 @@ def create_group_folder(group_id):
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify(api_error('folder_name_required')), 400
+    # Every id is a whole number in the column range, or none (#664, #687)
+    ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
+    if ids_error:
+        return ids_error
 
     name, error_key = _clean_folder_name(data.get('name'))
     if error_key:

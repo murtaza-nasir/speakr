@@ -1789,7 +1789,9 @@ def replace_external_refs(recording_id):
     if err:
         return err
     system = request.args.get('system', '')
-    body = request.get_json(silent=True) or {}
+    body, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     try:
         if not xr._SLUG.match(system):
             raise xr.RefError('?system= is required')
@@ -1835,7 +1837,9 @@ def create_public_share(recording_id):
     recording = db.session.get(Recording, recording_id)
     if not recording or recording.user_id != current_user.id:
         return jsonify({'error': translate('server.apiError.recording_not_found'), 'code': 'not_found'}), 404
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     flags = {}
     for key, default in (('share_summary', True), ('share_notes', False), ('force_new', False),
                          ('update_existing', False)):
@@ -2894,7 +2898,9 @@ def replace_recording_tags(recording_id):
         return jsonify({'error': translate('server.apiError.recording_not_found'), 'code': 'not_found'}), 404
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify(api_error('permission_denied')), 403
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     tag_ids = data.get('tag_ids')
     if not is_int_list(tag_ids):
         return jsonify({'error': translate('server.apiError.invalid_tag_ids_list'), 'code': 'invalid_parameter'}), 400
@@ -3730,7 +3736,9 @@ def inquire_v1():
     from src.services.recording_scope import scope_condition
     if os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() != 'true':
         return jsonify({'error': translate('server.apiError.inquire_off'), 'code': 'feature_disabled'}), 403
-    body = request.get_json(silent=True) or {}
+    body, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     question = body.get('question')
     question = question.strip() if isinstance(question, str) else ''
     if not question:

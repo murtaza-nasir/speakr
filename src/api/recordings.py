@@ -24,7 +24,7 @@ from src.services.recording_deletion import delete_recording_completely, cleanup
 from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
-from src.utils.request_body import json_body, json_object_body, is_db_id, is_int_list, parse_flag
+from src.utils.request_body import flag_fields, json_body, json_object_body, is_db_id, is_int_list, parse_flag
 from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
 from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
@@ -458,7 +458,9 @@ def merge_recordings_endpoint():
     """
     from src.services.recording_merge import create_merge_recording, MergeError, _UNSET
 
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     raw_ids = data.get('recording_ids')
 
     if not isinstance(raw_ids, list) or len(raw_ids) < 2:
@@ -466,12 +468,19 @@ def merge_recordings_endpoint():
 
     try:
         recording_ids = [int(rid) for rid in raw_ids]
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
+        return jsonify(api_error('invalid_recording_ids')), 400
+    # true is not recording 1, and an id past the column range names none (#664)
+    if any(isinstance(rid, bool) for rid in raw_ids) or not is_int_list(recording_ids):
         return jsonify(api_error('invalid_recording_ids')), 400
 
     title = data.get('title')
-    delete_originals = bool(data.get('delete_originals', False))
-    remove_original_audio = bool(data.get('remove_original_audio', False)) and not delete_originals
+    # "false" keeps the originals: a flag is parsed, never cast (#665)
+    flags, flag_error = flag_fields(data, ('delete_originals', 'remove_original_audio'))
+    if flag_error:
+        return flag_error
+    delete_originals = flags.get('delete_originals', False)
+    remove_original_audio = flags.get('remove_original_audio', False) and not delete_originals
 
     # notes_source_id: which source's notes to keep on the merged recording.
     #   key absent      -> default to the first source
@@ -484,7 +493,9 @@ def merge_recordings_endpoint():
         else:
             try:
                 notes_source_id = int(raw_notes_src)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, OverflowError):
+                notes_source_id = _UNSET
+            if notes_source_id is not _UNSET and not is_db_id(notes_source_id):
                 notes_source_id = _UNSET
     else:
         notes_source_id = _UNSET
@@ -566,7 +577,9 @@ def generate_summary_endpoint(recording_id):
             return jsonify(api_error('summary_openrouter_not_configured')), 503
 
         # Optional custom prompt + mode (issue / discussion #253)
-        data = request.get_json(silent=True) or {}
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
         from src.services.reprocessing import summary_prompt_params, caller_summary_prompt, summary_prompt_used
         prompt_used = summary_prompt_used(
             recording, current_user, data.get('custom_prompt'), data.get('prompt_mode'))
@@ -966,7 +979,9 @@ def save_summary_prompt_route(recording_id):
     if error:
         return error
     from src.services.summary_prompt import SummaryPromptError, describe_summary_prompt, save_summary_prompt
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     try:
         save_summary_prompt(recording, current_user, data.get('target'), data.get('id'), data.get('prompt'))
     except SummaryPromptError as e:
@@ -1914,7 +1929,9 @@ def translate_transcription(recording_id):
         if not TRANSLATION_MODEL_CONFIGURED:
             return jsonify(api_error('translation_llm_not_configured')), 503
 
-        data = request.get_json(silent=True) or {}
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
         raw_target = data.get('target_language')
 
         if raw_target is None or str(raw_target).strip() == '':
@@ -2295,7 +2312,10 @@ def cancel_upload_route():
     upload may still arrive.
     """
     from src.services.upload_cancel import cancel_upload, client_upload_id_from
-    client_upload_id = client_upload_id_from(request.get_json(silent=True) or {})
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    client_upload_id = client_upload_id_from(data)
     if not client_upload_id:
         return jsonify(api_error('invalid_client_upload_id')), 400
     try:
@@ -3555,7 +3575,7 @@ def chat_with_transcription():
         if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
             return jsonify(api_error('llm_connection_failed')), 503
         _data = request.get_json(silent=True) or {}
-        _recording = db.session.get(Recording, _data.get('recording_id')) if isinstance(_data.get('recording_id'), int) else None
+        _recording = db.session.get(Recording, _data.get('recording_id')) if is_db_id(_data.get('recording_id')) else None
         return jsonify({'error': user_error_text(
             e, _recording, extra_sources=[v for v in (_data.get('message'),) if isinstance(v, str)])}), 500
 

@@ -192,3 +192,20 @@ def str_field(data, field, code, required=True):
     if required and not value:
         return None, _answer(code, 400)
     return value, None
+
+
+def id_fields_error(data, fields, code='invalid_integer_value'):
+    """The 400 answer with `code` for the first of `fields` in data that
+    is not an optional id, else None. An optional id is null, '' (none),
+    an integer in the column range or a string of its digits ("3", which
+    the web forms send); true, 2.5, [3], {} and ids past the range are
+    refused before any lookup by them (#664, #687)."""
+    for field in fields:
+        value = data.get(field)
+        if value is None or value == '':
+            continue
+        if isinstance(value, str) and value.strip().isdecimal():
+            value = int(value.strip())
+        if not is_db_id(value):
+            return _answer(code, 400)
+    return None

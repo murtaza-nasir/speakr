@@ -21,7 +21,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import api_error
-from src.utils.request_body import json_object_body
+from src.utils.request_body import id_fields_error, json_object_body
 
 # Create blueprint
 tags_bp = Blueprint('tags', __name__)
@@ -202,6 +202,10 @@ def create_tag():
     if name_error:
         return name_error
     data['name'] = name
+    # Every id is a whole number in the column range, or none (#664, #687)
+    ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
+    if ids_error:
+        return ids_error
 
     color_ok, color_val = _validate_tag_color(data.get('color'))
     if not color_ok:
@@ -345,6 +349,9 @@ def update_tag(tag_id):
         if name_error:
             return name_error
         data['name'] = name
+    ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
+    if ids_error:
+        return ids_error
     before = sharing_state(tag)
 
     if 'name' in data:
