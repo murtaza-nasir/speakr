@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.3-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.4-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -238,7 +238,14 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.11.3)
+## Latest Release (v0.11.4)
+
+- A recording can be trimmed to a start and an end in the segment editor, with the transcript cut to match.
+- Admins can configure text, chat and translation models in System settings without a restart.
+- The offline recording page can record system audio, or the microphone and system audio together.
+- The summary is generated as a separate job after the transcript, and malformed API requests receive a 400 Bad Request error.
+
+### v0.11.3
 
 - OpenAI shuts down `whisper-1` and the GPT-4o transcribe models on 26 February 2027. Users of these models need to set `TRANSCRIPTION_MODEL=gpt-transcribe` before that date.
 - When Speakr cannot be reached, recordings can be made in the browser. They are uploaded when Speakr is back.
@@ -252,14 +259,8 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - The prompt of a summary is stored with the recording and offered first when the summary is regenerated.
 - Words outside ASCII are found in transcripts.
 
-### v0.11.1
 
-- Every column of the user management table can be sorted, and the order holds across pages and with a search.
-- The audit log has a Refresh button, and an export is a snapshot up to the newest event at its start.
-- Every file in the log has an identifier, and stored paths with the original file name are removed from error text.
-
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.3) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.4) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
