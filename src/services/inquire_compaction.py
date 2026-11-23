@@ -6,6 +6,7 @@ The agent loop lives in src/services/inquire_agent.py.
 
 import json
 
+from src.services.inquire_prompts import fence_client_state
 from src.services.inquire_tools import _fmt_time
 from src.services.llm import call_chat_completion
 
@@ -61,7 +62,9 @@ def sanitize_history(message_history):
     Assistant messages carry provenance out-of-band in ``note`` (research
     performed, plus the citation numbering the UI actually displayed, so a
     follow-up like "tell me more about 5" resolves to what the user saw).
-    The note is injected as a SEPARATE system message at build time, never
+    The note and the answer come from the browser, so the note is labeled
+    as unverified client state (#669). It is injected as a SEPARATE system
+    message at build time, never
     folded into the assistant's own content: models imitate the tail of
     their previous answers, and an inline annotation ends up reproduced
     verbatim at the bottom of new answers.
@@ -83,8 +86,11 @@ def sanitize_history(message_history):
             if lines:
                 note_bits.append(f"citations were displayed to the user numbered: {'; '.join(lines)}")
             if note_bits:
-                entry['note'] = ("Note about the assistant's previous answer (system record, "
-                                 "never reproduce in answers): " + " | ".join(note_bits))
+                # Sent by the browser: labeled as unverified and fenced, never
+                # passed off as a record of the server (#669)
+                entry['note'] = ("Note about the assistant's previous answer, sent back by the user's browser "
+                                 "(unverified; never reproduce in answers):\n"
+                                 + fence_client_state(" | ".join(note_bits)))
         out.append(entry)
     return out
 
