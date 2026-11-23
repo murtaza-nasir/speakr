@@ -1036,7 +1036,27 @@
     "undoAction": "Annuler",
     "suggestionMergeInto": "Fusionner avec {{name}}",
     "suggestionMerged": "{{label}} fusionné avec {{name}}",
-    "updateSummary": "Mettre à jour le résumé"
+    "updateSummary": "Mettre à jour le résumé",
+    "trim": {
+      "button": "Rogner",
+      "start": "Rogner l'enregistrement",
+      "title": "Rogner",
+      "hint": "Faites glisser les poignées sur la forme d'onde ou saisissez les temps. L'audio en dehors est supprimé.",
+      "startLabel": "Début",
+      "endLabel": "Fin",
+      "keeps": "Conserve {{kept}} sur {{total}}",
+      "effect": "Segments supprimés : {{removed}}, raccourcis : {{clipped}}",
+      "regenerateSummary": "Régénérer le résumé",
+      "preview": "Écouter",
+      "apply": "Rogner",
+      "confirmTitle": "Rogner l'enregistrement ?",
+      "confirmMessage": "Seul l'audio de {{start}} à {{end}} est conservé, avec sa transcription. L'audio supprimé ne peut pas être récupéré. Segments supprimés : {{removed}}, raccourcis : {{clipped}}.",
+      "saveFirst": "Enregistrez vos modifications avant de rogner.",
+      "started": "Rognage de l'enregistrement…",
+      "done": "Enregistrement rogné",
+      "failed": "L'enregistrement n'a pas pu être rogné.",
+      "nothingRemoved": "Déplacez d'abord une poignée : l'enregistrement entier est conservé."
+    }
   },
   "findReplace": {
     "open": "Rechercher et remplacer (Ctrl+F)",
@@ -2530,7 +2550,8 @@
       "assembling": "Assemblage",
       "titling": "Titre",
       "indexing": "Indexation",
-      "checking": "Vérification"
+      "checking": "Vérification",
+      "trimming": "Rognage"
     },
     "queuedFor": {
       "conversion": "N° {{position}} en file pour la conversion",
@@ -3217,7 +3238,8 @@
     "shareWithUser": "Partager avec un utilisateur",
     "userNumber": "Utilisateur n° {{id}}",
     "usernamePlaceholder": "Nom d’utilisateur ou adresse e-mail",
-    "view": "Lecture"
+    "view": "Lecture",
+    "publicLinksOff": "Vous ne pouvez pas créer de liens publics."
   },
   "upload": {
     "completed": "Terminé",
@@ -3876,7 +3898,18 @@
       "external_refs_not_json": "external_refs doit être du JSON",
       "external_refs_too_many": "Au plus {{max}} références externes par enregistrement",
       "external_ref_system_required": "?system= est requis",
-      "external_ref_system_mismatch": "Chaque référence doit avoir le système indiqué dans ?system="
+      "external_ref_system_mismatch": "Chaque référence doit avoir le système indiqué dans ?system=",
+      "trim_no_audio": "Cet enregistrement n'a pas d'audio à rogner.",
+      "trim_not_completed": "Seul un enregistrement terminé peut être rogné.",
+      "trim_needs_segments": "Seule une transcription avec des segments peut être rognée.",
+      "trim_unknown_duration": "La durée de l'audio est inconnue.",
+      "trim_invalid_range": "Choisissez un début avant la fin, dans les limites de l'audio.",
+      "trim_too_short": "Conservez au moins une seconde d'audio.",
+      "trim_nothing_removed": "La plage conserve tout l'enregistrement.",
+      "trim_needs_times": "Chaque segment doit avoir un temps de début et de fin.",
+      "trim_busy": "L'enregistrement est en cours de traitement. Réessayez une fois terminé.",
+      "trim_failed": "L'enregistrement n'a pas pu être rogné.",
+      "trim_store_failed": "L'audio rogné n'a pas pu être enregistré."
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",

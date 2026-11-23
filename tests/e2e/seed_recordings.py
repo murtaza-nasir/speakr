@@ -1,4 +1,4 @@
-"""Recordings for the browser tests: two finished recordings of the admin.
+"""Recordings for the browser tests: three finished recordings of the admin.
 
     python tests/e2e/seed_recordings.py        # with Speakr's settings in the environment
 
@@ -9,7 +9,8 @@ recording gets a short WAV file (a tone in bursts where the transcript has
 speech) in UPLOAD_FOLDER and a transcript with two unnamed speakers. Running it again adds nothing.
 
 test_asr_editor_ui.py finds them by title (TITLES below); the smoke test's
-recording checks use them as well.
+recording checks use them as well. test_trim_ui.py cuts the third one
+(TRIM_TITLE), which no other test uses.
 """
 
 import json
@@ -25,6 +26,9 @@ sys.path.insert(0, ROOT)
 
 # The second one is created later, so it is the first in the list.
 TITLES = ("Browser test: long transcript", "Browser test: meeting")
+# The trim test (test_trim_ui.py) cuts this one, so the others keep their audio.
+# It is the oldest, so it is the last in the list.
+TRIM_TITLE = "Browser test: trim"
 AUDIO_SECONDS = 90
 
 SENTENCES = (
@@ -85,12 +89,13 @@ def seed():
         transcript = json.dumps(meeting_segments())
         created = []
         now = datetime.utcnow()
-        for order, title in enumerate(TITLES):
+        for order, title in enumerate(TITLES + (TRIM_TITLE,)):
             if Recording.query.filter_by(user_id=admin.id, title=title).first():
                 continue
             audio = os.path.join(uploads, f"browser-test-{order}.wav")
             write_tone(audio)
-            when = now - timedelta(minutes=10 * (len(TITLES) - order))
+            minutes = 60 if title == TRIM_TITLE else 10 * (len(TITLES) - order)
+            when = now - timedelta(minutes=minutes)
             recording = Recording(
                 user_id=admin.id, title=title, status="COMPLETED", transcription=transcript,
                 audio_path=audio, original_filename=os.path.basename(audio), mime_type="audio/wav",

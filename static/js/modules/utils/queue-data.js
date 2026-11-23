@@ -32,6 +32,7 @@ const DEFAULT_STAGES = {
     reprocess_summary: 'summarizing',
     translate_transcription: 'translating',
     index_chunks: 'indexing',
+    trim: 'trimming',
 };
 
 /**

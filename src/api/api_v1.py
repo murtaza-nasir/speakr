@@ -1230,8 +1230,9 @@ def get_capabilities():
     features = dict(CAPABILITY_FEATURES)
     from src.models import SystemSetting
     features['internal_sharing'] = bool(SystemSetting.get_setting('enable_internal_sharing', os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'))
-    features['public_sharing'] = bool(SystemSetting.get_setting('enable_public_sharing', os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'))
-    features['can_share_publicly'] = bool(features['public_sharing'] and getattr(current_user, 'can_share_publicly', True))
+    from src.services.public_shares import public_sharing_enabled, user_can_share_publicly
+    features['public_sharing'] = public_sharing_enabled()
+    features['can_share_publicly'] = user_can_share_publicly(current_user, features['public_sharing'])
     features['can_create_groups'] = _can_create_groups(current_user)
     from src.services.search_v1 import semantic_available
     features['search'] = {'keyword': True, 'semantic': semantic_available()}
@@ -1400,6 +1401,30 @@ def _recording_list_item(r, refs=None, shared=None):
         'owner': None,
         'share': None,
     } if shared is None else dict(_recording_list_item(r, refs), **shared)
+
+
+def _list_etag(response, total):
+    """Weak ETag and If-None-Match for a page of GET /recordings (D#662).
+
+    The tag holds the caller, every query parameter (page, per_page, sort,
+    filters), the total and a hash of the page as sent, so a change to any
+    recording on the page, to the page's order or to the number of matches
+    gives a new tag. It is set on the finished answer, so the scope and
+    access checks and the parameter checks come first: a refused request
+    gets its error, never 304.
+    """
+    import hashlib
+    from flask import make_response
+    from src.services.recording_changes import etag_matches
+    params = '&'.join(f'{key}={value}' for key, value in sorted(request.args.items(multi=True)))
+    key = hashlib.sha1(f'{current_user.id}|{params}|{total}'.encode('utf-8')).hexdigest()[:12]
+    digest = hashlib.sha1(response.get_data()).hexdigest()[:16]
+    etag = f'W/"rl{current_user.id}-{key}-{digest}"'
+    if etag_matches(request, etag):
+        response = make_response('', 304)
+    response.headers['ETag'] = etag
+    response.headers['Cache-Control'] = 'private, no-cache'
+    return response
 
 
 @api_v1_bp.route('/recordings', methods=['GET'])
@@ -1622,7 +1647,7 @@ def list_recordings():
     recordings = [_recording_list_item(r, page_refs.get(r.id, []), page_shared.get(r.id))
                   for r in pagination.items]
 
-    return jsonify({
+    response = jsonify({
         'recordings': recordings,
         'pagination': {
             'page': pagination.page,
@@ -1633,6 +1658,7 @@ def list_recordings():
             'has_prev': pagination.has_prev
         }
     })
+    return _list_etag(response, pagination.total)
 
 
 # =============================================================================
@@ -1834,9 +1860,8 @@ def delete_external_ref(recording_id, ref_id):
 def create_public_share(recording_id):
     """Create or reuse a public link (mailr spec G10). Notes are not shared
     unless asked, and a reused link's flags change only with update_existing."""
-    from src.services.public_shares import get_or_create, link_is_https, public_url, share_dict
-    from src.models import SystemSetting
-    if not bool(SystemSetting.get_setting('enable_public_sharing', os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true')):
+    from src.services.public_shares import get_or_create, link_is_https, public_sharing_enabled, public_url, share_dict
+    if not public_sharing_enabled():
         return jsonify({'error': translate('server.apiError.public_sharing_off'), 'code': 'feature_disabled'}), 403
     if not getattr(current_user, 'can_share_publicly', True):
         return jsonify({'error': translate('server.apiError.public_link_not_permitted'), 'code': 'not_permitted'}), 403

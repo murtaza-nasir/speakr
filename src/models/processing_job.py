@@ -115,6 +115,7 @@ class ProcessingJob(db.Model):
         'reprocess_summary': 'summarizing',
         'translate_transcription': 'translating',
         'index_chunks': 'indexing',
+        'trim': 'trimming',
     }
 
     def job_stage(self):
@@ -123,7 +124,7 @@ class ProcessingJob(db.Model):
         queued, completed and failed for a job in that status. For a running
         job: the step its worker reported (titling,
         summarizing), else the step of its type (converting, assembling,
-        joining, transcribing, summarizing, translating, indexing).
+        joining, transcribing, summarizing, translating, indexing, trimming).
         """
         if self.status != 'processing':
             return self.status

@@ -541,6 +541,64 @@ def merge_recordings_endpoint():
     })
 
 
+@recordings_bp.route('/api/recordings/<int:recording_id>/trim', methods=['POST'])
+@login_required
+@audit.emits('recording.trimmed')
+def trim_recording_endpoint(recording_id):
+    """Keep the audio between two times and the transcript with it (#660).
+
+    Body (JSON): start, end (seconds of the stored audio), regenerate_summary
+    (bool, optional). The owner and users with edit permission may trim, as
+    in the segment editor. The cut runs on a worker (job_type 'trim'); the
+    answer is 202 with the job id, and GET on this route tells how it went.
+    See src/services/recording_trim.py.
+    """
+    from src.services.recording_trim import TrimError, request_trim
+
+    recording = db.session.get(Recording, recording_id)
+    if not recording or not has_recording_access(recording, current_user):
+        return jsonify(api_error('recording_not_found')), 404
+    if not has_recording_access(recording, current_user, require_edit=True):
+        return jsonify(api_error('recording_edit_denied')), 403
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    regenerate = data.get('regenerate_summary', False)
+    if not isinstance(regenerate, bool):
+        return jsonify(api_error('trim_invalid_range')), 400
+    for name in ('start', 'end'):
+        value = data.get(name)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return jsonify(api_error('trim_invalid_range')), 400
+    try:
+        job_id = request_trim(recording, current_user, data['start'], data['end'], regenerate_summary=regenerate)
+    except TrimError as e:
+        db.session.rollback()
+        return jsonify(api_error(e.code)), 409 if e.code == 'trim_busy' else 400
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error queueing the trim of recording {recording_id}: {e}", exc_info=True)
+        return jsonify(api_error('trim_failed')), 500
+    return jsonify({'success': True, 'job_id': job_id, 'state': 'queued'}), 202
+
+
+@recordings_bp.route('/api/recordings/<int:recording_id>/trim', methods=['GET'])
+@login_required
+def trim_recording_status(recording_id):
+    """How the newest trim of a recording went: queued, processing, completed or failed."""
+    from src.services.recording_trim import ERROR_CODES, trim_state
+
+    recording = db.session.get(Recording, recording_id)
+    if not recording or not has_recording_access(recording, current_user, require_edit=True):
+        return jsonify(api_error('recording_not_found')), 404
+    state = trim_state(recording_id)
+    if state.get('state') == 'failed':
+        code = (state.get('error') or '').strip()
+        state['code'] = code if code in ERROR_CODES else 'trim_failed'
+        state['error'] = translate(f"server.apiError.{state['code']}")
+    return jsonify(state)
+
+
 @recordings_bp.route('/recording/<int:recording_id>/generate_summary', methods=['POST'])
 @login_required
 @audit.emits('recording.reprocessed')

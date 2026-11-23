@@ -4,6 +4,7 @@ import {
     availableSearchResults,
     canGrantPermission,
     changedPermissions,
+    fetchCanSharePublicly,
     isSearchableQuery,
     needsFullIdentifierHint,
     resolveSearchScope,
@@ -118,5 +119,27 @@ describe('changedPermissions', () => {
             .toEqual({ can_edit: true });
         expect(changedPermissions({ can_edit: true, can_reshare: false }, { can_edit: true, can_reshare: false }))
             .toBeNull();
+    });
+});
+
+// #685: the share dialog offers public links only on a clear yes
+describe('fetchCanSharePublicly', () => {
+    const answer = (ok, body) => async (url) => {
+        expect(url).toBe('/api/permissions/can-share-publicly');
+        return { ok, json: async () => body };
+    };
+
+    it('is true when the server says so', async () => {
+        expect(await fetchCanSharePublicly(answer(true, { can_share_publicly: true }))).toBe(true);
+    });
+
+    it('is false when public sharing is off or not permitted', async () => {
+        expect(await fetchCanSharePublicly(answer(true, { can_share_publicly: false }))).toBe(false);
+    });
+
+    it('is false on an error answer, a missing field or a failed request', async () => {
+        expect(await fetchCanSharePublicly(answer(false, { can_share_publicly: true }))).toBe(false);
+        expect(await fetchCanSharePublicly(answer(true, {}))).toBe(false);
+        expect(await fetchCanSharePublicly(async () => { throw new Error('offline'); })).toBe(false);
     });
 });

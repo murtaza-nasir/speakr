@@ -17,9 +17,13 @@
      a speaker without segments has a button that removes it.
      The canvas reads its colours from
      the --tl-* variables of .asr-tl and from the header swatches, which carry
-     the .speaker-color-N classes of the transcript. -->
+     the .speaker-color-N classes of the transcript.
+     Trim (#660): the scissors button in the bar starts trim mode. Handles on
+     the canvas and the two fields of the trim bar set the part to keep;
+     Preview plays a few seconds at each cut, and Trim asks before the audio
+     and the transcript are cut on the server. -->
 <script type="text/x-template" id="asr-editor-timeline-template">
-<section class="asr-tl" :class="{ 'asr-tl--closed': !open, 'asr-tl--matches': !narrow && lanes.some((lane) => lane.match), 'asr-tl--empties': lanes.some((lane) => lane.empty) }" ref="root" data-asr-timeline :aria-label="t('asrEditor.timeline.title')">
+<section class="asr-tl" :class="{ 'asr-tl--trimming': trimming, 'asr-tl--closed': !open, 'asr-tl--matches': !narrow && lanes.some((lane) => lane.match), 'asr-tl--empties': lanes.some((lane) => lane.empty) }" ref="root" data-asr-timeline :aria-label="t('asrEditor.timeline.title')">
     <div class="asr-tl__bar">
         <button type="button" class="asr-tl__toggle" data-asr-action="timeline-toggle" :aria-expanded="open ? 'true' : 'false'"
                 @click="toggleOpen" :title="open ? t('asrEditor.timeline.hide') : t('asrEditor.timeline.show')">
@@ -30,6 +34,12 @@
             <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
             <span v-text="t('asrEditor.timeline.waveformLoading')"></span>
         </span>
+        <button v-if="canTrim" type="button" class="asr-tl__trim-btn" data-asr-action="trim"
+                :aria-pressed="trimming ? 'true' : 'false'" :disabled="trimming"
+                @click="startTrim" :title="t('asrEditor.trim.start')">
+            <i class="fas fa-scissors" aria-hidden="true"></i>
+            <span v-text="t('asrEditor.trim.button')"></span>
+        </button>
         <div v-if="open" class="asr-tl__zoom">
             <button type="button" class="asr-tl__btn" data-asr-action="timeline-zoom-out" @click="zoomOut"
                     :title="t('asrEditor.timeline.zoomOut')" :aria-label="t('asrEditor.timeline.zoomOut')"><i class="fas fa-magnifying-glass-minus"></i></button>
@@ -37,6 +47,45 @@
                     :title="t('asrEditor.timeline.zoomIn')" :aria-label="t('asrEditor.timeline.zoomIn')"><i class="fas fa-magnifying-glass-plus"></i></button>
             <button type="button" class="asr-tl__btn" data-asr-action="timeline-zoom-fit" @click="zoomFit"
                     :title="t('asrEditor.timeline.zoomFit')" :aria-label="t('asrEditor.timeline.zoomFit')"><i class="fas fa-arrows-left-right"></i></button>
+        </div>
+    </div>
+    <div v-if="trimming" class="asr-tl__trim" data-asr-trim role="group" :aria-label="t('asrEditor.trim.title')">
+        <p class="asr-tl__trim-hint" v-text="t('asrEditor.trim.hint')"></p>
+        <div class="asr-tl__trim-row">
+            <label class="asr-tl__trim-field">
+                <span v-text="t('asrEditor.trim.startLabel')"></span>
+                <input type="text" inputmode="decimal" class="asr-tl__trim-input" data-asr-trim-start
+                       :class="{ 'is-invalid': trimInvalid === 'start' }" :aria-invalid="trimInvalid === 'start' ? 'true' : 'false'"
+                       :value="trimStartText" @change="setTrimField('start', $event.target.value)"
+                       @keydown.enter.prevent="setTrimField('start', $event.target.value)">
+            </label>
+            <label class="asr-tl__trim-field">
+                <span v-text="t('asrEditor.trim.endLabel')"></span>
+                <input type="text" inputmode="decimal" class="asr-tl__trim-input" data-asr-trim-end
+                       :class="{ 'is-invalid': trimInvalid === 'end' }" :aria-invalid="trimInvalid === 'end' ? 'true' : 'false'"
+                       :value="trimEndText" @change="setTrimField('end', $event.target.value)"
+                       @keydown.enter.prevent="setTrimField('end', $event.target.value)">
+            </label>
+            <span class="asr-tl__trim-kept" data-asr-trim-kept>
+                <span v-text="trimKept"></span>
+                <span class="asr-tl__trim-effect" data-asr-trim-effect v-text="trimEffectText"></span>
+            </span>
+        </div>
+        <div class="asr-tl__trim-row asr-tl__trim-actions">
+            <label v-if="hasSummary" class="asr-tl__trim-summary" data-asr-trim-summary>
+                <input type="checkbox" v-model="trimSummary">
+                <span v-text="t('asrEditor.trim.regenerateSummary')"></span>
+            </label>
+            <button type="button" class="btn btn--ghost btn--sm" data-asr-action="trim-preview" @click="previewTrim">
+                <i class="fas fa-play text-xs" aria-hidden="true"></i>
+                <span v-text="t('asrEditor.trim.preview')"></span>
+            </button>
+            <button type="button" class="btn btn--ghost btn--sm" data-asr-action="trim-cancel" @click="cancelTrim"
+                    :disabled="trimSending" v-text="t('common.cancel')"></button>
+            <button type="button" class="btn btn--danger btn--sm" data-asr-action="trim-apply" @click="applyTrim" :disabled="trimSending">
+                <i class="fas text-xs" :class="trimSending ? 'fa-spinner fa-spin' : 'fa-scissors'" aria-hidden="true"></i>
+                <span v-text="t('asrEditor.trim.apply')"></span>
+            </button>
         </div>
     </div>
     <div v-if="open && narrow && lanes.some((lane) => lane.match)" class="asr-tl__matches" data-asr-timeline-matches>

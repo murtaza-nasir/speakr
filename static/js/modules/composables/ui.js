@@ -40,6 +40,14 @@ const syncEditorFullscreen = () => {
     document.body.classList.toggle('md-editor-fullscreen', !!document.querySelector('.editor-fullscreen, .CodeMirror-fullscreen'));
 };
 
+// The title field is rendered twice, in the desktop header and in the phone
+// bar, and only one of them is on screen. Vue does not render `ref`, so the
+// fields are found by their data-title-input attribute (#686).
+export function visibleTitleInput(root) {
+    const fields = Array.from((root || document).querySelectorAll('input[data-title-input]'));
+    return fields.find(field => field.getClientRects().length > 0) || null;
+}
+
 export function useUI(state, utils, processedTranscription) {
     const {
         isDarkMode, currentColorScheme, colorSchemes, isSidebarCollapsed,
@@ -475,8 +483,8 @@ export function useUI(state, utils, processedTranscription) {
             state.originalTitle.value = selectedRecording.value.title || '';
             state.editingTitle.value = true;
             nextTick(() => {
-                // Focus the input field
-                const titleInput = document.querySelector('input[ref="titleInput"]');
+                // Focus the field that is on screen
+                const titleInput = visibleTitleInput(document);
                 if (titleInput) {
                     titleInput.focus();
                     titleInput.select();

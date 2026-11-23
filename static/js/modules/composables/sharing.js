@@ -8,6 +8,7 @@ import {
     availableSearchResults,
     canGrantPermission,
     changedPermissions,
+    fetchCanSharePublicly,
     isSearchableQuery,
     needsFullIdentifierHint,
     searchesWhileTyping,
@@ -49,7 +50,11 @@ export function useSharing(state, utils) {
     const sharesTab = ref('by_me');
     const sharesByMe = ref([]);
     const sharesWithMe = ref([]);
-    const sharesPublicEnabled = ref(true);
+    // Off until the server says otherwise (#685)
+    const sharesPublicEnabled = ref(false);
+    // Whether the share dialog offers public links: read when it opens (#685)
+    const canSharePublicly = ref(false);
+    const isLoadingPublicCapability = ref(false);
     const sharesInternalEnabled = ref(false);
 
     // Helper function to format share dates
@@ -343,7 +348,7 @@ export function useSharing(state, utils) {
                 ...r, recipients: r.recipients.map(p => ({ ...p, confirming: false })),
             }));
             sharesWithMe.value = data.shared_with_me || [];
-            sharesPublicEnabled.value = data.public_sharing_enabled !== false;
+            sharesPublicEnabled.value = data.can_share_publicly === true;
             sharesInternalEnabled.value = !!data.internal_sharing_enabled;
         } catch (error) {
             setGlobalError(t('sharing.loadSharedItemsFailedWithError', { error: error.message }));
@@ -599,7 +604,14 @@ export function useSharing(state, utils) {
             };
         }
 
+        canSharePublicly.value = false;
+        isLoadingPublicCapability.value = true;
         showUnifiedShareModal.value = true;
+        fetchCanSharePublicly(fetch).then((allowed) => {
+            if (internalShareRecording.value === recording) canSharePublicly.value = allowed;
+        }).finally(() => {
+            if (internalShareRecording.value === recording) isLoadingPublicCapability.value = false;
+        });
 
         // Load all public shares for this recording
         isLoadingPublicShares.value = true;
@@ -622,7 +634,10 @@ export function useSharing(state, utils) {
             isLoadingPublicShares.value = false;
         }
 
-        // Load existing internal shares
+        // Load existing internal shares. With internal sharing off the
+        // dialog has no section for them, and the route answers 403.
+        recordingInternalShares.value = [];
+        if (!enableInternalSharing.value) return;
         isLoadingInternalShares.value = true;
         try {
             const response = await fetch(`/api/recordings/${recording.id}/shares-internal`);
@@ -808,6 +823,8 @@ export function useSharing(state, utils) {
         sharesWithMe,
         sharesPublicEnabled,
         sharesInternalEnabled,
+        canSharePublicly,
+        isLoadingPublicCapability,
         revokeShareFromList,
         updateShare,
         confirmDeleteShare,

@@ -48,8 +48,8 @@ from src.services.inquire_tools import (  # noqa: F401 - re-exported for callers
     tool_search_transcripts,
 )
 from src.services.inquire_prompts import (  # noqa: F401 - re-exported for callers and tests
-    PEOPLE_TOOL_RULE, PERSON_NAME_RULE, _PROMPT_MODE_BLOCK, _names_line, _recording_tools_block,
-    _system_prompt,
+    CLIENT_STATE_RULE, PEOPLE_TOOL_RULE, PERSON_NAME_RULE, UNTRUSTED_DATA_RULE, _PROMPT_MODE_BLOCK,
+    _names_line, _recording_tools_block, _system_prompt, fence_client_state, fence_tool_result,
 )
 from src.services.inquire_compaction import (  # noqa: F401 - re-exported for callers and tests
     KEEP_VERBATIM_MESSAGES, citation_lines, compact_history, estimate_context_tokens,
@@ -339,8 +339,10 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
             sys_prompt = _system_prompt(user_ctx, filters_text, availability, block, tool_names, names_line)
             msgs = [{'role': 'system', 'content': sys_prompt}]
             if memory:
+                # The memory comes back from the browser: unverified (#669)
                 msgs.append({'role': 'system',
-                             'content': f"Conversation memory (earlier turns, summarized):\n{memory}"})
+                             'content': "Conversation memory (earlier turns, summarized; sent back by the user's "
+                                        "browser, unverified):\n" + fence_client_state(memory)})
             for m in history:
                 msgs.append({'role': m['role'], 'content': m['content']})
                 # Provenance notes travel as system messages so the model
@@ -451,7 +453,8 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                 hint = 'Call again with offset=next_offset for more.'
             result_text = _truncate_to_tokens(json.dumps(result, ensure_ascii=False),
                                               _tool_result_token_cap(), hint)
-            return events, result_text
+            # What the recordings say is data, never instructions (#671)
+            return events, fence_tool_result(result_text)
 
         max_steps = _max_steps()
         for iteration in range(max_steps + 1):

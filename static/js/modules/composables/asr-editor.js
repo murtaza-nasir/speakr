@@ -13,6 +13,8 @@ import { createDraftStore, hashText } from '../asr-editor/draft.js';
 import { saveTranscriptWithSpeakers, withAcceptedMatches } from '../utils/speaker-save.js';
 import { confirmDialog } from '../utils/dialogs.js';
 import { createSummaryFollowUp } from '../utils/summary-follow-up.js';
+import { formatExact } from '../asr-editor/helpers.js';
+import { sendTrim, waitForTrim } from '../utils/recording-trim.js';
 
 // Scroll position per recording, so reopening the editor in the same page
 // session returns to where it was.
@@ -53,7 +55,7 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
     const {
         showAsrEditorModal, selectedRecording, viewingTranslation, recordings,
         asrEditorSession, asrEditorDirty, asrEditorRev, asrEditorSaveFlash, asrEditorSaving,
-        asrEditorRegenerateSummary, editorAutosave, speakerColorMap,
+        asrEditorRegenerateSummary, editorAutosave, speakerColorMap, audioDuration,
     } = state;
     const { showToast, setGlobalError } = utils;
     const nextTick = (typeof Vue !== 'undefined' && Vue.nextTick) || null;
@@ -194,6 +196,8 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
             },
             restoreDraft,
             discardDraft,
+            // Trim mode of the timeline asks here (#660)
+            requestTrim: (range, options) => requestTrim(session, range, options),
             findStep: null,
             pane: null,
             // Edits of this session were saved without regenerating the summary
@@ -407,6 +411,101 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
         return true;
     };
 
+    // ---- trim (#660) -------------------------------------------------------------
+
+    /**
+     * Whether the timeline offers Trim: the stored transcript (not a
+     * translation) of a finished recording with audio, for a user who may
+     * edit it, as on the server.
+     */
+    const canTrimRecording = (session = current()) => {
+        const recording = selectedRecording.value;
+        return !!session && session.field === 'transcription' && !!recording && !recording.incognito
+            && !recording.audio_deleted_at && recording.status === 'COMPLETED' && recording.can_edit !== false;
+    };
+
+    // The players of the page load the trimmed audio again. The address
+    // gets a version: the browser's media cache keeps the old file under
+    // the plain one. Vue leaves the attribute alone, as its bound value is
+    // unchanged.
+    const reloadPlayers = (recordingId) => {
+        if (typeof document === 'undefined') return;
+        const version = Date.now();
+        for (const media of document.querySelectorAll('audio, video')) {
+            const src = media.getAttribute('src') || '';
+            if (src === `/audio/${recordingId}` || src.startsWith(`/audio/${recordingId}?`)) {
+                try {
+                    media.setAttribute('src', `/audio/${recordingId}?v=${version}`);
+                    media.load();
+                } catch (e) { /* not loaded yet */ }
+            }
+        }
+    };
+
+    const refreshRecording = async (recordingId) => {
+        try {
+            const response = await fetch(`/api/recordings/${recordingId}`);
+            if (!response.ok) return;
+            const full = await response.json();
+            if (selectedRecording.value && selectedRecording.value.id === recordingId) selectedRecording.value = full;
+            const index = recordings.value.findIndex((r) => r.id === recordingId);
+            if (index !== -1) recordings.value[index] = { ...recordings.value[index], ...full };
+            // The player keeps the stored length of a recording it has open: the new one
+            if (audioDuration && full.audio_duration && selectedRecording.value && selectedRecording.value.id === recordingId) {
+                audioDuration.value = full.audio_duration;
+            }
+            if (nextTick) await nextTick();
+            reloadPlayers(recordingId);
+        } catch (error) {
+            console.error('Could not load the trimmed recording:', error);
+        }
+    };
+
+    /**
+     * Trim the open recording to `range` ({ start, end }, seconds). The
+     * edits must be saved first: the server trims the stored transcript.
+     * After the user agrees, the trim is queued, the editor closes and the
+     * recording is loaded again when it is done. Resolves to true when the
+     * trim was queued.
+     */
+    async function requestTrim(session, range, { regenerateSummary = false, effect = null } = {}) {
+        if (current() !== session || !selectedRecording.value) return false;
+        if (session.model.dirty) {
+            showToast(t('asrEditor.trim.saveFirst'), 'fa-exclamation-circle', 4000, 'error');
+            return false;
+        }
+        const recordingId = session.recordingId;
+        const agreed = await confirmDialog({
+            title: t('asrEditor.trim.confirmTitle'),
+            message: t('asrEditor.trim.confirmMessage', {
+                start: formatExact(range.start), end: formatExact(range.end),
+                removed: effect ? effect.removed : 0, clipped: effect ? effect.clipped : 0,
+            }),
+            confirmLabel: t('asrEditor.trim.apply'),
+            danger: true,
+        });
+        if (!agreed || current() !== session) return false;
+        const sent = await sendTrim(fetch, recordingId, range, {
+            regenerateSummary, fallback: t('asrEditor.trim.failed'),
+        });
+        if (!sent.ok) {
+            showToast(sent.error || t('asrEditor.trim.failed'), 'fa-exclamation-circle', 6000, 'error');
+            return false;
+        }
+        await closeAsrEditorModal({ force: true });
+        showToast(t('asrEditor.trim.started'), 'fa-scissors');
+        waitForTrim(fetch, recordingId).then(async (result) => {
+            if (result.state === 'completed') {
+                await refreshRecording(recordingId);
+                showToast(t('asrEditor.trim.done'), 'fa-check-circle');
+                if (result.summary_queued) summaryFollowUp.started(recordingId);
+            } else if (result.state === 'failed') {
+                showToast(result.error || t('asrEditor.trim.failed'), 'fa-exclamation-circle', 6000, 'error');
+            }
+        });
+        return true;
+    }
+
     // Ctrl+S / Cmd+S saves without closing while the editor is open.
     // preventDefault stops the browser's "save page" dialog.
     const handleAsrEditorKeydown = (event) => {
@@ -427,5 +526,6 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
         closeAsrEditorModal,
         saveAsrTranscription,
         canRegenerateSummary,
+        canTrimRecording,
     };
 }

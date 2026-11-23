@@ -169,3 +169,36 @@ def test_api_v1_share_has_the_active_field(world):
     _permission(world, False)
     with app.app_context():
         assert share_dict(db.session.get(Share, world["share"]))["active"] is False
+
+
+def _public_answers(c):
+    """What the share dialog, the Shared Transcripts list and API v1 say about public links."""
+    dialog = c.get("/api/permissions/can-share-publicly").get_json()["can_share_publicly"]
+    overview = c.get("/api/shares/overview").get_json()
+    features = c.get("/api/v1/capabilities").get_json()["features"]
+    return (dialog, overview["can_share_publicly"], features["can_share_publicly"],
+            overview["public_sharing_enabled"], features["public_sharing"])
+
+
+def test_the_share_dialog_the_list_and_api_v1_agree_on_public_links(world):
+    """#685: the share dialog reads one answer, and the list and API v1 give the same one."""
+    c = _owner_client(world)
+    assert _public_answers(c) == (True, True, True, True, True)
+    _switch('false')
+    try:
+        assert _public_answers(c) == (False, False, False, False, False)
+    finally:
+        _switch('true')
+    _permission(world, False)
+    assert _public_answers(c) == (False, False, False, True, True)
+
+
+def test_the_env_value_applies_to_every_answer_while_no_value_is_saved(world, monkeypatch):
+    with app.app_context():
+        SystemSetting.query.filter_by(key=KEY).delete()
+        db.session.commit()
+    c = _owner_client(world)
+    for raw, expected in (('false', False), (' TRUE ', True), ('1', False)):
+        monkeypatch.setenv('ENABLE_PUBLIC_SHARING', raw)
+        answers = _public_answers(c)
+        assert answers == (expected,) * 5, (raw, answers)

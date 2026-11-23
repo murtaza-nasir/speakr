@@ -36,6 +36,7 @@ import sys
 import tempfile
 import uuid
 from contextlib import contextmanager
+from unittest.mock import patch
 
 import pytest
 
@@ -193,11 +194,13 @@ def _internal_disabled():
 
 
 def _public_enabled():
-    return _flag("ENABLE_PUBLIC_SHARING", True, shares_module)
+    # The routes read the switch through public_sharing_enabled(), the reader
+    # API v1 and the public link pages use (#685)
+    return patch.object(shares_module, "public_sharing_enabled", return_value=True)
 
 
 def _public_disabled():
-    return _flag("ENABLE_PUBLIC_SHARING", False, shares_module)
+    return patch.object(shares_module, "public_sharing_enabled", return_value=False)
 
 
 # --- cleanup ----------------------------------------------------------------

@@ -98,6 +98,23 @@ export function summarizeBatchResults(results) {
 }
 
 /**
+ * Whether the signed-in user may create public links now (#685): public
+ * sharing is on and the user has the permission. Anything but a clear yes
+ * from the server counts as no, so the dialog never offers a link the server
+ * refuses.
+ */
+export async function fetchCanSharePublicly(fetchFn) {
+    try {
+        const response = await fetchFn('/api/permissions/can-share-publicly');
+        if (!response.ok) return false;
+        const data = await response.json();
+        return data.can_share_publicly === true;
+    } catch (_) {
+        return false;
+    }
+}
+
+/**
  * Whether a permission can be switched on for an existing share: it is already
  * on, or the person changing it holds that permission.
  */

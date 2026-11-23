@@ -755,6 +755,8 @@ def _legacy_overview(viewer_id):
 
         return json.loads(json.dumps({
             'public_sharing_enabled': ENABLE_PUBLIC_SHARING,
+            # Added with #685: the per-user answer the share dialogs use
+            'can_share_publicly': bool(ENABLE_PUBLIC_SHARING and current_user.can_share_publicly),
             'internal_sharing_enabled': ENABLE_INTERNAL_SHARING,
             'public_links': public_links,
             'shared_by_me': shared_by_me,

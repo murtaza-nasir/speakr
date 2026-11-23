@@ -498,6 +498,48 @@ def test_search_text_reads_unchunked_transcripts_saved_with_ascii_escapes(lib):
             assert [(h['title'], h['speaker']) for h in hits] == [('Garden notes', 'Pat')], word
 
 
+@pytest.mark.parametrize('indexed', [True, False])
+def test_search_text_caps_the_matches_of_one_recording(lib, indexed):
+    """#679: one recording that says the phrase twelve times gives three
+    matches, so the others still fit in top_k; recording_count counts them."""
+    with app.app_context():
+        long = Recording(user_id=lib['owner'], title='Budget marathon', status='COMPLETED', participants='Kim',
+                         transcription=_segments(*[('Kim', f'The budget freeze, point {i}.') for i in range(12)]),
+                         meeting_date=datetime(2026, 9, 1, 15, 0))
+        db.session.add(long)
+        db.session.flush()
+        if indexed:
+            _chunks(long)
+        db.session.commit()
+        long_id = long.id
+        try:
+            ctx = _owner_ctx(lib, availability={'summaries': False, 'notes': False}, extra={long_id})
+            res = ia.tool_search_text(ctx, {'query': 'budget freeze', 'fields': ['transcript'], 'top_k': 5})
+            titles = sorted(h['title'] for h in res['results'])
+            assert titles == ['Budget marathon'] * 3 + ['Weekly Sync']
+            # Each match is still one segment, with its own time for the citation
+            times = [h['seek_seconds'] for h in res['results'] if h['title'] == 'Budget marathon']
+            assert len(set(times)) == 3 and times == sorted(times)
+            assert res['result_count'] == 4 and res['recording_count'] == 2
+            assert res['more_matches_in'] == [long_id] and 'At most 3 transcript matches' in res['note']
+            assert 'truncated' not in res
+            # Without many matches in one recording nothing is said about the cap
+            few = ia.tool_search_text(ctx, {'query': 'applies to travel'})
+            assert few['recording_count'] == 1 and 'more_matches_in' not in few and 'note' not in few
+            assert ia.tool_search_text(ctx, {'query': 'no such words here'})['recording_count'] == 0
+        finally:
+            TranscriptChunk.query.filter_by(recording_id=long_id).delete()
+            Recording.query.filter_by(id=long_id).delete()
+            db.session.commit()
+
+
+def test_search_text_description_names_the_cap_and_the_counts():
+    schema = next(s for s in ia.build_toolbox(EVERY)[0] if s['function']['name'] == 'search_text')
+    description = schema['function']['description']
+    assert 'at most 3 transcript matches' in description
+    assert 'more_matches_in' in description and 'recording_count' in description
+
+
 # ---------------------------------------------------------------------------
 # Steps
 # ---------------------------------------------------------------------------

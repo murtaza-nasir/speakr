@@ -20,6 +20,15 @@ def public_sharing_enabled():
     return bool(SystemSetting.get_setting('enable_public_sharing', env_fallback(env_var, default)))
 
 
+def user_can_share_publicly(user, sharing_enabled=None):
+    """Whether the user may create a public link now: public sharing is on and
+    the user has the permission (#685). The web app, its share dialog and API
+    v1 read it here, so they agree."""
+    if sharing_enabled is None:
+        sharing_enabled = public_sharing_enabled()
+    return bool(sharing_enabled and user is not None and getattr(user, 'can_share_publicly', True))
+
+
 def link_is_active(share, sharing_enabled=None):
     """Whether a public link is answered now.
 

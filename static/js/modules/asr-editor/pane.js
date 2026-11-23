@@ -1271,11 +1271,17 @@ export function createAsrEditorPane() {
                 following: () => follow.value,
                 /** Play one stretch of the audio and stop at its end. */
                 playRange(start, end) {
+                    this.playRanges([{ start, end }]);
+                },
+                /** Play stretches one after the other and stop after the last (the preview of a trim). */
+                playRanges(ranges) {
                     const a = audio();
-                    if (!a || !Number.isFinite(start) || !(end > start)) return;
+                    const parts = (ranges || []).filter((r) => r && Number.isFinite(r.start) && r.end > r.start)
+                        .map((r) => ({ start: r.start, end: r.end }));
+                    if (!a || !parts.length) return;
                     stopLoop();
-                    queue = [{ start, end }];
-                    a.currentTime = start;
+                    queue = parts;
+                    a.currentTime = parts[0].start;
                     const p = a.play();
                     if (p && p.catch) p.catch(() => {});
                     startMonitor();

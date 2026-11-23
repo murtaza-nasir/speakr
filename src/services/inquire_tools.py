@@ -403,6 +403,12 @@ def _line_matches(line, terms):
     return all(t in lower for t in terms)
 
 
+# Transcript matches search_text returns for one recording (#679): every
+# match is its own segment (time, speaker, citation), so without a cap one
+# long recording that says the phrase often fills top_k by itself.
+SEARCH_TEXT_PER_RECORDING = 3
+
+
 def tool_search_text(ctx, args):
     from sqlalchemy import and_
     from sqlalchemy.orm import joinedload
@@ -468,7 +474,7 @@ def tool_search_text(ctx, args):
     if notes:
         result['note'] = ' '.join(notes)
     if not ids:
-        return {**result, 'result_count': 0, 'results': []}
+        return {**result, 'result_count': 0, 'recording_count': 0, 'results': []}
 
     def matches(column):
         return and_(*[column.ilike(contains_pattern(t), escape=LIKE_ESCAPE) for t in terms])
@@ -492,12 +498,33 @@ def tool_search_text(ctx, args):
         for rec in rq.order_by(Recording.meeting_date.desc()).limit(top_k).all():
             hits.append({**base(rec), 'field': field, 'snippet': _snippet(getattr(rec, field), terms)})
 
+    cap = SEARCH_TEXT_PER_RECORDING
+    shown, more = {}, set()
+
+    def take(rid):
+        """Whether one more transcript match of this recording fits the cap."""
+        if shown.get(rid, 0) >= cap:
+            more.add(rid)
+            return False
+        shown[rid] = shown.get(rid, 0) + 1
+        return True
+
     if 'transcript' in fields:
-        chunks = (TranscriptChunk.query.options(joinedload(TranscriptChunk.recording))
-                  .join(Recording, Recording.id == TranscriptChunk.recording_id)
+        # The first matching chunks of each recording only (a chunk overlaps
+        # its neighbor, so two chunks can give one segment), so one recording
+        # cannot fill the rows read for all of them.
+        ranked = (db.session.query(
+                      TranscriptChunk.id.label('chunk_id'),
+                      db.func.row_number().over(partition_by=TranscriptChunk.recording_id,
+                                                order_by=TranscriptChunk.chunk_index).label('n'))
                   .filter(TranscriptChunk.recording_id.in_(ids), matches(TranscriptChunk.content))
+                  .subquery())
+        chunks = (TranscriptChunk.query.options(joinedload(TranscriptChunk.recording))
+                  .join(ranked, ranked.c.chunk_id == TranscriptChunk.id)
+                  .join(Recording, Recording.id == TranscriptChunk.recording_id)
+                  .filter(ranked.c.n <= cap * 2 + 1)
                   .order_by(Recording.meeting_date.desc(), TranscriptChunk.recording_id, TranscriptChunk.chunk_index)
-                  .limit(top_k * 4).all())
+                  .limit(top_k * 8).all())
         segments_by_rec, seen = {}, set()
         for chunk in chunks:
             lines = [line for line in chunk.content.split('\n') if _line_matches(line, terms)]
@@ -521,6 +548,8 @@ def tool_search_text(ctx, args):
             if key in seen:
                 continue  # the segment two chunks share
             seen.add(key)
+            if not take(chunk.recording_id):
+                continue
             hits.append({**base(chunk.recording), 'field': 'transcript',
                          'speaker': speaker, 'time': _fmt_time(start_time),
                          'seek_seconds': int(start_time) if start_time is not None else None,
@@ -544,7 +573,7 @@ def tool_search_text(ctx, args):
                 if segments is None:
                     segments = [{'speaker': None, 'text': rec.transcription, 'start_time': None}]
                 for seg in segments:
-                    if _line_matches(seg['text'], terms):
+                    if _line_matches(seg['text'], terms) and take(rec.id):
                         hits.append({**base(rec), 'field': 'transcript', 'speaker': seg['speaker'],
                                      'time': _fmt_time(seg['start_time']),
                                      'seek_seconds': int(seg['start_time']) if seg['start_time'] is not None
@@ -553,9 +582,17 @@ def tool_search_text(ctx, args):
 
     truncated = len(hits) > top_k
     hits = hits[:top_k]
-    result.update({'result_count': len(hits), 'results': hits})
+    returned = {hit['recording_id'] for hit in hits}
+    result.update({'result_count': len(hits), 'recording_count': len(returned), 'results': hits})
     if truncated:
         result['truncated'] = True
+    capped = sorted(rid for rid in more if rid in returned)
+    if capped:
+        result['more_matches_in'] = capped
+        result['note'] = ' '.join(filter(None, [
+            result.get('note'),
+            f"At most {cap} transcript matches per recording are listed; the recordings in more_matches_in "
+            f"have more (read their transcripts for all of them)."]))
     return result
 
 
@@ -891,7 +928,9 @@ def build_toolbox(availability, tool_names=None):
          'transcripts, titles' + (', summaries' if availability.get('summaries') else '')
          + (" and the user's own notes" if availability.get('notes') else '') + '. Returns each match with '
          'its recording, field and a snippet; transcript matches also have speaker, time and seek_seconds. '
-         'An empty result means the text does not appear.',
+         'A recording gives at most ' + str(SEARCH_TEXT_PER_RECORDING) + ' transcript matches; '
+         'more_matches_in lists the recordings that have more. result_count counts matches, '
+         'recording_count the distinct recordings. An empty result means the text does not appear.',
          {'type': 'object',
           'properties': {
               'query': {'type': 'string', 'description': 'The exact text to find'},

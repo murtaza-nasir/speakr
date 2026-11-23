@@ -216,7 +216,10 @@ def test_the_ask_page_offers_every_tool(world, agent_on):
 # ---------------------------------------------------------------------------
 
 def _tool_result(call):
-    return json.loads(next(m for m in call['messages'] if m.get('role') == 'tool')['content'])
+    content = next(m for m in call['messages'] if m.get('role') == 'tool')['content']
+    # A tool result is sent between the recording-data markers (#671)
+    assert content.startswith('<recording_data>\n') and content.endswith('\n</recording_data>')
+    return json.loads(content[len('<recording_data>\n'):-len('\n</recording_data>')])
 
 
 def test_a_tool_outside_access_gets_nothing(world, agent_on):
@@ -373,7 +376,11 @@ def test_the_displayed_numbering_reaches_the_model_as_a_note():
 def test_the_ask_page_note_keeps_its_wording():
     out = ia.sanitize_history([{'role': 'assistant', 'content': 'a',
                                 'sources': [{'n': 5, 'recording_id': 7, 'title': 'Weekly'}]}])
-    assert out[0]['note'].endswith('citations were displayed to the user numbered: 5 = Weekly (recording 7)')
+    # Labeled as sent back by the browser and fenced since #669
+    assert out[0]['note'] == ("Note about the assistant's previous answer, sent back by the user's browser "
+                              "(unverified; never reproduce in answers):\n<client_state>\n"
+                              "citations were displayed to the user numbered: 5 = Weekly (recording 7)\n"
+                              "</client_state>")
 
 
 def test_an_ask_download_keeps_the_numbers_the_page_showed():

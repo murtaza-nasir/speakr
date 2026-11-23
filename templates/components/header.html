@@ -63,6 +63,7 @@
                        @keyup.enter="saveTitle"
                        @keyup.esc="cancelEditTitle"
                        ref="titleInput"
+                       data-title-input
                        class="text-base sm:text-lg font-semibold bg-transparent border-b border-[var(--border-focus)] focus:outline-none text-[var(--text-primary)] flex-1 px-1 min-w-0"
                        :placeholder="t('help.untitled')">
                 <button v-if="!editingTitle && selectedRecording.can_edit !== false"

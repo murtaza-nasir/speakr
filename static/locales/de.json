@@ -1036,7 +1036,27 @@
     "undoAction": "Rückgängig",
     "suggestionMergeInto": "Mit {{name}} zusammenführen",
     "suggestionMerged": "{{label}} mit {{name}} zusammengeführt",
-    "updateSummary": "Zusammenfassung aktualisieren"
+    "updateSummary": "Zusammenfassung aktualisieren",
+    "trim": {
+      "button": "Kürzen",
+      "start": "Aufnahme kürzen",
+      "title": "Kürzen",
+      "hint": "Ziehen Sie die Griffe auf der Wellenform oder geben Sie die Zeiten ein. Der Ton außerhalb wird entfernt.",
+      "startLabel": "Anfang",
+      "endLabel": "Ende",
+      "keeps": "Behält {{kept}} von {{total}}",
+      "effect": "Segmente entfernt: {{removed}}, gekürzt: {{clipped}}",
+      "regenerateSummary": "Zusammenfassung neu erstellen",
+      "preview": "Vorhören",
+      "apply": "Kürzen",
+      "confirmTitle": "Aufnahme kürzen?",
+      "confirmMessage": "Nur der Ton von {{start}} bis {{end}} bleibt erhalten, mit seinem Transkript. Der entfernte Ton kann nicht wiederhergestellt werden. Segmente entfernt: {{removed}}, gekürzt: {{clipped}}.",
+      "saveFirst": "Speichern Sie Ihre Änderungen vor dem Kürzen.",
+      "started": "Aufnahme wird gekürzt…",
+      "done": "Aufnahme gekürzt",
+      "failed": "Die Aufnahme konnte nicht gekürzt werden.",
+      "nothingRemoved": "Verschieben Sie zuerst einen Griff: Die ganze Aufnahme bleibt erhalten."
+    }
   },
   "findReplace": {
     "open": "Suchen und ersetzen (Strg+F)",
@@ -2530,7 +2550,8 @@
       "assembling": "Zusammensetzen",
       "titling": "Titel",
       "indexing": "Indexierung",
-      "checking": "Prüfung"
+      "checking": "Prüfung",
+      "trimming": "Kürzen"
     },
     "queuedFor": {
       "conversion": "Platz {{position}} für Konvertierung",
@@ -3217,7 +3238,8 @@
     "shareWithUser": "Für Benutzer freigeben",
     "userNumber": "Benutzer #{{id}}",
     "usernamePlaceholder": "Benutzername oder E-Mail-Adresse",
-    "view": "Ansehen"
+    "view": "Ansehen",
+    "publicLinksOff": "Sie können keine öffentlichen Links erstellen."
   },
   "upload": {
     "completed": "Abgeschlossen",
@@ -3876,7 +3898,18 @@
       "external_refs_not_json": "external_refs muss JSON sein",
       "external_refs_too_many": "Höchstens {{max}} externe Referenzen pro Aufnahme",
       "external_ref_system_required": "?system= ist erforderlich",
-      "external_ref_system_mismatch": "Jede Referenz muss das in ?system= angegebene System haben"
+      "external_ref_system_mismatch": "Jede Referenz muss das in ?system= angegebene System haben",
+      "trim_no_audio": "Diese Aufnahme hat keinen Ton zum Kürzen.",
+      "trim_not_completed": "Nur eine fertig verarbeitete Aufnahme kann gekürzt werden.",
+      "trim_needs_segments": "Nur ein Transkript mit Segmenten kann gekürzt werden.",
+      "trim_unknown_duration": "Die Länge des Tons ist nicht bekannt.",
+      "trim_invalid_range": "Wählen Sie einen Anfang vor dem Ende, innerhalb des Tons.",
+      "trim_too_short": "Behalten Sie mindestens eine Sekunde Ton.",
+      "trim_nothing_removed": "Der Bereich behält die ganze Aufnahme.",
+      "trim_needs_times": "Jedes Segment braucht eine Anfangs- und eine Endzeit.",
+      "trim_busy": "Die Aufnahme wird gerade verarbeitet. Versuchen Sie es danach erneut.",
+      "trim_failed": "Die Aufnahme konnte nicht gekürzt werden.",
+      "trim_store_failed": "Der gekürzte Ton konnte nicht gespeichert werden."
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",
