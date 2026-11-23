@@ -18,10 +18,17 @@
  *
  * The selection belongs to the transcript pane (pane.js); the two talk
  * through the session: session.pane and session.timeline.
+ *
+ * Trim mode (#660): two handles on the canvas mark the part of the audio to
+ * keep, with fields for their times above the lanes; the rest is dimmed and
+ * the blocks cannot be edited. Trim asks the session (composables/
+ * asr-editor.js), which confirms and sends the trim; the range rules are in
+ * trim.js.
  * Template: templates/components/asr-editor-timeline.html.
  */
 
-import { bestSuggestion, formatExact, speakerColorClass } from './helpers.js';
+import { bestSuggestion, formatExact, parseTime, speakerColorClass } from './helpers.js';
+import { fullRange, handleAt, moveEdge, previewRanges, removesSomething, trimEffect } from './trim.js';
 import {
     CREATE_MIN, MAX_PPS, MERGE_PPS,
     beginCreate, beginMove, beginResize, buildLanes, changesOf, clamp, clampView, createTo, dragSlop, edgeSlop, hitTest,
@@ -80,6 +87,12 @@ export function createAsrEditorTimeline() {
             duration: { type: Number, default: 0 },
             // False when the recording has no audio file (removed, incognito): no waveform is asked for.
             hasAudio: { type: Boolean, default: true },
+            // Whether Trim is offered: the stored transcript of a finished recording with audio, editable by the user (#660).
+            canTrim: { type: Boolean, default: false },
+            // Whether the recording has a summary to regenerate after a trim.
+            hasSummary: { type: Boolean, default: false },
+            // The stored length (audio_duration), which the server checks a trim against.
+            storedDuration: { type: Number, default: 0 },
         },
 
         setup(props) {
@@ -100,6 +113,15 @@ export function createAsrEditorTimeline() {
             const waveHeight = ref(40);
             const waveState = ref('none');           // none | loading | ready
             const narrow = ref(isNarrow());          // phone width: the voice matches are listed above the lanes
+            // Trim mode (#660): the range to keep, the text of its two fields, and the summary checkbox
+            const trimming = ref(false);
+            const trimStartText = ref('');
+            const trimEndText = ref('');
+            const trimKept = ref('');
+            const trimEffectText = ref('');
+            const trimSummary = ref(false);
+            const trimSending = ref(false);
+            const trimInvalid = ref('');             // 'start' | 'end' while a field holds no usable time
 
             // ---- state of the drawing, none of it reactive -------------------
 
@@ -135,6 +157,7 @@ export function createAsrEditorTimeline() {
             let boundAudio = null;
             const stats = { frameMs: 0, drawn: 0, visible: 0, frames: 0, rebuildMs: 0 };
             const env = { lanes: data.lanes, maxLength: 0, pps: START_PPS, playhead: 0, duration: 1, quietNear: null };
+            let trim = null;                         // { start, end } in trim mode, else null
             const miniWin = { x: 0, w: 0 };
             const moveOptions = { alt: false, ctrl: false, keepTime: false };
             // Reused by every frame: blocks to outline on top of merged runs
@@ -572,6 +595,37 @@ export function createAsrEditorTimeline() {
                     c.fill();
                 }
 
+                // Trim mode: the parts that go are dimmed, the edges have handles
+                if (trim) {
+                    const sx = xOf(trim.start);
+                    const ex = xOf(trim.end);
+                    c.fillStyle = C.bg;
+                    c.globalAlpha = 0.72;
+                    if (sx > 0) c.fillRect(0, 0, Math.min(sx, W), H);
+                    if (ex < W) c.fillRect(Math.max(ex, 0), 0, W - Math.max(ex, 0), H);
+                    c.globalAlpha = 1;
+                    c.strokeStyle = C.accent;
+                    c.fillStyle = C.accent;
+                    c.lineWidth = 2;
+                    for (const x of [sx, ex]) {
+                        if (x < -10 || x > W + 10) continue;
+                        const hx = Math.round(x);
+                        c.beginPath();
+                        c.moveTo(hx, 0);
+                        c.lineTo(hx, H);
+                        c.stroke();
+                        // The grip, in the waveform band
+                        if (roundRect(c, hx - 5, RULER + 4, 10, WAVE - 8, 3)) c.fill();
+                    }
+                    c.fillStyle = C.bg;
+                    for (const x of [sx, ex]) {
+                        const hx = Math.round(x);
+                        if (hx < -10 || hx > W + 10) continue;
+                        c.fillRect(hx - 1.5, RULER + WAVE / 2 - 5, 1, 10);
+                        c.fillRect(hx + 0.5, RULER + WAVE / 2 - 5, 1, 10);
+                    }
+                }
+
                 // Playhead
                 const px = Math.round(xOf(playhead)) + 0.5;
                 if (px > -8 && px < W + 8) {
@@ -828,6 +882,21 @@ export function createAsrEditorTimeline() {
                 if (pointers.size > 2 || pinch) return;
                 const isTouch = event.pointerType !== 'mouse';
                 const mods = { shift: event.shiftKey, toggle: event.ctrlKey || event.metaKey };
+                if (trim) {
+                    // Trim mode: a handle is dragged; the ruler seeks; anywhere else pans
+                    const edge = handleAt(p.x, xOf(trim.start), xOf(trim.end), isTouch ? 18 : 8);
+                    if (edge) {
+                        drag = { kind: 'trim', edge, offset: p.x - xOf(trim[edge]), active: true };
+                        setCursor('ew-resize');
+                    } else if (p.y < RULER) {
+                        drag = { kind: 'scrub', active: true };
+                        seek(tOf(p.x));
+                    } else {
+                        drag = { kind: 'pan', x0: p.x, t0: view.t0, moved: false };
+                        setCursor('grabbing');
+                    }
+                    return;
+                }
                 if (p.y < RULER) {
                     drag = { kind: 'scrub', active: true };
                     seek(tOf(p.x));
@@ -863,6 +932,13 @@ export function createAsrEditorTimeline() {
                 if (d.kind === 'scrub') {
                     seek(tOf(x));
                     showTip(formatExact(playhead), clientX, clientY);
+                    return;
+                }
+                if (d.kind === 'trim') {
+                    setTrim(moveEdge(trim, d.edge, round3(tOf(x - d.offset)), trimDuration()));
+                    const word = translate(d.edge === 'start' ? 'asrEditor.timeline.start' : 'asrEditor.timeline.end');
+                    showTip(`${word} ${formatExact(trim[d.edge])}`, clientX, clientY);
+                    touch();
                     return;
                 }
                 if (d.kind === 'pan') {
@@ -937,7 +1013,7 @@ export function createAsrEditorTimeline() {
                 const d = drag;
                 drag = null;
                 endDragVisuals();
-                if (d.kind === 'scrub') return;
+                if (d.kind === 'scrub' || d.kind === 'trim') return;
                 if (d.kind === 'pan') {
                     if (!d.moved) seek(tOf(p.x));
                     return;
@@ -1020,6 +1096,12 @@ export function createAsrEditorTimeline() {
             const hoverAt = (x, y) => {
                 let cursor = 'default';
                 let seg = null;
+                if (trim) {
+                    const edge = handleAt(x, xOf(trim.start), xOf(trim.end), 8);
+                    setCursor(edge ? 'ew-resize' : y < RULER ? 'pointer' : 'grab');
+                    if (hoverSeg) { hoverSeg = null; touch(); }
+                    return;
+                }
                 if (y < RULER) cursor = 'pointer';
                 else if (y < RULER + WAVE) cursor = 'grab';
                 else {
@@ -1035,6 +1117,7 @@ export function createAsrEditorTimeline() {
             };
 
             const onDoubleClick = (event) => {
+                if (trim) return;
                 const p = position(event);
                 const li = laneAt(p.y);
                 if (li < 0 || li >= data.lanes.length) return;
@@ -1075,12 +1158,109 @@ export function createAsrEditorTimeline() {
                 }
             };
 
-            // Esc cancels a drag, before the pane or the dialog see the key
+            // Esc cancels a drag, before the pane or the dialog see the key; with
+            // no drag it leaves trim mode
             const onWindowKeydown = (event) => {
-                if (event.key !== 'Escape' || !drag) return;
-                if (cancelDrag()) {
+                if (event.key !== 'Escape') return;
+                if (drag) {
+                    if (cancelDrag()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    return;
+                }
+                if (trim && !trimSending.value && !document.querySelector('[data-app-dialog]')) {
                     event.preventDefault();
                     event.stopPropagation();
+                    cancelTrim();
+                }
+            };
+
+            // ---- trim mode (#660) -------------------------------------------
+
+            // The stored length first: the server checks the range against it
+            const trimDuration = () => {
+                const a = audio();
+                const fromAudio = a && Number.isFinite(a.duration) && a.duration > 0 ? a.duration : 0;
+                return props.storedDuration || props.duration || fromAudio || (peaks ? peaks.duration : 0) || duration;
+            };
+
+            const showTrimFields = () => {
+                if (!trim) return;
+                trimStartText.value = formatExact(trim.start);
+                trimEndText.value = formatExact(trim.end);
+                trimKept.value = translate('asrEditor.trim.keeps', {
+                    kept: formatExact(trim.end - trim.start), total: formatExact(trimDuration()) });
+                const effect = trimEffect(model.segments, trim);
+                trimEffectText.value = translate('asrEditor.trim.effect', { removed: effect.removed, clipped: effect.clipped });
+            };
+
+            function setTrim(range) {
+                trim = range;
+                trimInvalid.value = '';
+                showTrimFields();
+            }
+
+            const startTrim = () => {
+                if (!props.canTrim || trim) return;
+                cancelDrag();
+                if (session.pane && selection().size) session.pane.clearSelection();
+                hoverSeg = null;
+                trimSummary.value = false;
+                setTrim(fullRange(trimDuration()));
+                trimming.value = true;
+                if (!open.value) toggleOpen();
+                zoomFit();
+                nextTick(() => {
+                    const field = !destroyed && root.value ? root.value.querySelector('[data-asr-trim-start]') : null;
+                    if (field) field.focus({ preventScroll: true });
+                });
+            };
+
+            function cancelTrim() {
+                trim = null;
+                trimming.value = false;
+                trimInvalid.value = '';
+                cancelDrag();
+                touch();
+                nextTick(() => {
+                    const button = !destroyed && root.value ? root.value.querySelector('[data-asr-action="trim"]') : null;
+                    if (button) button.focus({ preventScroll: true });
+                });
+            }
+
+            /** A time typed in a field: applied when it is a time, else the field is marked. */
+            const setTrimField = (edge, text) => {
+                if (!trim) return;
+                const t = parseTime(text);
+                if (t == null) { trimInvalid.value = edge; return; }
+                setTrim(moveEdge(trim, edge, t, trimDuration()));
+                const x = xOf(trim[edge]);
+                if (x < 0 || x > W) revealInView(view, trim[edge], trim[edge], W, duration);
+                touch();
+            };
+
+            const previewTrim = () => {
+                if (!trim || !session.pane) return;
+                session.pane.playRanges(previewRanges(trim));
+            };
+
+            const applyTrim = async () => {
+                if (!trim || trimSending.value || typeof session.requestTrim !== 'function') return;
+                if (!removesSomething(trim, trimDuration())) {
+                    if (session.toast) session.toast(translate('asrEditor.trim.nothingRemoved'));
+                    return;
+                }
+                trimSending.value = true;
+                try {
+                    const range = { start: trim.start, end: trim.end };
+                    const sent = await session.requestTrim(range, {
+                        regenerateSummary: !!(props.hasSummary && trimSummary.value),
+                        effect: trimEffect(model.segments, range),
+                    });
+                    if (sent && !destroyed) { trim = null; trimming.value = false; touch(); }
+                } finally {
+                    if (!destroyed) trimSending.value = false;
                 }
             };
 
@@ -1261,6 +1441,7 @@ export function createAsrEditorTimeline() {
                     get segments() { return model.toJSON(); },
                     get undoDepth() { return model.undoDepth; },
                     get snap() { return drag && drag.st && drag.st.snap ? drag.st.snap.kind : null; },
+                    get trim() { return trim ? { start: trim.start, end: trim.end } : null; },
                     laneY: (li) => RULER + WAVE + li * LANE + LANE / 2,
                     waveY: () => RULER + WAVE / 2,
                     setView(t0, pps) {
@@ -1348,6 +1529,8 @@ export function createAsrEditorTimeline() {
                 root, box, canvas, mini, heads, tip,
                 open, lanes, laneHeight, waveHeight, waveState, narrow,
                 toggleOpen, zoomIn, zoomOut, zoomFit, acceptSuggestion, previewSpeaker, renameSpeaker, addSpeaker, removeSpeaker,
+                trimming, trimStartText, trimEndText, trimKept, trimEffectText, trimSummary, trimSending, trimInvalid,
+                startTrim, cancelTrim, setTrimField, previewTrim, applyTrim,
                 rulerHeight: RULER, overviewHeight: OVERVIEW,
             };
         },

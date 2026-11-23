@@ -84,7 +84,10 @@
         <!-- Timeline: waveform and one lane per speaker (static/js/modules/asr-editor/timeline.js) -->
         <asr-editor-timeline v-if="asrEditorSession" :key="'timeline-' + asrEditorSession.key" :session="asrEditorSession"
                              :duration="Number(selectedRecording.audio_duration_seconds) || 0"
-                             :has-audio="!selectedRecording.audio_deleted_at && !selectedRecording.incognito"></asr-editor-timeline>
+                             :has-audio="!selectedRecording.audio_deleted_at && !selectedRecording.incognito"
+                             :can-trim="canTrimRecording(asrEditorSession)"
+                             :has-summary="!!selectedRecording.summary"
+                             :stored-duration="Number(selectedRecording.audio_duration) || 0"></asr-editor-timeline>
 
         {% include 'components/find-replace-bar.html' %}
 

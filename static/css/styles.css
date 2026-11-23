@@ -4625,6 +4625,82 @@ html.asr-editor-long body .modal-overlay {
     white-space: nowrap;
 }
 
+/* Trim mode (#660): the button in the bar and the bar with the two times */
+.asr-tl__trim-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 8px;
+    margin-left: auto;
+    border: var(--border-hairline) solid var(--border-secondary);
+    border-radius: 6px;
+    background: none;
+    color: var(--text-secondary);
+    font-size: var(--fs-meta);
+    cursor: pointer;
+}
+.asr-tl__trim-btn > i { font-size: 0.75rem; color: var(--text-muted); }
+.asr-tl__trim-btn + .asr-tl__zoom { margin-left: 0; }
+.asr-tl__trim-btn[aria-pressed="true"] { background: var(--bg-tertiary); color: var(--text-primary); cursor: default; }
+.asr-tl__trim-btn:focus-visible { outline: 2px solid var(--border-focus); outline-offset: -2px; }
+@media (hover: hover) {
+    .asr-tl__trim-btn:hover:not(:disabled) { background: var(--bg-tertiary); color: var(--text-primary); }
+}
+.asr-tl__trim {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-4);
+    border-top: var(--border-hairline) solid var(--border-primary);
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    background: var(--bg-primary);
+}
+.asr-tl__trim-hint { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
+.asr-tl__trim-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.asr-tl__trim-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--fs-meta);
+    color: var(--text-secondary);
+}
+.asr-tl__trim-input {
+    width: 7.5rem;
+    min-height: 30px;
+    padding: 0 8px;
+    border: var(--border-hairline) solid var(--border-secondary);
+    border-radius: 6px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+}
+.asr-tl__trim-input:focus { outline: 2px solid var(--border-focus); outline-offset: -1px; }
+.asr-tl__trim-input.is-invalid { border-color: var(--border-danger, var(--text-danger)); }
+.asr-tl__trim-kept {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px var(--sp-2);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.asr-tl__trim-effect { color: var(--text-muted); }
+.asr-tl__trim-actions { justify-content: flex-end; }
+.asr-tl__trim-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: auto;
+    font-size: var(--fs-meta);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.asr-tl__trim-summary > input { flex: none; width: 1rem; height: 1rem; }
+.asr-tl--trimming .asr-tl__canvas { cursor: grab; }
+
 @media (max-width: 639px) {
     .asr-tl { --tl-head: 118px; }
     .asr-tl__bar { padding: 0 var(--sp-2); min-height: 40px; }
@@ -4644,6 +4720,15 @@ html.asr-editor-long body .modal-overlay {
     .asr-tl--empties { --tl-head: 160px; }
     .asr-tl__head-audio,
     .asr-tl__mini-label { padding: 0 6px; }
+    .asr-tl__trim-btn { min-height: 36px; }
+    .asr-tl__trim { padding: var(--sp-2) var(--sp-3); }
+    .asr-tl__trim-hint { display: none; }
+    .asr-tl__trim-field { flex: 1 1 40%; }
+    .asr-tl__trim-input { width: 100%; min-height: 40px; }
+    .asr-tl__trim-kept { flex: 1 0 100%; }
+    .asr-tl__trim-summary { flex: 1 0 100%; min-height: 32px; }
+    /* Touch-sized, also in the themes that make .btn--sm smaller */
+    .asr-tl .asr-tl__trim-actions .btn { min-height: 40px; height: 40px; }
 }
 
 /* Phones: the same pane, stacked, with touch-sized controls and nothing that
