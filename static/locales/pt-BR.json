@@ -3865,7 +3865,18 @@
       "invalid_updates": "updates deve ser um objeto",
       "tag_name_too_long": "Os nomes de etiqueta podem ter no máximo {{max}} caracteres",
       "message_contains_nul": "A pergunta não pode conter um caractere NUL",
-      "field_out_of_range": "{{field}} deve ser um número inteiro de {{min}} a {{max}}"
+      "field_out_of_range": "{{field}} deve ser um número inteiro de {{min}} a {{max}}",
+      "external_ref_not_object": "Cada referência externa deve ser um objeto",
+      "external_ref_system_invalid": "system deve ter de 1 a 40 caracteres de a-z, 0-9, _ . -",
+      "external_ref_kind_invalid": "kind deve ter de 1 a 40 caracteres de a-z, 0-9, _ . -",
+      "external_ref_ref_invalid": "ref deve ter de 1 a 500 caracteres imprimíveis",
+      "external_ref_url_invalid": "url deve ser um endereço http:// ou https:// de no máximo 1000 caracteres",
+      "external_ref_label_invalid": "label pode ter no máximo 200 caracteres",
+      "external_refs_not_list": "external_refs deve ser uma lista",
+      "external_refs_not_json": "external_refs deve ser JSON",
+      "external_refs_too_many": "No máximo {{max}} referências externas por gravação",
+      "external_ref_system_required": "?system= é obrigatório",
+      "external_ref_system_mismatch": "Cada referência deve ter o sistema indicado em ?system="
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",

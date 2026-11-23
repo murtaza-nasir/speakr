@@ -3865,7 +3865,18 @@
       "invalid_updates": "updates должно быть объектом",
       "tag_name_too_long": "Название тега может содержать не более {{max}} символов",
       "message_contains_nul": "Вопрос не может содержать символ NUL",
-      "field_out_of_range": "{{field}} должно быть целым числом от {{min}} до {{max}}"
+      "field_out_of_range": "{{field}} должно быть целым числом от {{min}} до {{max}}",
+      "external_ref_not_object": "Каждая внешняя ссылка должна быть объектом",
+      "external_ref_system_invalid": "system должно содержать от 1 до 40 символов из a-z, 0-9, _ . -",
+      "external_ref_kind_invalid": "kind должно содержать от 1 до 40 символов из a-z, 0-9, _ . -",
+      "external_ref_ref_invalid": "ref должно содержать от 1 до 500 печатаемых символов",
+      "external_ref_url_invalid": "url должно быть адресом http:// или https:// длиной не более 1000 символов",
+      "external_ref_label_invalid": "label может содержать не более 200 символов",
+      "external_refs_not_list": "external_refs должно быть списком",
+      "external_refs_not_json": "external_refs должно быть в формате JSON",
+      "external_refs_too_many": "Не более {{max}} внешних ссылок на запись",
+      "external_ref_system_required": "Требуется ?system=",
+      "external_ref_system_mismatch": "У каждой ссылки должна быть система, указанная в ?system="
     },
     "apiMessage": {
       "accountUpdated": "Данные учётной записи обновлены",

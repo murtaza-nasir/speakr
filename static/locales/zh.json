@@ -3865,7 +3865,18 @@
       "invalid_updates": "updates 必须是一个对象",
       "tag_name_too_long": "标签名称最多 {{max}} 个字符",
       "message_contains_nul": "问题不能包含 NUL 字符",
-      "field_out_of_range": "{{field}} 必须是 {{min}} 到 {{max}} 之间的整数"
+      "field_out_of_range": "{{field}} 必须是 {{min}} 到 {{max}} 之间的整数",
+      "external_ref_not_object": "每个外部引用都必须是一个对象",
+      "external_ref_system_invalid": "system 必须是 1 到 40 个 a-z、0-9、_ . - 字符",
+      "external_ref_kind_invalid": "kind 必须是 1 到 40 个 a-z、0-9、_ . - 字符",
+      "external_ref_ref_invalid": "ref 必须是 1 到 500 个可打印字符",
+      "external_ref_url_invalid": "url 必须是不超过 1000 个字符的 http:// 或 https:// 地址",
+      "external_ref_label_invalid": "label 最多 200 个字符",
+      "external_refs_not_list": "external_refs 必须是一个列表",
+      "external_refs_not_json": "external_refs 必须是 JSON",
+      "external_refs_too_many": "每个录音最多 {{max}} 个外部引用",
+      "external_ref_system_required": "需要 ?system=",
+      "external_ref_system_mismatch": "每个引用都必须使用 ?system= 中给出的系统"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新",

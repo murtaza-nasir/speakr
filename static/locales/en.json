@@ -3865,7 +3865,18 @@
       "invalid_updates": "updates must be an object",
       "tag_name_too_long": "Tag names can be at most {{max}} characters long",
       "message_contains_nul": "The question cannot contain a NUL character",
-      "field_out_of_range": "{{field}} must be a whole number from {{min}} to {{max}}"
+      "field_out_of_range": "{{field}} must be a whole number from {{min}} to {{max}}",
+      "external_ref_not_object": "Each external reference must be an object",
+      "external_ref_system_invalid": "system must be 1 to 40 characters of a-z, 0-9, _ . -",
+      "external_ref_kind_invalid": "kind must be 1 to 40 characters of a-z, 0-9, _ . -",
+      "external_ref_ref_invalid": "ref must be 1 to 500 printable characters",
+      "external_ref_url_invalid": "url must be an http:// or https:// address of at most 1000 characters",
+      "external_ref_label_invalid": "label must be at most 200 characters",
+      "external_refs_not_list": "external_refs must be a list",
+      "external_refs_not_json": "external_refs must be JSON",
+      "external_refs_too_many": "At most {{max}} external references per recording",
+      "external_ref_system_required": "?system= is required",
+      "external_ref_system_mismatch": "Every reference must have the system given in ?system="
     },
     "apiMessage": {
       "accountUpdated": "Account details updated",

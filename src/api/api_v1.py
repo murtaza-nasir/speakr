@@ -1802,7 +1802,7 @@ def replace_external_refs(recording_id):
         return body_error
     try:
         if not xr._SLUG.match(system):
-            raise xr.RefError('?system= is required')
+            raise xr.RefError('external_ref_system_required')
         xr.replace_system(recording, current_user.id, system, xr.validate_list(body.get('external_refs')))
     except xr.RefError as e:
         db.session.rollback()
@@ -4432,7 +4432,8 @@ def upload_recording():
         except ValueError as e:
             code = getattr(e, 'code', 'invalid_parameter')
             status = getattr(e, 'status', 400)
-            return jsonify({'error': str(e) if isinstance(e, xr.RefError) else 'external_refs must be JSON',
+            return jsonify({'error': str(e) if isinstance(e, xr.RefError)
+                            else translate('server.apiError.external_refs_not_json'),
                             'code': code}), status
     key = (form.get('idempotency_key') or '').strip() or None
     if key is not None and len(key) > 100:
