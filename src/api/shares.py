@@ -25,7 +25,7 @@ from src.services.public_shares import active_share_or_404, link_is_https, publi
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.log_filters import loggable_error, loggable_locator
 from src.utils.localization import api_error, translate, request_language
-from src.utils.request_body import json_body
+from src.utils.request_body import flag_fields, json_body, json_object_body
 
 # Configuration from environment
 READABLE_PUBLIC_LINKS = os.environ.get('READABLE_PUBLIC_LINKS', 'false').lower() == 'true'
@@ -249,10 +249,16 @@ def create_share(recording_id):
     if not recording or recording.user_id != current_user.id:
         return jsonify(api_error('recording_not_found_or_no_share')), 404
 
-    data = request.json
-    share_summary = data.get('share_summary', True)
-    share_notes = data.get('share_notes', True)
-    force_new = data.get('force_new', False)
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    # Flags, read like every other one: "false" is false (#665, #687)
+    flags, flag_error = flag_fields(data, ('share_summary', 'share_notes', 'force_new'))
+    if flag_error:
+        return flag_error
+    share_summary = flags.get('share_summary', True)
+    share_notes = flags.get('share_notes', True)
+    force_new = flags.get('force_new', False)
 
     # The web dialog sets the flags of a reused link to what it sent.
     from src.services.public_shares import get_or_create
@@ -397,12 +403,17 @@ def get_shares_overview():
 def update_share(share_id):
     """Update a public share's settings."""
     share = Share.query.filter_by(id=share_id, user_id=current_user.id).first_or_404()
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    flags, flag_error = flag_fields(data, ('share_summary', 'share_notes'))
+    if flag_error:
+        return flag_error
 
-    if 'share_summary' in data:
-        share.share_summary = data['share_summary']
-    if 'share_notes' in data:
-        share.share_notes = data['share_notes']
+    if 'share_summary' in flags:
+        share.share_summary = flags['share_summary']
+    if 'share_notes' in flags:
+        share.share_notes = flags['share_notes']
 
     audit.record_in_tx('share.public.changed', recording_id=share.recording_id,
                        recording_owner_id=share.user_id,

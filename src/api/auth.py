@@ -1202,14 +1202,18 @@ def account():
 @login_required
 def update_auto_speaker_labelling():
     """Update user's auto speaker labelling settings."""
-    data = request.get_json()
-
-    if data is None:
-        return jsonify({'success': False, **api_error('invalid_json')}), 400
+    from src.utils.request_body import flag_fields, json_object_body
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    # "false" is false: a flag is parsed, never cast (#665)
+    flags, flag_error = flag_fields(data, ('enabled',))
+    if flag_error:
+        return flag_error
 
     # Update enabled state
-    if 'enabled' in data:
-        current_user.auto_speaker_labelling = bool(data['enabled'])
+    if 'enabled' in flags:
+        current_user.auto_speaker_labelling = flags['enabled']
 
     # Update threshold (validate value)
     if 'threshold' in data:
@@ -1232,13 +1236,16 @@ def update_auto_speaker_labelling():
 @login_required
 def update_auto_summarization():
     """Update user's auto summarization setting."""
-    data = request.get_json()
+    from src.utils.request_body import flag_fields, json_object_body
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    flags, flag_error = flag_fields(data, ('enabled',))
+    if flag_error:
+        return flag_error
 
-    if data is None:
-        return jsonify({'success': False, **api_error('invalid_json')}), 400
-
-    if 'enabled' in data:
-        current_user.auto_summarization = bool(data['enabled'])
+    if 'enabled' in flags:
+        current_user.auto_summarization = flags['enabled']
         db.session.commit()
 
     return jsonify({

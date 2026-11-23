@@ -17,7 +17,8 @@ from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
 from src.utils.localization import translate, api_error
-from src.utils.request_body import DB_INT_MAX, id_args_error, int_args_error, json_object_body
+from src.utils.request_body import (DB_INT_MAX, flag_fields, id_args_error, int_args_error, is_int,
+                                    json_object_body)
 from src.utils.search import contains_pattern, LIKE_ESCAPE
 from src.services.retention import (is_recording_exempt_from_deletion, get_retention_days_for_recording,
                                     process_auto_deletion)
@@ -394,7 +395,9 @@ def admin_add_user():
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
     
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
     
@@ -403,6 +406,12 @@ def admin_add_user():
     for field in required_fields:
         if field not in data:
             return jsonify(api_error('missing_required_field', field=field)), 400
+    account_error = _account_fields_error(data)
+    if account_error:
+        return account_error
+    flags, flag_error = flag_fields(data, ('is_admin',))
+    if flag_error:
+        return flag_error
     
     # The username column holds 20 characters; PostgreSQL refuses a longer
     # value, which gave a 500 instead of this message
@@ -431,7 +440,7 @@ def admin_add_user():
         username=data['username'],
         email=email,
         password=hashed_password,
-        is_admin=data.get('is_admin', False),
+        is_admin=flags.get('is_admin', False),
         monthly_token_budget=budgets.get('monthly_token_budget'),
         monthly_transcription_budget=budgets.get('monthly_transcription_budget'),
         storage_quota_mb=storage_quota,
@@ -478,9 +487,26 @@ def admin_update_user(user_id):
     if not user:
         return jsonify(api_error('user_not_found')), 404
     
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
+    # Every field is checked before the first change (#687)
+    account_error = _account_fields_error(data)
+    if account_error:
+        return account_error
+    flags, flag_error = flag_fields(data, ('is_admin', 'can_share_publicly', 'create_groups_granted'))
+    if flag_error:
+        return flag_error
+    budgets, bad_budget = _budget_fields(data)
+    if bad_budget:
+        return bad_budget
+    if 'storage_quota_mb' in data:
+        try:
+            _quota_mb(data['storage_quota_mb'])
+        except (TypeError, ValueError):
+            return jsonify(api_error('invalid_storage_quota')), 400
 
     audited_fields = ('username', 'email', 'can_share_publicly', 'monthly_token_budget',
                       'monthly_transcription_budget', 'storage_quota_mb')
@@ -517,7 +543,7 @@ def admin_update_user(user_id):
         login_lock.clear_failures(user.id)
 
     if 'is_admin' in data:
-        new_is_admin = bool(data['is_admin'])
+        new_is_admin = flags['is_admin']
         # Guard against demoting the last remaining admin, which would lock
         # everyone out of the admin panel with no in-app recovery.
         if user.is_admin and not new_is_admin:
@@ -527,10 +553,10 @@ def admin_update_user(user_id):
         user.is_admin = new_is_admin
 
     if 'can_share_publicly' in data:
-        user.can_share_publicly = data['can_share_publicly']
+        user.can_share_publicly = flags['can_share_publicly']
 
     if 'create_groups_granted' in data:
-        set_user_grant(CREATE_GROUPS, user.id, bool(data['create_groups_granted']))
+        set_user_grant(CREATE_GROUPS, user.id, flags['create_groups_granted'])
 
     # None, '' or 0 is no limit; the transcription budget is in seconds
     budgets, bad_budget = _budget_fields(data)
@@ -548,7 +574,7 @@ def admin_update_user(user_id):
 
     # The names of the fields that changed, never their values.
     changed = [name for name in audited_fields if getattr(user, name) != before[name]]
-    if 'create_groups_granted' in data and bool(data['create_groups_granted']) != before['create_groups_granted']:
+    if 'create_groups_granted' in data and flags['create_groups_granted'] != before['create_groups_granted']:
         changed.append('create_groups_granted')
     if changed:
         audit.record_in_tx('admin.user.changed', target_user_id=user.id, details={'fields': sorted(changed)})
@@ -724,12 +750,29 @@ def _limit_value(value):
         raise ValueError('a limit is a whole number')
     if value < 0:
         raise ValueError('a limit is not negative')
+    # The budget and quota columns are Integer (#664)
+    if value > DB_INT_MAX:
+        raise ValueError('a limit fits an Integer column')
     return value or None
 
 
 def _quota_mb(value):
     """A storage quota from the admin form: a positive number of MB, or no limit."""
     return _limit_value(value)
+
+
+def _account_fields_error(data):
+    """The 400 for a username, email or password of the admin user form
+    that is not a string, or an email longer than its column, else None
+    (#687). A value of another type reached the database or bcrypt."""
+    for field in ('username', 'email', 'password'):
+        if field in data and not isinstance(data[field], str):
+            if field == 'password' and data[field] is None:
+                continue  # no new password
+            return jsonify(api_error('field_must_be_string', field=field)), 400
+    if len((data.get('email') or '').strip()) > 120:
+        return jsonify(api_error('field_too_long', field='email', max=120)), 400
+    return None
 
 
 def _budget_fields(data):
@@ -1402,7 +1445,9 @@ def admin_update_setting():
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
     
-    data = request.json
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
     
@@ -1413,6 +1458,10 @@ def admin_update_setting():
     
     if not key:
         return jsonify(api_error('setting_key_required')), 400
+    # The key, type and description are strings (#687)
+    for field, field_value in (('key', key), ('setting_type', setting_type), ('description', description)):
+        if field_value is not None and not isinstance(field_value, str):
+            return jsonify(api_error('field_must_be_string', field=field)), 400
     
     # An empty value for a setting that falls back to .env clears the saved
     # value, so the .env value applies again (#567).
@@ -1786,7 +1835,9 @@ def admin_update_auto_process_config():
         return jsonify(api_error('unauthorized')), 403
     
     try:
-        data = request.json
+        data, body_error = json_object_body()
+        if body_error:
+            return body_error
         if not data:
             return jsonify(api_error('no_configuration_data')), 400
         
@@ -1938,7 +1989,9 @@ def admin_save_visible_models():
         from src.models import SystemSetting
         import json as _json
 
-        data = request.json or {}
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
         options = data.get('options', [])
         if not isinstance(options, list):
             return jsonify(api_error('invalid_options_list')), 400
@@ -2010,10 +2063,22 @@ def admin_process_recordings_for_inquire():
         return jsonify(api_error('unauthorized')), 403
 
     try:
-        data = request.json or {}
-        batch_size = int(data.get('batch_size', 10) or 10)
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
+        # Whole numbers and a flag, checked before any work (#687)
+        batch_size = data.get('batch_size', 10)
+        if batch_size is None:
+            batch_size = 10
+        if not is_int(batch_size) or not 1 <= batch_size <= 1000:
+            return jsonify(api_error('field_out_of_range', field='batch_size', min=1, max=1000)), 400
         max_recordings = data.get('max_recordings', None)
-        force = bool(data.get('force', False))
+        if max_recordings is not None and (not is_int(max_recordings) or not 1 <= max_recordings <= DB_INT_MAX):
+            return jsonify(api_error('field_out_of_range', field='max_recordings', min=1, max=DB_INT_MAX)), 400
+        flags, flag_error = flag_fields(data, ('force',))
+        if flag_error:
+            return flag_error
+        force = flags.get('force', False)
 
         if force:
             # Re-embed every recording that has a usable transcription, plus

@@ -494,7 +494,9 @@ def update_team_member(group_id, user_id):
     if not current_user.is_admin and not is_group_admin:
         return jsonify(api_error('admin_required')), 403
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     role = data.get('role')
 
     if role not in ['admin', 'member']:
