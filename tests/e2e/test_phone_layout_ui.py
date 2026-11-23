@@ -412,6 +412,8 @@ def test_rename_from_actions(phone):
     field.wait_for(state="visible", timeout=WAIT)
     assert page.locator(SHEET).count() == 0
     assert field.input_value() == MEETING_TITLE
+    # The cursor is in the field (#686: the shared title field is found by data-title-input)
+    phone.wait("() => document.activeElement && document.activeElement.matches('input[data-title-input][data-phone-title-input]')")
     # Esc leaves the title as it was
     field.fill("Another title")
     field.press("Escape")
