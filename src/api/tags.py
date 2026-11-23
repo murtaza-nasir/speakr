@@ -37,6 +37,23 @@ ENABLE_AUTO_PROCESSING = os.environ.get('ENABLE_AUTO_PROCESSING', 'false').lower
 _HEX_COLOR_RE = re.compile(r'^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$')
 _DEFAULT_TAG_COLOR = '#3B82F6'
 
+# Tag.name is String(50). SQLite does not enforce VARCHAR lengths and
+# PostgreSQL refuses an over-long value with a DataError at commit, so the
+# length is checked here, as for folders (#512, #682).
+TAG_NAME_MAX_LENGTH = 50
+
+
+def clean_tag_name(value):
+    """(name, None) for a tag name: a string, stripped, not blank and at
+    most TAG_NAME_MAX_LENGTH characters; else (None, error_response). The
+    one check of every route that names a tag, on the web and API v1."""
+    if not isinstance(value, str) or not value.strip():
+        return None, (jsonify(api_error('tag_name_required')), 400)
+    name = value.strip()
+    if len(name) > TAG_NAME_MAX_LENGTH:
+        return None, (jsonify(api_error('tag_name_too_long', max=TAG_NAME_MAX_LENGTH)), 400)
+    return name, None
+
 
 def _validate_tag_color(color):
     """Validate an incoming tag color.
@@ -181,8 +198,10 @@ def create_tag():
     if body_error:
         return body_error
 
-    if not data or not data.get('name'):
-        return jsonify(api_error('tag_name_required')), 400
+    name, name_error = clean_tag_name(data.get('name'))
+    if name_error:
+        return name_error
+    data['name'] = name
 
     color_ok, color_val = _validate_tag_color(data.get('color'))
     if not color_ok:
@@ -321,6 +340,11 @@ def update_tag(tag_id):
     if body_error:
         return body_error
     from src.services.auto_shares import regroup_error, regroup_name_error, sharing_state, sync_source_shares
+    if 'name' in data:
+        name, name_error = clean_tag_name(data['name'])
+        if name_error:
+            return name_error
+        data['name'] = name
     before = sharing_state(tag)
 
     if 'name' in data:
@@ -517,11 +541,9 @@ def create_group_tag(group_id):
     data, body_error = json_object_body()
     if body_error:
         return body_error
-    name = data.get('name')
-    name = name.strip() if isinstance(name, str) else ''
-
-    if not name:
-        return jsonify(api_error('tag_name_required')), 400
+    name, name_error = clean_tag_name(data.get('name'))
+    if name_error:
+        return name_error
 
     color_ok, color_val = _validate_tag_color(data.get('color'))
     if not color_ok:

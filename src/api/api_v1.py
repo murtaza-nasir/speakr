@@ -2592,8 +2592,12 @@ def create_tag():
     data, body_error = json_object_body()
     if body_error:
         return body_error
-    if not data.get('name'):
-        return jsonify(api_error('tag_name_required')), 400
+    from src.api.tags import clean_tag_name
+    # A string of at most 50 characters, stripped, as on the web (#682)
+    name, name_error = clean_tag_name(data.get('name'))
+    if name_error:
+        return name_error
+    data['name'] = name
 
     group_id = data.get('group_id')
 
@@ -2675,6 +2679,13 @@ def update_tag(tag_id):
         return body_error
     if not data:
         return jsonify(api_error('no_data_provided')), 400
+    if 'name' in data:
+        from src.api.tags import clean_tag_name
+        # A string of at most 50 characters, stripped, as on the web (#682)
+        name, name_error = clean_tag_name(data['name'])
+        if name_error:
+            return name_error
+        data['name'] = name
     from src.services.auto_shares import regroup_error, regroup_name_error, share_scope_refusal, sharing_state, sync_source_shares
     before = sharing_state(tag)
 
