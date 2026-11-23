@@ -9,9 +9,10 @@ served by a process that runs no workers.
 The recording after a cancel (``settle_recording``):
 
 - A transcript is stored: the recording is COMPLETED. This covers a cancel
-  during the title or the summary of a transcription (the transcript of
-  that run is complete and is kept), and a canceled summary of a recording
-  that has a transcript.
+  during the title of a transcription or of the summary job that follows
+  it (the transcript of that run is complete and is kept; the steps after
+  COMPLETED run, the LLM steps do not), and a canceled summary of a
+  recording that has a transcript.
 - No transcript, and the job was a reprocess: the transcript, summary,
   events and status the reprocess cleared are put back
   (``ProcessingJob.restore_state``), so the recording is as it was.
@@ -157,10 +158,11 @@ def settle_recording(recording, job, ran):
 
     if _has_transcript(recording):
         if recording.status != 'COMPLETED':
-            if ran and job.job_type in _TRANSCRIPTION_SIDE:
+            if (ran and job.job_type in _TRANSCRIPTION_SIDE) or _is_auto_summary(job):
                 # The transcript of this run is complete: the steps that
                 # follow COMPLETED run (shares, export, Inquire chunks), the
-                # LLM steps do not.
+                # LLM steps do not. The summary after a transcript is the
+                # last step of that run, waiting or running (D#663).
                 from src.tasks.processing import finish_processing
                 finish_processing(recording.id, extract_events=False)
             else:
@@ -181,7 +183,16 @@ def _view(job):
     """The fields of a job that outlive its row."""
     return SimpleNamespace(id=job.id, job_type=job.job_type, recording_id=job.recording_id,
                            user_id=job.user_id, restore_state=job.restore_state,
-                           provider_task=job.provider_task)
+                           provider_task=job.provider_task, params=job.params)
+
+
+def _is_auto_summary(job):
+    from src.services.job_queue import is_auto_summary
+    try:
+        params = json.loads(job.params) if getattr(job, 'params', None) else {}
+    except (TypeError, ValueError):
+        params = {}
+    return is_auto_summary(job.job_type, params)
 
 
 def _cancel_dependents(parent):

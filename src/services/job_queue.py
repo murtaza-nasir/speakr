@@ -68,6 +68,30 @@ JOB_RUNNERS = {
     'convert': '_run_convert',
 }
 
+# The summary that follows a transcript runs as a 'summarize' job with these
+# params on the summary workers (D#663), not inside the transcription job.
+# The recording stays SUMMARIZING, with its transcript readable, until that
+# job ends it: COMPLETED, then the notices of the transcription
+# (recording.transcription.completed, the completion email). A failure of
+# that summary leaves the recording COMPLETED with its transcript.
+AUTO_SUMMARY_PARAMS = {'after_transcription': True}
+
+
+class _SummaryQueued:
+    """What a transcription returns when it handed the summary to a job."""
+
+    def __repr__(self):
+        return 'SUMMARY_QUEUED'
+
+
+SUMMARY_QUEUED = _SummaryQueued()
+
+
+def is_auto_summary(job_type, params):
+    """Whether a job is the summary that follows a transcript (D#663)."""
+    return job_type == 'summarize' and isinstance(params, dict) and bool(params.get('after_transcription'))
+
+
 # Jobs that run beside a recording's processing: they leave recording.status
 # alone and send no webhooks or emails.
 BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
@@ -546,16 +570,16 @@ class FairJobQueue:
                         self._emit_failure_email(job_type, recording_id, terminal_error)
                     except Exception as e:
                         logger.warning(f"Failure email for job {job_id} failed: {e}")
+                elif runner_outcome is SUMMARY_QUEUED:
+                    # The summary job ends the processing and sends the
+                    # notices of the transcription (D#663).
+                    try:
+                        self._settle_handed_off(recording_id)
+                    except Exception as e:
+                        logger.warning(f"Check of the summary job after job {job_id} failed: {describe_error(e)}")
                 elif not is_background(job_type):
-                    try:
-                        self._emit_completion_webhook(job_type, recording_id)
-                    except Exception as e:
-                        logger.warning(f"Webhook emit on job {job_id} completion failed: {e}")
-
-                    try:
-                        self._emit_completion_email(job_type, recording_id)
-                    except Exception as e:
-                        logger.warning(f"Completion email for job {job_id} failed: {e}")
+                    self._emit_completion_notices(
+                        'transcribe' if is_auto_summary(job_type, params) else job_type, recording_id, job_id)
 
             except job_control.JobCanceled:
                 # The owner canceled the job and its code stopped at a safe
@@ -638,6 +662,7 @@ class FairJobQueue:
                 # while this runs, and its jobs with it: the commit then
                 # finds no row to update (#681).
                 notify_failure = False
+                auto_summary = is_auto_summary(job_type, params if isinstance(locals().get('params'), dict) else {})
                 try:
                     job = own_job()
                     if job:
@@ -671,8 +696,11 @@ class FairJobQueue:
                             # Always keep recordings with FAILED status so users can see the error
                             # and reprocess later (e.g., when ASR server recovers)
                             if recording and not is_background(job_type):
-                                # Keep the recording with FAILED status so user can see the error and fix settings
-                                recording.status = 'FAILED'
+                                # Keep the recording with FAILED status so user can see the error and fix settings.
+                                # The summary after a transcript leaves it
+                                # COMPLETED with the transcript; finished
+                                # below, after this commit (D#663).
+                                recording.status = 'COMPLETED' if auto_summary else 'FAILED'
                                 # Format the error for nice display. A failed summary
                                 # job keeps the transcript and shows the error as the
                                 # summary; it used to overwrite a good transcript (#412).
@@ -715,6 +743,9 @@ class FairJobQueue:
                     self._row_gone_while_storing(job_id, recording_id)
                     return
 
+                if notify_failure and auto_summary:
+                    self._finish_auto_summary(recording_id)
+
                 if notify_failure:
                     try:
                         self._emit_failure_webhook(job_type, recording_id, error_str)
@@ -724,7 +755,67 @@ class FairJobQueue:
                         self._emit_failure_email(job_type, recording_id, error_str)
                     except Exception as emit_error:
                         logger.warning(f"Failure email for job {job_id} failed: {emit_error}")
+                    if auto_summary:
+                        # The transcript is ready and the recording COMPLETED.
+                        self._emit_completion_notices('transcribe', recording_id, job_id)
 
+
+    def _emit_completion_notices(self, job_type, recording_id, job_id):
+        """The completion webhook and email of a job; best-effort."""
+        try:
+            self._emit_completion_webhook(job_type, recording_id)
+        except Exception as e:
+            logger.warning(f"Webhook emit on job {job_id} completion failed: {e}")
+        try:
+            self._emit_completion_email(job_type, recording_id)
+        except Exception as e:
+            logger.warning(f"Completion email for job {job_id} failed: {e}")
+
+    @staticmethod
+    def _finish_auto_summary(recording_id):
+        """The steps after COMPLETED for a recording whose summary failed (D#663).
+
+        Events come from the transcript alone, as with auto-summary off.
+        Best-effort: the recording is COMPLETED already.
+        """
+        from src.database import db
+        try:
+            from src.tasks.processing import finish_processing
+            finish_processing(recording_id)
+        except Exception as e:
+            logger.error(f"Steps after the failed summary of recording {recording_id} failed "
+                         f"(recording stays COMPLETED): {describe_error(e)}")
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+    @staticmethod
+    def _settle_handed_off(recording_id):
+        """Finish a recording handed to a summary job that is gone already.
+
+        A cancel of the transcription that came after its last safe point
+        removes the summary job it had queued; the recording would stay
+        SUMMARIZING. The jobs are read before the recording: a summary job
+        that ended has finished the recording by then.
+        """
+        from src.database import db
+        from src.models import ProcessingJob, Recording
+
+        db.session.expire_all()
+        active = ProcessingJob.query.filter(
+            ProcessingJob.recording_id == recording_id,
+            ProcessingJob.job_type.in_(['summarize', 'reprocess_summary']),
+            ProcessingJob.status.in_(['queued', 'processing'])
+        ).first()
+        if active is not None:
+            return
+        recording = db.session.get(Recording, recording_id)
+        if recording is None or recording.status != 'SUMMARIZING':
+            return
+        logger.info(f"The summary job of recording {recording_id} was removed; recording finished without it")
+        from src.tasks.processing import finish_processing
+        finish_processing(recording_id, extract_events=False)
 
     @staticmethod
     def _row_gone_while_storing(job_id, recording_id):
@@ -842,6 +933,7 @@ class FairJobQueue:
             custom_prompt_append=params.get('custom_prompt_append', False),
             user_id=params.get('user_id'),
             prompt_used=params.get('prompt_used'),
+            after_transcription=is_auto_summary('summarize', params),
         )
 
     def _run_reprocess_summary(self, job, recording, params, job_type=None):
@@ -1303,8 +1395,9 @@ class FairJobQueue:
 
     # recording.summary.completed is emitted by the summary step itself
     # (processing.generate_summary_only_task, #412): a summary job can end with
-    # a FAILED summary, and the first summary of an upload runs inside the
-    # transcribe job, so the job type alone cannot say whether a summary exists.
+    # a FAILED summary, so the job type alone cannot say whether a summary
+    # exists. The summary after a transcript (D#663) sends the transcription's
+    # completion notices under 'transcribe' once it ends.
     _COMPLETION_EVENT_MAP = {
         'transcribe': 'recording.transcription.completed',
         'reprocess_transcription': 'recording.transcription.completed',
