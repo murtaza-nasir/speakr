@@ -35,7 +35,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import check_common, en  # noqa: E402
+from browser_checks import PageProblems, check_common, en  # noqa: E402
 from seed_recordings import TRIM_TITLE  # noqa: E402
 from test_asr_editor_ui import BASE, CANVAS, DIALOG, TL, Editor  # noqa: E402
 
@@ -81,6 +81,25 @@ def type_time(editor, edge, text):
     editor.page.wait_for_timeout(100)
 
 
+def clear_trim_jobs(session):
+    """Remove the admin's finished jobs, so the processing queue of the
+    other browser test files is as an instance without this file leaves it
+    (a finished trim shows in the queue widget and changes the layout).
+    No other job of the admin runs on this instance. It uses a session that
+    is signed in already: the login form is rate limited."""
+    page = session.page
+    page.goto(f"{BASE}/")
+    page.wait_for_load_state("load")
+    headers = {"X-CSRFToken": session.csrf(), "Content-Type": "application/json"}
+    for kind in ("completed", "failed"):
+        response = page.request.post(f"{BASE}/api/recordings/jobs/clear-{kind}", headers=headers, data="{}")
+        assert response.ok, f"could not clear the {kind} jobs: HTTP {response.status}"
+    status = page.request.get(f"{BASE}/api/recordings/job-queue-status")
+    assert status.ok
+    left = [j for j in status.json().get("jobs", []) if j.get("job_type") == "trim"]
+    assert not left, f"trim jobs left in the queue: {left}"
+
+
 @pytest.fixture(scope="module")
 def browser():
     with playwright_api.sync_playwright() as p:
@@ -89,15 +108,38 @@ def browser():
         instance.close()
 
 
-@pytest.fixture
+def signed_in_like(other, viewport):
+    """An editor session in a new context with the cookies of a signed-in
+    one: no second pass through the login form, which allows ten requests
+    a minute (a file that signs in three times in half a minute makes the
+    next file's first login fail)."""
+    session = Editor.__new__(Editor)
+    session.context = other.context.browser.new_context(viewport=viewport, locale="en-US",
+                                                        storage_state=other.context.storage_state())
+    session.page = session.context.new_page()
+    session.problems = PageProblems(session.page, BASE)
+    session.native = []
+    session.page.on("dialog", session._dialog)
+    session.ids = other.ids
+    return session
+
+
+@pytest.fixture(scope="module")
 def desk(browser):
+    """The signed-in admin on a desktop window, for every test of this file
+    (one login); afterwards the finished trim jobs are removed."""
     session = Editor(browser, {"width": 1400, "height": 900})
     session.trim_id = trim_id(session)
     if session.trim_id is None:
         session.close()
         pytest.skip("no seeded trim recording on this instance (tests/e2e/seed_recordings.py)")
-    yield session
-    session.close()
+    try:
+        yield session
+    finally:
+        try:
+            clear_trim_jobs(session)
+        finally:
+            session.close()
 
 
 def test_trim_mode_drag_type_preview_and_cut(desk):
@@ -225,13 +267,11 @@ def test_trim_mode_drag_type_preview_and_cut(desk):
     editor.check("trim")
 
 
-def test_trim_mode_in_every_theme_and_on_a_phone(browser):
-    session = Editor(browser, {"width": 1400, "height": 900})
+def test_trim_mode_in_every_theme_and_on_a_phone(desk):
+    session = desk
     phone = None
     try:
-        rid = trim_id(session)
-        if rid is None:
-            pytest.skip("no seeded trim recording on this instance (tests/e2e/seed_recordings.py)")
+        rid = session.trim_id
         session.page.goto(f"{BASE}/recordings/{rid}")
         saved = session.page.locator("html").get_attribute("data-ui-theme") or "default"
         try:
@@ -258,11 +298,19 @@ def test_trim_mode_in_every_theme_and_on_a_phone(browser):
         finally:
             set_theme(session, saved)
 
-        phone = Editor(browser, {"width": 390, "height": 800})
+        phone = signed_in_like(session, {"width": 390, "height": 800})
+        phone.page.goto(f"{BASE}/recordings/{rid}")
+        set_theme(phone, "default")
         phone.open(rid)
+        assert phone.page.locator("html").get_attribute("data-ui-theme") == "default"
         enter_trim(phone)
         type_time(phone, "start", "1")
         page = phone.page
+        # Trim is enabled and filled with the danger colour, as on the desktop
+        apply = phone.action("trim-apply")
+        assert apply.is_enabled()
+        colours = apply.evaluate("(el) => { const c = getComputedStyle(el); return [c.backgroundColor, c.color, c.opacity]; }")
+        assert colours[1] == "rgb(255, 255, 255)" and colours[2] == "1", f"the Trim button looks disabled: {colours}"
         widths = page.evaluate("() => [document.documentElement.scrollWidth, window.innerWidth]")
         assert widths[0] <= widths[1], f"the editor is wider than the phone: {widths}"
         for name in ("trim-preview", "trim-cancel", "trim-apply"):
@@ -293,4 +341,3 @@ def test_trim_mode_in_every_theme_and_on_a_phone(browser):
     finally:
         if phone:
             phone.close()
-        session.close()
