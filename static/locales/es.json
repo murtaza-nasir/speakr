@@ -3578,7 +3578,6 @@
       "invalid_inquire_mode": "mode debe ser rag, agent o auto",
       "invalid_integer_value": "El valor debe ser un número entero válido",
       "invalid_message_history": "El historial de la conversación debe ser una lista de mensajes, cada uno con un rol (user o assistant) y contenido de texto.",
-      "invalid_is_archived": "is_archived debe ser un booleano",
       "invalid_json": "JSON no válido",
       "body_must_be_object": "El cuerpo de la solicitud debe ser un objeto JSON",
       "invalid_limit": "limit debe estar entre 1 y 500",
