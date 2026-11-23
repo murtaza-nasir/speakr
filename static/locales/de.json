@@ -4461,6 +4461,7 @@
     "incognito": "Der Inkognito-Modus ist standardmäßig an, daher wird offline nichts aufgenommen: Eine offline erstellte Aufnahme bliebe in diesem Browser.",
     "noMicrophone": "Dieser Browser kann auf dieser Seite nicht aufnehmen.",
     "microphoneDenied": "Speakr darf das Mikrofon nicht verwenden. Erlauben Sie es in den Website-Einstellungen des Browsers und versuchen Sie es dann erneut.",
+    "noAudioTrack": "Die Bildschirmfreigabe enthält kein Audio. Aktivieren Sie beim Freigeben „Systemaudio teilen“ oder „Tab-Audio teilen“.",
     "record": "Aufnehmen",
     "stop": "Beenden und speichern",
     "recording": "Aufnahme läuft…",

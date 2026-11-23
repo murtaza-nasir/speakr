@@ -97,6 +97,97 @@
     background: var(--bg-tertiary);
 }
 
+/* The source (#697): the segmented control of the in-app recorder
+   (.seg of primitives.css, which this page does not load). */
+.or-source {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.or-source-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+}
+
+.or-seg {
+    display: flex;
+    border: 1px solid var(--border-secondary, var(--border-primary));
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    overflow: hidden;
+}
+
+.or-seg-item {
+    appearance: none;
+    flex: 1 1 0;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+}
+
+.or-seg-item + .or-seg-item {
+    border-left: 1px solid var(--border-secondary, var(--border-primary));
+}
+
+.or-seg-item:hover:not(:disabled):not(.is-active) {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.or-seg-item.is-active {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    font-weight: 600;
+}
+
+.or-seg-item:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.or-seg-item:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
+}
+
+.or-icons {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.or-icon {
+    flex: none;
+    width: 0.75em;
+    height: 1em;
+}
+
+.or-icon--wide {
+    width: 1.125em;
+}
+
+.or-source-hint {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-warn-strong);
+}
+
 .or-timer {
     font-size: 34px;
     font-weight: 600;
@@ -298,4 +389,10 @@
     .or-btn--primary,
     .or-recorder .or-btn--danger { width: 100%; }
     .or-actions { width: 100%; }
+    .or-seg { flex-direction: column; }
+    .or-seg-item { justify-content: flex-start; padding: 8px 14px; }
+    .or-seg-item + .or-seg-item {
+        border-left: none;
+        border-top: 1px solid var(--border-secondary, var(--border-primary));
+    }
 }

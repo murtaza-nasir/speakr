@@ -81,6 +81,7 @@ const RECORDER_FILES = [
   '/static/js/modules/db/recording-persistence.js',
   '/static/js/modules/utils/pending-uploads.js',
   '/static/js/modules/utils/offline-recorder-model.js',
+  '/static/js/modules/utils/audio-capture.js',
   '/static/css/styles.css',
   '/static/css/offline-recorder.css',
   '/static/css/themes/classic.css',

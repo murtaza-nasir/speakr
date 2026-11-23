@@ -92,6 +92,9 @@ export const storeFailedUpload = async (uploadData) => {
             // neither is offered or uploaded a second time.
             fromRecorder: !!uploadData.fromRecorder,
             recordingSessionStartTime: uploadData.recordingSessionStartTime || null,
+            // The source of a recording ('microphone', 'system', 'both'), as
+            // in its crash-recovery copy (#697).
+            recordingMode: uploadData.recordingMode || null,
             serverSessionId: uploadData.serverSessionId || null,
             folderId: uploadData.folderId || null,
             duration: Number.isFinite(uploadData.duration) ? uploadData.duration : null,

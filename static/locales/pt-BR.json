@@ -4461,6 +4461,7 @@
     "incognito": "O modo anônimo está ativado por padrão, então nada é gravado offline: uma gravação feita offline ficaria neste navegador.",
     "noMicrophone": "Este navegador não consegue gravar nesta página.",
     "microphoneDenied": "O Speakr não tem permissão para usar o microfone. Permita nas configurações do site no navegador e tente novamente.",
+    "noAudioTrack": "O compartilhamento de tela não tem áudio. Marque \"Compartilhar áudio do sistema\" ou \"Compartilhar áudio da guia\" ao compartilhar.",
     "record": "Gravar",
     "stop": "Parar e salvar",
     "recording": "Gravando…",

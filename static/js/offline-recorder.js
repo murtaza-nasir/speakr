@@ -2,7 +2,9 @@
  * The offline recorder (#650): static/offline-recorder.html, answered by the
  * service worker (static/sw.js) in place of a page that cannot be loaded.
  *
- * The page holds no user data. It records from the microphone and saves the
+ * The page holds no user data. It records from the microphone, the system
+ * audio (a screen share's audio) or both, as the in-app recorder does
+ * (#697; utils/audio-capture.js), and saves the
  * recording as a record of the IndexedDB store of failed uploads
  * (modules/db/failed-uploads.js), for the account named in the entry the app
  * left at its last online load (speakr.offlineRecorder,
@@ -46,11 +48,12 @@ async function loadLocale(locale) {
 }
 
 async function main() {
-    const [Model, Pending, FailedUploads, RecordingDB] = await Promise.all([
+    const [Model, Pending, FailedUploads, RecordingDB, Capture] = await Promise.all([
         mod('modules/utils/offline-recorder-model.js'),
         mod('modules/utils/pending-uploads.js'),
         mod('modules/db/failed-uploads.js'),
         mod('modules/db/recording-persistence.js'),
+        mod('modules/utils/audio-capture.js'),
     ]);
 
     let rawContext = null;
@@ -180,7 +183,9 @@ async function main() {
     let stopReason = null;
     let persistAsked = false;
     let recorder = null;
-    let stream = null;
+    let capture = null;
+    let stopWatchingShare = () => {};
+    let starting = false;
     let chunks = [];
     let startedAt = 0;
     let tick = null;
@@ -220,34 +225,110 @@ async function main() {
         }
     }
 
+    // ---- the source: microphone, system audio or both (#697) ------------------
+
+    // As in the in-app recorder (upload-view.html): the two sources with
+    // system audio are offered where the browser can capture a screen
+    // share, and disabled with a note elsewhere; the choice is remembered.
+    const sourceBox = $('or-source');
+    const sourceButtons = [...sourceBox.querySelectorAll('[data-or-mode]')];
+    const systemAvailable = Capture.canRecordSystemAudio(navigator.mediaDevices);
+    let chosen = 'microphone';
+    try { chosen = localStorage.getItem(Model.SOURCE_KEY) || 'microphone'; } catch (e) { chosen = 'microphone'; }
+    const currentMode = () => Capture.effectiveMode(chosen, systemAvailable);
+    const showSource = () => {
+        const mode = currentMode();
+        for (const button of sourceButtons) {
+            const on = button.dataset.orMode === mode;
+            button.setAttribute('aria-checked', on ? 'true' : 'false');
+            button.tabIndex = on ? 0 : -1;
+            button.classList.toggle('is-active', on);
+            button.disabled = button.dataset.orMode !== 'microphone' && !systemAvailable;
+        }
+        document.body.dataset.orMode = mode;
+    };
+    const choose = (mode) => {
+        if (recorder || starting) return;
+        chosen = mode;
+        try { localStorage.setItem(Model.SOURCE_KEY, mode); } catch (e) { /* not remembered */ }
+        showSource();
+    };
+    for (const button of sourceButtons) {
+        button.addEventListener('click', () => choose(button.dataset.orMode));
+        // The arrow keys move the choice within the group, as in a radio group.
+        button.addEventListener('keydown', (event) => {
+            const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+            if (!step) return;
+            event.preventDefault();
+            const enabled = sourceButtons.filter((b) => !b.disabled);
+            const next = enabled[(enabled.indexOf(button) + step + enabled.length) % enabled.length];
+            choose(next.dataset.orMode);
+            next.focus();
+        });
+    }
+    $('or-source-hint').hidden = systemAvailable;
+    showSource();
+
     const setRecording = (on) => {
         recordButton.hidden = on;
         stopButton.hidden = !on;
         timer.hidden = !on;
+        sourceBox.hidden = on;
         document.body.classList.toggle('or-is-recording', on);
         if (!on) left.hidden = true;
     };
 
     async function start() {
+        if (recorder || starting || saving) return;
+        starting = true;
+        recordButton.disabled = true;
+        try {
+            await begin(currentMode());
+        } finally {
+            starting = false;
+            recordButton.disabled = false;
+        }
+    }
+
+    async function begin(mode) {
         say('');
         limitNote.hidden = true;
         delete document.body.dataset.orStopped;
-        free = await estimateFree();
-        if (!Model.canStart(free)) {
-            say(t('noStorage'), 'error');
-            return;
+        // The screen share is the first await after the click (Firefox);
+        // the microphone alone is asked for after the storage.
+        const shareFirst = Capture.needsDisplay(mode);
+        if (!shareFirst) {
+            free = await estimateFree();
+            if (!Model.canStart(free)) {
+                say(t('noStorage'), 'error');
+                return;
+            }
         }
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            capture = await Capture.acquireCapture(mode, {
+                mediaDevices: navigator.mediaDevices,
+                AudioContext: window.AudioContext || window.webkitAudioContext || null,
+            });
         } catch (e) {
-            say(t(e && e.name === 'NotAllowedError' ? 'microphoneDenied' : 'noMicrophone'), 'error');
+            capture = null;
+            say(Model.captureMessage(e, t), 'error');
             return;
+        }
+        if (shareFirst) {
+            free = await estimateFree();
+            if (!Model.canStart(free)) {
+                capture.release();
+                capture = null;
+                say(t('noStorage'), 'error');
+                return;
+            }
         }
         const mimeType = Model.pickMimeType(MediaRecorder.isTypeSupported ? MediaRecorder.isTypeSupported.bind(MediaRecorder) : null);
         try {
-            recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+            recorder = mimeType ? new MediaRecorder(capture.stream, { mimeType }) : new MediaRecorder(capture.stream);
         } catch (e) {
-            stream.getTracks().forEach((track) => track.stop());
+            capture.release();
+            capture = null;
             say(t('noMicrophone'), 'error');
             return;
         }
@@ -265,7 +346,7 @@ async function main() {
             keepCopy = !existing;
             if (keepCopy) {
                 const session = await RecordingDB.startRecordingSession({
-                    mode: 'microphone', mimeType: (recorder.mimeType || mimeType || 'audio/webm').split(';')[0],
+                    mode, mimeType: (recorder.mimeType || mimeType || 'audio/webm').split(';')[0],
                     ownerId: context.userId,
                 });
                 sessionStartTime = session ? session.startTime : null;
@@ -285,10 +366,25 @@ async function main() {
                     .catch(() => {});
             }
         };
-        recorder.onstop = () => { saveRecording(); };
+        recorder.onstop = () => { saveRecording(mode); };
+        // The share ended from the browser ("Stop sharing"): the recording
+        // stops and is saved, as with the Stop button.
+        stopWatchingShare = Capture.onShareEnded(capture, () => stop());
         // A chunk every two seconds: the size is known to that step, and
         // the crash-recovery copy (rewritten at each chunk) stays cheap.
-        recorder.start(CHUNK_SECONDS * 1000);
+        try {
+            recorder.start(CHUNK_SECONDS * 1000);
+        } catch (e) {
+            stopWatchingShare();
+            capture.release();
+            capture = null;
+            recorder = null;
+            if (sessionStartTime) {
+                try { await RecordingDB.clearRecordingSessionIfStartedAt(sessionStartTime); } catch (err) { /* the app removes it */ }
+            }
+            say(t('noMicrophone'), 'error');
+            return;
+        }
         startedAt = Date.now();
         showTime();
         tick = setInterval(checkLimits, 500);
@@ -297,22 +393,26 @@ async function main() {
     }
 
     function stop() {
-        if (!recorder || recorder.state === 'inactive') return;
+        if (!recorder || recorder.state === 'inactive' || saving) return;
         saving = true;
         stopButton.disabled = true;
         say(t('saving'));
         recorder.stop();
     }
 
-    async function saveRecording() {
+    async function saveRecording(mode) {
+        saving = true;
         const duration = elapsed();
         clearInterval(tick);
-        if (stream) stream.getTracks().forEach((track) => track.stop());
+        // Every track (the share's and the microphone's) and the AudioContext.
+        stopWatchingShare();
+        stopWatchingShare = () => {};
+        if (capture) capture.release();
         const type = ((recorder && recorder.mimeType) || 'audio/webm').split(';')[0];
         const now = new Date();
         const file = new File(chunks, Model.recordingFileName(now, type), { type, lastModified: now.getTime() });
         recorder = null;
-        stream = null;
+        capture = null;
         startedAt = 0;
         // Ask once that the browser keep this site's storage; a refusal
         // changes nothing.
@@ -328,6 +428,7 @@ async function main() {
                 clientId: Model.offlineClientId(now.getTime(), Math.random().toString(36).slice(2)),
                 fromRecorder: true,
                 recordingSessionStartTime: sessionStartTime,
+                recordingMode: mode,
                 duration: Math.round(duration * 10) / 10,
                 ownerId: context.userId,
                 source: 'offline',
@@ -366,6 +467,7 @@ async function main() {
     if (availability.canRecord) {
         $('or-lead').textContent = t('lead');
         $('or-recorder').hidden = false;
+        sourceBox.hidden = false;
         recordButton.addEventListener('click', start);
         stopButton.addEventListener('click', stop);
     } else {

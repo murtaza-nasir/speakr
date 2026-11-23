@@ -4461,6 +4461,7 @@
     "incognito": "Le mode navigation privée est activé par défaut : rien n’est enregistré hors ligne, car un enregistrement fait hors ligne serait conservé dans ce navigateur.",
     "noMicrophone": "Ce navigateur ne peut pas enregistrer sur cette page.",
     "microphoneDenied": "Speakr n’a pas le droit d’utiliser le micro. Autorisez-le dans les paramètres du site du navigateur, puis réessayez.",
+    "noAudioTrack": "Le partage d’écran ne contient pas d’audio. Cochez « Partager l’audio du système » ou « Partager l’audio de l’onglet » lors du partage.",
     "record": "Enregistrer",
     "stop": "Arrêter et sauvegarder",
     "recording": "Enregistrement…",

@@ -146,6 +146,8 @@ def _recorder_files():
 def test_the_offline_recorder_files_are_static_files_served_without_a_session():
     files = _recorder_files()
     assert "/static/offline-recorder.html" in files and "/static/js/offline-recorder.js" in files
+    # The capture of the three sources, shared with the in-app recorder (#697).
+    assert "/static/js/modules/utils/audio-capture.js" in files
     assert len(files) == len(set(files)) >= 10
     client = app.test_client()
     for path in files:

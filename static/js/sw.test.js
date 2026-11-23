@@ -587,7 +587,7 @@ describe('the offline recorder page (#650)', () => {
         // The modules the page imports and the theme stylesheets it adds.
         const script = read('/static/js/offline-recorder.js');
         const modules = [...script.matchAll(/mod\('([^']+)'\)/g)].map((m) => `/static/js/${m[1]}`);
-        expect(modules.length).toBe(4);
+        expect(modules.length).toBe(5);
         const theme = read('/static/js/offline-recorder-theme.js');
         const themes = JSON.parse(theme.match(/var THEMES = (\[[^\]]+\])/)[1].replace(/'/g, '"'));
         for (const path of [...modules, ...themes.map((id) => `/static/css/themes/${id}.css`)]) {

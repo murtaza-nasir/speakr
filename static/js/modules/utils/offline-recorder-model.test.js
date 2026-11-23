@@ -5,8 +5,9 @@ import {
     DEFAULT_STRINGS, interpolate, translator, formatDuration, formatSize, recorderAvailability, pendingRows,
     pickMimeType, recordingFileName, offlineClientId, whenServerIsBack, returnTarget, serverAnswered,
     freeBytes, canStart, recordingLimits, limitState, stoppedMessage, MIN_FREE_BYTES, STORAGE_MARGIN_BYTES,
-    DEFAULT_MAX_SECONDS,
+    DEFAULT_MAX_SECONDS, captureMessage, SOURCE_KEY,
 } from './offline-recorder-model.js';
+import { CaptureError } from './audio-capture.js';
 import { belongsTo, parseOfflineContext } from './pending-uploads.js';
 
 const locale = (code) => JSON.parse(readFileSync(fileURLToPath(new URL(`../../../locales/${code}.json`, import.meta.url)), 'utf8'));
@@ -233,5 +234,39 @@ describe('the limits of a recording', () => {
         expect(stoppedMessage('size', { maxBytes: 200 * MB }, t)).toBe('The recording reached the maximum size of 200 MB. It was stopped and saved.');
         expect(stoppedMessage('storage', {}, t)).toBe(EN.offlineRecorder.stoppedStorage);
         expect(stoppedMessage(null, {}, t)).toBe('');
+    });
+});
+
+describe('the source of a recording (#697)', () => {
+    const t = translator(EN, EN);
+    const nameError = (name, message = name) => Object.assign(new Error(message), { name });
+
+    it('says why a capture failed with the texts of the in-app recorder', () => {
+        expect(captureMessage(new CaptureError('shareCancelled'), t)).toBe(EN.toasts.screenShareCancelled);
+        expect(captureMessage(new CaptureError('captureFailed', nameError('NotReadableError', 'Could not start video source')), t))
+            .toBe(EN.toasts.captureFailed.replace('{{error}}', 'Could not start video source'));
+        expect(captureMessage(new CaptureError('microphoneDenied'), t)).toBe(EN.offlineRecorder.microphoneDenied);
+        expect(captureMessage(new CaptureError('noMicrophone'), t)).toBe(EN.offlineRecorder.noMicrophone);
+        expect(captureMessage(new CaptureError('unavailable'), t)).toBe(EN.recording.systemAudioNotSupported);
+        expect(captureMessage(new Error('anything'), t)).toBe(EN.offlineRecorder.noMicrophone);
+        expect(captureMessage(null, t)).toBe(EN.offlineRecorder.noMicrophone);
+    });
+
+    it('names no help guide for a share without audio, which this page does not have', () => {
+        const text = captureMessage(new CaptureError('noAudioTrack'), t);
+        expect(text).toBe(EN.offlineRecorder.noAudioTrack);
+        expect(EN.errors.noAudioTrackInScreenShare.startsWith(text)).toBe(true);
+        expect(text).not.toMatch(/help/i);
+        for (const code of ['de', 'es', 'fr', 'pt-BR', 'ru', 'zh']) {
+            const table = locale(code);
+            const own = (s) => s.replace(/[’']/g, "'");
+            expect(own(table.errors.noAudioTrackInScreenShare).startsWith(own(table.offlineRecorder.noAudioTrack)), code).toBe(true);
+        }
+    });
+
+    it('remembers the choice under the key of the in-app recorder', () => {
+        const app = readFileSync(fileURLToPath(new URL('../../app.modular.js', import.meta.url)), 'utf8');
+        expect(app).toContain("_stored('" + SOURCE_KEY + "', ['microphone', 'system', 'both'], 'microphone')");
+        expect(app).toContain("localStorage.setItem('" + SOURCE_KEY + "', v)");
     });
 });

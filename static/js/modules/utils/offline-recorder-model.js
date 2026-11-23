@@ -23,6 +23,7 @@ export const DEFAULT_STRINGS = {
     incognito: 'Incognito mode is on by default, so nothing is recorded offline: a recording made offline would be kept in this browser.',
     noMicrophone: 'This browser can\'t record on this page.',
     microphoneDenied: 'Speakr may not use the microphone. Allow it in the browser\'s site settings, then try again.',
+    noAudioTrack: 'The screen share has no audio. Check "Share system audio" or "Share tab audio" when you share.',
     record: 'Record',
     stop: 'Stop and save',
     recording: 'Recording…',
@@ -278,3 +279,29 @@ export function stoppedMessage(reason, { maxSeconds, maxBytes }, t) {
     if (reason === 'storage') return t('stoppedStorage');
     return '';
 }
+
+// ---- the source of a recording (#697) ------------------------------------------
+
+/**
+ * The message of a capture that failed (a CaptureError of
+ * utils/audio-capture.js): the texts of the in-app recorder where they fit
+ * this page, which has no help guide.
+ */
+export function captureMessage(error, t) {
+    const reason = error && error.reason;
+    if (reason === 'shareCancelled') return t('toasts.screenShareCancelled');
+    if (reason === 'noAudioTrack') return t('noAudioTrack');
+    if (reason === 'captureFailed') {
+        const cause = error.cause && error.cause.message ? error.cause.message : String((error.cause && error.cause.name) || '');
+        return t('toasts.captureFailed', { error: cause });
+    }
+    if (reason === 'microphoneDenied') return t('microphoneDenied');
+    if (reason === 'unavailable') return t('recording.systemAudioNotSupported');
+    return t('noMicrophone');
+}
+
+/**
+ * The source chosen last (the in-app recorder's recordSource in
+ * localStorage, which this page reads and writes as well).
+ */
+export const SOURCE_KEY = 'recordSource';

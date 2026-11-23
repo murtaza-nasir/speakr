@@ -4461,6 +4461,7 @@
     "incognito": "El modo incógnito está activado de forma predeterminada, así que no se graba nada sin conexión: una grabación hecha sin conexión se guardaría en este navegador.",
     "noMicrophone": "Este navegador no puede grabar en esta página.",
     "microphoneDenied": "Speakr no tiene permiso para usar el micrófono. Permítelo en la configuración del sitio del navegador y vuelve a intentarlo.",
+    "noAudioTrack": "La pantalla compartida no tiene audio. Marque «Compartir audio del sistema» o «Compartir audio de la pestaña» al compartir.",
     "record": "Grabar",
     "stop": "Detener y guardar",
     "recording": "Grabando…",

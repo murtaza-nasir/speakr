@@ -243,6 +243,7 @@ describe('IndexedDB transaction lifetime', () => {
             duration: 12.5,
             ownerId: 3,
             source: 'offline',
+            recordingMode: 'both',
         });
         expect(store.get(id)).toMatchObject({
             clientId: 'client-650',
@@ -253,6 +254,7 @@ describe('IndexedDB transaction lifetime', () => {
             duration: 12.5,
             ownerId: '3',
             source: 'offline',
+            recordingMode: 'both',
             retryCount: 0,
         });
     });
@@ -261,7 +263,7 @@ describe('IndexedDB transaction lifetime', () => {
         const file = { name: 'talk.mp3', size: 64, type: 'audio/mpeg', arrayBuffer: async () => new ArrayBuffer(4) };
         const id = await storeFailedUpload({ file, clientId: 'c' });
         expect(store.get(id)).toMatchObject({
-            fromRecorder: false, recordingSessionStartTime: null, serverSessionId: null,
+            fromRecorder: false, recordingSessionStartTime: null, serverSessionId: null, recordingMode: null,
             folderId: null, duration: null, ownerId: null, source: null,
         });
     });
