@@ -66,7 +66,13 @@ from src.models import RecordingSession, Recording, User, RECORDING_SESSION_STAT
 from src.services.job_queue import job_queue
 from src.services.recording_stitch import byte_join, session_chunk_paths
 from src.utils.localization import api_error
+from src.utils.request_body import is_db_id, is_int, json_object_body
 from src.utils.route_errors import unexpected_error_body
+
+# RecordingSession.mime_type is String(100) and upload_total_bytes a
+# BigInteger; a longer or larger value would fail at commit (#687).
+_MIME_TYPE_MAX_LENGTH = 100
+_BIGINT_MAX = 2 ** 63 - 1
 
 
 recording_sessions_bp = Blueprint('recording_sessions', __name__)
@@ -362,20 +368,32 @@ def create_session():
 
     Returns ``{session_id, expires_at, max_chunk_bytes}`` on success.
     """
-    data = request.get_json(silent=True) or {}
+    # No body opens a recorder session; a body that is present must be an
+    # object, and its fields strings or null (#687)
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    for field in ('mime_type', 'filename'):
+        if data.get(field) is not None and not isinstance(data[field], str):
+            return jsonify(api_error('field_must_be_string', field=field)), 400
     declared_mime = (data.get('mime_type') or '').strip().lower()
     upload_filename = (data.get('filename') or '').strip()
     total_bytes = None
+    if len(declared_mime) > _MIME_TYPE_MAX_LENGTH:
+        return jsonify(api_error('field_too_long', field='mime_type', max=_MIME_TYPE_MAX_LENGTH)), 400
 
     if upload_filename:
         if len(upload_filename) > 255:
             return jsonify(api_error('filename_too_long')), 400
-        try:
-            total_bytes = int(data.get('total_bytes'))
-        except (TypeError, ValueError):
+        raw_total = data.get('total_bytes')
+        if raw_total is None:
             return jsonify(api_error('total_bytes_required')), 400
-        if total_bytes <= 0:
+        # A whole number, or its digits as a string; not true, 2.5 or 1e400
+        if isinstance(raw_total, str) and raw_total.strip().isdecimal():
+            raw_total = int(raw_total.strip())
+        if not is_int(raw_total) or not 0 < raw_total <= _BIGINT_MAX:
             return jsonify(api_error('invalid_total_bytes')), 400
+        total_bytes = raw_total
         mime_type = declared_mime or 'application/octet-stream'
     else:
         mime_type = declared_mime or 'audio/webm'
@@ -599,9 +617,21 @@ def finalize_session(session_id):
     if session.chunk_count <= 0:
         return jsonify(api_error('no_chunks_uploaded')), 409
 
-    metadata = request.get_json(silent=True) or {}
-    if not isinstance(metadata, dict):
-        return jsonify(api_error('invalid_finalize_body')), 400
+    metadata, body_error = json_object_body(optional=True)
+    if body_error:
+        if body_error[0].get_json().get('code') == 'body_must_be_object':
+            return jsonify(api_error('invalid_finalize_body')), 400
+        return body_error
+    # title and notes are strings or null; a folder id is in the column
+    # range; tags is a list (#687)
+    from src.utils.metadata_limits import metadata_error
+    field_error = metadata_error({k: metadata[k] for k in ('title', 'notes') if k in metadata})
+    if field_error:
+        return jsonify(field_error), 400
+    if is_int(metadata.get('folder_id')) and not is_db_id(metadata['folder_id']):
+        return jsonify(api_error('invalid_folder_id')), 400
+    if metadata.get('tags') is not None and not isinstance(metadata['tags'], list):
+        return jsonify(api_error('invalid_tag_ids')), 400
 
     # Create a placeholder Recording row. The stitch worker will fill in
     # audio_path and file_size after concat completes.
@@ -619,7 +649,7 @@ def finalize_session(session_id):
     # recording would be linked to it. Personal folders require
     # ownership; group folders require membership.
     resolved_folder_id = None
-    if isinstance(folder_id, int):
+    if is_int(folder_id):  # true is not folder 1
         from src.models.organization import Folder, GroupMembership
         target = db.session.get(Folder, folder_id)
         if not target:

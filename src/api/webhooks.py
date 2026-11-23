@@ -18,6 +18,7 @@ from src.utils.token_auth import require_scope
 from src.database import db
 from src.models import Webhook, WebhookDelivery, WEBHOOK_EVENT_TYPES, generate_webhook_secret
 from src.utils.localization import api_error
+from src.utils.request_body import flag_fields, json_object_body
 from src.services.webhook_dispatch import (
     is_url_safe_for_webhook,
     emit_webhook_event,
@@ -62,6 +63,19 @@ def list_webhooks():
     })
 
 
+# Flags read like every other flag field: "false" is false (#665)
+_FLAGS = ('allow_http', 'enabled', 'include_shared')
+
+
+def _field_types_error(data):
+    """The 400 for a name or url that is not a string (null is no value),
+    or None (#687)."""
+    for field in ('name', 'url'):
+        if data.get(field) is not None and not isinstance(data[field], str):
+            return jsonify(api_error('field_must_be_string', field=field)), 400
+    return None
+
+
 @webhooks_bp.route('', methods=['POST'])
 @require_scope('webhooks')
 @login_required
@@ -72,12 +86,20 @@ def create_webhook():
     The newly-minted HMAC secret is returned **once** in this response;
     after that it is never exposed.
     """
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    field_error = _field_types_error(data)
+    if field_error:
+        return field_error
+    flags, flag_error = flag_fields(data, _FLAGS)
+    if flag_error:
+        return flag_error
     name = (data.get('name') or '').strip()
     url = (data.get('url') or '').strip()
     events = data.get('events') or []
-    allow_http = bool(data.get('allow_http', False))
-    enabled = bool(data.get('enabled', True))
+    allow_http = flags.get('allow_http', False)
+    enabled = flags.get('enabled', True)
 
     if not name:
         return jsonify(api_error('name_required')), 400
@@ -110,7 +132,7 @@ def create_webhook():
         url=url[:500],
         allow_http=allow_http,
         enabled=enabled,
-        include_shared=bool(data.get('include_shared', False)),
+        include_shared=flags.get('include_shared', False),
         secret=generate_webhook_secret(),
     )
     try:
@@ -143,7 +165,15 @@ def update_webhook(webhook_id):
     wh, err = _load_owned(webhook_id)
     if err:
         return err
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    field_error = _field_types_error(data)
+    if field_error:
+        return field_error
+    flags, flag_error = flag_fields(data, _FLAGS)
+    if flag_error:
+        return flag_error
 
     if 'name' in data:
         name = (data.get('name') or '').strip()
@@ -152,7 +182,7 @@ def update_webhook(webhook_id):
         wh.name = name[:100]
     if 'url' in data or 'allow_http' in data:
         new_url = (data.get('url') or wh.url).strip()
-        new_allow_http = bool(data.get('allow_http', wh.allow_http))
+        new_allow_http = flags.get('allow_http', wh.allow_http)
         ok, reason = is_url_safe_for_webhook(new_url, allow_http=new_allow_http)
         if not ok:
             return jsonify({'error': reason}), 400
@@ -167,9 +197,9 @@ def update_webhook(webhook_id):
         except ValueError as e:
             return jsonify({'error': str(e)}), 400
     if 'include_shared' in data:
-        wh.include_shared = bool(data.get('include_shared'))
+        wh.include_shared = flags['include_shared']
     if 'enabled' in data:
-        enabled = bool(data.get('enabled'))
+        enabled = flags['enabled']
         wh.enabled = enabled
         if enabled:
             wh.auto_paused = False  # Manual re-enable resets auto-pause flag

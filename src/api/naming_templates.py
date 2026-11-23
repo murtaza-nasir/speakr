@@ -15,7 +15,7 @@ from flask_login import login_required, current_user
 from src.database import db
 from src.models import NamingTemplate
 from src.utils.localization import api_error, translate
-from src.utils.request_body import bool_field, json_object_body
+from src.utils.request_body import bool_field, is_db_id, json_object_body
 
 # Create blueprint
 naming_templates_bp = Blueprint('naming_templates', __name__)
@@ -281,7 +281,13 @@ def test_naming_template(template_id):
     if not template:
         return jsonify(api_error('template_not_found')), 404
 
-    data = request.json or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    # Sample values are strings or null (#687)
+    for field in ('filename', 'date', 'ai_title'):
+        if data.get(field) is not None and not isinstance(data[field], str):
+            return jsonify(api_error('field_must_be_string', field=field)), 400
     sample_filename = data.get('filename', 'sample-recording-2026-01-15.mp3')
     sample_date = data.get('date')
     sample_ai_title = data.get('ai_title', 'Meeting with Team')
@@ -334,8 +340,14 @@ def get_default_naming_template():
 @login_required
 def set_default_naming_template():
     """Set the user's default naming template."""
-    data = request.json
-    template_id = data.get('template_id') if data else None
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    template_id = data.get('template_id')
+    # An id, or null for no default; "3", true and ids past the column
+    # range are refused (#664, #687)
+    if template_id is not None and not is_db_id(template_id):
+        return jsonify(api_error('invalid_integer_value')), 400
 
     if template_id:
         # Verify template belongs to user

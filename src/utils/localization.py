@@ -291,7 +291,7 @@ def _lookup(catalog: dict, key: str) -> Optional[str]:
     return value if isinstance(value, str) and value else None
 
 
-def translate(key: str, language: Optional[str] = None, **params) -> str:
+def translate(key: str, /, language: Optional[str] = None, **params) -> str:
     """
     Translate a dotted catalog key on the server, as i18n.t() does in the browser.
 
@@ -365,7 +365,7 @@ def format_percent(percent, language: Optional[str] = None) -> str:
     return babel_format_percent(rounded / 100, format=f'{head}0.#{tail}', locale=locale)
 
 
-def api_error(code: str, language: Optional[str] = None, **params) -> dict:
+def api_error(code: str, /, language: Optional[str] = None, **params) -> dict:
     """
     The body of an API error response (#477): the message from
     server.apiError.<code> in the interface language, and the code itself,

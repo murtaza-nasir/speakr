@@ -14,7 +14,7 @@ from flask_login import login_required, current_user
 from src.database import db
 from src.models import APIToken
 from src.utils.token_auth import hash_token
-from src.utils.request_body import json_object_body
+from src.utils.request_body import is_int, json_object_body
 from src.utils.localization import api_error, translate
 
 # Create blueprint
@@ -103,14 +103,26 @@ def create_token():
     Returns:
         JSON: The new token object including the plaintext token (shown only once)
     """
-    data = request.get_json()
+    # Every field is optional, so no body is a token with the defaults;
+    # a body that is present is an object (#687)
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
 
-    # Validate input
+    # Validate input: name is a string of at most 100 characters (the
+    # column), expires_in_days a whole number of at most 100 years, so the
+    # expiry date cannot overflow
     name = data.get('name', 'Unnamed Token')
+    if name is None:
+        name = 'Unnamed Token'
+    if not isinstance(name, str):
+        return jsonify(api_error('field_must_be_string', field='name')), 400
+    if len(name) > 100:
+        return jsonify(api_error('token_name_too_long', max=100)), 400
     expires_in_days = data.get('expires_in_days', 0)
 
     # Validate expiration
-    if not isinstance(expires_in_days, int) or expires_in_days < 0:
+    if not is_int(expires_in_days) or not 0 <= expires_in_days <= 36500:
         return jsonify(api_error('invalid_expires_in_days')), 400
 
     # Scopes (mailr spec G1). Absent = a full token, as before scopes existed.

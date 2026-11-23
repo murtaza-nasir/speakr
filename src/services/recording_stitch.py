@@ -243,15 +243,19 @@ def _apply_finalize_metadata(recording, metadata):
     """
     from src.models import Tag, RecordingTag
     from src.models.organization import Folder, GroupMembership
+    from src.utils.request_body import DB_INT_MAX, DB_INT_MIN
 
     raw_tags = metadata.get('tags') or []
     tag_ids = []
     for entry in raw_tags:
         tid = entry.get('id') if isinstance(entry, dict) else entry
         try:
-            tag_ids.append(int(tid))
-        except (TypeError, ValueError):
+            tid = int(tid)
+        except (TypeError, ValueError, OverflowError):
             continue
+        # An id past the column range names no tag (#664)
+        if DB_INT_MIN <= tid <= DB_INT_MAX:
+            tag_ids.append(tid)
 
     selected_tags = []
     for order, tid in enumerate(tag_ids, 1):

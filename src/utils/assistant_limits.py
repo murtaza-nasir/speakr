@@ -61,6 +61,27 @@ def question_error(value, v1=False):
     return api_error('message_too_long', max=limit)
 
 
+def checked_question(raw, missing, v1=False):
+    """(question, None) for a usable question, stripped of surrounding
+    spaces; (None, 400 body) otherwise. `missing` is the body of the
+    route for no question: a value that is not a string, or one that is
+    blank once stripped ("   ", "\\n"), is none (#670). A NUL character is
+    refused (it cannot be stored or sent on), and so is a question over
+    MAX_QUESTION_CHARS (question_error). The one check of every route
+    that takes a question."""
+    if not isinstance(raw, str) or not raw.strip():
+        return None, missing
+    question = raw.strip()
+    if '\x00' in question:
+        if v1:
+            return None, {'error': translate('server.apiError.message_contains_nul'), 'code': 'invalid_parameter'}
+        return None, api_error('message_contains_nul')
+    too_long = question_error(question, v1=v1)
+    if too_long:
+        return None, too_long
+    return question, None
+
+
 def history_is_valid(raw):
     """True for a list of objects, each with a role of user or assistant and
     string content. Other keys (the Ask page's activity and sources) are

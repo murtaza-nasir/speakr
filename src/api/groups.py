@@ -15,6 +15,21 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import api_error, translate
+from src.utils.request_body import flag_fields, is_db_id, json_object_body
+
+# Group.name is String(100); PostgreSQL refuses a longer one at commit.
+GROUP_NAME_MAX_LENGTH = 100
+
+
+def _group_fields_error(data):
+    """The 400 for a name or description that is not a string (null is
+    no value) or a name past the column length, or None (#687)."""
+    for field in ('name', 'description'):
+        if data.get(field) is not None and not isinstance(data[field], str):
+            return jsonify(api_error('field_must_be_string', field=field)), 400
+    if len((data.get('name') or '').strip()) > GROUP_NAME_MAX_LENGTH:
+        return jsonify(api_error('field_too_long', field='name', max=GROUP_NAME_MAX_LENGTH)), 400
+    return None
 from src.services import audit
 from src.services.auto_shares import drop_stale_auto_shares, ensure_recipient_state
 from src.auth.permissions import CREATE_GROUPS, group_has_grant, set_group_grant, user_can
@@ -234,7 +249,12 @@ def create_team():
     if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('groups_require_internal_sharing')), 403
 
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    field_error = _group_fields_error(data)
+    if field_error:
+        return field_error
     name = (data.get('name') or '').strip()
     description = (data.get('description') or '').strip()
 
@@ -308,7 +328,15 @@ def update_team(group_id):
     if not current_user.is_admin and not is_group_admin:
         return jsonify(api_error('admin_required')), 403
 
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    field_error = _group_fields_error(data)
+    if field_error:
+        return field_error
+    flags, flag_error = flag_fields(data, ('members_create_groups_granted',))
+    if flag_error:
+        return flag_error
     name = (data.get('name') or '').strip()
     description = (data.get('description') or '').strip()
 
@@ -316,7 +344,7 @@ def update_team(group_id):
         # A permission grant, which only a site admin may change (#576)
         if not current_user.is_admin:
             return jsonify(api_error('admin_required')), 403
-        set_group_grant(CREATE_GROUPS, group.id, bool(data['members_create_groups_granted']))
+        set_group_grant(CREATE_GROUPS, group.id, flags['members_create_groups_granted'])
 
     if name:
         # Only a rename to a different name is checked against the other
@@ -403,13 +431,17 @@ def add_team_member(group_id):
     if not current_user.is_admin and not is_group_admin:
         return jsonify(api_error('admin_required')), 403
 
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     role = data.get('role', 'member')
     identifier = data.get('identifier')
     identifier = identifier.strip() if isinstance(identifier, str) else ''
 
     if role not in ['admin', 'member']:
         return jsonify(api_error('invalid_group_role')), 400
+    if data.get('user_id') and not is_db_id(data['user_id']):
+        return jsonify(api_error('invalid_integer_value')), 400
 
     if current_user.is_admin and data.get('user_id'):
         # Site admins pick from the full user list (/admin/users)
@@ -462,7 +494,9 @@ def update_team_member(group_id, user_id):
     if not current_user.is_admin and not is_group_admin:
         return jsonify(api_error('admin_required')), 403
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     role = data.get('role')
 
     if role not in ['admin', 'member']:

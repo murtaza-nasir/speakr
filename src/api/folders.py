@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from src.database import db
 from src.models import *
 from src.utils.localization import api_error
+from src.utils.request_body import PROCESSING_FIELDS, clean_fields, id_fields_error, is_db_id, is_int_list, json_object_body
 from src.services.auto_shares import (apply_folder_shares, drop_stale_auto_shares, regroup_error,
                                       share_scope_refusal, sharing_state, sync_source_shares)
 
@@ -85,7 +86,8 @@ def _parent_for_write(parent_id, user_id, group_id):
     """
     if parent_id in (None, ''):
         return None, None
-    if isinstance(parent_id, bool) or not isinstance(parent_id, int):
+    # An id past the column range names no folder (#664)
+    if not is_db_id(parent_id):
         return None, 'folder_parent_invalid'
     parent = db.session.get(Folder, parent_id)
     if not parent:
@@ -177,6 +179,14 @@ def create_folder():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify(api_error('folder_name_required')), 400
+    # Every id is a whole number in the column range, or none (#664, #687)
+    ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
+    if ids_error:
+        return ids_error
+    # Prompts and defaults of the right type and length, flags parsed (#687)
+    fields_error = clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
 
     name, error_key = _clean_folder_name(data.get('name'))
     if error_key:
@@ -299,6 +309,14 @@ def update_folder(folder_id):
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         data = {}
+    # Every id is a whole number in the column range, or none (#664, #687)
+    ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
+    if ids_error:
+        return ids_error
+    # Prompts and defaults of the right type and length, flags parsed (#687)
+    fields_error = clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
     before = sharing_state(folder)
 
     if 'name' in data:
@@ -505,6 +523,14 @@ def create_group_folder(group_id):
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify(api_error('folder_name_required')), 400
+    # Every id is a whole number in the column range, or none (#664, #687)
+    ids_error = id_fields_error(data, ('group_id', 'naming_template_id', 'export_template_id'))
+    if ids_error:
+        return ids_error
+    # Prompts and defaults of the right type and length, flags parsed (#687)
+    fields_error = clean_fields(data, PROCESSING_FIELDS)
+    if fields_error:
+        return fields_error
 
     name, error_key = _clean_folder_name(data.get('name'))
     if error_key:
@@ -631,8 +657,13 @@ def assign_recording_folder(recording_id):
         if recording.user_id != current_user.id:
             return jsonify(api_error('recording_modify_denied')), 403
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     folder_id = data.get('folder_id')
+    # An id, or null to leave the folder (#664, #677)
+    if folder_id is not None and not is_db_id(folder_id):
+        return jsonify(api_error('invalid_folder_id')), 400
 
     if folder_id:
         # Verify folder exists and user has access
@@ -710,12 +741,19 @@ def bulk_assign_folder():
     if not folders_enabled:
         return jsonify(api_error('folders_disabled')), 403
 
-    data = request.get_json()
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
     recording_ids = data.get('recording_ids', [])
     folder_id = data.get('folder_id')  # Can be None to remove from folder
 
     if not recording_ids:
         return jsonify(api_error('no_recordings_specified')), 400
+    # A list of ids, every item checked before the first change (#666)
+    if not is_int_list(recording_ids):
+        return jsonify(api_error('invalid_recording_ids_list')), 400
+    if folder_id is not None and not is_db_id(folder_id):
+        return jsonify(api_error('invalid_folder_id')), 400
 
     # Verify folder if specified
     folder = None

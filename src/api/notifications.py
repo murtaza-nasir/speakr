@@ -10,6 +10,7 @@ from flask_login import login_required, current_user
 
 from src.services import notifications as notification_service
 from src.utils.localization import api_error
+from src.utils.request_body import is_int_list, json_object_body
 
 notifications_bp = Blueprint('notifications', __name__)
 
@@ -40,9 +41,12 @@ def notification_count():
 @login_required
 def mark_notifications_read():
     """Mark the given ids read, or everything when none are given."""
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     ids = data.get('ids')
-    if ids is not None and not isinstance(ids, list):
+    # A list of ids in the column range, checked before the update (#687)
+    if ids is not None and not is_int_list(ids):
         return jsonify(api_error('invalid_ids_list')), 400
 
     marked = notification_service.mark_read(current_user, ids)

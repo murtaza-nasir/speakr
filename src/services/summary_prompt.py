@@ -19,6 +19,7 @@ from sqlalchemy import and_, false, or_
 
 from src.database import db
 from src.models import GroupMembership, SystemSetting, Tag
+from src.utils.request_body import is_db_id
 
 MAX_PROMPT_LENGTH = 8000
 
@@ -198,13 +199,13 @@ def save_summary_prompt(recording, viewer, target, target_id, prompt):
     if target == 'user':
         viewer.summary_prompt = text
     elif target == 'tag':
-        tag = db.session.get(Tag, target_id) if isinstance(target_id, int) else None
+        tag = db.session.get(Tag, target_id) if is_db_id(target_id) else None
         visible = tag is not None and tag.id in {t.id for t in _viewer_tags(viewer)}
         if not visible or not can_edit_tag(tag, viewer):
             raise SummaryPromptError('summary_prompt_save_denied', 403)
         tag.custom_prompt = text
     elif target == 'folder':
-        folder = db.session.get(Folder, target_id) if isinstance(target_id, int) else None
+        folder = db.session.get(Folder, target_id) if is_db_id(target_id) else None
         if (folder is None or recording.folder_id != folder.id or recording.user_id != viewer.id
                 or not SystemSetting.get_setting('enable_folders', False)
                 or not can_edit_folder(folder, viewer)):

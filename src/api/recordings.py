@@ -24,8 +24,9 @@ from src.services.recording_deletion import delete_recording_completely, cleanup
 from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
-from src.utils.request_body import json_body, json_object_body, is_int_list
-from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
+from src.utils.request_body import (flag_fields, id_args_error, json_body, json_object_body, is_db_id, is_int_list,
+                                    parse_flag)
+from src.utils.assistant_limits import checked_history, checked_question, history_trimmed_event
 from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
 
@@ -130,6 +131,9 @@ def init_recordings_helpers(**kwargs):
 @audit.access('recording.downloaded', details=lambda: {'part': 'transcript', 'format': audit.code(request.args.get('format'), ('txt', 'md'), 'txt')})
 def download_transcript_with_template(recording_id):
     """Download transcript with custom template formatting."""
+    arg_error = id_args_error(('template_id',))
+    if arg_error:
+        return arg_error
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording or not has_recording_access(recording, current_user):
@@ -458,7 +462,9 @@ def merge_recordings_endpoint():
     """
     from src.services.recording_merge import create_merge_recording, MergeError, _UNSET
 
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     raw_ids = data.get('recording_ids')
 
     if not isinstance(raw_ids, list) or len(raw_ids) < 2:
@@ -466,12 +472,19 @@ def merge_recordings_endpoint():
 
     try:
         recording_ids = [int(rid) for rid in raw_ids]
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
+        return jsonify(api_error('invalid_recording_ids')), 400
+    # true is not recording 1, and an id past the column range names none (#664)
+    if any(isinstance(rid, bool) for rid in raw_ids) or not is_int_list(recording_ids):
         return jsonify(api_error('invalid_recording_ids')), 400
 
     title = data.get('title')
-    delete_originals = bool(data.get('delete_originals', False))
-    remove_original_audio = bool(data.get('remove_original_audio', False)) and not delete_originals
+    # "false" keeps the originals: a flag is parsed, never cast (#665)
+    flags, flag_error = flag_fields(data, ('delete_originals', 'remove_original_audio'))
+    if flag_error:
+        return flag_error
+    delete_originals = flags.get('delete_originals', False)
+    remove_original_audio = flags.get('remove_original_audio', False) and not delete_originals
 
     # notes_source_id: which source's notes to keep on the merged recording.
     #   key absent      -> default to the first source
@@ -484,7 +497,9 @@ def merge_recordings_endpoint():
         else:
             try:
                 notes_source_id = int(raw_notes_src)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, OverflowError):
+                notes_source_id = _UNSET
+            if notes_source_id is not _UNSET and not is_db_id(notes_source_id):
                 notes_source_id = _UNSET
     else:
         notes_source_id = _UNSET
@@ -566,7 +581,9 @@ def generate_summary_endpoint(recording_id):
             return jsonify(api_error('summary_openrouter_not_configured')), 503
 
         # Optional custom prompt + mode (issue / discussion #253)
-        data = request.get_json(silent=True) or {}
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
         from src.services.reprocessing import summary_prompt_params, caller_summary_prompt, summary_prompt_used
         prompt_used = summary_prompt_used(
             recording, current_user, data.get('custom_prompt'), data.get('prompt_mode'))
@@ -966,7 +983,9 @@ def save_summary_prompt_route(recording_id):
     if error:
         return error
     from src.services.summary_prompt import SummaryPromptError, describe_summary_prompt, save_summary_prompt
-    data = request.get_json(silent=True) or {}
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
     try:
         save_summary_prompt(recording, current_user, data.get('target'), data.get('id'), data.get('prompt'))
     except SummaryPromptError as e:
@@ -1286,6 +1305,10 @@ def get_recordings():
 def get_recordings_paginated():
     """Get recordings with pagination and server-side filtering (includes shared recordings)."""
     import re
+    # A folder id or page past the column range names nothing: 400 (#664)
+    arg_error = id_args_error(('folder', 'page', 'per_page'))
+    if arg_error:
+        return arg_error
     try:
         # Parse query parameters
         page = request.args.get('page', 1, type=int)
@@ -1914,7 +1937,9 @@ def translate_transcription(recording_id):
         if not TRANSLATION_MODEL_CONFIGURED:
             return jsonify(api_error('translation_llm_not_configured')), 503
 
-        data = request.get_json(silent=True) or {}
+        data, body_error = json_object_body(optional=True)
+        if body_error:
+            return body_error
         raw_target = data.get('target_language')
 
         if raw_target is None or str(raw_target).strip() == '':
@@ -2295,7 +2320,10 @@ def cancel_upload_route():
     upload may still arrive.
     """
     from src.services.upload_cancel import cancel_upload, client_upload_id_from
-    client_upload_id = client_upload_id_from(request.get_json(silent=True) or {})
+    data, body_error = json_object_body(optional=True)
+    if body_error:
+        return body_error
+    client_upload_id = client_upload_id_from(data)
     if not client_upload_id:
         return jsonify(api_error('invalid_client_upload_id')), 400
     try:
@@ -2576,11 +2604,10 @@ def chat_incognito():
 
         if not transcription or not isinstance(transcription, str):
             return jsonify(api_error('no_transcription_provided')), 400
-        if not user_message or not isinstance(user_message, str):
-            return jsonify(api_error('no_message_provided')), 400
-        too_long = question_error(user_message)
-        if too_long:
-            return jsonify(too_long), 400
+        # Stripped; blank or holding NUL is no question (#670)
+        user_message, message_error = checked_question(user_message, api_error('no_message_provided'))
+        if message_error:
+            return jsonify(message_error), 400
         raw_history = message_history
         message_history, bad_history = checked_history(message_history)
         if bad_history:
@@ -3419,11 +3446,13 @@ def chat_with_transcription():
 
         if not recording_id:
             return jsonify(api_error('no_recording_id')), 400
-        if not user_message or not isinstance(user_message, str):
-            return jsonify(api_error('no_message_provided')), 400
-        too_long = question_error(user_message)
-        if too_long:
-            return jsonify(too_long), 400
+        # An id in the column range, never a lookup that overflows (#664)
+        if not is_db_id(recording_id):
+            return jsonify(api_error('recording_not_found')), 404
+        # Stripped; blank or holding NUL is no question (#670)
+        user_message, message_error = checked_question(user_message, api_error('no_message_provided'))
+        if message_error:
+            return jsonify(message_error), 400
         raw_history = message_history
         message_history, bad_history = checked_history(message_history)
         if bad_history:
@@ -3555,7 +3584,7 @@ def chat_with_transcription():
         if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
             return jsonify(api_error('llm_connection_failed')), 503
         _data = request.get_json(silent=True) or {}
-        _recording = db.session.get(Recording, _data.get('recording_id')) if isinstance(_data.get('recording_id'), int) else None
+        _recording = db.session.get(Recording, _data.get('recording_id')) if is_db_id(_data.get('recording_id')) else None
         return jsonify({'error': user_error_text(
             e, _recording, extra_sources=[v for v in (_data.get('message'),) if isinstance(v, str)])}), 500
 
@@ -3788,7 +3817,10 @@ def bulk_delete_recordings():
             return jsonify(api_error('missing_recording_ids')), 400
 
         recording_ids = data.get('recording_ids', [])
-        if not isinstance(recording_ids, list) or len(recording_ids) == 0:
+        # A list of ids, every item checked before the first change (#666)
+        if not is_int_list(recording_ids):
+            return jsonify(api_error('invalid_recording_ids_list')), 400
+        if len(recording_ids) == 0:
             return jsonify(api_error('recording_ids_empty')), 400
 
         # Limit bulk operations to prevent abuse
@@ -3855,6 +3887,11 @@ def bulk_update_tags():
 
         if not recording_ids or not tag_id:
             return jsonify(api_error('missing_recording_ids_or_tag_id')), 400
+        # A list of ids, every item checked before the first change (#666)
+        if not is_int_list(recording_ids):
+            return jsonify(api_error('invalid_recording_ids_list')), 400
+        if not is_db_id(tag_id):
+            return jsonify(api_error('invalid_integer_value')), 400
 
         if action not in ['add', 'remove']:
             return jsonify(api_error('invalid_bulk_tag_action')), 400
@@ -3968,6 +4005,9 @@ def bulk_reprocess():
 
         if not recording_ids:
             return jsonify(api_error('missing_recording_ids')), 400
+        # A list of ids, every item checked before the first change (#666)
+        if not is_int_list(recording_ids):
+            return jsonify(api_error('invalid_recording_ids_list')), 400
 
         if reprocess_type not in ['transcription', 'summary']:
             return jsonify(api_error('invalid_reprocess_type')), 400
@@ -4038,9 +4078,17 @@ def bulk_toggle():
 
         if not recording_ids or field is None or value is None:
             return jsonify(api_error('missing_bulk_status_fields')), 400
+        # A list of ids, every item checked before the first change (#666)
+        if not is_int_list(recording_ids):
+            return jsonify(api_error('invalid_recording_ids_list')), 400
 
         if field not in ['inbox', 'highlight', 'archive']:
             return jsonify(api_error('invalid_bulk_status_field')), 400
+
+        # A flag, read like every other one: "false" is false (#674)
+        value = parse_flag(value)
+        if value is None:
+            return jsonify(api_error('invalid_boolean_flag', key='value')), 400
 
         if len(recording_ids) > 100:
             return jsonify(api_error('bulk_update_limit')), 400
