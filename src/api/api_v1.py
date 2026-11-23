@@ -1229,8 +1229,9 @@ def get_capabilities():
     features = dict(CAPABILITY_FEATURES)
     from src.models import SystemSetting
     features['internal_sharing'] = bool(SystemSetting.get_setting('enable_internal_sharing', os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'))
-    features['public_sharing'] = bool(SystemSetting.get_setting('enable_public_sharing', os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'))
-    features['can_share_publicly'] = bool(features['public_sharing'] and getattr(current_user, 'can_share_publicly', True))
+    from src.services.public_shares import public_sharing_enabled, user_can_share_publicly
+    features['public_sharing'] = public_sharing_enabled()
+    features['can_share_publicly'] = user_can_share_publicly(current_user, features['public_sharing'])
     features['can_create_groups'] = _can_create_groups(current_user)
     from src.services.search_v1 import semantic_available
     features['search'] = {'keyword': True, 'semantic': semantic_available()}
@@ -1823,9 +1824,8 @@ def delete_external_ref(recording_id, ref_id):
 def create_public_share(recording_id):
     """Create or reuse a public link (mailr spec G10). Notes are not shared
     unless asked, and a reused link's flags change only with update_existing."""
-    from src.services.public_shares import get_or_create, link_is_https, public_url, share_dict
-    from src.models import SystemSetting
-    if not bool(SystemSetting.get_setting('enable_public_sharing', os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true')):
+    from src.services.public_shares import get_or_create, link_is_https, public_sharing_enabled, public_url, share_dict
+    if not public_sharing_enabled():
         return jsonify({'error': translate('server.apiError.public_sharing_off'), 'code': 'feature_disabled'}), 403
     if not getattr(current_user, 'can_share_publicly', True):
         return jsonify({'error': translate('server.apiError.public_link_not_permitted'), 'code': 'not_permitted'}), 403

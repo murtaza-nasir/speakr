@@ -3217,7 +3217,8 @@
     "shareWithUser": "Compartilhar com usuário",
     "userNumber": "Usuário #{{id}}",
     "usernamePlaceholder": "Nome de usuário ou e-mail",
-    "view": "Visualizar"
+    "view": "Visualizar",
+    "publicLinksOff": "Você não pode criar links públicos."
   },
   "upload": {
     "completed": "Concluído",

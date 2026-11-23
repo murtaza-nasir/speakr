@@ -21,7 +21,8 @@ from src.services import audit
 from src.utils import md_to_html
 from src.utils.route_errors import internal_error
 from src.services.storage import get_storage_service
-from src.services.public_shares import active_share_or_404, link_is_https, public_url
+from src.services.public_shares import (active_share_or_404, link_is_https, public_sharing_enabled, public_url,
+                                        user_can_share_publicly)
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.log_filters import loggable_error, loggable_locator
 from src.utils.localization import api_error, translate, request_language
@@ -235,7 +236,7 @@ def get_existing_share(recording_id):
 def create_share(recording_id):
     """Create a public share link for a recording."""
     # Check if public sharing is globally enabled
-    if not _self.ENABLE_PUBLIC_SHARING:
+    if not public_sharing_enabled():
         return jsonify(api_error('public_sharing_disabled')), 403
 
     # Check if user has permission to create public shares
@@ -283,7 +284,7 @@ def create_share(recording_id):
 def get_shares():
     """Get all public shares for the current user."""
     shares = Share.query.filter_by(user_id=current_user.id).order_by(Share.created_at.desc()).all()
-    enabled = _self.ENABLE_PUBLIC_SHARING
+    enabled = public_sharing_enabled()
     return jsonify([share.to_dict(sharing_enabled=enabled) for share in shares])
 
 
@@ -324,7 +325,7 @@ def get_shares_overview():
             folders.update({f.id: f for f in Folder.query.filter(Folder.id.in_(sorted(wanted)))})
         return shares
 
-    sharing_enabled = _self.ENABLE_PUBLIC_SHARING
+    sharing_enabled = public_sharing_enabled()
     public_links = [s.to_dict(sharing_enabled=sharing_enabled) for s in
                     Share.query.filter_by(user_id=current_user.id)
                     .options(selectinload(Share.recording).load_only(
@@ -384,7 +385,8 @@ def get_shares_overview():
             })
 
     return jsonify({
-        'public_sharing_enabled': _self.ENABLE_PUBLIC_SHARING,
+        'public_sharing_enabled': sharing_enabled,
+        'can_share_publicly': user_can_share_publicly(current_user, sharing_enabled),
         'internal_sharing_enabled': _self.ENABLE_INTERNAL_SHARING,
         'public_links': public_links,
         'shared_by_me': shared_by_me,
@@ -947,7 +949,7 @@ def get_shared_with_me():
 def can_share_publicly():
     """Check if the current user has permission to create public shares."""
     return jsonify({
-        'can_share_publicly': current_user.can_share_publicly and _self.ENABLE_PUBLIC_SHARING
+        'can_share_publicly': user_can_share_publicly(current_user, public_sharing_enabled())
     })
 
 

@@ -3217,7 +3217,8 @@
     "shareWithUser": "Für Benutzer freigeben",
     "userNumber": "Benutzer #{{id}}",
     "usernamePlaceholder": "Benutzername oder E-Mail-Adresse",
-    "view": "Ansehen"
+    "view": "Ansehen",
+    "publicLinksOff": "Sie können keine öffentlichen Links erstellen."
   },
   "upload": {
     "completed": "Abgeschlossen",

@@ -3217,7 +3217,8 @@
     "shareWithUser": "Partager avec un utilisateur",
     "userNumber": "Utilisateur n° {{id}}",
     "usernamePlaceholder": "Nom d’utilisateur ou adresse e-mail",
-    "view": "Lecture"
+    "view": "Lecture",
+    "publicLinksOff": "Vous ne pouvez pas créer de liens publics."
   },
   "upload": {
     "completed": "Terminé",

@@ -3217,7 +3217,8 @@
     "shareWithUser": "分享给用户",
     "userNumber": "用户 #{{id}}",
     "usernamePlaceholder": "用户名或邮箱",
-    "view": "查看"
+    "view": "查看",
+    "publicLinksOff": "您无法创建公开链接。"
   },
   "upload": {
     "completed": "已完成",
