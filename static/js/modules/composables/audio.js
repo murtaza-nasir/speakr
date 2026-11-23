@@ -11,6 +11,7 @@ import {
     getAudioInputCandidateSignature,
     shouldAutoOfferExternalAudioInput
 } from '../utils/platform.js';
+import { DISPLAY_MEDIA_CONSTRAINTS, closeAudioContext, stopStreams } from '../utils/audio-capture.js';
 
 export function buildMicrophoneConstraints(deviceId = '', disableAudioProcessing = false) {
     const constraints = {
@@ -267,7 +268,7 @@ export function useAudio(state, utils) {
     // stop, discard, and the start-error path.
     function _releaseAudioContext() {
         if (audioContext.value) {
-            try { audioContext.value.close(); } catch (_) { /* already closed */ }
+            closeAudioContext(audioContext.value);
             audioContext.value = null;
         }
         analyser.value = null;
@@ -466,11 +467,8 @@ export function useAudio(state, utils) {
             // This is required for Firefox's "transient activation" security model
             if (needsDisplayMedia) {
                 try {
-                    const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: true,
-                        audio: true,
-                        audioSelection: 'preferred'
-                    });
+                    // The constraints the offline recorder asks with as well (utils/audio-capture.js).
+                    const displayStream = await navigator.mediaDevices.getDisplayMedia({ ...DISPLAY_MEDIA_CONSTRAINTS });
 
                     // Check if we got an audio track
                     const audioTrack = displayStream.getAudioTracks()[0];
@@ -1141,9 +1139,7 @@ export function useAudio(state, utils) {
 
             // Clean up any started streams
             if (activeStreams.value.length > 0) {
-                activeStreams.value.forEach(stream => {
-                    stream.getTracks().forEach(track => track.stop());
-                });
+                stopStreams(activeStreams.value);
                 activeStreams.value = [];
             }
             // Also release the display stream grabbed before the failure point
@@ -1226,9 +1222,7 @@ export function useAudio(state, utils) {
 
             // Stop all active media streams (mic, screen share, etc.)
             if (activeStreams.value.length > 0) {
-                activeStreams.value.forEach(stream => {
-                    stream.getTracks().forEach(track => track.stop());
-                });
+                stopStreams(activeStreams.value);
                 activeStreams.value = [];
             }
 
@@ -1654,9 +1648,7 @@ export function useAudio(state, utils) {
         // Stop any still-live capture tracks (e.g. discarding while the tab
         // stayed on the finished-review pane with tracks not yet stopped).
         if (activeStreams.value.length > 0) {
-            activeStreams.value.forEach(stream => {
-                try { stream.getTracks().forEach(track => track.stop()); } catch (_) {}
-            });
+            stopStreams(activeStreams.value);
             activeStreams.value = [];
         }
         if (audioBlobURL.value) {
