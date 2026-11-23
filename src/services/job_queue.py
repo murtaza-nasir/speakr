@@ -184,13 +184,30 @@ class FairJobQueue:
         self._app = app
 
     @contextmanager
-    def _app_context(self):
-        """Get application context for database operations."""
+    def _app_context(self, reuse=False):
+        """Get application context for database operations.
+
+        reuse=True keeps the application context of the caller when it is
+        one of this app, so a lookup made during a request reads through the
+        session of the request. Flask-SQLAlchemy keeps one session per
+        application context: a new context took a second pooled connection
+        while the request held its own, and the status route made three such
+        lookups per poll (#667). Only lookups reuse it; the methods that
+        commit or roll back keep a session of their own, so they never end
+        the caller's transaction.
+        """
         if self._app:
+            if reuse and self._in_own_app_context():
+                yield
+                return
             with self._app.app_context():
                 yield
         else:
             yield
+
+    def _in_own_app_context(self):
+        from flask import current_app, has_app_context
+        return has_app_context() and current_app._get_current_object() is self._app
 
     def mark_as_owner(self):
         """Mark this process as the elected owner of the queue."""
@@ -1140,7 +1157,7 @@ class FairJobQueue:
 
     def get_queue_status(self) -> Dict[str, Any]:
         """Get the current status of each queue."""
-        with self._app_context():
+        with self._app_context(reuse=True):
             from src.models import ProcessingJob
 
             transcription_queued = ProcessingJob.query.filter(
@@ -1203,7 +1220,7 @@ class FairJobQueue:
         Background jobs (translation, Inquire chunks) are not counted as the
         recording's job.
         """
-        with self._app_context():
+        with self._app_context(reuse=True):
             from src.models import ProcessingJob
 
             job = ProcessingJob.query.filter(
@@ -1235,7 +1252,7 @@ class FairJobQueue:
         """The recording's waiting or running job, the newest when it has
         several; None when it has none. Background jobs (translation,
         Inquire chunks) are not counted."""
-        with self._app_context():
+        with self._app_context(reuse=True):
             from src.models import ProcessingJob
 
             return ProcessingJob.query.filter(
@@ -1246,7 +1263,7 @@ class FairJobQueue:
 
     def get_job_for_recording(self, recording_id: int):
         """Get the active job for a recording."""
-        with self._app_context():
+        with self._app_context(reuse=True):
             from src.models import ProcessingJob
 
             return ProcessingJob.query.filter(

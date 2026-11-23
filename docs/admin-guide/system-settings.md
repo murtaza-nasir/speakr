@@ -409,6 +409,8 @@ Speakr uses separate job queues for transcription and summarization to prevent s
 
 **JOB_MAX_RETRIES**: How many times a failed job will be retried before being marked as failed. Default: `3`.
 
+**DB_POOL_SIZE**, **DB_MAX_OVERFLOW**, **DB_POOL_TIMEOUT**: The database connection pool of each gunicorn worker process. Each request thread and each job worker thread holds a connection while it works, and the process that owns the job queue runs both. `DB_POOL_SIZE` connections are kept open, up to `DB_MAX_OVERFLOW` more are opened when needed, and a thread that finds none free waits `DB_POOL_TIMEOUT` seconds before its request fails. The defaults are `10` kept open, an overflow that brings the total to the 8 request threads plus the job workers plus 6 (at least `10`; `11` with the default workers), and `30` seconds. Raise them when the log shows `QueuePool limit ... reached`. With PostgreSQL, the total over all processes (three in the image) must stay below the server's `max_connections`.
+
 **DISABLE_TRANSCRIPT_UNICODE_REWRITE**: Set to `true` to skip the one-time rewrite that stores older transcripts without `\u` escapes, so non-Latin words are found by search. Default: `false`.
 
 **TRANSCRIPT_UNICODE_REWRITE_DELAY_SECONDS**: Seconds after startup before that rewrite starts. Default: `30`.
