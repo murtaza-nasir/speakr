@@ -160,6 +160,10 @@ def browser():
 def admin(browser):
     session = Admin(browser)
     session.open_admin()
+    # The account's theme and mode as this file found them (a page loaded
+    # fresh shows the account's own), put back when it ends
+    session.saved_look = session.page.evaluate(
+        "() => [document.documentElement.dataset.uiTheme || 'default', document.documentElement.classList.contains('dark')]")
     session.setting(NOTICE_SETTING, "false", "boolean")
     # A refused sign-in from another browser, for the Result filter.
     other = browser.new_context(locale="en-US", service_workers="block")
@@ -180,6 +184,7 @@ def admin(browser):
     session.open_admin()
     yield session
     session.setting(NOTICE_SETTING, "false", "boolean")
+    session.api("POST", "/api/user/preferences", {"ui_theme": session.saved_look[0], "dark_mode": session.saved_look[1]})
     session.context.close()
 
 
@@ -405,7 +410,9 @@ def test_view_activity_opens_the_tab_for_one_user(admin):
 @pytest.mark.parametrize("theme", THEMES)
 def test_the_tab_in_every_theme_light_and_dark(admin, theme):
     page = admin.page
-    saved = page.locator("html").get_attribute("data-ui-theme") or "default"
+    # The look of the account before this file, not the theme the page still
+    # shows: that is the previous test's, until the page is loaded again
+    saved_theme, saved_dark = admin.saved_look
     response = admin.api("POST", "/api/user/preferences", {"ui_theme": theme})
     assert response.ok, f"could not save the theme {theme}: HTTP {response.status}"
     try:
@@ -471,7 +478,7 @@ def test_the_tab_in_every_theme_light_and_dark(admin, theme):
             finally:
                 page.set_viewport_size(DESKTOP)
     finally:
-        admin.api("POST", "/api/user/preferences", {"ui_theme": saved})
+        admin.api("POST", "/api/user/preferences", {"ui_theme": saved_theme, "dark_mode": saved_dark})
         page.evaluate("() => localStorage.removeItem('darkMode')")
 
 
