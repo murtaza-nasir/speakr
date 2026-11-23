@@ -19,7 +19,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import translate, api_error
-from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
+from src.utils.assistant_limits import checked_history, checked_question, history_trimmed_event
 from src.utils.error_text import log_failure, user_error_text
 from src.utils.speaker_labels import real_speaker_names
 from src.services.assistant_events import FilterError, checked_filters, filters_from_request
@@ -170,9 +170,10 @@ def inquire_search():
         if not data:
             return jsonify(api_error('no_data_provided')), 400
         
-        query = data.get('query')
-        if not query:
-            return jsonify(api_error('no_query_provided')), 400
+        # A non-blank string within the question limit (#673)
+        query, query_error = checked_question(data.get('query'), api_error('no_query_provided'))
+        if query_error:
+            return jsonify(query_error), 400
         
         # Build filters from request: the same filters, and the same checks,
         # as the chat route (diarization labels as speakers are ignored)
@@ -899,13 +900,11 @@ def inquire_chat():
         if not data:
             return jsonify(api_error('no_data_provided')), 400
         
-        user_message = data.get('message')
-
-        if not user_message or not isinstance(user_message, str):
-            return jsonify(api_error('no_message_provided')), 400
-        too_long = question_error(user_message)
-        if too_long:
-            return jsonify(too_long), 400
+        # Stripped; blank or holding NUL is no question (#670)
+        user_message, message_error = checked_question(data.get('message'), api_error('no_message_provided'))
+        if message_error:
+            return jsonify(message_error), 400
+        data = dict(data, message=user_message)
         # A list of {role, content}, else 400; the newest turns within the
         # limits reach the model (src/utils/assistant_limits.py, #633).
         raw_history = data.get('message_history')

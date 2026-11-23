@@ -3864,7 +3864,8 @@
       "invalid_token_budget": "Le budget mensuel de jetons doit être un nombre entier positif ou nul. Laissez le champ vide pour ne fixer aucune limite.",
       "invalid_transcription_budget": "Le budget mensuel de transcription doit être un nombre entier positif ou nul. Laissez le champ vide pour ne fixer aucune limite.",
       "invalid_updates": "updates doit être un objet",
-      "tag_name_too_long": "Les noms de tag ne peuvent pas dépasser {{max}} caractères"
+      "tag_name_too_long": "Les noms de tag ne peuvent pas dépasser {{max}} caractères",
+      "message_contains_nul": "La question ne peut pas contenir de caractère NUL"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",

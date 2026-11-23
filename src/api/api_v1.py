@@ -55,7 +55,7 @@ from src.utils.token_auth import load_user_from_token_value
 from src.utils.localization import api_error, translate
 from src.utils.error_text import log_failure
 from src.utils.metadata_limits import PARTICIPANTS_MAX_CHARS, metadata_error
-from src.utils.assistant_limits import MAX_QUESTION_CHARS, checked_history, question_error
+from src.utils.assistant_limits import MAX_QUESTION_CHARS, checked_history, checked_question
 from src.utils.route_errors import unexpected_error_body
 
 # Create blueprint with /api/v1 prefix
@@ -3686,12 +3686,14 @@ def chat_with_recording(recording_id):
     if not recording.transcription:
         return jsonify(api_error('no_transcription')), 400
 
-    data = request.get_json()
-    if not data or not data.get('message') or not isinstance(data.get('message'), str):
-        return jsonify(api_error('message_required')), 400
-    too_long = question_error(data['message'], v1=True)
-    if too_long:
-        return jsonify(too_long), 400
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
+    # Stripped; blank or holding NUL is no question (#670)
+    message, message_error = checked_question(data.get('message'), api_error('message_required'), v1=True)
+    if message_error:
+        return jsonify(message_error), 400
+    data = dict(data, message=message)
     history, bad_history = checked_history(data.get('conversation_history'), v1=True)
     if bad_history:
         return jsonify(bad_history), 400
@@ -3739,13 +3741,12 @@ def inquire_v1():
     body, body_error = json_object_body(optional=True)
     if body_error:
         return body_error
-    question = body.get('question')
-    question = question.strip() if isinstance(question, str) else ''
-    if not question:
-        return jsonify({'error': translate('server.apiError.question_required'), 'code': 'invalid_parameter'}), 400
-    too_long = question_error(question, v1=True)
-    if too_long:
-        return jsonify(too_long), 400
+    # Stripped; blank or holding NUL is no question (#670)
+    question, question_problem = checked_question(
+        body.get('question'),
+        {'error': translate('server.apiError.question_required'), 'code': 'invalid_parameter'}, v1=True)
+    if question_problem:
+        return jsonify(question_problem), 400
     history, bad_history = checked_history(body.get('history'), v1=True)
     if bad_history:
         return jsonify(bad_history), 400
@@ -3757,7 +3758,10 @@ def inquire_v1():
     scope = body.get('scope', 'own')
     if scope not in ('own', 'shared', 'all'):
         return jsonify({'error': translate('server.apiError.invalid_scope'), 'code': 'invalid_parameter'}), 400
-    filters = body.get('filters') or {}
+    # Only a missing or null filters is no filter; [], "" or 0 is refused (#668)
+    filters = body.get('filters')
+    if filters is None:
+        filters = {}
     if not isinstance(filters, dict):
         return jsonify({'error': translate('server.apiError.invalid_filters'), 'code': 'invalid_parameter'}), 400
     # The filters in the form of the web routes, with the same checks (#627)

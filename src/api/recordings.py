@@ -25,7 +25,7 @@ from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
 from src.utils.request_body import flag_fields, json_body, json_object_body, is_db_id, is_int_list, parse_flag
-from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
+from src.utils.assistant_limits import checked_history, checked_question, history_trimmed_event
 from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
 
@@ -2596,11 +2596,10 @@ def chat_incognito():
 
         if not transcription or not isinstance(transcription, str):
             return jsonify(api_error('no_transcription_provided')), 400
-        if not user_message or not isinstance(user_message, str):
-            return jsonify(api_error('no_message_provided')), 400
-        too_long = question_error(user_message)
-        if too_long:
-            return jsonify(too_long), 400
+        # Stripped; blank or holding NUL is no question (#670)
+        user_message, message_error = checked_question(user_message, api_error('no_message_provided'))
+        if message_error:
+            return jsonify(message_error), 400
         raw_history = message_history
         message_history, bad_history = checked_history(message_history)
         if bad_history:
@@ -3439,11 +3438,13 @@ def chat_with_transcription():
 
         if not recording_id:
             return jsonify(api_error('no_recording_id')), 400
-        if not user_message or not isinstance(user_message, str):
-            return jsonify(api_error('no_message_provided')), 400
-        too_long = question_error(user_message)
-        if too_long:
-            return jsonify(too_long), 400
+        # An id in the column range, never a lookup that overflows (#664)
+        if not is_db_id(recording_id):
+            return jsonify(api_error('recording_not_found')), 404
+        # Stripped; blank or holding NUL is no question (#670)
+        user_message, message_error = checked_question(user_message, api_error('no_message_provided'))
+        if message_error:
+            return jsonify(message_error), 400
         raw_history = message_history
         message_history, bad_history = checked_history(message_history)
         if bad_history:
