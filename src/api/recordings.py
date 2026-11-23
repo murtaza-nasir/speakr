@@ -24,7 +24,7 @@ from src.services.recording_deletion import delete_recording_completely, cleanup
 from src.models import *
 from src.utils import *
 from src.utils.route_errors import internal_error
-from src.utils.request_body import json_body, json_object_body, is_db_id, is_int_list
+from src.utils.request_body import json_body, json_object_body, is_db_id, is_int_list, parse_flag
 from src.utils.assistant_limits import checked_history, history_trimmed_event, question_error
 from werkzeug.exceptions import HTTPException
 from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
@@ -4055,6 +4055,11 @@ def bulk_toggle():
 
         if field not in ['inbox', 'highlight', 'archive']:
             return jsonify(api_error('invalid_bulk_status_field')), 400
+
+        # A flag, read like every other one: "false" is false (#674)
+        value = parse_flag(value)
+        if value is None:
+            return jsonify(api_error('invalid_boolean_flag', key='value')), 400
 
         if len(recording_ids) > 100:
             return jsonify(api_error('bulk_update_limit')), 400

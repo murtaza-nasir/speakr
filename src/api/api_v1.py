@@ -21,7 +21,7 @@ from datetime import datetime, date, timedelta, timezone
 from functools import wraps
 
 from src.utils.dates import FILTER_DATE_MAX, FILTER_DATE_MIN, to_utc_naive
-from src.utils.request_body import json_body, json_object_body, is_db_id, is_int_list
+from src.utils.request_body import flag_fields, json_body, json_object_body, is_db_id, is_int_list, parse_flag
 from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
@@ -36,7 +36,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from src.database import db
-from src.services.recording_state import get_user_archived, set_user_archived, parse_archived_flag
+from src.services.recording_state import get_user_archived, set_user_archived
 from src.models import Recording, User, Tag, RecordingTag, Speaker, Event, TranscriptTemplate
 from src.models.processing_job import ProcessingJob
 from src.models.token_usage import TokenUsage
@@ -2237,6 +2237,11 @@ def update_recording(recording_id):
     # and an id past the column range names no folder (#664, #677)
     if data.get('folder_id') is not None and not is_db_id(data['folder_id']):
         return jsonify(api_error('invalid_folder_id')), 400
+    # true/false, "true"/"false" or 0/1; anything else is refused before
+    # the first change, never cast with bool() (#665, #674)
+    flags, flag_error = flag_fields(data, ('is_inbox', 'is_highlighted', 'is_archived'))
+    if flag_error:
+        return flag_error
 
     # Update fields if provided
     if 'title' in data:
@@ -2263,20 +2268,17 @@ def update_recording(recording_id):
                 recording.meeting_date = None
         except (ValueError, TypeError, AttributeError):
             return jsonify(api_error('invalid_meeting_date')), 400
-    if 'is_inbox' in data or 'is_highlighted' in data:
+    if 'is_inbox' in flags or 'is_highlighted' in flags:
         # Inbox and star are per user: a shared editor sets their own (#599)
         set_user_recording_status(
             recording, current_user,
-            is_inbox=bool(data['is_inbox']) if 'is_inbox' in data else None,
-            is_highlighted=bool(data['is_highlighted']) if 'is_highlighted' in data else None,
+            is_inbox=flags.get('is_inbox'),
+            is_highlighted=flags.get('is_highlighted'),
             commit=False)
-    if 'is_archived' in data:
-        archived = parse_archived_flag(data['is_archived'])
-        if archived is None:
-            return jsonify(api_error('invalid_is_archived')), 400
+    if 'is_archived' in flags:
         # Per user, like the web app: a shared editor archives it for
         # themselves only (#394).
-        set_user_archived(recording, current_user, archived, commit=False)
+        set_user_archived(recording, current_user, flags['is_archived'], commit=False)
     if 'folder_id' in data:
         new_folder_id = data['folder_id']
         if new_folder_id is None:
@@ -3949,6 +3951,10 @@ def batch_update_recordings():
     for key in ('add_tag_ids', 'remove_tag_ids'):
         if key in updates and not is_int_list(updates[key]):
             return jsonify(api_error('invalid_tag_ids')), 400
+    # The same flag reading as the single PATCH (#665, #674)
+    flags, flag_error = flag_fields(updates, ('is_inbox', 'is_highlighted', 'is_archived'))
+    if flag_error:
+        return flag_error
 
     # If folder_id is being set on the batch, validate target folder access
     # once up front. The same destination folder applies to every recording
@@ -3975,12 +3981,6 @@ def batch_update_recordings():
                     return jsonify(api_error('target_folder_access_denied')), 403
             target_folder_id = new_folder_id
 
-    batch_archived = None
-    if 'is_archived' in updates:
-        batch_archived = parse_archived_flag(updates['is_archived'])
-        if batch_archived is None:
-            return jsonify(api_error('invalid_is_archived')), 400
-
     results = []
     for recording_id in recording_ids:
         recording = db.session.get(Recording, recording_id)
@@ -4000,15 +4000,15 @@ def batch_update_recordings():
                 continue
 
         try:
-            if 'is_inbox' in updates or 'is_highlighted' in updates:
+            if 'is_inbox' in flags or 'is_highlighted' in flags:
                 # Per user, as on the single PATCH (#599)
                 set_user_recording_status(
                     recording, current_user,
-                    is_inbox=bool(updates['is_inbox']) if 'is_inbox' in updates else None,
-                    is_highlighted=bool(updates['is_highlighted']) if 'is_highlighted' in updates else None,
+                    is_inbox=flags.get('is_inbox'),
+                    is_highlighted=flags.get('is_highlighted'),
                     commit=False)
-            if 'is_archived' in updates:
-                set_user_archived(recording, current_user, batch_archived, commit=False)
+            if 'is_archived' in flags:
+                set_user_archived(recording, current_user, flags['is_archived'], commit=False)
             if 'folder_id' in updates:
                 # `target_folder_id` already validated above (None to remove,
                 # or a valid folder id the caller has access to).
@@ -4218,15 +4218,18 @@ def batch_transcribe_recordings():
 @login_required
 def update_auto_summarization():
     """Toggle auto-summarization for the current user."""
-    data = request.get_json()
-
-    if data is None:
-        return jsonify(api_error('invalid_json')), 400
+    data, body_error = json_object_body()
+    if body_error:
+        return body_error
 
     if 'enabled' not in data:
         return jsonify(api_error('enabled_field_required')), 400
 
-    current_user.auto_summarization = bool(data['enabled'])
+    # "false" is false, not the truthy string it is to bool() (#665)
+    enabled = parse_flag(data['enabled'])
+    if enabled is None:
+        return jsonify(api_error('invalid_boolean_flag', key='enabled')), 400
+    current_user.auto_summarization = enabled
     db.session.commit()
 
     return jsonify({

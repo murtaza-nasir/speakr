@@ -42,15 +42,12 @@ def set_user_archived(recording, user, value, commit=True):
 def parse_archived_flag(value):
     """Strict boolean for an API is_archived field; None when it is not one.
 
-    bool("false") is True, so a string must be parsed, not cast.
+    The same lenient reading as every other flag field (parse_flag in
+    src/utils/request_body.py): bool("false") is True, so a string must be
+    parsed, not cast.
     """
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, int) and value in (0, 1):
-        return bool(value)
-    if isinstance(value, str) and value.strip().lower() in ('true', '1', 'false', '0'):
-        return value.strip().lower() in ('true', '1')
-    return None
+    from src.utils.request_body import parse_flag
+    return parse_flag(value)
 
 
 def archived_condition(recording_model, user_id):
