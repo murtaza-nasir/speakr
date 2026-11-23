@@ -100,3 +100,70 @@ def test_no_access_never_gets_304(world, route):
         etag = c.get(url, headers=_h(world)).headers["ETag"]
         resp = c.get(url, headers=_h(world, who="other", etag=etag))
     assert resp.status_code in (403, 404) and "ETag" not in resp.headers
+
+
+# ---- the recordings list (D#662) ---------------------------------------------
+
+LIST = "/api/v1/recordings"
+
+
+def test_the_list_answers_304_until_a_recording_on_the_page_changes(world):
+    with app.test_client() as c:
+        first = c.get(LIST, headers=_h(world))
+        etag = first.headers.get("ETag")
+        assert first.status_code == 200 and etag and etag.startswith('W/"')
+        assert first.headers["Cache-Control"] == "private, no-cache"
+        again = c.get(LIST, headers=_h(world, etag=etag))
+        assert again.status_code == 304 and again.get_data() == b""
+        assert again.headers["ETag"] == etag and again.headers["Cache-Control"] == "private, no-cache"
+        assert c.patch(f"/api/v1/recordings/{world['rec']}", json={"title": "Sync, renamed"},
+                       headers=_h(world)).status_code == 200
+        after = c.get(LIST, headers=_h(world, etag=etag))
+    assert after.status_code == 200 and after.headers["ETag"] != etag
+    assert [r["title"] for r in after.get_json()["recordings"]] == ["Sync, renamed"]
+
+
+def test_the_list_tag_follows_the_parameters_and_the_total(world):
+    with app.test_client() as c:
+        tags = {query: c.get(LIST + query, headers=_h(world)).headers["ETag"]
+                for query in ("", "?page=1", "?per_page=10", "?sort_order=asc", "?status=completed",
+                              "?q=Sync", "?scope=all")}
+        assert len(set(tags.values())) == len(tags), tags
+        # A parameter that changes the page answers 200 with the other tag
+        resp = c.get(LIST + "?per_page=10", headers=_h(world, etag=tags[""]))
+        assert resp.status_code == 200 and resp.headers["ETag"] == tags["?per_page=10"]
+        with app.app_context():
+            db.session.add(Recording(user_id=world["me"], title="Second", status="COMPLETED",
+                                     original_filename="t.wav"))
+            db.session.commit()
+        try:
+            grown = c.get(LIST, headers=_h(world, etag=tags[""]))
+            assert grown.status_code == 200 and grown.get_json()["pagination"]["total"] == 2
+        finally:
+            with app.app_context():
+                Recording.query.filter_by(user_id=world["me"], title="Second").delete()
+                db.session.commit()
+
+
+def test_the_list_tag_is_the_callers_own(world):
+    with app.test_client() as c:
+        mine = c.get(LIST, headers=_h(world)).headers["ETag"]
+        theirs = c.get(LIST, headers=_h(world, who="other", etag=mine))
+    assert theirs.status_code == 200 and theirs.headers["ETag"] != mine
+    assert theirs.get_json()["recordings"] == []
+
+
+def test_the_list_checks_scope_auth_and_parameters_before_304(world):
+    with app.test_client() as c:
+        etag = c.get(LIST, headers=_h(world)).headers["ETag"]
+        anonymous = c.get(LIST, headers={"If-None-Match": etag})
+        bad = c.get(LIST + "?scope=nobody", headers=_h(world, etag=etag))
+        with app.app_context():
+            plain = f"tok-{secrets.token_urlsafe(16)}"
+            db.session.add(APIToken(user_id=world["me"], token_hash=hash_token(plain), name="etag-write",
+                                    scopes=json.dumps(["write"])))
+            db.session.commit()
+        unscoped = c.get(LIST, headers={"Authorization": f"Bearer {plain}", "If-None-Match": etag})
+    assert anonymous.status_code == 401 and "ETag" not in anonymous.headers
+    assert bad.status_code == 400 and "ETag" not in bad.headers
+    assert unscoped.status_code == 403 and "ETag" not in unscoped.headers

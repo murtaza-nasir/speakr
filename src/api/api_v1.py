@@ -1402,6 +1402,30 @@ def _recording_list_item(r, refs=None, shared=None):
     } if shared is None else dict(_recording_list_item(r, refs), **shared)
 
 
+def _list_etag(response, total):
+    """Weak ETag and If-None-Match for a page of GET /recordings (D#662).
+
+    The tag holds the caller, every query parameter (page, per_page, sort,
+    filters), the total and a hash of the page as sent, so a change to any
+    recording on the page, to the page's order or to the number of matches
+    gives a new tag. It is set on the finished answer, so the scope and
+    access checks and the parameter checks come first: a refused request
+    gets its error, never 304.
+    """
+    import hashlib
+    from flask import make_response
+    from src.services.recording_changes import etag_matches
+    params = '&'.join(f'{key}={value}' for key, value in sorted(request.args.items(multi=True)))
+    key = hashlib.sha1(f'{current_user.id}|{params}|{total}'.encode('utf-8')).hexdigest()[:12]
+    digest = hashlib.sha1(response.get_data()).hexdigest()[:16]
+    etag = f'W/"rl{current_user.id}-{key}-{digest}"'
+    if etag_matches(request, etag):
+        response = make_response('', 304)
+    response.headers['ETag'] = etag
+    response.headers['Cache-Control'] = 'private, no-cache'
+    return response
+
+
 @api_v1_bp.route('/recordings', methods=['GET'])
 @require_scope('read')
 @login_required
@@ -1618,7 +1642,7 @@ def list_recordings():
     recordings = [_recording_list_item(r, page_refs.get(r.id, []), page_shared.get(r.id))
                   for r in pagination.items]
 
-    return jsonify({
+    response = jsonify({
         'recordings': recordings,
         'pagination': {
             'page': pagination.page,
@@ -1629,6 +1653,7 @@ def list_recordings():
             'has_prev': pagination.has_prev
         }
     })
+    return _list_etag(response, pagination.total)
 
 
 # =============================================================================
