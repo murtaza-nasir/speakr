@@ -1036,7 +1036,27 @@
     "undoAction": "Deshacer",
     "suggestionMergeInto": "Combinar con {{name}}",
     "suggestionMerged": "{{label}} combinado con {{name}}",
-    "updateSummary": "Actualizar el resumen"
+    "updateSummary": "Actualizar el resumen",
+    "trim": {
+      "button": "Recortar",
+      "start": "Recortar la grabación",
+      "title": "Recortar",
+      "hint": "Arrastra los controles sobre la forma de onda o escribe los tiempos. Se elimina el audio que queda fuera.",
+      "startLabel": "Inicio",
+      "endLabel": "Fin",
+      "keeps": "Conserva {{kept}} de {{total}}",
+      "effect": "Segmentos eliminados: {{removed}}, acortados: {{clipped}}",
+      "regenerateSummary": "Regenerar el resumen",
+      "preview": "Escuchar",
+      "apply": "Recortar",
+      "confirmTitle": "¿Recortar la grabación?",
+      "confirmMessage": "Solo se conserva el audio de {{start}} a {{end}}, con su transcripción. El audio eliminado no se puede recuperar. Segmentos eliminados: {{removed}}, acortados: {{clipped}}.",
+      "saveFirst": "Guarda los cambios antes de recortar.",
+      "started": "Recortando la grabación…",
+      "done": "Grabación recortada",
+      "failed": "No se pudo recortar la grabación.",
+      "nothingRemoved": "Mueve primero un control: se conserva toda la grabación."
+    }
   },
   "findReplace": {
     "open": "Buscar y reemplazar (Ctrl+F)",
@@ -2530,7 +2550,8 @@
       "assembling": "Ensamblando",
       "titling": "Titulando",
       "indexing": "Indexando",
-      "checking": "Comprobando"
+      "checking": "Comprobando",
+      "trimming": "Recortando"
     },
     "queuedFor": {
       "conversion": "N.º {{position}} en cola para conversión",
@@ -3863,7 +3884,18 @@
       "unknown_user_default": "Valor predeterminado de usuario desconocido",
       "invalid_context_chunks": "context_chunks debe estar entre 1 y {{max}}",
       "invalid_token_budget": "El presupuesto mensual de tokens debe ser un número entero de 0 o más. Déjelo vacío para no poner límite.",
-      "invalid_transcription_budget": "El presupuesto mensual de transcripción debe ser un número entero de 0 o más. Déjelo vacío para no poner límite."
+      "invalid_transcription_budget": "El presupuesto mensual de transcripción debe ser un número entero de 0 o más. Déjelo vacío para no poner límite.",
+      "trim_no_audio": "Esta grabación no tiene audio que recortar.",
+      "trim_not_completed": "Solo se puede recortar una grabación terminada.",
+      "trim_needs_segments": "Solo se puede recortar una transcripción con segmentos.",
+      "trim_unknown_duration": "No se conoce la duración del audio.",
+      "trim_invalid_range": "Elige un inicio anterior al fin, dentro del audio.",
+      "trim_too_short": "Conserva al menos un segundo de audio.",
+      "trim_nothing_removed": "El intervalo conserva toda la grabación.",
+      "trim_needs_times": "Cada segmento necesita una hora de inicio y de fin.",
+      "trim_busy": "La grabación se está procesando. Inténtalo de nuevo cuando termine.",
+      "trim_failed": "No se pudo recortar la grabación.",
+      "trim_store_failed": "No se pudo guardar el audio recortado."
     },
     "apiMessage": {
       "accountUpdated": "Datos de la cuenta actualizados",

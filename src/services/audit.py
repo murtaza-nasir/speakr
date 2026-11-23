@@ -98,6 +98,7 @@ EVENTS = {
     'recording.audio.deleted': ('change', frozenset({'reason'})),
     'recording.reprocessed': ('change', frozenset({'kind'})),
     'recording.job.canceled': ('change', frozenset({'kind'})),
+    'recording.trimmed': ('change', frozenset({'start', 'end', 'removed_segments'})),
     # Sharing
     'share.internal.created': ('share', frozenset({'share_id', 'can_edit', 'can_reshare', 'imported'})),
     'share.internal.changed': ('share', frozenset({

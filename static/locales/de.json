@@ -1036,7 +1036,27 @@
     "undoAction": "Rückgängig",
     "suggestionMergeInto": "Mit {{name}} zusammenführen",
     "suggestionMerged": "{{label}} mit {{name}} zusammengeführt",
-    "updateSummary": "Zusammenfassung aktualisieren"
+    "updateSummary": "Zusammenfassung aktualisieren",
+    "trim": {
+      "button": "Kürzen",
+      "start": "Aufnahme kürzen",
+      "title": "Kürzen",
+      "hint": "Ziehen Sie die Griffe auf der Wellenform oder geben Sie die Zeiten ein. Der Ton außerhalb wird entfernt.",
+      "startLabel": "Anfang",
+      "endLabel": "Ende",
+      "keeps": "Behält {{kept}} von {{total}}",
+      "effect": "Segmente entfernt: {{removed}}, gekürzt: {{clipped}}",
+      "regenerateSummary": "Zusammenfassung neu erstellen",
+      "preview": "Vorhören",
+      "apply": "Kürzen",
+      "confirmTitle": "Aufnahme kürzen?",
+      "confirmMessage": "Nur der Ton von {{start}} bis {{end}} bleibt erhalten, mit seinem Transkript. Der entfernte Ton kann nicht wiederhergestellt werden. Segmente entfernt: {{removed}}, gekürzt: {{clipped}}.",
+      "saveFirst": "Speichern Sie Ihre Änderungen vor dem Kürzen.",
+      "started": "Aufnahme wird gekürzt…",
+      "done": "Aufnahme gekürzt",
+      "failed": "Die Aufnahme konnte nicht gekürzt werden.",
+      "nothingRemoved": "Verschieben Sie zuerst einen Griff: Die ganze Aufnahme bleibt erhalten."
+    }
   },
   "findReplace": {
     "open": "Suchen und ersetzen (Strg+F)",
@@ -2530,7 +2550,8 @@
       "assembling": "Zusammensetzen",
       "titling": "Titel",
       "indexing": "Indexierung",
-      "checking": "Prüfung"
+      "checking": "Prüfung",
+      "trimming": "Kürzen"
     },
     "queuedFor": {
       "conversion": "Platz {{position}} für Konvertierung",
@@ -3863,7 +3884,18 @@
       "unknown_user_default": "Unbekannter Standardwert für Benutzer",
       "invalid_context_chunks": "context_chunks muss zwischen 1 und {{max}} liegen",
       "invalid_token_budget": "Das monatliche Token-Budget muss eine ganze Zahl ab 0 sein. Für keine Grenze das Feld leer lassen.",
-      "invalid_transcription_budget": "Das monatliche Transkriptionsbudget muss eine ganze Zahl ab 0 sein. Für keine Grenze das Feld leer lassen."
+      "invalid_transcription_budget": "Das monatliche Transkriptionsbudget muss eine ganze Zahl ab 0 sein. Für keine Grenze das Feld leer lassen.",
+      "trim_no_audio": "Diese Aufnahme hat keinen Ton zum Kürzen.",
+      "trim_not_completed": "Nur eine fertig verarbeitete Aufnahme kann gekürzt werden.",
+      "trim_needs_segments": "Nur ein Transkript mit Segmenten kann gekürzt werden.",
+      "trim_unknown_duration": "Die Länge des Tons ist nicht bekannt.",
+      "trim_invalid_range": "Wählen Sie einen Anfang vor dem Ende, innerhalb des Tons.",
+      "trim_too_short": "Behalten Sie mindestens eine Sekunde Ton.",
+      "trim_nothing_removed": "Der Bereich behält die ganze Aufnahme.",
+      "trim_needs_times": "Jedes Segment braucht eine Anfangs- und eine Endzeit.",
+      "trim_busy": "Die Aufnahme wird gerade verarbeitet. Versuchen Sie es danach erneut.",
+      "trim_failed": "Die Aufnahme konnte nicht gekürzt werden.",
+      "trim_store_failed": "Der gekürzte Ton konnte nicht gespeichert werden."
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

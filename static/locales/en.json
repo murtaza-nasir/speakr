@@ -1036,7 +1036,27 @@
     "undoAction": "Undo",
     "suggestionMergeInto": "Merge into {{name}}",
     "suggestionMerged": "{{label}} merged into {{name}}",
-    "updateSummary": "Update the summary"
+    "updateSummary": "Update the summary",
+    "trim": {
+      "button": "Trim",
+      "start": "Trim the recording",
+      "title": "Trim",
+      "hint": "Drag the handles on the waveform or type the times. The audio outside is removed.",
+      "startLabel": "Start",
+      "endLabel": "End",
+      "keeps": "Keeps {{kept}} of {{total}}",
+      "effect": "Segments removed: {{removed}}, shortened: {{clipped}}",
+      "regenerateSummary": "Regenerate the summary",
+      "preview": "Preview",
+      "apply": "Trim",
+      "confirmTitle": "Trim the recording?",
+      "confirmMessage": "Only the audio from {{start}} to {{end}} is kept, with its transcript. The removed audio cannot be recovered. Segments removed: {{removed}}, shortened: {{clipped}}.",
+      "saveFirst": "Save your changes before you trim.",
+      "started": "Trimming the recording…",
+      "done": "Recording trimmed",
+      "failed": "The recording could not be trimmed.",
+      "nothingRemoved": "Move a handle first: the whole recording is kept."
+    }
   },
   "findReplace": {
     "open": "Find and replace (Ctrl+F)",
@@ -2530,7 +2550,8 @@
       "assembling": "Assembling",
       "titling": "Titling",
       "indexing": "Indexing",
-      "checking": "Checking"
+      "checking": "Checking",
+      "trimming": "Trimming"
     },
     "queuedFor": {
       "conversion": "Queued #{{position}} for conversion",
@@ -3863,7 +3884,18 @@
       "unknown_user_default": "Unknown user default",
       "invalid_context_chunks": "context_chunks must be between 1 and {{max}}",
       "invalid_token_budget": "The monthly token budget must be a whole number of 0 or more. Leave it empty for no limit.",
-      "invalid_transcription_budget": "The monthly transcription budget must be a whole number of 0 or more. Leave it empty for no limit."
+      "invalid_transcription_budget": "The monthly transcription budget must be a whole number of 0 or more. Leave it empty for no limit.",
+      "trim_no_audio": "This recording has no audio to trim.",
+      "trim_not_completed": "Only a finished recording can be trimmed.",
+      "trim_needs_segments": "Only a transcript with segments can be trimmed.",
+      "trim_unknown_duration": "The length of the audio is not known.",
+      "trim_invalid_range": "Choose a start before the end, within the audio.",
+      "trim_too_short": "Keep at least one second of audio.",
+      "trim_nothing_removed": "The range keeps the whole recording.",
+      "trim_needs_times": "Every segment needs a start and an end time.",
+      "trim_busy": "The recording is being processed. Try again when it is done.",
+      "trim_failed": "The recording could not be trimmed.",
+      "trim_store_failed": "The trimmed audio could not be stored."
     },
     "apiMessage": {
       "accountUpdated": "Account details updated",

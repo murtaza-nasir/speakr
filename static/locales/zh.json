@@ -1036,7 +1036,27 @@
     "undoAction": "撤销",
     "suggestionMergeInto": "合并到 {{name}}",
     "suggestionMerged": "{{label}} 已合并到 {{name}}",
-    "updateSummary": "更新摘要"
+    "updateSummary": "更新摘要",
+    "trim": {
+      "button": "裁剪",
+      "start": "裁剪录音",
+      "title": "裁剪",
+      "hint": "拖动波形上的手柄或输入时间。范围之外的音频将被删除。",
+      "startLabel": "开始",
+      "endLabel": "结束",
+      "keeps": "保留 {{kept}}，共 {{total}}",
+      "effect": "删除的片段：{{removed}}，缩短的片段：{{clipped}}",
+      "regenerateSummary": "重新生成摘要",
+      "preview": "试听",
+      "apply": "裁剪",
+      "confirmTitle": "裁剪录音？",
+      "confirmMessage": "只保留 {{start}} 到 {{end}} 的音频及其转录。删除的音频无法恢复。删除的片段：{{removed}}，缩短的片段：{{clipped}}。",
+      "saveFirst": "裁剪前请先保存更改。",
+      "started": "正在裁剪录音…",
+      "done": "录音已裁剪",
+      "failed": "无法裁剪录音。",
+      "nothingRemoved": "请先移动手柄：当前保留整段录音。"
+    }
   },
   "findReplace": {
     "open": "查找和替换 (Ctrl+F)",
@@ -2530,7 +2550,8 @@
       "assembling": "组装中",
       "titling": "生成标题",
       "indexing": "索引中",
-      "checking": "检查中"
+      "checking": "检查中",
+      "trimming": "裁剪中"
     },
     "queuedFor": {
       "conversion": "排队第 {{position}} 位，等待转换",
@@ -3863,7 +3884,18 @@
       "unknown_user_default": "未知的用户默认设置",
       "invalid_context_chunks": "context_chunks 必须在 1 到 {{max}} 之间",
       "invalid_token_budget": "每月令牌预算必须是大于或等于 0 的整数。留空表示不设限制。",
-      "invalid_transcription_budget": "每月转录预算必须是大于或等于 0 的整数。留空表示不设限制。"
+      "invalid_transcription_budget": "每月转录预算必须是大于或等于 0 的整数。留空表示不设限制。",
+      "trim_no_audio": "此录音没有可裁剪的音频。",
+      "trim_not_completed": "只能裁剪已处理完成的录音。",
+      "trim_needs_segments": "只能裁剪带有片段的转录。",
+      "trim_unknown_duration": "音频时长未知。",
+      "trim_invalid_range": "请在音频范围内选择早于结束时间的开始时间。",
+      "trim_too_short": "请至少保留一秒音频。",
+      "trim_nothing_removed": "该范围保留了整段录音。",
+      "trim_needs_times": "每个片段都需要开始和结束时间。",
+      "trim_busy": "录音正在处理中。处理完成后请重试。",
+      "trim_failed": "无法裁剪录音。",
+      "trim_store_failed": "无法保存裁剪后的音频。"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新",

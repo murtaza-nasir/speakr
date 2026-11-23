@@ -69,6 +69,7 @@ With media on S3 storage, a request is answered with a redirect to the storage. 
 | `recording.audio.deleted` | The audio of a recording was deleted and the text was kept | `reason`: `user` or `retention` |
 | `recording.reprocessed` | A new transcription, summary, title or translation was started | `kind` |
 | `recording.job.canceled` | A waiting or running job of a recording was canceled | `kind` |
+| `recording.trimmed` | A trim of the audio and the transcript of a recording was started | `start` and `end` (seconds of the audio before the trim), `removed_segments` |
 
 A deletion by a retention rule is recorded with the actor `system`.
 

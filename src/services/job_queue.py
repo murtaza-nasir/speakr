@@ -47,7 +47,8 @@ SUMMARY_JOBS = ['summarize', 'reprocess_summary', 'translate_transcription']
 INDEX_JOBS = ['index_chunks']
 # Converting an upload after the upload is answered (#543). FFmpeg uses
 # several cores, so this queue has its own, small pool of workers.
-CONVERT_JOBS = ['convert']
+# A trim (#660) is an ffmpeg cut as well.
+CONVERT_JOBS = ['convert', 'trim']
 
 QUEUES = {'transcription': TRANSCRIPTION_JOBS, 'summary': SUMMARY_JOBS, 'index': INDEX_JOBS,
           'convert': CONVERT_JOBS}
@@ -66,11 +67,13 @@ JOB_RUNNERS = {
     'translate_transcription': '_run_translation',
     'index_chunks': '_run_index_chunks',
     'convert': '_run_convert',
+    'trim': '_run_trim',
 }
 
 # Jobs that run beside a recording's processing: they leave recording.status
 # alone and send no webhooks or emails.
-BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
+# A trim (#660) is one: its failure must not mark a finished recording FAILED.
+BACKGROUND_JOBS = ('translate_transcription', 'index_chunks', 'trim')
 
 
 class StitchTargetMismatch(Exception):
@@ -891,6 +894,12 @@ class FairJobQueue:
         from src.services.upload_conversion import convert_uploaded_recording
 
         convert_uploaded_recording(recording.id, params or {})
+
+    def _run_trim(self, job, recording, params, job_type=None):
+        """Cut a recording's audio and transcript (convert worker pool, #660)."""
+        from src.services.recording_trim import run_trim_job
+
+        return run_trim_job(recording, params or {})
 
     # Builds in a row for one job while the transcript keeps changing.
     MAX_INDEX_PASSES = 10

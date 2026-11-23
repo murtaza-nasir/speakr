@@ -62,6 +62,7 @@ AUDITED = {
     'recordings.translate_transcription': REPROCESSED,
     'recordings.delete_recording': {'recording.deleted'},
     'recordings.delete_recording_audio': {'recording.audio.deleted'},
+    'recordings.trim_recording_endpoint': {'recording.trimmed'},
     'shares.create_share': {'share.public.created', 'share.public.changed'},
     'shares.share_recording_internal': {'share.internal.created'},
     # API v1
@@ -118,6 +119,7 @@ NOT_AUDITED = {
     'recordings.get_summary_prompt': 'the prompt of the owner, not the recording',
     'recordings.save_summary_prompt_route': 'the prompt of the owner, not the recording',
     'recordings.reset_status': 'resets a stuck status',
+    'recordings.trim_recording_status': 'status of a trim, no content',
     'recordings.process_recording_chunks_endpoint': 'rebuilds the search index',
     'speakers.get_speaker_suggestions': 'names of saved speakers for the dialog',
     # Later phase: questions to a model about a recording

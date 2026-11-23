@@ -1036,7 +1036,27 @@
     "undoAction": "Desfazer",
     "suggestionMergeInto": "Mesclar com {{name}}",
     "suggestionMerged": "{{label}} mesclado com {{name}}",
-    "updateSummary": "Atualizar o resumo"
+    "updateSummary": "Atualizar o resumo",
+    "trim": {
+      "button": "Cortar",
+      "start": "Cortar a gravação",
+      "title": "Cortar",
+      "hint": "Arraste as alças na forma de onda ou digite os tempos. O áudio de fora é removido.",
+      "startLabel": "Início",
+      "endLabel": "Fim",
+      "keeps": "Mantém {{kept}} de {{total}}",
+      "effect": "Segmentos removidos: {{removed}}, encurtados: {{clipped}}",
+      "regenerateSummary": "Gerar o resumo novamente",
+      "preview": "Ouvir",
+      "apply": "Cortar",
+      "confirmTitle": "Cortar a gravação?",
+      "confirmMessage": "Só o áudio de {{start}} a {{end}} é mantido, com sua transcrição. O áudio removido não pode ser recuperado. Segmentos removidos: {{removed}}, encurtados: {{clipped}}.",
+      "saveFirst": "Salve suas alterações antes de cortar.",
+      "started": "Cortando a gravação…",
+      "done": "Gravação cortada",
+      "failed": "Não foi possível cortar a gravação.",
+      "nothingRemoved": "Mova uma alça primeiro: a gravação inteira é mantida."
+    }
   },
   "findReplace": {
     "open": "Localizar e substituir (Ctrl+F)",
@@ -2530,7 +2550,8 @@
       "assembling": "Montando",
       "titling": "Gerando título",
       "indexing": "Indexando",
-      "checking": "Verificando"
+      "checking": "Verificando",
+      "trimming": "Cortando"
     },
     "queuedFor": {
       "conversion": "Nº {{position}} na fila para conversão",
@@ -3863,7 +3884,18 @@
       "unknown_user_default": "Padrão de usuário desconhecido",
       "invalid_context_chunks": "context_chunks deve estar entre 1 e {{max}}",
       "invalid_token_budget": "O orçamento mensal de tokens deve ser um número inteiro igual ou maior que 0. Deixe em branco para não haver limite.",
-      "invalid_transcription_budget": "O orçamento mensal de transcrição deve ser um número inteiro igual ou maior que 0. Deixe em branco para não haver limite."
+      "invalid_transcription_budget": "O orçamento mensal de transcrição deve ser um número inteiro igual ou maior que 0. Deixe em branco para não haver limite.",
+      "trim_no_audio": "Esta gravação não tem áudio para cortar.",
+      "trim_not_completed": "Só uma gravação concluída pode ser cortada.",
+      "trim_needs_segments": "Só uma transcrição com segmentos pode ser cortada.",
+      "trim_unknown_duration": "A duração do áudio não é conhecida.",
+      "trim_invalid_range": "Escolha um início antes do fim, dentro do áudio.",
+      "trim_too_short": "Mantenha pelo menos um segundo de áudio.",
+      "trim_nothing_removed": "O intervalo mantém a gravação inteira.",
+      "trim_needs_times": "Cada segmento precisa de um tempo de início e de fim.",
+      "trim_busy": "A gravação está sendo processada. Tente de novo quando terminar.",
+      "trim_failed": "Não foi possível cortar a gravação.",
+      "trim_store_failed": "Não foi possível salvar o áudio cortado."
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",
