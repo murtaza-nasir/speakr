@@ -21,7 +21,7 @@ from datetime import datetime, date, timedelta, timezone
 from functools import wraps
 
 from src.utils.dates import FILTER_DATE_MAX, FILTER_DATE_MIN, to_utc_naive
-from src.utils.request_body import json_body, json_object_body, is_int, is_int_list
+from src.utils.request_body import json_body, json_object_body, is_db_id, is_int_list
 from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
@@ -2233,6 +2233,10 @@ def update_recording(recording_id):
                                   'summary': recording.summary})
     if error:
         return jsonify(error), 400
+    # An id, or null to leave the folder; a list or a string is not one,
+    # and an id past the column range names no folder (#664, #677)
+    if data.get('folder_id') is not None and not is_db_id(data['folder_id']):
+        return jsonify(api_error('invalid_folder_id')), 400
 
     # Update fields if provided
     if 'title' in data:
@@ -2824,7 +2828,7 @@ def add_tags_to_recording(recording_id):
         tag_id = data.get('tag_id')
         if tag_id is None:
             return jsonify(api_error('tag_ids_required')), 400
-        if not is_int(tag_id):
+        if not is_db_id(tag_id):
             return jsonify({'error': translate('server.apiError.invalid_integer_value'), 'code': 'invalid_parameter'}), 400
         tag_ids = [tag_id]
 
@@ -3943,6 +3947,8 @@ def batch_update_recordings():
     target = None
     if 'folder_id' in updates:
         new_folder_id = updates['folder_id']
+        if new_folder_id is not None and not is_db_id(new_folder_id):
+            return jsonify(api_error('invalid_folder_id')), 400
         if new_folder_id is not None:
             from src.models.organization import Folder, GroupMembership
             target = db.session.get(Folder, new_folder_id)

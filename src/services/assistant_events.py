@@ -91,11 +91,13 @@ def filter_list(value, code, ids=False):
     """The list of a filter value, [] when absent (null); FilterError(code)
     for any value that is not a list, or with ids=True a list holding
     anything but integer ids (#629: "1" is not coerced, True is not 1)."""
+    from src.utils.request_body import is_int_list
     if value is None:
         return []
     if not isinstance(value, list):
         raise FilterError(code)
-    if ids and not all(isinstance(item, int) and not isinstance(item, bool) for item in value):
+    # An id past the range of the column would overflow the lookup (#664)
+    if ids and not is_int_list(value):
         raise FilterError(code)
     return value
 

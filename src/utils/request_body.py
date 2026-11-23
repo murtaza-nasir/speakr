@@ -105,15 +105,31 @@ def parse_error_response(exc):
 
 # ------------------------------------------------------------ field types
 
+# The largest value of an Integer column: INT4 on PostgreSQL, so every id
+# column holds at most 2**31 - 1. A larger id names no row; looking one up
+# raises OverflowError (SQLite past 2**63, PostgreSQL past 2**31) instead
+# of finding nothing (#664, #676, #677). The app's <int:...> URL converter
+# and the id checks below share this bound.
+DB_INT_MAX = 2 ** 31 - 1
+DB_INT_MIN = -2 ** 31
+
+
 def is_int(value):
     """True for a JSON integer; a boolean is not one."""
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def is_db_id(value):
+    """True for a JSON integer an Integer column can hold, so a lookup by
+    it finds a row or nothing, never an overflow."""
+    return is_int(value) and DB_INT_MIN <= value <= DB_INT_MAX
+
+
 def is_int_list(value):
-    """True for a JSON array whose items are all integers (booleans,
-    strings, floats, null, arrays and objects are refused)."""
-    return isinstance(value, list) and all(is_int(item) for item in value)
+    """True for a JSON array of ids: integers in the range of an Integer
+    column (booleans, strings, floats, null, arrays, objects and integers
+    past that range are refused)."""
+    return isinstance(value, list) and all(is_db_id(item) for item in value)
 
 
 def bool_field(data, field, default, code):
@@ -124,5 +140,55 @@ def bool_field(data, field, default, code):
         return default, None
     value = data[field]
     if not isinstance(value, bool):
+        return None, _answer(code, 400)
+    return value, None
+
+
+_FLAG_WORDS = {'true': True, '1': True, 'false': False, '0': False}
+
+
+def parse_flag(value):
+    """The boolean of a flag field read leniently, or None when the value
+    is not a flag: true/false, 0/1 and the strings "true", "false", "1",
+    "0" (any case, surrounding spaces ignored). bool("false") is True, so
+    a string is parsed, never cast; null, 2, "yes", [] and {} are not
+    flags (#665, #674)."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str):
+        return _FLAG_WORDS.get(value.strip().lower())
+    return None
+
+
+def flag_fields(data, fields):
+    """({field: bool}, None) for each of `fields` present in data, parsed
+    with parse_flag; (None, error_response) 400 invalid_boolean_flag that
+    names the first field that is not a flag. Checked as a whole, so a
+    route refuses the request before its first write."""
+    flags = {}
+    for field in fields:
+        if field in data:
+            value = parse_flag(data[field])
+            if value is None:
+                return None, (jsonify(api_error('invalid_boolean_flag', key=field)), 400)
+            flags[field] = value
+    return flags, None
+
+
+def str_field(data, field, code, required=True):
+    """(value, None) for the string at data[field], stripped of
+    surrounding spaces; (None, error_response) 400 with `code` when the
+    value is not a string (null included, #680) or, with required=True,
+    when the field is absent or blank. An absent optional field gives
+    (None, None)."""
+    if field not in data:
+        return (None, _answer(code, 400)) if required else (None, None)
+    value = data[field]
+    if not isinstance(value, str):
+        return None, _answer(code, 400)
+    value = value.strip()
+    if required and not value:
         return None, _answer(code, 400)
     return value, None

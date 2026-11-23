@@ -30,6 +30,8 @@ from openai import OpenAI # Keep using the OpenAI library
 import json
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.routing import IntegerConverter
+from src.utils.request_body import DB_INT_MAX
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 import threading
@@ -424,6 +426,23 @@ def enrich_recording_dict_with_user_status(recording_dict, recording, user):
 app = Flask(__name__, 
             template_folder='../templates',
             static_folder='../static')
+
+
+class _DbIdConverter(IntegerConverter):
+    """<int:...> for the ids in the app's routes: at most DB_INT_MAX, the
+    largest value of an Integer column, unless a rule says otherwise. A
+    larger id names no row, so the URL matches no route and answers 404 at
+    routing, before a lookup by it can overflow into a 500 (#664, #676,
+    #677)."""
+
+    def __init__(self, map, *args, **kwargs):
+        if not args:
+            kwargs.setdefault('max', DB_INT_MAX)
+        super().__init__(map, *args, **kwargs)
+
+
+# Before any blueprint registers, so every <int:...> rule uses it.
+app.url_map.converters['int'] = _DbIdConverter
 # Use environment variables or default paths for Docker compatibility
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:////data/instance/transcriptions.db')
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/data/uploads')
