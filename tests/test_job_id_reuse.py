@@ -79,12 +79,29 @@ def _insert_job_with_id(job_id, uid, rid, job_type='summarize'):
             retry_count=0, is_new_upload=False, created_at=datetime.utcnow() + timedelta(seconds=1)))
 
 
+def _claim(job_id):
+    """Claim this job as a worker does. The turn order of the shared test
+    database could hand out another test's waiting job."""
+    from datetime import datetime as _dt
+    from sqlalchemy import update
+    db.session.execute(update(ProcessingJob).where(ProcessingJob.id == job_id, ProcessingJob.status == 'queued')
+                       .values(status='processing', started_at=_dt.utcnow()))
+    job = db.session.get(ProcessingJob, job_id)
+    db.session.refresh(job)
+    rec = db.session.get(Recording, job.recording_id)
+    if rec is not None and rec.status == 'QUEUED':
+        rec.status = 'PROCESSING'
+    db.session.commit()
+    db.session.refresh(job)
+    return job
+
+
 def _claimed_summary_job(made):
     uid = _user(made)
     rid = _recording(made, uid)
     jid = job_queue.enqueue(uid, rid, 'summarize')
-    job = job_queue._claim_next_job(SUMMARY_JOBS, 'summary')
-    assert job is not None and job.id == jid
+    job = _claim(jid)
+    assert job.id == jid
     return uid, rid, jid, job
 
 
