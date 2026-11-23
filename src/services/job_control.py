@@ -54,8 +54,12 @@ class JobCanceled(BaseException):
 class JobControl:
     """Stores the progress of one running job and reads its cancel mark."""
 
-    def __init__(self, job_id):
+    def __init__(self, job_id, created_at=None):
         self.job_id = job_id
+        # With the creation time, a job whose id was given to a new job
+        # after a delete (SQLite, #675) neither writes onto that job nor
+        # reads its cancel mark.
+        self.created_at = created_at
         self._last_write = None
         self._written = None
         self._pending = None
@@ -121,7 +125,8 @@ class JobControl:
             with db.engine.begin() as conn:
                 conn.execute(
                     update(ProcessingJob)
-                    .where(ProcessingJob.id == self.job_id, ProcessingJob.status == 'processing')
+                    .where(ProcessingJob.id == self.job_id, ProcessingJob.status == 'processing',
+                           *self._same_job(ProcessingJob))
                     .values(**values)
                 )
             return True
@@ -129,6 +134,9 @@ class JobControl:
             # Display only: a failed write never fails the job.
             logger.warning(f"Could not store progress for job {self.job_id}: {type(e).__name__}")
             return False
+
+    def _same_job(self, model):
+        return (model.created_at == self.created_at,) if self.created_at is not None else ()
 
     # --- cancel -----------------------------------------------------------
 
@@ -143,7 +151,8 @@ class JobControl:
 
             with db.engine.connect() as conn:
                 row = conn.execute(
-                    select(ProcessingJob.cancel_requested_at).where(ProcessingJob.id == self.job_id)
+                    select(ProcessingJob.cancel_requested_at).where(
+                        ProcessingJob.id == self.job_id, *self._same_job(ProcessingJob))
                 ).first()
             return bool(row and row[0] is not None)
         except Exception as e:

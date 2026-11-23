@@ -294,7 +294,12 @@ def cancel_job(job_id):
 
 # --- the worker side ------------------------------------------------------------
 
-def finish_canceled_job(job_id, recording_id, loaded_created_at=None):
+def _another_job(job, recording_id, created_at):
+    """The row has the id of the canceled job but is a later job (#675)."""
+    return job.recording_id != recording_id or (created_at is not None and job.created_at != created_at)
+
+
+def finish_canceled_job(job_id, recording_id, loaded_created_at=None, job_created_at=None):
     """Remove a running job that stopped for a cancel and settle its recording.
 
     Called by the job queue in the worker thread, after the job's code has
@@ -310,7 +315,7 @@ def finish_canceled_job(job_id, recording_id, loaded_created_at=None):
     # The job's code wrote the recording from its own session.
     db.session.expire_all()
     job = db.session.get(ProcessingJob, job_id)
-    if job is None:
+    if job is None or _another_job(job, recording_id, job_created_at):
         return
     view = _view(job)
     # The WhisperX connector removes its job at the poll that sees the
@@ -341,7 +346,7 @@ def finish_canceled_job(job_id, recording_id, loaded_created_at=None):
         _cancel_dependents(view)
 
     job = db.session.get(ProcessingJob, job_id)
-    if job is not None:
+    if job is not None and not _another_job(job, recording_id, job_created_at):
         db.session.delete(job)
     db.session.commit()
     logger.info(f"Job {job_id} canceled while it ran; recording {recording_id}: {outcome}")

@@ -417,7 +417,7 @@ class FairJobQueue:
 
         from src.utils.log_filters import recording_scope
 
-        control = job_control.JobControl(job.id)
+        control = job_control.JobControl(job.id, created_at=job.created_at)
         # Every file label of the job ends with the id of its recording (#620).
         with job_control.running(control), recording_scope(job.recording_id):
             self._run_claimed_job(job, control)
@@ -430,6 +430,12 @@ class FairJobQueue:
         recording_id = job.recording_id
         params_str = job.params
         is_new_upload = job.is_new_upload
+        # The id alone does not name this job: SQLite gives a new job the id
+        # of a deleted row that held the highest id (#675).
+        job_created_at = job.created_at
+
+        def own_job():
+            return self._own_job(job_id, recording_id, job_created_at)
 
         with self._app_context():
             from src.database import db
@@ -442,7 +448,7 @@ class FairJobQueue:
                 params = json.loads(params_str) if params_str else {}
 
                 # Re-fetch the job in this session context to ensure it's attached
-                job = db.session.get(ProcessingJob, job_id)
+                job = own_job()
                 if not job:
                     logger.error(f"Job {job_id} not found when trying to process")
                     return
@@ -471,10 +477,11 @@ class FairJobQueue:
                 runner_outcome = getattr(self, runner_name)(job, recording, params, job_type=job_type)
 
                 # Mark as completed - re-fetch to ensure we have latest state
-                job = db.session.get(ProcessingJob, job_id)
+                job = own_job()
                 if job is None:
                     # Deleting a recording deletes its jobs: the id may now
-                    # be a new upload's, so nothing is reported (#597).
+                    # be a new upload's, or a new job's (#675), so nothing
+                    # is reported and no row is written (#597).
                     logger.info(f"Job {job_id} was removed with its recording while it ran; no notices sent")
                     return
                 job.status = 'completed'
@@ -530,7 +537,7 @@ class FairJobQueue:
             except job_control.JobCanceled:
                 # The owner canceled the job and its code stopped at a safe
                 # point. Not a failure: no retry, no webhook, no email.
-                self._finish_canceled(job_id, recording_id, loaded_created_at)
+                self._finish_canceled(job_id, recording_id, loaded_created_at, job_created_at)
 
             except Exception as e:
                 error_str = str(e)
@@ -552,7 +559,7 @@ class FairJobQueue:
                     # row with this id is not this job's to write. The job
                     # goes too, so it is not claimed again (#625).
                     logger.info(f"Job {job_id}: recording {recording_id} was deleted while the job ran; job dropped")
-                    job = db.session.get(ProcessingJob, job_id)
+                    job = own_job()
                     if job:
                         self._release_remote_task(job)
                         db.session.delete(job)
@@ -562,13 +569,13 @@ class FairJobQueue:
                 if control.cancel_requested():
                     # The job failed while a cancel was waiting for its next
                     # safe point: the cancel decides, and no failure is reported.
-                    self._finish_canceled(job_id, recording_id, loaded_created_at)
+                    self._finish_canceled(job_id, recording_id, loaded_created_at, job_created_at)
                     return
 
                 if isinstance(e, StitchTargetMismatch):
                     # The same session and recording would mismatch again, so
                     # no retry; the recording row is not this job's (#596).
-                    job = db.session.get(ProcessingJob, job_id)
+                    job = own_job()
                     if job:
                         job.status = 'failed'
                         job.error_message = error_str
@@ -601,7 +608,7 @@ class FairJobQueue:
                     error_str = f"{type(e).__name__} (the error text is in the log at DEBUG)"
 
                 # Re-fetch job to update it
-                job = db.session.get(ProcessingJob, job_id)
+                job = own_job()
                 if job:
                     job.error_message = error_str
                     job.retry_count += 1
@@ -684,11 +691,33 @@ class FairJobQueue:
                     db.session.commit()
 
     @staticmethod
-    def _finish_canceled(job_id, recording_id, loaded_created_at=None):
+    def _own_job(job_id, recording_id, created_at):
+        """The row of a claimed job, read fresh; None when it is gone.
+
+        Also None when the id now names another job: deleting a recording
+        deletes its jobs, and SQLite gives the next new job the id of a
+        deleted row that held the highest id (#675). A stale worker must not
+        complete, retry or delete that job. The recording and the creation
+        time read at the claim tell the two apart.
+        """
+        from src.database import db
+        from src.models import ProcessingJob
+
+        job = db.session.get(ProcessingJob, job_id, populate_existing=True)
+        if job is None:
+            return None
+        if job.recording_id != recording_id or (created_at is not None and job.created_at != created_at):
+            logger.info(f"Job {job_id} was removed while it ran and its id now names another job; "
+                        f"that job is left alone")
+            return None
+        return job
+
+    @staticmethod
+    def _finish_canceled(job_id, recording_id, loaded_created_at=None, job_created_at=None):
         """Remove a canceled job and settle its recording (src/services/job_cancel.py)."""
         try:
             from src.services.job_cancel import finish_canceled_job
-            finish_canceled_job(job_id, recording_id, loaded_created_at)
+            finish_canceled_job(job_id, recording_id, loaded_created_at, job_created_at=job_created_at)
         except Exception as e:
             logger.error(f"Could not finish the cancel of job {job_id}: {describe_error(e)}", exc_info=True)
             try:
