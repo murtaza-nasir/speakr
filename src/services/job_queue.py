@@ -68,9 +68,39 @@ JOB_RUNNERS = {
     'convert': '_run_convert',
 }
 
+# The summary that follows a transcript runs as a 'summarize' job with these
+# params on the summary workers (D#663), not inside the transcription job.
+# The recording stays SUMMARIZING, with its transcript readable, until that
+# job ends it: COMPLETED, then the notices of the transcription
+# (recording.transcription.completed, the completion email). A failure of
+# that summary leaves the recording COMPLETED with its transcript.
+AUTO_SUMMARY_PARAMS = {'after_transcription': True}
+
+
+class _SummaryQueued:
+    """What a transcription returns when it handed the summary to a job."""
+
+    def __repr__(self):
+        return 'SUMMARY_QUEUED'
+
+
+SUMMARY_QUEUED = _SummaryQueued()
+
+
+def is_auto_summary(job_type, params):
+    """Whether a job is the summary that follows a transcript (D#663)."""
+    return job_type == 'summarize' and isinstance(params, dict) and bool(params.get('after_transcription'))
+
+
 # Jobs that run beside a recording's processing: they leave recording.status
 # alone and send no webhooks or emails.
 BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
+
+
+# What a commit raises when the job's row or its recording was deleted by
+# another session after this one loaded it (#681).
+from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
+_ROW_GONE = (StaleDataError, ObjectDeletedError)
 
 
 class StitchTargetMismatch(Exception):
@@ -178,13 +208,30 @@ class FairJobQueue:
         self._app = app
 
     @contextmanager
-    def _app_context(self):
-        """Get application context for database operations."""
+    def _app_context(self, reuse=False):
+        """Get application context for database operations.
+
+        reuse=True keeps the application context of the caller when it is
+        one of this app, so a lookup made during a request reads through the
+        session of the request. Flask-SQLAlchemy keeps one session per
+        application context: a new context took a second pooled connection
+        while the request held its own, and the status route made three such
+        lookups per poll (#667). Only lookups reuse it; the methods that
+        commit or roll back keep a session of their own, so they never end
+        the caller's transaction.
+        """
         if self._app:
+            if reuse and self._in_own_app_context():
+                yield
+                return
             with self._app.app_context():
                 yield
         else:
             yield
+
+    def _in_own_app_context(self):
+        from flask import current_app, has_app_context
+        return has_app_context() and current_app._get_current_object() is self._app
 
     def mark_as_owner(self):
         """Mark this process as the elected owner of the queue."""
@@ -252,10 +299,15 @@ class FairJobQueue:
     def stop(self):
         """Stop the worker threads gracefully."""
         self._running = False
-        for worker in self._transcription_workers + self._summary_workers:
-            worker.join(timeout=5)
-        self._transcription_workers.clear()
-        self._summary_workers.clear()
+        # Every pool: the index and convert workers were left running, and a
+        # start() after this stop() added a second set of them.
+        pools = (self._transcription_workers, self._summary_workers,
+                 self._index_workers, self._convert_workers)
+        for pool in pools:
+            for worker in pool:
+                worker.join(timeout=5)
+        for pool in pools:
+            pool.clear()
         logger.info("Job queue workers stopped")
 
     def _worker_loop(self, job_types: List[str], queue_name: str):
@@ -417,7 +469,7 @@ class FairJobQueue:
 
         from src.utils.log_filters import recording_scope
 
-        control = job_control.JobControl(job.id)
+        control = job_control.JobControl(job.id, created_at=job.created_at)
         # Every file label of the job ends with the id of its recording (#620).
         with job_control.running(control), recording_scope(job.recording_id):
             self._run_claimed_job(job, control)
@@ -430,6 +482,12 @@ class FairJobQueue:
         recording_id = job.recording_id
         params_str = job.params
         is_new_upload = job.is_new_upload
+        # The id alone does not name this job: SQLite gives a new job the id
+        # of a deleted row that held the highest id (#675).
+        job_created_at = job.created_at
+
+        def own_job():
+            return self._own_job(job_id, recording_id, job_created_at)
 
         with self._app_context():
             from src.database import db
@@ -442,7 +500,7 @@ class FairJobQueue:
                 params = json.loads(params_str) if params_str else {}
 
                 # Re-fetch the job in this session context to ensure it's attached
-                job = db.session.get(ProcessingJob, job_id)
+                job = own_job()
                 if not job:
                     logger.error(f"Job {job_id} not found when trying to process")
                     return
@@ -471,10 +529,11 @@ class FairJobQueue:
                 runner_outcome = getattr(self, runner_name)(job, recording, params, job_type=job_type)
 
                 # Mark as completed - re-fetch to ensure we have latest state
-                job = db.session.get(ProcessingJob, job_id)
+                job = own_job()
                 if job is None:
                     # Deleting a recording deletes its jobs: the id may now
-                    # be a new upload's, so nothing is reported (#597).
+                    # be a new upload's, or a new job's (#675), so nothing
+                    # is reported and no row is written (#597).
                     logger.info(f"Job {job_id} was removed with its recording while it ran; no notices sent")
                     return
                 job.status = 'completed'
@@ -516,21 +575,21 @@ class FairJobQueue:
                         self._emit_failure_email(job_type, recording_id, terminal_error)
                     except Exception as e:
                         logger.warning(f"Failure email for job {job_id} failed: {e}")
+                elif runner_outcome is SUMMARY_QUEUED:
+                    # The summary job ends the processing and sends the
+                    # notices of the transcription (D#663).
+                    try:
+                        self._settle_handed_off(recording_id)
+                    except Exception as e:
+                        logger.warning(f"Check of the summary job after job {job_id} failed: {describe_error(e)}")
                 elif not is_background(job_type):
-                    try:
-                        self._emit_completion_webhook(job_type, recording_id)
-                    except Exception as e:
-                        logger.warning(f"Webhook emit on job {job_id} completion failed: {e}")
-
-                    try:
-                        self._emit_completion_email(job_type, recording_id)
-                    except Exception as e:
-                        logger.warning(f"Completion email for job {job_id} failed: {e}")
+                    self._emit_completion_notices(
+                        'transcribe' if is_auto_summary(job_type, params) else job_type, recording_id, job_id)
 
             except job_control.JobCanceled:
                 # The owner canceled the job and its code stopped at a safe
                 # point. Not a failure: no retry, no webhook, no email.
-                self._finish_canceled(job_id, recording_id, loaded_created_at)
+                self._finish_canceled(job_id, recording_id, loaded_created_at, job_created_at)
 
             except Exception as e:
                 error_str = str(e)
@@ -552,7 +611,7 @@ class FairJobQueue:
                     # row with this id is not this job's to write. The job
                     # goes too, so it is not claimed again (#625).
                     logger.info(f"Job {job_id}: recording {recording_id} was deleted while the job ran; job dropped")
-                    job = db.session.get(ProcessingJob, job_id)
+                    job = own_job()
                     if job:
                         self._release_remote_task(job)
                         db.session.delete(job)
@@ -562,18 +621,22 @@ class FairJobQueue:
                 if control.cancel_requested():
                     # The job failed while a cancel was waiting for its next
                     # safe point: the cancel decides, and no failure is reported.
-                    self._finish_canceled(job_id, recording_id, loaded_created_at)
+                    self._finish_canceled(job_id, recording_id, loaded_created_at, job_created_at)
                     return
 
                 if isinstance(e, StitchTargetMismatch):
                     # The same session and recording would mismatch again, so
                     # no retry; the recording row is not this job's (#596).
-                    job = db.session.get(ProcessingJob, job_id)
-                    if job:
-                        job.status = 'failed'
-                        job.error_message = error_str
-                        job.completed_at = datetime.utcnow()
-                        db.session.commit()
+                    try:
+                        job = own_job()
+                        if job:
+                            job.status = 'failed'
+                            job.error_message = error_str
+                            job.completed_at = datetime.utcnow()
+                            db.session.commit()
+                    except _ROW_GONE:
+                        self._row_gone_while_storing(job_id, recording_id)
+                        return
                     logger.error(f"Job {job_id} failed: {error_str}")
                     return
 
@@ -600,95 +663,204 @@ class FairJobQueue:
                     logger.warning(f"Job {job_id}: error text could not be shortened: {describe_error(scrub_error)}")
                     error_str = f"{type(e).__name__} (the error text is in the log at DEBUG)"
 
-                # Re-fetch job to update it
-                job = db.session.get(ProcessingJob, job_id)
-                if job:
-                    job.error_message = error_str
-                    job.retry_count += 1
+                # Re-fetch job to update it. The recording can be deleted
+                # while this runs, and its jobs with it: the commit then
+                # finds no row to update (#681).
+                notify_failure = False
+                auto_summary = is_auto_summary(job_type, params if isinstance(locals().get('params'), dict) else {})
+                try:
+                    job = own_job()
+                    if job:
+                        job.error_message = error_str
+                        job.retry_count += 1
 
-                    # Only retry if: not a permanent error AND under retry limit
-                    if not is_permanent_error and job.retry_count < MAX_RETRIES:
-                        # Re-queue for retry
-                        job.status = 'queued'
-                        job.started_at = None
-                        logger.info(f"Job {job_id} re-queued for retry ({job.retry_count}/{MAX_RETRIES})")
-                        if isinstance(e, SummaryStepFailed):
-                            # The summary step set FAILED before the queue
-                            # decided to retry; the summary is still pending.
-                            recording = db.session.get(Recording, recording_id)
-                            if recording:
-                                recording.status = 'SUMMARIZING'
-                    else:
-                        job.status = 'failed'
-                        job.completed_at = datetime.utcnow()
-                        job.restore_state = None
-                        # No attempt is left to poll a job still saved from
-                        # this one, so it is removed from the ASR service.
-                        self._release_remote_task(job)
-                        recording = db.session.get(Recording, recording_id)
-
-                        if is_permanent_error:
-                            logger.info(f"Job {job_id} failed with permanent error (no retry): {describe_error(e)}")
-
-                        # Always keep recordings with FAILED status so users can see the error
-                        # and reprocess later (e.g., when ASR server recovers)
-                        if recording and not is_background(job_type):
-                            # Keep the recording with FAILED status so user can see the error and fix settings
-                            recording.status = 'FAILED'
-                            # Format the error for nice display. A failed summary
-                            # job keeps the transcript and shows the error as the
-                            # summary; it used to overwrite a good transcript (#412).
-                            from src.utils.error_formatting import format_error_for_storage
+                        # Only retry if: not a permanent error AND under retry limit
+                        if not is_permanent_error and job.retry_count < MAX_RETRIES:
+                            # Re-queue for retry
+                            job.status = 'queued'
+                            job.started_at = None
+                            logger.info(f"Job {job_id} re-queued for retry ({job.retry_count}/{MAX_RETRIES})")
                             if isinstance(e, SummaryStepFailed):
-                                # The summary step stored its own error text
-                                # and error_message (#583); keep them.
-                                if e.stored_summary:
-                                    recording.summary = e.stored_summary
-                                    recording.clear_summary_prompt_used()
-                            elif job_type in ('summarize', 'reprocess_summary'):
-                                recording.summary = format_error_for_storage(error_str)
-                                recording.clear_summary_prompt_used()
-                            else:
-                                recording.transcription = format_error_for_storage(error_str)
-                            if not isinstance(e, SummaryStepFailed):
-                                # The v1 API reports error_message for FAILED
-                                # recordings; this path never set it (#583).
-                                try:
-                                    from src.utils.error_formatting import sanitize_error_message
-                                    recording.error_message = sanitize_error_message(error_str)
-                                except Exception:
-                                    recording.error_message = error_str[:1000]
-
-                        if is_permanent_error:
-                            logger.error(f"Job {job_id} failed permanently (non-retryable error)")
+                                # The summary step set FAILED before the queue
+                                # decided to retry; the summary is still pending.
+                                recording = db.session.get(Recording, recording_id)
+                                if recording:
+                                    recording.status = 'SUMMARIZING'
                         else:
-                            logger.error(f"Job {job_id} failed permanently after {MAX_RETRIES} retries")
+                            job.status = 'failed'
+                            job.completed_at = datetime.utcnow()
+                            job.restore_state = None
+                            # No attempt is left to poll a job still saved from
+                            # this one, so it is removed from the ASR service.
+                            self._release_remote_task(job)
+                            recording = db.session.get(Recording, recording_id)
 
-                        # Webhook fan-out for permanent failure (#275). The
-                        # retryable-failure case does not emit because the
-                        # subscriber will see the eventual success or
-                        # permanent failure that follows the retry loop.
-                        # Background jobs send no webhooks or emails.
-                        if not is_background(job_type):
-                            try:
-                                self._emit_failure_webhook(job_type, recording_id, error_str)
-                            except Exception as e:
-                                logger.warning(f"Webhook emit on job {job_id} failure failed: {e}")
+                            if is_permanent_error:
+                                logger.info(f"Job {job_id} failed with permanent error (no retry): {describe_error(e)}")
 
-                        if not is_background(job_type):
-                            try:
-                                self._emit_failure_email(job_type, recording_id, error_str)
-                            except Exception as e:
-                                logger.warning(f"Failure email for job {job_id} failed: {e}")
+                            # Always keep recordings with FAILED status so users can see the error
+                            # and reprocess later (e.g., when ASR server recovers)
+                            if recording and not is_background(job_type):
+                                # Keep the recording with FAILED status so user can see the error and fix settings.
+                                # The summary after a transcript leaves it
+                                # COMPLETED with the transcript; finished
+                                # below, after this commit (D#663).
+                                recording.status = 'COMPLETED' if auto_summary else 'FAILED'
+                                # Format the error for nice display. A failed summary
+                                # job keeps the transcript and shows the error as the
+                                # summary; it used to overwrite a good transcript (#412).
+                                from src.utils.error_formatting import format_error_for_storage
+                                if isinstance(e, SummaryStepFailed):
+                                    # The summary step stored its own error text
+                                    # and error_message (#583); keep them.
+                                    if e.stored_summary:
+                                        recording.summary = e.stored_summary
+                                        recording.clear_summary_prompt_used()
+                                elif job_type in ('summarize', 'reprocess_summary'):
+                                    recording.summary = format_error_for_storage(error_str)
+                                    recording.clear_summary_prompt_used()
+                                else:
+                                    recording.transcription = format_error_for_storage(error_str)
+                                if not isinstance(e, SummaryStepFailed):
+                                    # The v1 API reports error_message for FAILED
+                                    # recordings; this path never set it (#583).
+                                    try:
+                                        from src.utils.error_formatting import sanitize_error_message
+                                        recording.error_message = sanitize_error_message(error_str)
+                                    except Exception:
+                                        recording.error_message = error_str[:1000]
 
-                    db.session.commit()
+                            if is_permanent_error:
+                                logger.error(f"Job {job_id} failed permanently (non-retryable error)")
+                            else:
+                                logger.error(f"Job {job_id} failed permanently after {MAX_RETRIES} retries")
+
+                            # Webhook fan-out for permanent failure (#275), sent
+                            # once the failure is stored. The retryable-failure
+                            # case does not emit because the subscriber will
+                            # see the eventual success or permanent failure
+                            # that follows the retry loop. Background jobs send
+                            # no webhooks or emails.
+                            notify_failure = not is_background(job_type)
+
+                        db.session.commit()
+                except _ROW_GONE:
+                    self._row_gone_while_storing(job_id, recording_id)
+                    return
+
+                if notify_failure and auto_summary:
+                    self._finish_auto_summary(recording_id)
+
+                if notify_failure:
+                    try:
+                        self._emit_failure_webhook(job_type, recording_id, error_str)
+                    except Exception as emit_error:
+                        logger.warning(f"Webhook emit on job {job_id} failure failed: {emit_error}")
+                    try:
+                        self._emit_failure_email(job_type, recording_id, error_str)
+                    except Exception as emit_error:
+                        logger.warning(f"Failure email for job {job_id} failed: {emit_error}")
+                    if auto_summary:
+                        # The transcript is ready and the recording COMPLETED.
+                        self._emit_completion_notices('transcribe', recording_id, job_id)
+
+
+    def _emit_completion_notices(self, job_type, recording_id, job_id):
+        """The completion webhook and email of a job; best-effort."""
+        try:
+            self._emit_completion_webhook(job_type, recording_id)
+        except Exception as e:
+            logger.warning(f"Webhook emit on job {job_id} completion failed: {e}")
+        try:
+            self._emit_completion_email(job_type, recording_id)
+        except Exception as e:
+            logger.warning(f"Completion email for job {job_id} failed: {e}")
 
     @staticmethod
-    def _finish_canceled(job_id, recording_id, loaded_created_at=None):
+    def _finish_auto_summary(recording_id):
+        """The steps after COMPLETED for a recording whose summary failed (D#663).
+
+        Events come from the transcript alone, as with auto-summary off.
+        Best-effort: the recording is COMPLETED already.
+        """
+        from src.database import db
+        try:
+            from src.tasks.processing import finish_processing
+            finish_processing(recording_id)
+        except Exception as e:
+            logger.error(f"Steps after the failed summary of recording {recording_id} failed "
+                         f"(recording stays COMPLETED): {describe_error(e)}")
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+    @staticmethod
+    def _settle_handed_off(recording_id):
+        """Finish a recording handed to a summary job that is gone already.
+
+        A cancel of the transcription that came after its last safe point
+        removes the summary job it had queued; the recording would stay
+        SUMMARIZING. The jobs are read before the recording: a summary job
+        that ended has finished the recording by then.
+        """
+        from src.database import db
+        from src.models import ProcessingJob, Recording
+
+        db.session.expire_all()
+        active = ProcessingJob.query.filter(
+            ProcessingJob.recording_id == recording_id,
+            ProcessingJob.job_type.in_(['summarize', 'reprocess_summary']),
+            ProcessingJob.status.in_(['queued', 'processing'])
+        ).first()
+        if active is not None:
+            return
+        recording = db.session.get(Recording, recording_id)
+        if recording is None or recording.status != 'SUMMARIZING':
+            return
+        logger.info(f"The summary job of recording {recording_id} was removed; recording finished without it")
+        from src.tasks.processing import finish_processing
+        finish_processing(recording_id, extract_events=False)
+
+    @staticmethod
+    def _row_gone_while_storing(job_id, recording_id):
+        """The job's row or its recording was deleted before the outcome was stored (#681)."""
+        from src.database import db
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        logger.info(f"Job {job_id}: recording {recording_id} or its job was deleted while the job's "
+                    f"outcome was stored; nothing more is stored or sent")
+
+    @staticmethod
+    def _own_job(job_id, recording_id, created_at):
+        """The row of a claimed job, read fresh; None when it is gone.
+
+        Also None when the id now names another job: deleting a recording
+        deletes its jobs, and SQLite gives the next new job the id of a
+        deleted row that held the highest id (#675). A stale worker must not
+        complete, retry or delete that job. The recording and the creation
+        time read at the claim tell the two apart.
+        """
+        from src.database import db
+        from src.models import ProcessingJob
+
+        job = db.session.get(ProcessingJob, job_id, populate_existing=True)
+        if job is None:
+            return None
+        if job.recording_id != recording_id or (created_at is not None and job.created_at != created_at):
+            logger.info(f"Job {job_id} was removed while it ran and its id now names another job; "
+                        f"that job is left alone")
+            return None
+        return job
+
+    @staticmethod
+    def _finish_canceled(job_id, recording_id, loaded_created_at=None, job_created_at=None):
         """Remove a canceled job and settle its recording (src/services/job_cancel.py)."""
         try:
             from src.services.job_cancel import finish_canceled_job
-            finish_canceled_job(job_id, recording_id, loaded_created_at)
+            finish_canceled_job(job_id, recording_id, loaded_created_at, job_created_at=job_created_at)
         except Exception as e:
             logger.error(f"Could not finish the cancel of job {job_id}: {describe_error(e)}", exc_info=True)
             try:
@@ -766,6 +938,7 @@ class FairJobQueue:
             custom_prompt_append=params.get('custom_prompt_append', False),
             user_id=params.get('user_id'),
             prompt_used=params.get('prompt_used'),
+            after_transcription=is_auto_summary('summarize', params),
         )
 
     def _run_reprocess_summary(self, job, recording, params, job_type=None):
@@ -1081,7 +1254,7 @@ class FairJobQueue:
 
     def get_queue_status(self) -> Dict[str, Any]:
         """Get the current status of each queue."""
-        with self._app_context():
+        with self._app_context(reuse=True):
             from src.models import ProcessingJob
 
             transcription_queued = ProcessingJob.query.filter(
@@ -1144,7 +1317,7 @@ class FairJobQueue:
         Background jobs (translation, Inquire chunks) are not counted as the
         recording's job.
         """
-        with self._app_context():
+        with self._app_context(reuse=True):
             from src.models import ProcessingJob
 
             job = ProcessingJob.query.filter(
@@ -1176,7 +1349,7 @@ class FairJobQueue:
         """The recording's waiting or running job, the newest when it has
         several; None when it has none. Background jobs (translation,
         Inquire chunks) are not counted."""
-        with self._app_context():
+        with self._app_context(reuse=True):
             from src.models import ProcessingJob
 
             return ProcessingJob.query.filter(
@@ -1187,7 +1360,7 @@ class FairJobQueue:
 
     def get_job_for_recording(self, recording_id: int):
         """Get the active job for a recording."""
-        with self._app_context():
+        with self._app_context(reuse=True):
             from src.models import ProcessingJob
 
             return ProcessingJob.query.filter(
@@ -1227,8 +1400,9 @@ class FairJobQueue:
 
     # recording.summary.completed is emitted by the summary step itself
     # (processing.generate_summary_only_task, #412): a summary job can end with
-    # a FAILED summary, and the first summary of an upload runs inside the
-    # transcribe job, so the job type alone cannot say whether a summary exists.
+    # a FAILED summary, so the job type alone cannot say whether a summary
+    # exists. The summary after a transcript (D#663) sends the transcription's
+    # completion notices under 'transcribe' once it ends.
     _COMPLETION_EVENT_MAP = {
         'transcribe': 'recording.transcription.completed',
         'reprocess_transcription': 'recording.transcription.completed',

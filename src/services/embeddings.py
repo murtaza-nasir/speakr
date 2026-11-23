@@ -402,6 +402,12 @@ def process_recording_chunks(recording_id):
         recording = db.session.get(Recording, recording_id)
         if not recording or not recording.transcription:
             return False
+        if recording.user_id is None:
+            # A recording whose owner was removed: transcript_chunk.user_id
+            # is required, so its chunks cannot be stored (#683). Nothing
+            # is wrong to retry, so this is not a failure.
+            current_app.logger.info(f"Recording {recording_id} has no owner; no Inquire chunks are built for it")
+            return True
 
         # Create chunks and generate their embeddings BEFORE touching the
         # transcript_chunk table. The embeddings call is a network round-trip

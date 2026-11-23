@@ -9,7 +9,7 @@ import hashlib
 import logging
 import os
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import request, g, has_request_context
 from src.models import APIToken, User
@@ -97,6 +97,10 @@ def find_api_token(token):
     return api_token
 
 
+# The shortest interval between two writes of a token's last_used_at (#667).
+LAST_USED_INTERVAL = timedelta(minutes=1)
+
+
 def _mark_used(api_token):
     if getattr(api_token, 'is_sso', False):
         return  # an SSO access token has no row
@@ -109,6 +113,13 @@ def _mark_used(api_token):
         audit.record('token.first_used', actor_kind='api_token', actor_user_id=api_token.user_id,
                      actor_token_id=api_token.id, details={'token_id': api_token.id},
                      dedup=audit.DEDUP_ONCE, dedup_extra=audit.stamp(api_token.created_at))
+    else:
+        # At most one write per token and LAST_USED_INTERVAL: a client that
+        # polls with its token wrote and committed on every request (#667).
+        # The time stored is then up to a minute behind the last request.
+        now = datetime.utcnow()
+        if timedelta(0) <= now - api_token.last_used_at < LAST_USED_INTERVAL:
+            return
     api_token.last_used_at = datetime.utcnow()
     from src.database import db
     db.session.commit()

@@ -1476,7 +1476,9 @@ def _run_migrations(app, engine):
                         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                         app.logger.info("Acquired migration lock, checking for existing recordings that need chunking for inquire mode...")
                         
-                        completed_recordings = Recording.query.filter_by(status='COMPLETED').all()
+                        # A recording without an owner cannot hold chunks (#683).
+                        completed_recordings = Recording.query.filter(
+                            Recording.status == 'COMPLETED', Recording.user_id.isnot(None)).all()
                         recordings_needing_processing = []
                         
                         for recording in completed_recordings:

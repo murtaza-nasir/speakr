@@ -124,6 +124,36 @@ def _restore_upload_folder():
     app.config["UPLOAD_FOLDER"] = previous
 
 
+@pytest.fixture(autouse=True)
+def _drop_left_summary_jobs():
+    """Remove the summary jobs a test's transcription queued and left behind.
+
+    A transcription queues its summary as a job of its own (D#663). Tests
+    that run a transcription without workers leave that job queued in the
+    shared database, where a later test that claims the next summary job
+    would get it. Only waiting jobs queued by the summary hand-off during
+    this test are removed.
+    """
+    from datetime import datetime
+
+    started = datetime.utcnow()
+    yield
+    try:
+        from src.app import app, db
+        from src.models import ProcessingJob
+
+        with app.app_context():
+            ProcessingJob.query.filter(
+                ProcessingJob.job_type == 'summarize',
+                ProcessingJob.status == 'queued',
+                ProcessingJob.params.like('%after_transcription%'),
+                ProcessingJob.created_at >= started,
+            ).delete(synchronize_session=False)
+            db.session.commit()
+    except Exception:
+        pass
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _initialize_test_database():
     """Create the full schema in the throwaway DB once per session."""

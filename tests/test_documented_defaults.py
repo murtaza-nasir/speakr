@@ -200,13 +200,24 @@ def _wav_bytes(seconds=4, freq=330):
     return buf.getvalue()
 
 
+def _stub_summary(app_context, recording_id, **kwargs):
+    """The summary step without an LLM: these tests are about the ASR requests."""
+    from src.tasks.processing import finish_processing
+    with app_context:
+        recording = db.session.get(Recording, recording_id)
+        recording.summary = "Summary."
+        db.session.commit()
+        finish_processing(recording_id, extract_events=False)
+
+
 def _drain(recording_ids):
-    """Run the queued transcription-side jobs of these recordings, in order."""
+    """Run the queued jobs of these recordings, in order: the transcription
+    side, then the summary that follows a transcript (D#663)."""
     for _ in range(12):
         jobs = (ProcessingJob.query
                 .filter(ProcessingJob.recording_id.in_(recording_ids),
                         ProcessingJob.status == "queued",
-                        ProcessingJob.job_type.in_(TRANSCRIPTION_JOBS))
+                        ProcessingJob.job_type.in_(TRANSCRIPTION_JOBS + ["summarize"]))
                 .order_by(ProcessingJob.id).all())
         if not jobs:
             return
@@ -214,7 +225,8 @@ def _drain(recording_ids):
             job.status = "processing"
             job.started_at = datetime.utcnow()
             db.session.commit()
-            job_queue._process_job(job)
+            with patch("src.tasks.processing.generate_summary_only_task", _stub_summary):
+                job_queue._process_job(job)
             db.session.expire_all()
 
 

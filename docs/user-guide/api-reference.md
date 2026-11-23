@@ -985,9 +985,11 @@ GET /api/v1/recordings/{id}/status
 | `PENDING` | Waiting in queue |
 | `QUEUED` | Waiting for conversion or transcription (see `stage`) |
 | `PROCESSING` | Transcription in progress |
-| `SUMMARIZING` | Summary generation in progress |
+| `SUMMARIZING` | Summary generation in progress. After an upload or a transcription reprocess the transcript is already stored and readable in this state; the summary job then sets `COMPLETED`. |
 | `COMPLETED` | Processing finished successfully |
 | `FAILED` | Processing failed (check `error_message`) |
+
+When automatic summaries are on, a new transcript is stored before the summary is written: the recording is `SUMMARIZING` with its transcript, and `COMPLETED` once the summary job has ended. `recording.transcription.completed` and the completion email are sent at that point, so a client that reads the recording on `COMPLETED` or on that webhook finds the summary. A summary that fails leaves the recording `COMPLETED` with its transcript; the summary field holds the error, `recording.summary.failed` is sent, then `recording.transcription.completed`.
 
 `stage` is the step the recording's waiting or running job belongs to: `conversion`, `transcription` or `summary`, or `null` when it has none. A recording stays `QUEUED` while its upload is converted and until its transcription starts; with `stage` set to `conversion`, a `queue_position` of `null` means the conversion is running.
 
@@ -997,7 +999,7 @@ The remaining fields refer to the recording's waiting or running job and are `nu
 
 | Field | Meaning |
 |-------|---------|
-| `processing_stage` | `queued`, `converting`, `assembling`, `joining`, `transcribing`, `titling` or `summarizing`. The title and the first summary of an upload are generated inside the transcription job, so `stage` can be `transcription` while `processing_stage` is `summarizing`. |
+| `processing_stage` | `queued`, `converting`, `assembling`, `joining`, `transcribing`, `titling` or `summarizing`. The title of an upload is generated inside the transcription job, so `stage` is `transcription` while `processing_stage` is `titling`. The summary that follows runs as a job of its own on the summary queue, with `stage` `summary`. |
 | `stage_detail` | The step reported by the transcription service: `waiting`, `preparing`, `transcribing`, `aligning` or `diarizing`; `null` when nothing is reported. |
 | `progress` | `{"done": 3, "total": 8}` for a chunked transcription, `{"fraction": 0.42}` for a fraction measured by the transcription service, `null` when no measured number exists. No estimate is reported. |
 | `progress_kind` | `chunks`, `fraction` or `null`. |

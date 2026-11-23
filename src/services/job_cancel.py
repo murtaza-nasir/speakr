@@ -9,9 +9,10 @@ served by a process that runs no workers.
 The recording after a cancel (``settle_recording``):
 
 - A transcript is stored: the recording is COMPLETED. This covers a cancel
-  during the title or the summary of a transcription (the transcript of
-  that run is complete and is kept), and a canceled summary of a recording
-  that has a transcript.
+  during the title of a transcription or of the summary job that follows
+  it (the transcript of that run is complete and is kept; the steps after
+  COMPLETED run, the LLM steps do not), and a canceled summary of a
+  recording that has a transcript.
 - No transcript, and the job was a reprocess: the transcript, summary,
   events and status the reprocess cleared are put back
   (``ProcessingJob.restore_state``), so the recording is as it was.
@@ -157,10 +158,11 @@ def settle_recording(recording, job, ran):
 
     if _has_transcript(recording):
         if recording.status != 'COMPLETED':
-            if ran and job.job_type in _TRANSCRIPTION_SIDE:
+            if (ran and job.job_type in _TRANSCRIPTION_SIDE) or _is_auto_summary(job):
                 # The transcript of this run is complete: the steps that
                 # follow COMPLETED run (shares, export, Inquire chunks), the
-                # LLM steps do not.
+                # LLM steps do not. The summary after a transcript is the
+                # last step of that run, waiting or running (D#663).
                 from src.tasks.processing import finish_processing
                 finish_processing(recording.id, extract_events=False)
             else:
@@ -181,7 +183,16 @@ def _view(job):
     """The fields of a job that outlive its row."""
     return SimpleNamespace(id=job.id, job_type=job.job_type, recording_id=job.recording_id,
                            user_id=job.user_id, restore_state=job.restore_state,
-                           provider_task=job.provider_task)
+                           provider_task=job.provider_task, params=job.params)
+
+
+def _is_auto_summary(job):
+    from src.services.job_queue import is_auto_summary
+    try:
+        params = json.loads(job.params) if getattr(job, 'params', None) else {}
+    except (TypeError, ValueError):
+        params = {}
+    return is_auto_summary(job.job_type, params)
 
 
 def _cancel_dependents(parent):
@@ -294,7 +305,12 @@ def cancel_job(job_id):
 
 # --- the worker side ------------------------------------------------------------
 
-def finish_canceled_job(job_id, recording_id, loaded_created_at=None):
+def _another_job(job, recording_id, created_at):
+    """The row has the id of the canceled job but is a later job (#675)."""
+    return job.recording_id != recording_id or (created_at is not None and job.created_at != created_at)
+
+
+def finish_canceled_job(job_id, recording_id, loaded_created_at=None, job_created_at=None):
     """Remove a running job that stopped for a cancel and settle its recording.
 
     Called by the job queue in the worker thread, after the job's code has
@@ -310,7 +326,7 @@ def finish_canceled_job(job_id, recording_id, loaded_created_at=None):
     # The job's code wrote the recording from its own session.
     db.session.expire_all()
     job = db.session.get(ProcessingJob, job_id)
-    if job is None:
+    if job is None or _another_job(job, recording_id, job_created_at):
         return
     view = _view(job)
     # The WhisperX connector removes its job at the poll that sees the
@@ -341,7 +357,7 @@ def finish_canceled_job(job_id, recording_id, loaded_created_at=None):
         _cancel_dependents(view)
 
     job = db.session.get(ProcessingJob, job_id)
-    if job is not None:
+    if job is not None and not _another_job(job, recording_id, job_created_at):
         db.session.delete(job)
     db.session.commit()
     logger.info(f"Job {job_id} canceled while it ran; recording {recording_id}: {outcome}")

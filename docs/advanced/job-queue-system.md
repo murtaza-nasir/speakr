@@ -511,13 +511,17 @@ The surface, the borders and the type colors are the tokens of the raised layer 
    └─▶ job.status = 'processing'
    └─▶ Recording.status = 'PROCESSING'
 
-6. Transcription completes
-   └─▶ job.status = 'completed' (if no auto-summary)
-   └─▶ OR Recording.status = 'SUMMARIZING' (if auto-summary)
+6. Transcription completes (transcript and title stored)
+   └─▶ job.status = 'completed', the transcription worker is free
+   └─▶ no auto-summary: Recording.status = 'COMPLETED'
+   └─▶ auto-summary: a 'summarize' job (params after_transcription) is queued
+       on the summary workers; Recording.status = 'SUMMARIZING', transcript readable
 
-7. Summary completes (if applicable)
-   └─▶ Summary job.status = 'completed'
-   └─▶ Recording.status = 'COMPLETED'
+7. Summary job ends (if applicable)
+   └─▶ Recording.status = 'COMPLETED'; events, auto-shares, export
+   └─▶ recording.transcription.completed webhook and the completion email
+   └─▶ a failed summary also leaves the recording COMPLETED, with the error as its summary
+   └─▶ a canceled summary job leaves the recording COMPLETED, without a summary
 ```
 
 ### Reprocessing Flow

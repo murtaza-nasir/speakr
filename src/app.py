@@ -454,15 +454,20 @@ app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/data/uploads')
 # max-age=0 forces a cheap conditional revalidation (304 unless changed).
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
+# Connection pool sized for the request and job threads of a process (#667):
+# DB_POOL_SIZE, DB_MAX_OVERFLOW, DB_POOL_TIMEOUT (src/utils/db_pool.py).
+from src.utils.db_pool import pool_options as _pool_options
+_engine_options = _pool_options(os.environ, app.config['SQLALCHEMY_DATABASE_URI'])
 # SQLite concurrency settings for multi-worker job queue
 if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    _engine_options.update({
         'connect_args': {
             'timeout': 30,  # Wait up to 30 seconds for locked database
             'check_same_thread': False  # Allow multi-threaded access
         },
         'pool_pre_ping': True  # Verify connections before use
-    }
+    })
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = _engine_options
 # MAX_CONTENT_LENGTH will be set dynamically after database initialization
 # Set a secret key for session management and CSRF protection.
 

@@ -264,4 +264,9 @@ def test_a_completed_transcription_returns_no_failure(ctx):
         chunking.get_audio_duration.return_value = 60.0
         outcome = proc.transcribe_with_connector(app.app_context(), rec.id, path, "w.mp3",
                                                  time.time(), mime_type="audio/mpeg")
-    assert outcome is None
+    # No failure: the summary was handed to a job of its own (D#663).
+    from src.services.job_queue import SUMMARY_QUEUED
+    from src.models import ProcessingJob
+    assert outcome is SUMMARY_QUEUED
+    ProcessingJob.query.filter_by(recording_id=rec.id).delete()
+    db.session.commit()

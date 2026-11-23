@@ -149,6 +149,11 @@ def test_api_v1_on_conflict_race(world, media):
 # --- ASR Voice Recorder ----------------------------------------------------------
 
 def _asr(world, secret, payload, filename, **fields):
+    # The fixture's application context is shared by these requests, so its
+    # session is too; a request in production reads fresh rows. The token
+    # lookup committed on every request before its last use was throttled
+    # (#667), which hid this.
+    db.session.expire_all()
     data = {"secret": secret, **fields, "file": (io.BytesIO(world.sent(payload)), filename)}
     return world.client.post("/api/v1/integrations/asr-voice-recorder/upload", data=data,
                              content_type="multipart/form-data")
