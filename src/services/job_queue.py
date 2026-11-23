@@ -299,10 +299,15 @@ class FairJobQueue:
     def stop(self):
         """Stop the worker threads gracefully."""
         self._running = False
-        for worker in self._transcription_workers + self._summary_workers:
-            worker.join(timeout=5)
-        self._transcription_workers.clear()
-        self._summary_workers.clear()
+        # Every pool: the index and convert workers were left running, and a
+        # start() after this stop() added a second set of them.
+        pools = (self._transcription_workers, self._summary_workers,
+                 self._index_workers, self._convert_workers)
+        for pool in pools:
+            for worker in pool:
+                worker.join(timeout=5)
+        for pool in pools:
+            pool.clear()
         logger.info("Job queue workers stopped")
 
     def _worker_loop(self, job_types: List[str], queue_name: str):

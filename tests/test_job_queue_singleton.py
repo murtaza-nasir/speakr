@@ -272,3 +272,27 @@ def test_the_lock_file_does_not_follow_a_planted_symlink(tmp_path):
         acquire_singleton_lock(_Engine(), name)
 
     assert victim.read_bytes() == b'do not truncate me', 'the symlink was followed and the target truncated'
+
+
+def test_stop_ends_the_workers_of_every_queue(unowned_queue):
+    """stop() joined only the transcription and summary workers: the index
+    and convert workers kept running, and a later start() added more."""
+    from unittest.mock import patch as _patch
+    import src.services.job_queue as jq
+
+    unowned_queue._index_workers = []
+    unowned_queue._convert_workers = []
+    unowned_queue.mark_as_owner()
+    with _patch.object(jq, "TRANSCRIPTION_WORKERS", 1), _patch.object(jq, "SUMMARY_WORKERS", 1), \
+            _patch.object(jq, "INDEX_WORKERS", 1), _patch.object(jq, "CONVERT_WORKERS", 1), \
+            _patch.object(jq, "POLL_INTERVAL", 0.05), \
+            _patch.object(unowned_queue, "_claim_next_job", return_value=None):
+        unowned_queue.start()
+        threads = (unowned_queue._transcription_workers + unowned_queue._summary_workers
+                   + unowned_queue._index_workers + unowned_queue._convert_workers)
+        assert len(threads) == 4
+        unowned_queue.stop()
+
+    assert not any(thread.is_alive() for thread in threads)
+    assert unowned_queue._index_workers == []
+    assert unowned_queue._convert_workers == []
