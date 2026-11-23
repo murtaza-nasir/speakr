@@ -474,7 +474,7 @@ def _run_transcription(job, connector, tmp_path, *, chunks=0, converted=None, on
          patch('src.services.transcription.get_connector', return_value=connector), \
          patch.object(proc, 'is_video_file', return_value=False), \
          patch.object(proc, 'convert_if_needed', return_value=conversion), \
-         patch.object(proc, 'client', MagicMock()), \
+         patch.object(proc.llm_config, 'is_configured', return_value=True), \
          patch.object(proc, 'ENABLE_INQUIRE_MODE', False), \
          patch.object(proc, 'ENABLE_AUTO_EXPORT', False), \
          patch.object(proc.time, 'sleep'), \
@@ -625,7 +625,7 @@ def test_a_summary_canceled_before_the_llm_call_puts_the_summary_back(notices):
         _mark(job_id)                                # while the prompt is built
         return real_prompt(*args, **kwargs)
 
-    with patch.object(proc, 'client', MagicMock()), \
+    with patch.object(proc.llm_config, 'is_configured', return_value=True), \
          patch.object(proc, 'build_summary_prompt', side_effect=prompt_then_cancel), \
          patch.object(proc, 'call_llm_completion') as llm:
         job_queue._process_job(claimed)
@@ -649,7 +649,7 @@ def test_a_summary_canceled_during_the_llm_call_drops_the_reply(notices):
         reply.choices[0].finish_reason = 'stop'
         return reply
 
-    with patch.object(proc, 'client', MagicMock()), \
+    with patch.object(proc.llm_config, 'is_configured', return_value=True), \
          patch.object(proc, 'call_llm_completion', side_effect=llm) as call:
         job_queue._process_job(claimed)
     assert call.called

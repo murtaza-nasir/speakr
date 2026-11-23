@@ -3722,7 +3722,8 @@ def start_summarization(recording_id):
 def chat_with_recording(recording_id):
     """Chat about a recording's content. with_sources: true returns numbered
     sources with segment, time, speaker and a checked quote (mailr spec G9)."""
-    from src.services.llm import chat_client, call_chat_completion
+    from src.services import llm_config
+    from src.services.llm import call_chat_completion
     from src.services.citations import parse_sources
     from src.services.recording_chat import build_chat_messages
 
@@ -3749,8 +3750,8 @@ def chat_with_recording(recording_id):
     if not isinstance(with_sources, bool):
         return jsonify({'error': translate('server.apiError.invalid_with_sources'), 'code': 'invalid_parameter'}), 400
 
-    # Check if chat client is available
-    if chat_client is None:
+    # Check if a chat model is available, resolved for this request.
+    if not llm_config.is_configured('chat'):
         return jsonify(api_error('chat_unavailable')), 503
 
     messages, segments = build_chat_messages(recording, current_user, data['message'],

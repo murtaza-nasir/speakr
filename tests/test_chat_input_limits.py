@@ -110,16 +110,25 @@ def _router(messages, **kwargs):
     return _llm("RAG" if kwargs.get("operation_type") == "query_routing" else "[]")
 
 
+def _by_operation(router, answer):
+    """The router and the enrichment step run on the chat model too (#661):
+    each call goes to `router` or `answer` by its operation type."""
+    def call(*args, **kwargs):
+        if kwargs.get("operation_type") in ("query_routing", "query_enrichment"):
+            return router(*args, **kwargs)
+        return answer(*args, **kwargs)
+    return call
+
+
 def _ask(world, body, answer, router=None):
     """POST /api/inquire/chat on the RAG path with no search results."""
     router = router or MagicMock(side_effect=_router)
     with patch("src.api.inquire.ENABLE_INQUIRE_MODE", True), \
             patch.dict(os.environ, {"ENABLE_INQUIRE_AGENT": "false"}), \
-            patch("src.api.inquire.client", MagicMock()), \
+            patch("src.services.llm_config.is_configured", return_value=True), \
             patch("src.api.inquire.EMBEDDINGS_AVAILABLE", True), \
-            patch("src.api.inquire.call_llm_completion", router), \
             patch("src.api.inquire.semantic_search_chunks", return_value=[]), \
-            patch("src.api.inquire.call_chat_completion", side_effect=answer):
+            patch("src.api.inquire.call_chat_completion", side_effect=_by_operation(router, answer)):
         resp = _web(world).post("/api/inquire/chat", json=body)
         text = resp.get_data(as_text=True)
     return resp, text, router
@@ -146,7 +155,7 @@ def _v1_chat(world, body, answer):
 
 def _panel(world, body, answer):
     body = dict({"recording_id": world["rec"]}, **body)
-    with patch("src.api.recordings.chat_client", MagicMock()), \
+    with patch("src.services.llm_config.is_configured", return_value=True), \
             patch("src.api.recordings._assistant_library_tools", return_value=False), \
             patch("src.api.recordings.call_chat_completion", side_effect=answer):
         resp = _web(world).post("/chat", json=body)
@@ -157,7 +166,7 @@ def _panel(world, body, answer):
 def _incognito(world, body, answer):
     body = dict({"transcription": "Dana: the budget is frozen."}, **body)
     with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
-            patch("src.api.recordings.chat_client", MagicMock()), \
+            patch("src.services.llm_config.is_configured", return_value=True), \
             patch("src.api.recordings.call_chat_completion", side_effect=answer):
         resp = _web(world).post("/api/recordings/incognito/chat", json=body)
         text = resp.get_data(as_text=True)
@@ -247,7 +256,7 @@ def test_the_refusal_is_in_the_interface_language(world):
         db.session.commit()
     answer = _Answer()
     with patch("src.api.inquire.ENABLE_INQUIRE_MODE", True), \
-            patch("src.api.inquire.client", MagicMock()), \
+            patch("src.services.llm_config.is_configured", return_value=True), \
             patch("src.api.inquire.call_chat_completion", side_effect=answer):
         resp = _web(world).post("/api/inquire/chat", json={"message": "x" * (MAX_QUESTION_CHARS + 1)})
     assert resp.status_code == 400

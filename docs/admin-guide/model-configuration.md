@@ -402,6 +402,219 @@ TRANSLATION_MODEL_API_KEY=your_openrouter_key
 - When using the same model for all operations is acceptable
 - When translation is disabled and no user will trigger it manually
 
+## Admin-Managed Language Models
+
+The **Language models** section of the admin page configures model providers in
+the browser and chooses which model each role uses. It is an optional
+alternative to the `.env` variables described above. A role with no model
+assigned keeps using its environment configuration, so an installation that
+never adds a model behaves as before.
+
+!!! note "An empty model list changes nothing"
+    Until a model is added and assigned, every role keeps using its environment
+    configuration. This is also the state after an upgrade, so nothing changes
+    until you act in the panel.
+
+### Where to Find It
+
+Open the **Admin** page, select the **System settings** tab, and use the
+**Language models** panel. It lists the configured models with an **Add model**
+button and has a **Role assignments** block below the list. Only site
+administrators can open it.
+
+### Storage
+
+The models and assignments are stored as one JSON document in the
+`llm_config_json` system setting. Its `models` array holds the configured
+profiles, and its `assignments` object names the model id used by each role, or
+`null` for the environment.
+
+The setting does not appear in the raw settings list on the same tab and cannot
+be edited there. The settings list leaves the key out, and a save for it is
+refused as a setting managed elsewhere. Manage it only through the panel.
+
+The API key of a profile is stored in the same document, in clear text, because
+the language model client needs the value. The key is therefore in the database
+and in every backup or copy of it, as the keys in `.env` are in the copies of
+that file; protect database backups accordingly. The application does not
+encrypt the database; see [Privacy and regulated data](privacy.md).
+
+A stored key is write-only. No answer of the admin API contains it: a stored
+key reads as `***` and no key as an empty value, in the model list and in the
+role details alike, and the panel never receives the key. The edit form can
+keep a key, replace it with a new one, or remove it. A stored key is bound to
+the base URL it was saved with: a Save that changes the base URL asks for the
+key again, and a test against another URL does not send the stored key.
+
+### Roles
+
+| Role | Used for | Environment prefix |
+| --- | --- | --- |
+| `text` | Summaries, titles and every other text task | `TEXT_MODEL_*` |
+| `chat` | Recording chat and Ask Ambrose, including its query routing and search terms | `CHAT_MODEL_*` |
+| `translation` | Transcript translation | `TRANSLATION_MODEL_*` |
+
+The role identifiers are `text`, `chat` and `translation`; the panel translates
+their display names. The admin API also accepts `ambrose` and `inquire` as
+aliases for `chat`, because both features use that role.
+
+A dedicated environment configuration for `chat` or `translation` needs
+`<PREFIX>_MODEL_NAME` and either `<PREFIX>_MODEL_API_KEY` or
+`<PREFIX>_MODEL_BASE_URL`; for example `CHAT_MODEL_NAME` with
+`CHAT_MODEL_BASE_URL`. The fallback rules for those variables are described
+under [Separate Chat Model
+Configuration](#separate-chat-model-configuration) and [Separate Translation
+Model Configuration](#separate-translation-model-configuration).
+
+### How a Role Is Resolved
+
+For each request, Speakr resolves a role in this order:
+
+1. The profile assigned to the role.
+2. For `chat` and `translation`, the role's own environment configuration, when
+   it is complete.
+3. For `chat` and `translation`, the text configuration: the assigned text
+   profile when the `text` role has one, otherwise the `TEXT_MODEL_*` values.
+   The role then reports **Uses the text model**.
+
+The `text` role has no further fallback: it uses its assigned profile, otherwise
+`TEXT_MODEL_*`. A role with none of these is **Not configured**.
+
+| Badge | Meaning |
+| --- | --- |
+| Profile label | The role uses that profile |
+| Environment | The role uses its own environment configuration |
+| Uses the text model | The role inherits the text configuration |
+| Not configured | No usable configuration for the role |
+
+An assignment to an id that is no longer in the list is read as unassigned. The
+role resolves exactly as if it had no assignment, and the select shows
+**Environment configuration**.
+
+### Add or Edit a Model
+
+- **Label**: required, up to 80 characters, and unique regardless of case. It
+  identifies the profile in lists and badges.
+- **Base URL**: required, starts with `http://` or `https://`, and a trailing
+  slash is removed. Example: `https://openrouter.ai/api/v1`.
+- **Model name**: required. Type the provider's model id, or use **Discover
+  models** to choose from the list the provider reports.
+- **API key**: optional. Leave it empty for a provider that needs no key.
+- **Request parameters**: optional JSON object whose fields are added to every
+  request to this model, as `TEXT_MODEL_EXTRA_BODY` does for the environment
+  configuration. Example: `{"reasoning": {"effort": "low"}}`.
+- **GPT-5**: optional. Force GPT-5 request options, reasoning effort and
+  verbosity.
+
+At most 12 models can be configured. At that limit the **Add model** button is
+hidden; delete a model to add another. Existing configurations with more models
+keep working and can still be edited.
+
+**Discover models** asks the provider for `{base_url}/models` with the key from
+the form and waits up to 20 seconds. When you edit a saved model, leave the key
+field empty and keep the base URL unchanged, the saved key is used unless you
+tick **Remove the stored API key**. A changed base URL is contacted without the
+saved key; enter the key for that provider in the field. The provider must
+expose an OpenAI-compatible models route. Some providers do not, so you can type
+the model name instead.
+
+**Test** on a saved row asks the provider for its models with the saved values
+and reports how many it lists. It does not change the profile.
+
+The model list shows a stored key as `********`, and **No key** when none is
+stored. On edit the API key field is empty, with `********` as its placeholder
+when a key is stored. Leave the field empty to keep the stored key while the
+base URL does not change, type a new key to replace it, or tick **Remove the
+stored API key**. Changing the base URL requires the key again, or **Remove the
+stored API key** to save the profile without one. The eye button in the field
+shows or hides the value being typed.
+
+**Request parameters** are added after Speakr's own request parameters, so a field with
+the same name replaces the built-in value, including the GPT-5 settings and the
+token limit. The fields are sent unchanged; use only fields that the provider
+and model accept. Invalid JSON, an array or another non-object value is refused
+before saving.
+
+**Force GPT-5 request options** sends `reasoning_effort` and `verbosity` and
+uses `max_completion_tokens` even when the model name does not start with
+`gpt-5` or the base URL is not `api.openai.com`. Without the checkbox, Speakr
+does this automatically only for a `gpt-5*` model name on `api.openai.com`,
+unless `GPT5_FORCE_MODE` is set and the `text` role uses its environment
+configuration. Force it for Azure AI
+Foundry and other gateways. **Reasoning effort** and **Verbosity** default to
+`medium` and are sent only while GPT-5 request options are in effect.
+
+### Assign a Model to a Role
+
+Each role has a select, a badge and, while a profile is assigned, a **Use the
+environment** button. Choose a profile in the select to assign it; choose
+**Environment configuration** or use the button to return the role to its
+environment variables. The change is saved immediately and a message confirms
+it.
+
+Delete a model with **Delete model** only while no role uses it. If a role is
+assigned, the deletion is refused and the message names the roles; reassign them
+first. The select offers only models that are in the list.
+
+### Changes Apply Without a Restart
+
+Saving a model or an assignment takes effect with the next model request. There
+is no restart and no container rebuild. Speakr reads the document once per
+request or job, and again after a change, and clears its cached clients when
+the configuration changes.
+
+This applies to the panel only. Changes to `.env` still need a restart, because
+the file is read at startup.
+
+### Audit Events
+
+Every change made in the panel writes an audit event. The full list is in
+[Audit log](audit-log.md#administration).
+
+| Event | Recorded when |
+| --- | --- |
+| `admin.llm_model.created` | A model was added |
+| `admin.llm_model.changed` | A field of a model changed |
+| `admin.llm_model.deleted` | An unassigned model was deleted |
+| `admin.llm_role.assigned` | A role was assigned a model |
+| `admin.llm_role.reverted` | A role was returned to the environment |
+
+Rows carry the model id and the names of the changed fields, or the role and the
+previous model id. They never carry labels, API keys or field values.
+
+### Troubleshooting the Panel
+
+**Discovery or test fails.** The panel reports one of these reasons:
+
+- **HTTP status**: the provider answered an error for `{base_url}/models`. Check
+  the URL, the key and the provider's model list.
+- **Did not answer in time**: the provider did not respond within 20 seconds.
+  Check that the service is running and reachable.
+- **Could not reach the provider**: the URL must be reachable from the Speakr
+  server, not only from your browser. Check the host, port and the `/v1` suffix.
+- **Unexpected answer**: the route must return an OpenAI-compatible JSON object
+  with a `data` list. Without one, type the model name.
+
+A test of an edited profile uses the saved key unless you tick **Remove the
+stored API key** or change the base URL. A test does not save changes.
+
+**The key field is empty.** A stored key is never sent to the browser, so the
+field stays empty on edit; `********` as its placeholder means a key is stored.
+Leave the field empty to keep the key, or tick **Remove the stored API key**
+and save to clear it. A key of only `***`, the mask of the API answers, is
+treated as masked and does not replace a stored key.
+
+**A model cannot be deleted.** A role still uses the model. The message names
+the roles; assign them another profile or the environment, then delete the
+model.
+
+**A role shows Not configured.** The role has no profile and no usable
+environment configuration. For `text`, set `TEXT_MODEL_NAME` together with
+`TEXT_MODEL_API_KEY` or `TEXT_MODEL_BASE_URL`; a key or an explicit base URL is
+what marks the role as configured. Chat and translation inherit the text role
+when they have no own configuration, so they are not configured only when the
+text role is not either. Alternatively, assign a profile to the role.
+
 ## Model Selection Guidelines
 
 ### For Summaries

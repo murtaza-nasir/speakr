@@ -88,7 +88,7 @@ def _assert_only_at_debug(log, *contents):
 
 def test_title_generation_logs_no_title_at_info(world, log):
     with app.app_context():
-        with patch.object(proc, "client", MagicMock()), \
+        with patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "call_llm_completion", return_value=_completion(TITLE)), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False):
             proc.generate_title_task(app.app_context(), world.rec, will_auto_summarize=False)
@@ -105,7 +105,7 @@ def test_user_provided_title_is_not_logged_at_info(world, log):
         rec = db.session.get(Recording, world.rec)
         rec.title = TITLE
         db.session.commit()
-        with patch.object(proc, "client", MagicMock()), \
+        with patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "call_llm_completion") as call, \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False):
             proc.generate_title_task(app.app_context(), world.rec, will_auto_summarize=False)
@@ -115,7 +115,7 @@ def test_user_provided_title_is_not_logged_at_info(world, log):
 
 def test_summary_generation_logs_no_summary_at_info(world, log):
     with app.app_context():
-        with patch.object(proc, "client", MagicMock()), \
+        with patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "call_llm_completion", return_value=_completion(SUMMARY)), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
              patch("src.services.webhook_dispatch.emit_webhook_event"):
@@ -167,11 +167,14 @@ def test_inquire_query_is_not_logged_at_info(world, log):
             s["_user_id"] = str(world.user)
             s["_fresh"] = True
         with patch("src.api.inquire.ENABLE_INQUIRE_MODE", True), \
-             patch("src.api.inquire.client", MagicMock()), \
+             patch("src.services.llm_config.is_configured", return_value=True), \
              patch("src.api.inquire.EMBEDDINGS_AVAILABLE", True), \
-             patch("src.api.inquire.call_llm_completion", side_effect=llm), \
              patch("src.api.inquire.semantic_search_chunks", side_effect=search), \
-             patch("src.api.inquire.call_chat_completion", return_value=_stream([ANSWER])):
+             patch("src.api.inquire.call_chat_completion",
+                   side_effect=lambda messages, **kwargs: (
+                       llm(messages, **kwargs)
+                       if kwargs.get("operation_type") in ("query_routing", "query_enrichment")
+                       else _stream([ANSWER]))):
             resp = client.post("/api/inquire/chat", json={"message": QUERY})
             assert resp.status_code == 200
             body = resp.get_data(as_text=True)
@@ -338,7 +341,8 @@ def test_failed_summary_stores_the_provider_message_without_the_transcript(world
         rec.transcription = json.dumps([{"speaker": "SPEAKER_00", "sentence": ECHO_TRANSCRIPT}])
         db.session.commit()
         c = _failing_llm_client()
-        with patch.object(llm, "client", c), patch.object(proc, "client", c), \
+        with patch.object(llm, "client", c), \
+             patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(llm, "TEXT_MODEL_NAME", "fake-model"), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
              patch("src.services.webhook_dispatch.emit_webhook_event"), \

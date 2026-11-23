@@ -681,6 +681,10 @@ html.dark {
     font-size: var(--fs-meta);
     min-height: 28px;
 }
+.field--role {
+    width: 15rem;
+    max-width: 100%;
+}
 
 /* When .field is applied to a <select>, the global `select` rule in
    styles.css sets a chevron background-image with background-repeat:

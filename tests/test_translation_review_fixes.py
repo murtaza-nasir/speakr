@@ -72,7 +72,13 @@ def test_no_limit_setting_still_sends_one_call_for_a_short_transcript(monkeypatc
     calls = []
     monkeypatch.setattr(tt, '_call_llm', _echo(calls))
     text = json.dumps([{"speaker": "A", "sentence": f"Sentence number {i}."} for i in range(20)])
-    with app.app_context(), patch('src.models.SystemSetting.get_setting', return_value=-1):
+
+    def setting(key, default=None):
+        # The length limit is what this test is about; every other setting,
+        # such as the prefix-cache flags, must keep its default.
+        return -1 if key == 'transcript_length_limit' else default
+
+    with app.app_context(), patch('src.models.SystemSetting.get_setting', side_effect=setting):
         out = json.loads(tt.translate_transcription_text(text, target_language="Spanish"))
     assert len(calls) == 1
     assert len(out) == 20

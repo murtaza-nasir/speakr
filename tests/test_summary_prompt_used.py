@@ -54,8 +54,12 @@ def _run(ids, params=None, reply="## New summary", error=None):
             raise error
         return MagicMock(choices=[MagicMock(message=MagicMock(content=reply, reasoning=None))])
 
+    # The POST above ran in this app context, so the audit row it added to the
+    # session is still uncommitted (enqueue is stubbed). Drop it before the job
+    # runs on a session of its own, or that session's commit meets the lock.
+    db.session.rollback()
     rec = db.session.get(Recording, ids["rec"])
-    with patch.object(proc, "client", MagicMock()), patch.object(proc, "call_llm_completion", side_effect=fake), \
+    with patch.object(proc.llm_config, "is_configured", return_value=True), patch.object(proc, "call_llm_completion", side_effect=fake), \
             patch.object(proc, "finish_processing"):
         try:
             if params is None:
@@ -74,8 +78,7 @@ def _run(ids, params=None, reply="## New summary", error=None):
 
 def _queue(ids, who, body, route="reprocess_summary"):
     """POST a web summary route; returns the job parameters it queued."""
-    import src.api.recordings as recordings_module
-    with patch("src.services.llm.client", MagicMock()), patch.object(recordings_module, "client", MagicMock()), \
+    with patch("src.services.llm.client", MagicMock()), patch("src.services.llm_config.is_configured", return_value=True), \
             patch.object(job_queue, "enqueue", return_value=1) as enq:
         resp = _client(_user(ids, who)).post(f"/recording/{ids['rec']}/{route}", json=body)
     assert resp.status_code == 200, resp.get_data(as_text=True)[:300]

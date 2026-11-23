@@ -1313,7 +1313,7 @@ with app.app_context():
 
 # Application configuration (extracted to src/config/app_config.py)
 from src.config.app_config import initialize_config
-client, chunking_service, version = initialize_config(app)
+chunking_service, version = initialize_config(app)
 
 # Initialize blueprint helpers (inject extensions and utility functions)
 init_auth_extensions(bcrypt, csrf, limiter)

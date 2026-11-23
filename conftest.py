@@ -124,6 +124,34 @@ def _restore_upload_folder():
     app.config["UPLOAD_FOLDER"] = previous
 
 
+def _drop_llm_overrides():
+    import sys
+
+    llm = sys.modules.get("src.services.llm")
+    if llm is not None:
+        for name in llm.DYNAMIC_ATTRIBUTES:
+            llm.__dict__.pop(name, None)
+    llm_config = sys.modules.get("src.services.llm_config")
+    if llm_config is not None:
+        llm_config.clear_client_cache()
+
+
+@pytest.fixture(autouse=True)
+def _reset_llm_module_state():
+    """Give each test the live LLM configuration, not one a test left behind.
+
+    The former constants of src.services.llm (client, TEXT_MODEL_NAME, ...)
+    are computed by the module __getattr__ on every read. monkeypatch.setattr
+    reads the value before patching and, on undo, sets that value as a real
+    module attribute, which then shadows the live configuration for every
+    later test. The names are dropped before and after each test, and the
+    cached clients with them.
+    """
+    _drop_llm_overrides()
+    yield
+    _drop_llm_overrides()
+
+
 @pytest.fixture(autouse=True)
 def _drop_left_summary_jobs():
     """Remove the summary jobs a test's transcription queued and left behind.

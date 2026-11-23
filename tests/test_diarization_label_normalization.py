@@ -371,7 +371,7 @@ def _ingest(recording, connector, needs_chunking=False, task=None):
     with patch('src.services.transcription.get_connector', return_value=connector), \
          patch.object(proc, 'is_video_file', return_value=False), \
          patch.object(proc, 'convert_if_needed', return_value=converted), \
-         patch.object(proc, 'client', MagicMock()), \
+         patch.object(proc.llm_config, 'is_configured', return_value=True), \
          patch.object(proc, 'ENABLE_INQUIRE_MODE', False), \
          patch.object(proc, 'generate_title_task'), \
          patch.object(proc, 'generate_summary_only_task'), \
@@ -414,7 +414,7 @@ def test_reprocessing_stores_normalized_labels(recording):
         with patch('src.services.transcription.get_connector', return_value=connector), \
              patch.object(proc, 'is_video_file', return_value=False), \
              patch.object(proc, 'convert_if_needed', return_value=MagicMock(was_converted=False)), \
-             patch.object(proc, 'client', MagicMock()), \
+             patch.object(proc.llm_config, 'is_configured', return_value=True), \
              patch.object(proc, 'ENABLE_INQUIRE_MODE', False), \
              patch.object(proc, 'generate_title_task'), \
              patch.object(proc, 'generate_summary_only_task'), \
@@ -488,7 +488,7 @@ def _incognito(tmp_path, connector, needs_chunking=False, chunker=None):
     with app.app_context(), \
          patch('src.services.transcription.get_registry', return_value=registry), \
          patch.object(proc, 'convert_if_needed', return_value=same), \
-         patch.object(proc, 'client', None), \
+         patch.object(proc.llm_config, 'is_configured', return_value=False), \
          patch.object(proc, 'chunking_service', chunker or MagicMock()) as service:
         service.needs_chunking.return_value = needs_chunking
         return proc.transcribe_incognito(str(upload), 'visit.mp3', language='en')

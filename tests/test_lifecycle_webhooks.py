@@ -60,7 +60,7 @@ def _completion(text):
 def test_a_summary_fires_summary_completed(rec):
     _, rid = rec
     a, b, c, d = _quiet()
-    with app.app_context(), a, b, c, d, patch.object(proc, "client", MagicMock()), \
+    with app.app_context(), a, b, c, d, patch.object(proc.llm_config, "is_configured", return_value=True), \
          patch.object(proc, "call_llm_completion", return_value=_completion("## Summary")), \
          patch("src.services.webhook_dispatch.emit_webhook_event") as emit:
         proc.generate_summary_only_task(app.app_context(), rid)
@@ -75,7 +75,7 @@ def test_a_failed_summary_step_raises_and_leaves_the_event_to_its_caller(rec):
     from src.services.error_classification import SummaryStepFailed
     _, rid = rec
     a, b, c, d = _quiet()
-    with app.app_context(), a, b, c, d, patch.object(proc, "client", MagicMock()), \
+    with app.app_context(), a, b, c, d, patch.object(proc.llm_config, "is_configured", return_value=True), \
          patch.object(proc, "call_llm_completion", side_effect=RuntimeError("model unavailable")), \
          patch("src.services.webhook_dispatch.emit_webhook_event") as emit:
         with pytest.raises(SummaryStepFailed):

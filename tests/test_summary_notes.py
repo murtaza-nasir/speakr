@@ -45,7 +45,7 @@ def _summary_prompt(user, rec):
         return stub
 
     with patch("src.tasks.processing.call_llm_completion", side_effect=fake), \
-            patch("src.tasks.processing.client", new=MagicMock()):
+            patch("src.services.llm_config.is_configured", return_value=True):
         processing.generate_summary_only_task(app.app_context(), rec.id, user_id=user.id)
     return "\n".join(m["content"] for m in calls[0])
 

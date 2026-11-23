@@ -78,7 +78,7 @@ def _fake_completion(content, reasoning=None):
 @contextmanager
 def _patch_llm(content="Generated text", reasoning=None, side_effect=None):
     """Patch call_llm_completion and a truthy client at the processing import site."""
-    with patch.object(proc, "client", MagicMock()), \
+    with patch.object(proc.llm_config, "is_configured", return_value=True), \
          patch.object(proc, "call_llm_completion") as mock_call:
         if side_effect is not None:
             mock_call.side_effect = side_effect
@@ -113,7 +113,7 @@ def test_summary_client_not_configured_skips():
         user = _make_user("sum_noclient")
         rec = _make_recording(user.id, status="PENDING")
         rid = rec.id
-        with patch.object(proc, "client", None):
+        with patch.object(proc.llm_config, "is_configured", return_value=False):
             proc.generate_summary_only_task(app.app_context(), rid)
 
         db.session.expire_all()
@@ -346,7 +346,7 @@ def test_title_short_transcription_falls_back_to_filename():
         user = _make_user("title_short")
         rec = _make_recording(user.id, title="Recording - cov.mp3", transcription="hi")
         rid = rec.id
-        with patch.object(proc, "client", MagicMock()), \
+        with patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False):
             proc.generate_title_task(app.app_context(), rid, will_auto_summarize=False)
         db.session.expire_all()
@@ -361,7 +361,7 @@ def test_title_client_not_configured_falls_back_to_filename():
         user = _make_user("title_noclient")
         rec = _make_recording(user.id, title="Recording - cov.mp3")
         rid = rec.id
-        with patch.object(proc, "client", None), \
+        with patch.object(proc.llm_config, "is_configured", return_value=False), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False):
             proc.generate_title_task(app.app_context(), rid, will_auto_summarize=False)
         db.session.expire_all()
@@ -532,7 +532,7 @@ def test_transcribe_with_connector_audio_success():
         with patch("src.services.transcription.get_connector", return_value=connector), \
              patch.object(proc, "is_video_file", return_value=False), \
              patch.object(proc, "convert_if_needed", return_value=conv_result), \
-             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
              patch.object(proc, "generate_title_task") as mock_title, \
              patch.object(proc, "generate_summary_only_task") as mock_summary, \
@@ -581,7 +581,7 @@ def test_transcribe_with_connector_leaves_the_summary_to_its_job():
         with patch("src.services.transcription.get_connector", return_value=connector), \
              patch.object(proc, "is_video_file", return_value=False), \
              patch.object(proc, "convert_if_needed", return_value=conv_result), \
-             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
              patch.object(proc, "generate_title_task"), \
              patch.object(proc, "generate_summary_only_task") as summary, \
@@ -623,7 +623,7 @@ def test_transcribe_with_connector_persists_resolved_hints():
         with patch("src.services.transcription.get_connector", return_value=connector), \
              patch.object(proc, "is_video_file", return_value=False), \
              patch.object(proc, "convert_if_needed", return_value=conv_result), \
-             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
              patch.object(proc, "generate_title_task"), \
              patch.object(proc, "generate_summary_only_task"), \
@@ -664,7 +664,7 @@ def test_transcribe_with_connector_resolved_hints_default_none():
         with patch("src.services.transcription.get_connector", return_value=connector), \
              patch.object(proc, "is_video_file", return_value=False), \
              patch.object(proc, "convert_if_needed", return_value=conv_result), \
-             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
              patch.object(proc, "generate_title_task"), \
              patch.object(proc, "generate_summary_only_task"), \
@@ -708,7 +708,7 @@ def test_transcribe_with_connector_applies_admin_default_initial_prompt():
         with patch("src.services.transcription.get_connector", return_value=connector), \
              patch.object(proc, "is_video_file", return_value=False), \
              patch.object(proc, "convert_if_needed", return_value=conv_result), \
-             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
              patch.object(proc, "generate_title_task"), \
              patch.object(proc, "generate_summary_only_task"), \
@@ -995,7 +995,7 @@ def test_title_uses_user_default_naming_template():
         # Placeholder title + no tags -> falls through to the user-default path.
         rec = _make_recording(user.id, title="Recording - cov.mp3")
         rid = rec.id
-        with patch.object(proc, "client", None), \
+        with patch.object(proc.llm_config, "is_configured", return_value=False), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False):
             proc.generate_title_task(app.app_context(), rid, will_auto_summarize=False)
 
@@ -1042,7 +1042,7 @@ def test_title_tag_template_takes_precedence_over_owner_default():
         db.session.commit()
 
         rid = rec.id
-        with patch.object(proc, "client", None), \
+        with patch.object(proc.llm_config, "is_configured", return_value=False), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", False):
             proc.generate_title_task(app.app_context(), rid, will_auto_summarize=False)
 

@@ -136,7 +136,6 @@ def recording():
 def _title_and_summary(app, row, user):
     calls, fake = _recorder('Launch date locked')
     with patch('src.tasks.processing.call_llm_completion', side_effect=fake), \
-         patch('src.tasks.processing.client', new=MagicMock()), \
          patch('src.tasks.processing.resolve_title_instructions',
                return_value=('- Keep it under eight words', 'test')), \
          patch('src.utils.timezones.now_local', return_value=FIXED_NOW):

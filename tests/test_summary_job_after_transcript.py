@@ -125,7 +125,7 @@ def _transcribe(rid, connector, title=None, summary=None):
     with patch("src.services.transcription.get_connector", return_value=connector), \
             patch.object(proc, "is_video_file", return_value=False), \
             patch.object(proc, "convert_if_needed", return_value=conv), \
-            patch.object(proc, "client", MagicMock()), \
+            patch.object(proc.llm_config, "is_configured", return_value=True), \
             patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
             patch.object(proc, "generate_title_task", title), \
             patch.object(proc, "generate_summary_only_task", summary), \
@@ -296,7 +296,7 @@ def test_a_failed_summary_leaves_the_recording_completed_with_its_transcript(mad
     job = _claim(jid)
     llm = MagicMock(side_effect=Exception("Error code: 403 - forbidden"))
 
-    with patch.object(proc, "client", MagicMock()), \
+    with patch.object(proc.llm_config, "is_configured", return_value=True), \
             patch.object(proc, "call_llm_completion", llm), \
             patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
             patch.object(job_queue, '_emit_failure_webhook') as failed_hook, \
@@ -321,7 +321,7 @@ def test_a_transient_summary_failure_is_retried_and_stays_summarizing(made):
     job = _claim(jid)
     llm = MagicMock(side_effect=Exception("connection reset by peer"))
 
-    with patch.object(proc, "client", MagicMock()), \
+    with patch.object(proc.llm_config, "is_configured", return_value=True), \
             patch.object(proc, "call_llm_completion", llm), \
             patch.object(job_queue, '_emit_failure_webhook') as failed_hook:
         job_queue._process_job(job)
@@ -398,7 +398,7 @@ def test_a_manual_summary_still_fails_the_recording(made):
     jid = job_queue.enqueue(rec.user_id, rec.id, 'summarize')
     job = _claim(jid)
     llm = MagicMock(side_effect=Exception("Error code: 403 - forbidden"))
-    with patch.object(proc, "client", MagicMock()), \
+    with patch.object(proc.llm_config, "is_configured", return_value=True), \
             patch.object(proc, "call_llm_completion", llm), \
             patch.object(job_queue, '_emit_failure_webhook'), \
             patch.object(job_queue, '_emit_completion_webhook') as done_hook:

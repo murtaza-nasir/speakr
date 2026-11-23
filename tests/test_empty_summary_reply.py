@@ -14,7 +14,7 @@ import sys
 import uuid
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -65,7 +65,7 @@ def _completion(content, finish_reason, completion_tokens=None, reasoning_tokens
 
 @contextmanager
 def _llm(completion):
-    with patch.object(proc, "client", MagicMock()), \
+    with patch.object(proc.llm_config, "is_configured", return_value=True), \
          patch.object(proc, "call_llm_completion", return_value=completion), \
          patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
          patch("src.services.webhook_dispatch.emit_webhook_event") as emit:

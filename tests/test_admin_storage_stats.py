@@ -32,7 +32,7 @@ from src.models import Recording, User
 def stats_fixture():
     """Two users with recordings, several with none, one deleted audio file."""
     with app.app_context():
-        tag = f'stats_{os.getpid()}'
+        tag = f'st{os.getpid() % 100000}'
         users, by_name = [], {}
         for name in ('has_files', 'also_has', 'empty1', 'empty2', 'empty3', 'empty4', 'empty5'):
             u = User(username=f'{tag}_{name}', email=f'{tag}_{name}@example.com',

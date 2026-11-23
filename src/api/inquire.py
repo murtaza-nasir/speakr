@@ -24,7 +24,8 @@ from src.utils.error_text import log_failure, user_error_text
 from src.utils.speaker_labels import real_speaker_names
 from src.services.assistant_events import FilterError, checked_filters, filters_from_request
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
-from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
+from src.services import llm_config
+from src.services.llm import call_chat_completion, get_chat_config, process_streaming_with_thinking, TokenBudgetExceeded
 from src.utils.request_body import json_object_body
 
 # Create blueprint
@@ -254,7 +255,7 @@ def inquire_stream(user, data, mode='auto', tool_names=None):
         nonlocal user_id, user_name, user_title, user_company, user_output_language, data, filters
 
         # Push app context for entire generator execution
-        # This is needed because call_llm_completion uses current_app.logger internally
+        # This is needed because call_chat_completion uses current_app.logger internally
         ctx = app.app_context()
         ctx.push()
 
@@ -277,7 +278,7 @@ Examples:
 - "Make this more structured" → DIRECT"""
 
             try:
-                router_response = call_llm_completion(
+                router_response = call_chat_completion(
                     messages=[
                         {"role": "system", "content": "You are a query router. Respond with only 'RAG' or 'DIRECT'."},
                         {"role": "user", "content": router_prompt}
@@ -312,7 +313,7 @@ Previous conversation context (if relevant):
 
 Use proper markdown formatting including headings (##), bold (**text**), bullet points (-), etc."""
 
-                    stream = call_llm_completion(
+                    stream = call_chat_completion(
                         messages=[
                             {"role": "system", "content": direct_prompt},
                             {"role": "user", "content": user_message}
@@ -325,7 +326,7 @@ Use proper markdown formatting including headings (##), bold (**text**), bullet 
                     )
 
                     # Use helper function to process streaming with thinking tag support
-                    for response in process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', model_name=os.environ.get('LLM_MODEL')):
+                    for response in process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', model_name=get_chat_config()['model_name']):
                         yield response
                     return
                     
@@ -383,7 +384,7 @@ Examples:
 Respond with only a JSON array of strings: ["term1", "term2", ...]"""
             
             try:
-                enrichment_response = call_llm_completion(
+                enrichment_response = call_chat_completion(
                     messages=[
                         {"role": "system", "content": "You are a query enhancement assistant. Respond only with valid JSON arrays of search terms."},
                         {"role": "user", "content": enrichment_prompt}
@@ -785,7 +786,7 @@ Order your response with notes from the most recent meetings first. Always use p
                                         )
 
                                         # Use helper function to process streaming with thinking tag support
-                                        for response in process_streaming_with_thinking(new_stream, user_id=user_id, operation_type='chat', model_name=os.environ.get('CHAT_MODEL')):
+                                        for response in process_streaming_with_thinking(new_stream, user_id=user_id, operation_type='chat', model_name=get_chat_config()['model_name']):
                                             yield response
                                         return
                                     else:
@@ -913,8 +914,9 @@ def inquire_chat():
             return jsonify(bad_history), 400
         data = dict(data, message_history=message_history)
         
-        # Check if OpenRouter client is available
-        if client is None:
+        # Check if a chat model is available, resolved for this request so an
+        # assignment made in System Settings applies without a restart.
+        if not llm_config.is_configured('chat'):
             return jsonify(api_error('chat_openrouter_not_configured')), 503
         
         # One event stream for both engines: retrieval stages arrive as

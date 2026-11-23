@@ -2,13 +2,15 @@
 LLM API integration services (OpenAI/OpenRouter).
 """
 
+import json
+import logging
 import os
 import re
-import json
+import sys
 import time
-import logging
+
 import httpx
-from openai import OpenAI, APITimeoutError, BadRequestError
+from openai import APITimeoutError, BadRequestError
 
 # Use standard logging instead of current_app.logger for context independence
 logger = logging.getLogger(__name__)
@@ -24,7 +26,8 @@ class TokenBudgetExceeded(Exception):
         self.usage_percentage = usage_percentage
         super().__init__(message)
 
-from src.utils import safe_json_loads, extract_json_object
+from src.services import llm_config
+from src.utils import extract_json_object, safe_json_loads
 from src.utils.error_text import log_failure
 
 
@@ -70,31 +73,6 @@ def extract_cache_tokens(usage):
     )
     return _to_int(cached), _to_int(cache_write)
 
-# Configuration - use TEXT_MODEL_* variables for LLM
-TEXT_MODEL_API_KEY = os.environ.get("TEXT_MODEL_API_KEY")
-TEXT_MODEL_BASE_URL = os.environ.get("TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
-if TEXT_MODEL_BASE_URL:
-    TEXT_MODEL_BASE_URL = TEXT_MODEL_BASE_URL.split('#')[0].strip()
-TEXT_MODEL_NAME = os.environ.get("TEXT_MODEL_NAME", "openai/gpt-3.5-turbo")
-
-# Chat model configuration (optional - falls back to TEXT_MODEL_* if not set)
-CHAT_MODEL_API_KEY = os.environ.get("CHAT_MODEL_API_KEY")
-CHAT_MODEL_BASE_URL = os.environ.get("CHAT_MODEL_BASE_URL")
-if CHAT_MODEL_BASE_URL:
-    CHAT_MODEL_BASE_URL = CHAT_MODEL_BASE_URL.split('#')[0].strip()
-CHAT_MODEL_NAME = os.environ.get("CHAT_MODEL_NAME")
-
-# Translation model configuration (optional - falls back to TEXT_MODEL_* if not set)
-TRANSLATION_MODEL_API_KEY = os.environ.get("TRANSLATION_MODEL_API_KEY")
-TRANSLATION_MODEL_BASE_URL = os.environ.get("TRANSLATION_MODEL_BASE_URL")
-if TRANSLATION_MODEL_BASE_URL:
-    TRANSLATION_MODEL_BASE_URL = TRANSLATION_MODEL_BASE_URL.split('#')[0].strip()
-TRANSLATION_MODEL_NAME = os.environ.get("TRANSLATION_MODEL_NAME")
-
-# Chat-specific GPT-5 settings (optional - falls back to main GPT5_* settings)
-CHAT_GPT5_REASONING_EFFORT = os.environ.get("CHAT_GPT5_REASONING_EFFORT")
-CHAT_GPT5_VERBOSITY = os.environ.get("CHAT_GPT5_VERBOSITY")
-
 # Provider-specific request parameters, as a JSON object merged into the body
 # of every request to the model (OpenAI SDK extra_body). Reasoning controls
 # differ by provider and model (reasoning_effort, OpenRouter's reasoning
@@ -113,38 +91,92 @@ def _parse_extra_body(env_var):
     return value, None
 
 
-TEXT_MODEL_EXTRA_BODY, TEXT_MODEL_EXTRA_BODY_ERROR = _parse_extra_body("TEXT_MODEL_EXTRA_BODY")
-CHAT_MODEL_EXTRA_BODY, CHAT_MODEL_EXTRA_BODY_ERROR = _parse_extra_body("CHAT_MODEL_EXTRA_BODY")
-TRANSLATION_MODEL_EXTRA_BODY, TRANSLATION_MODEL_EXTRA_BODY_ERROR = _parse_extra_body("TRANSLATION_MODEL_EXTRA_BODY")
-for _error in (TEXT_MODEL_EXTRA_BODY_ERROR, CHAT_MODEL_EXTRA_BODY_ERROR, TRANSLATION_MODEL_EXTRA_BODY_ERROR):
-    if _error:
-        logger.error(f"{_error}; requests to that model will fail until it is corrected.")
+def _cfg(name):
+    """The current value of a former module constant.
 
-# Streaming options - disable for LLM servers that don't support OpenAI's stream_options
-ENABLE_STREAM_OPTIONS = os.environ.get("ENABLE_STREAM_OPTIONS", "true").lower() == "true"
-
-# LLM timeout and retry configuration
-# Read timeout controls how long to wait for model inference (the bottleneck for local models)
-# Connect/write stay short so misconfigured URLs fail fast instead of hanging
-LLM_REQUEST_TIMEOUT = int(os.environ.get("LLM_REQUEST_TIMEOUT", "600"))
-LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "2"))
-LLM_CONNECT_TIMEOUT = float(os.environ.get("LLM_CONNECT_TIMEOUT", "30"))
-LLM_WRITE_TIMEOUT = float(os.environ.get("LLM_WRITE_TIMEOUT", "30"))
-llm_timeout = httpx.Timeout(
-    connect=LLM_CONNECT_TIMEOUT,
-    read=float(LLM_REQUEST_TIMEOUT),
-    write=LLM_WRITE_TIMEOUT,
-    pool=30.0,
-)
-
-
-def _gpt5_mode_forced(env_var="GPT5_FORCE_MODE"):
-    """Whether GPT-5 parameter handling is forced on via environment variable.
-
-    The autodetection requires api.openai.com in the base URL, which misses
-    GPT-5 models served through Azure AI Foundry or other gateways (#367).
+    A test or a caller that sets the attribute (monkeypatch) wins. Otherwise
+    the module ``__getattr__`` resolves it from ``llm_config`` at call time, so
+    an assigned model and a hot setting apply to the next request without a
+    restart.
     """
-    return str(os.environ.get(env_var, "")).strip().lower() in ("true", "1", "yes")
+    return getattr(sys.modules[__name__], name)
+
+
+# The OpenRouter app identification headers and the HTTP client with them,
+# shared with the LLM clients of llm_config (one connection pool).
+app_headers = llm_config.APP_HEADERS
+http_client_no_proxy = llm_config.HTTP_CLIENT
+
+_ROLE_ATTRIBUTES = {
+    'TEXT_MODEL_NAME': ('text', 'model_name'),
+    'TEXT_MODEL_BASE_URL': ('text', 'base_url'),
+    'TEXT_MODEL_API_KEY': ('text', 'api_key'),
+    'TEXT_MODEL_EXTRA_BODY': ('text', 'extra_body'),
+    'TEXT_MODEL_EXTRA_BODY_ERROR': ('text', 'extra_body_error'),
+    'TEXT_MODEL_GPT5_FORCE': ('text', 'gpt5_force'),
+    'GPT5_REASONING_EFFORT': ('text', 'gpt5_reasoning_effort'),
+    'GPT5_VERBOSITY': ('text', 'gpt5_verbosity'),
+    'CHAT_MODEL_NAME': ('chat', 'model_name'),
+    'CHAT_MODEL_BASE_URL': ('chat', 'base_url'),
+    'CHAT_MODEL_API_KEY': ('chat', 'api_key'),
+    'CHAT_MODEL_EXTRA_BODY': ('chat', 'extra_body'),
+    'CHAT_MODEL_EXTRA_BODY_ERROR': ('chat', 'extra_body_error'),
+    'CHAT_MODEL_GPT5_FORCE': ('chat', 'gpt5_force'),
+    'CHAT_GPT5_REASONING_EFFORT': ('chat', 'gpt5_reasoning_effort'),
+    'CHAT_GPT5_VERBOSITY': ('chat', 'gpt5_verbosity'),
+    'TRANSLATION_MODEL_NAME': ('translation', 'model_name'),
+    'TRANSLATION_MODEL_BASE_URL': ('translation', 'base_url'),
+    'TRANSLATION_MODEL_API_KEY': ('translation', 'api_key'),
+    'TRANSLATION_MODEL_EXTRA_BODY': ('translation', 'extra_body'),
+    'TRANSLATION_MODEL_EXTRA_BODY_ERROR': ('translation', 'extra_body_error'),
+    'TRANSLATION_MODEL_GPT5_FORCE': ('translation', 'gpt5_force'),
+    'TRANSLATION_GPT5_REASONING_EFFORT': ('translation', 'gpt5_reasoning_effort'),
+    'TRANSLATION_GPT5_VERBOSITY': ('translation', 'gpt5_verbosity'),
+}
+_RUNTIME_ATTRIBUTES = {
+    'LLM_REQUEST_TIMEOUT': 'request_timeout',
+    'LLM_MAX_RETRIES': 'max_retries',
+    'LLM_CONNECT_TIMEOUT': 'connect_timeout',
+    'LLM_WRITE_TIMEOUT': 'write_timeout',
+    'ENABLE_STREAM_OPTIONS': 'enable_stream_options',
+}
+_CLIENT_ATTRIBUTES = {'client': 'text', 'chat_client': 'chat', 'translation_client': 'translation'}
+# Every name __getattr__ computes. An attribute of that name set on the module
+# shadows the live value until it is deleted again: pytest's monkeypatch
+# restores such a name by setting the value it read, so the test suite drops
+# them after each test (conftest.py).
+DYNAMIC_ATTRIBUTES = frozenset(
+    set(_ROLE_ATTRIBUTES) | set(_RUNTIME_ATTRIBUTES) | set(_CLIENT_ATTRIBUTES)
+    | {'TEXT_MODEL_CONFIGURED', 'TRANSLATION_MODEL_CONFIGURED', 'llm_timeout'})
+
+
+def __getattr__(name):
+    """Resolve the former import-time constants from the live configuration."""
+    if name in _CLIENT_ATTRIBUTES:
+        return llm_config.get_client(_CLIENT_ATTRIBUTES[name])
+    if name == 'TEXT_MODEL_CONFIGURED':
+        return llm_config.is_configured('text')
+    if name == 'TRANSLATION_MODEL_CONFIGURED':
+        return llm_config.is_configured('translation')
+    if name == 'llm_timeout':
+        settings = llm_config.runtime_settings()
+        return httpx.Timeout(
+            connect=settings.connect_timeout,
+            read=float(settings.request_timeout),
+            write=settings.write_timeout,
+            pool=30.0,
+        )
+    if name in _RUNTIME_ATTRIBUTES:
+        return getattr(llm_config.runtime_settings(), _RUNTIME_ATTRIBUTES[name])
+    if name in _ROLE_ATTRIBUTES:
+        role, field = _ROLE_ATTRIBUTES[name]
+        return llm_config.resolve_config(role, reveal_key=True).get(field)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _inherits_text_model(role):
+    """Whether the role has no configuration of its own and reuses the text model."""
+    return bool(llm_config.resolve_config(role).get('uses_text_model'))
 
 
 def get_chat_config():
@@ -155,33 +187,42 @@ def get_chat_config():
     A dedicated chat model needs CHAT_MODEL_NAME and either its own key or
     its own base URL; a local server often needs no key at all (#403).
     """
-    if CHAT_MODEL_NAME and (CHAT_MODEL_API_KEY or CHAT_MODEL_BASE_URL):
+    chat_name = _cfg('CHAT_MODEL_NAME')
+    chat_key = _cfg('CHAT_MODEL_API_KEY')
+    chat_url = _cfg('CHAT_MODEL_BASE_URL')
+    text_key = _cfg('TEXT_MODEL_API_KEY')
+    text_url = _cfg('TEXT_MODEL_BASE_URL')
+
+    if chat_name and (chat_key or chat_url):
         return {
             # The text model's key goes only to the text model's server.
-            'api_key': CHAT_MODEL_API_KEY or (TEXT_MODEL_API_KEY if (CHAT_MODEL_BASE_URL or TEXT_MODEL_BASE_URL) == TEXT_MODEL_BASE_URL else None),
-            'base_url': CHAT_MODEL_BASE_URL or TEXT_MODEL_BASE_URL,
-            'model_name': CHAT_MODEL_NAME,
-            'gpt5_reasoning_effort': CHAT_GPT5_REASONING_EFFORT or os.environ.get("GPT5_REASONING_EFFORT", "medium"),
-            'gpt5_verbosity': CHAT_GPT5_VERBOSITY or os.environ.get("GPT5_VERBOSITY", "medium"),
+            'api_key': chat_key or (text_key if (chat_url or text_url) == text_url else None),
+            'base_url': chat_url or text_url,
+            'model_name': chat_name,
+            'gpt5_reasoning_effort': (
+                _cfg('CHAT_GPT5_REASONING_EFFORT') or _cfg('GPT5_REASONING_EFFORT')),
+            'gpt5_verbosity': _cfg('CHAT_GPT5_VERBOSITY') or _cfg('GPT5_VERBOSITY'),
             # A separate chat model does not inherit GPT5_FORCE_MODE: it may
             # be a different (non-GPT-5) model than the main text model.
-            'gpt5_force': _gpt5_mode_forced("CHAT_GPT5_FORCE_MODE"),
+            'gpt5_force': bool(_cfg('CHAT_MODEL_GPT5_FORCE')),
             # Like GPT5_FORCE_MODE, the text model's parameters are not
             # inherited: they may not suit a different model or server.
-            'extra_body': CHAT_MODEL_EXTRA_BODY,
-            'extra_body_variable': 'CHAT_MODEL_EXTRA_BODY',
-            'extra_body_error': CHAT_MODEL_EXTRA_BODY_ERROR,
+            'extra_body': _cfg('CHAT_MODEL_EXTRA_BODY'),
+            'extra_body_variable': (
+                'TEXT_MODEL_EXTRA_BODY' if _inherits_text_model('chat')
+                else 'CHAT_MODEL_EXTRA_BODY'),
+            'extra_body_error': _cfg('CHAT_MODEL_EXTRA_BODY_ERROR'),
         }
     return {
-        'api_key': TEXT_MODEL_API_KEY,
-        'base_url': TEXT_MODEL_BASE_URL,
-        'model_name': TEXT_MODEL_NAME,
-        'gpt5_reasoning_effort': os.environ.get("GPT5_REASONING_EFFORT", "medium"),
-        'gpt5_verbosity': os.environ.get("GPT5_VERBOSITY", "medium"),
-        'gpt5_force': _gpt5_mode_forced(),
-        'extra_body': TEXT_MODEL_EXTRA_BODY,
+        'api_key': text_key,
+        'base_url': text_url,
+        'model_name': _cfg('TEXT_MODEL_NAME'),
+        'gpt5_reasoning_effort': _cfg('GPT5_REASONING_EFFORT'),
+        'gpt5_verbosity': _cfg('GPT5_VERBOSITY'),
+        'gpt5_force': bool(_cfg('TEXT_MODEL_GPT5_FORCE')),
+        'extra_body': _cfg('TEXT_MODEL_EXTRA_BODY'),
         'extra_body_variable': 'TEXT_MODEL_EXTRA_BODY',
-        'extra_body_error': TEXT_MODEL_EXTRA_BODY_ERROR,
+        'extra_body_error': _cfg('TEXT_MODEL_EXTRA_BODY_ERROR'),
     }
 
 
@@ -191,131 +232,39 @@ def get_translation_config():
 
     Mirrors get_chat_config().
     """
-    if TRANSLATION_MODEL_NAME and (TRANSLATION_MODEL_API_KEY or TRANSLATION_MODEL_BASE_URL):
+    name = _cfg('TRANSLATION_MODEL_NAME')
+    key = _cfg('TRANSLATION_MODEL_API_KEY')
+    url = _cfg('TRANSLATION_MODEL_BASE_URL')
+    text_key = _cfg('TEXT_MODEL_API_KEY')
+    text_url = _cfg('TEXT_MODEL_BASE_URL')
+
+    if name and (key or url):
         return {
-            'api_key': TRANSLATION_MODEL_API_KEY or (TEXT_MODEL_API_KEY if (TRANSLATION_MODEL_BASE_URL or TEXT_MODEL_BASE_URL) == TEXT_MODEL_BASE_URL else None),
-            'base_url': TRANSLATION_MODEL_BASE_URL or TEXT_MODEL_BASE_URL,
-            'model_name': TRANSLATION_MODEL_NAME,
-            'gpt5_reasoning_effort': os.environ.get("GPT5_REASONING_EFFORT", "medium"),
-            'gpt5_verbosity': os.environ.get("GPT5_VERBOSITY", "medium"),
-            'gpt5_force': _gpt5_mode_forced("TRANSLATION_GPT5_FORCE_MODE"),
-            'extra_body': TRANSLATION_MODEL_EXTRA_BODY,
-            'extra_body_variable': 'TRANSLATION_MODEL_EXTRA_BODY',
-            'extra_body_error': TRANSLATION_MODEL_EXTRA_BODY_ERROR,
+            'api_key': key or (text_key if (url or text_url) == text_url else None),
+            'base_url': url or text_url,
+            'model_name': name,
+            'gpt5_reasoning_effort': (
+                _cfg('TRANSLATION_GPT5_REASONING_EFFORT') or _cfg('GPT5_REASONING_EFFORT')),
+            'gpt5_verbosity': (
+                _cfg('TRANSLATION_GPT5_VERBOSITY') or _cfg('GPT5_VERBOSITY')),
+            'gpt5_force': bool(_cfg('TRANSLATION_MODEL_GPT5_FORCE')),
+            'extra_body': _cfg('TRANSLATION_MODEL_EXTRA_BODY'),
+            'extra_body_variable': (
+                'TEXT_MODEL_EXTRA_BODY' if _inherits_text_model('translation')
+                else 'TRANSLATION_MODEL_EXTRA_BODY'),
+            'extra_body_error': _cfg('TRANSLATION_MODEL_EXTRA_BODY_ERROR'),
         }
     return {
-        'api_key': TEXT_MODEL_API_KEY,
-        'base_url': TEXT_MODEL_BASE_URL,
-        'model_name': TEXT_MODEL_NAME,
-        'gpt5_reasoning_effort': os.environ.get("GPT5_REASONING_EFFORT", "medium"),
-        'gpt5_verbosity': os.environ.get("GPT5_VERBOSITY", "medium"),
-        'gpt5_force': _gpt5_mode_forced(),
-        'extra_body': TEXT_MODEL_EXTRA_BODY,
+        'api_key': text_key,
+        'base_url': text_url,
+        'model_name': _cfg('TEXT_MODEL_NAME'),
+        'gpt5_reasoning_effort': _cfg('GPT5_REASONING_EFFORT'),
+        'gpt5_verbosity': _cfg('GPT5_VERBOSITY'),
+        'gpt5_force': bool(_cfg('TEXT_MODEL_GPT5_FORCE')),
+        'extra_body': _cfg('TEXT_MODEL_EXTRA_BODY'),
         'extra_body_variable': 'TEXT_MODEL_EXTRA_BODY',
-        'extra_body_error': TEXT_MODEL_EXTRA_BODY_ERROR,
+        'extra_body_error': _cfg('TEXT_MODEL_EXTRA_BODY_ERROR'),
     }
-
-
-# Set up HTTP client with custom headers for OpenRouter app identification
-app_headers = {
-    "HTTP-Referer": "https://github.com/murtaza-nasir/speakr",
-    "X-Title": "Speakr - AI Audio Transcription",
-    "User-Agent": "Speakr/1.0 (https://github.com/murtaza-nasir/speakr)"
-}
-
-http_client_no_proxy = httpx.Client(
-    verify=True,
-    headers=app_headers
-)
-
-# A language model is configured when it has a key or its server address was
-# set explicitly; a local server often needs no key (#403). Without either,
-# no client is created and nothing is sent: the default address is a hosted
-# service, and a transcript must never go there unasked.
-TEXT_MODEL_CONFIGURED = bool(TEXT_MODEL_API_KEY) or bool(os.environ.get("TEXT_MODEL_BASE_URL", "").split('#')[0].strip())
-
-# A translation model is configured when the text model is, or when a
-# dedicated translation model has its own key or server address.
-TRANSLATION_MODEL_CONFIGURED = (
-    TEXT_MODEL_CONFIGURED
-    or (bool(TRANSLATION_MODEL_NAME) and (bool(TRANSLATION_MODEL_API_KEY)
-        or bool(os.environ.get("TRANSLATION_MODEL_BASE_URL", "").split('#')[0].strip())))
-)
-
-try:
-    if not TEXT_MODEL_CONFIGURED:
-        raise RuntimeError("no text model configured (set TEXT_MODEL_BASE_URL, and TEXT_MODEL_API_KEY for a hosted service)")
-    api_key = TEXT_MODEL_API_KEY or "not-needed"
-    client = OpenAI(
-        api_key=api_key,
-        base_url=TEXT_MODEL_BASE_URL,
-        http_client=http_client_no_proxy,
-        timeout=llm_timeout,
-        max_retries=LLM_MAX_RETRIES,
-    )
-    # Always log the resolved timeout/retry values at startup so users can confirm
-    # their LLM_REQUEST_TIMEOUT / LLM_MAX_RETRIES env vars actually took effect.
-    logger.info(
-        f"LLM client configured: read_timeout={LLM_REQUEST_TIMEOUT}s, "
-        f"connect_timeout={LLM_CONNECT_TIMEOUT}s, write_timeout={LLM_WRITE_TIMEOUT}s, "
-        f"max_retries={LLM_MAX_RETRIES}"
-    )
-except Exception as client_init_e:
-    client = None
-
-def _build_chat_client():
-    """The chat client: the main client, or a dedicated one when the chat
-    model has its own key or server. The key is optional, since a local
-    server often runs without one (#403)."""
-    chat_config = get_chat_config()
-    if (chat_config['api_key'], chat_config['base_url']) == (TEXT_MODEL_API_KEY, TEXT_MODEL_BASE_URL):
-        return client
-    if not (CHAT_MODEL_API_KEY or CHAT_MODEL_BASE_URL or TEXT_MODEL_CONFIGURED):
-        return None
-    dedicated = OpenAI(
-        api_key=chat_config['api_key'] or "not-needed",
-        base_url=chat_config['base_url'],
-        http_client=http_client_no_proxy,
-        timeout=llm_timeout,
-        max_retries=LLM_MAX_RETRIES,
-    )
-    logger.info(f"Separate chat client initialized: {chat_config['base_url']} / {chat_config['model_name']}")
-    return dedicated
-
-
-# Create chat client (may be same as main client if no separate config)
-try:
-    chat_client = _build_chat_client()
-except Exception as chat_client_init_e:
-    logger.warning(f"Failed to initialize chat client, falling back to main client: {chat_client_init_e}")
-    chat_client = client
-
-
-def _build_translation_client():
-    """The translation client: the main client, or a dedicated one when the
-    translation model has its own key or server."""
-    translation_config = get_translation_config()
-    if (translation_config['api_key'], translation_config['base_url']) == (TEXT_MODEL_API_KEY, TEXT_MODEL_BASE_URL):
-        return client
-    if not (TRANSLATION_MODEL_API_KEY or TRANSLATION_MODEL_BASE_URL or TEXT_MODEL_CONFIGURED):
-        return None
-    dedicated = OpenAI(
-        api_key=translation_config['api_key'] or "not-needed",
-        base_url=translation_config['base_url'],
-        http_client=http_client_no_proxy,
-        timeout=llm_timeout,
-        max_retries=LLM_MAX_RETRIES,
-    )
-    logger.info(f"Separate translation client initialized: {translation_config['base_url']} / {translation_config['model_name']}")
-    return dedicated
-
-
-# Create translation client (may be same as main client if no separate config)
-try:
-    translation_client = _build_translation_client()
-except Exception as translation_client_init_e:
-    logger.warning(f"Failed to initialize translation client, falling back to main client: {translation_client_init_e}")
-    translation_client = client
 
 
 def _add_extra_body(completion_args, extra_body, error):
@@ -362,7 +311,8 @@ def is_using_openai_api():
     Returns:
         Boolean indicating if this is the OpenAI API
     """
-    return TEXT_MODEL_BASE_URL and 'api.openai.com' in TEXT_MODEL_BASE_URL
+    base_url = _cfg('TEXT_MODEL_BASE_URL')
+    return base_url and 'api.openai.com' in base_url
 
 
 
@@ -387,8 +337,13 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
     Returns:
         OpenAI completion object or generator (if streaming)
     """
-    if not client:
+    effective_client = _cfg('client')
+    if not effective_client:
         raise LLMNotConfiguredError("No text model is configured. Set TEXT_MODEL_BASE_URL, and TEXT_MODEL_API_KEY for a hosted service.")
+
+    model_name = _cfg('TEXT_MODEL_NAME')
+    base_url = _cfg('TEXT_MODEL_BASE_URL') or ''
+    runtime = llm_config.runtime_settings()
 
     # Check budget before making the call
     if user_id and operation_type:
@@ -406,33 +361,31 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
             logger.warning(f"Budget check failed for user {user_id}: {e}")
 
     try:
-        # Check if we're using GPT-5 with OpenAI API (or forced via env for
-        # Azure AI Foundry and other gateways the URL check can't detect)
-        using_gpt5 = _gpt5_mode_forced() or (is_gpt5_model(TEXT_MODEL_NAME) and is_using_openai_api())
+        # Check if we're using GPT-5 with OpenAI API (or forced for Azure AI
+        # Foundry and other gateways the URL check can't detect).
+        using_gpt5 = (
+            bool(_cfg('TEXT_MODEL_GPT5_FORCE'))
+            or (is_gpt5_model(model_name) and 'api.openai.com' in base_url)
+        )
 
         completion_args = {
-            "model": TEXT_MODEL_NAME,
+            "model": model_name,
             "messages": messages,
             "stream": stream
         }
 
         # Add stream_options to get usage in final chunk for streaming
         # Some LLM servers don't support this OpenAI-specific option
-        if stream and ENABLE_STREAM_OPTIONS:
+        if stream and _cfg('ENABLE_STREAM_OPTIONS'):
             completion_args["stream_options"] = {"include_usage": True}
 
         if using_gpt5:
             # GPT-5 models don't support temperature, top_p, or logprobs
             # They use reasoning_effort and verbosity instead
-            logger.debug(f"Using GPT-5 model: {TEXT_MODEL_NAME} - applying GPT-5 specific parameters")
+            logger.debug(f"Using GPT-5 model: {model_name} - applying GPT-5 specific parameters")
 
-            # Get GPT-5 specific parameters from environment variables
-            reasoning_effort = os.environ.get("GPT5_REASONING_EFFORT", "medium")  # minimal, low, medium, high
-            verbosity = os.environ.get("GPT5_VERBOSITY", "medium")  # low, medium, high
-
-            # Add GPT-5 specific parameters
-            completion_args["reasoning_effort"] = reasoning_effort
-            completion_args["verbosity"] = verbosity
+            completion_args["reasoning_effort"] = _cfg('GPT5_REASONING_EFFORT')
+            completion_args["verbosity"] = _cfg('GPT5_VERBOSITY')
 
             # Use max_completion_tokens instead of max_tokens for GPT-5
             if max_tokens:
@@ -447,7 +400,8 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         if response_format:
             completion_args["response_format"] = response_format
 
-        _add_extra_body(completion_args, TEXT_MODEL_EXTRA_BODY, TEXT_MODEL_EXTRA_BODY_ERROR)
+        _add_extra_body(completion_args, _cfg('TEXT_MODEL_EXTRA_BODY'),
+                        _cfg('TEXT_MODEL_EXTRA_BODY_ERROR'))
 
         # Make the resolved max_tokens visible in logs so users can confirm
         # their SUMMARY_MAX_TOKENS / CHAT_MAX_TOKENS / etc. settings actually
@@ -455,12 +409,12 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         # max_completion_tokens for GPT-5 and max_tokens otherwise.
         budget_key = 'max_completion_tokens' if using_gpt5 else 'max_tokens'
         logger.info(
-            f"LLM call: operation={operation_type or 'unspecified'}, model={TEXT_MODEL_NAME}, "
+            f"LLM call: operation={operation_type or 'unspecified'}, model={model_name}, "
             f"{budget_key}={completion_args.get(budget_key, 'provider default')}"
         )
 
         request_started_at = time.monotonic()
-        response = client.chat.completions.create(**completion_args)
+        response = effective_client.chat.completions.create(**completion_args)
 
         # Track usage for non-streaming calls
         if user_id and operation_type and not stream and response.usage:
@@ -473,7 +427,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
                     prompt_tokens=response.usage.prompt_tokens,
                     completion_tokens=response.usage.completion_tokens,
                     total_tokens=response.usage.total_tokens,
-                    model_name=TEXT_MODEL_NAME,
+                    model_name=model_name,
                     cost=getattr(response.usage, 'cost', None),
                     cached_tokens=cached_tokens,
                     cache_write_tokens=cache_write_tokens
@@ -485,7 +439,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         if not stream and response.choices:
             content = response.choices[0].message.content
             if not content:
-                logger.warning(f"LLM returned empty content. Model: {TEXT_MODEL_NAME}, finish_reason: {response.choices[0].finish_reason}")
+                logger.warning(f"LLM returned empty content. Model: {model_name}, finish_reason: {response.choices[0].finish_reason}")
                 # Log more details if available
                 # The refusal text and the tool-call arguments are model output
                 # about user content: DEBUG only (discussion #603).
@@ -504,8 +458,8 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(
-            f"LLM request timed out after {elapsed_str} (configured read_timeout={LLM_REQUEST_TIMEOUT}s, "
-            f"max_retries={LLM_MAX_RETRIES}, model={TEXT_MODEL_NAME}). "
+            f"LLM request timed out after {elapsed_str} (configured read_timeout={runtime.request_timeout}s, "
+            f"max_retries={runtime.max_retries}, model={model_name}). "
             f"If the elapsed time is much shorter than the configured timeout, an upstream proxy or the "
             f"provider is closing the connection early. For reasoning models that take longer to think, "
             f"increase LLM_REQUEST_TIMEOUT."
@@ -515,7 +469,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         # The provider's error text can quote the prompt: metadata at ERROR,
         # the text at DEBUG (src/utils/error_text.py).
         log_failure(logger, logging.ERROR, f"LLM API call failed (operation={operation_type or 'unspecified'})", e)
-        _log_rejected_parameters(e, 'TEXT_MODEL_EXTRA_BODY', TEXT_MODEL_EXTRA_BODY)
+        _log_rejected_parameters(e, 'TEXT_MODEL_EXTRA_BODY', _cfg('TEXT_MODEL_EXTRA_BODY'))
         raise
 
 
@@ -540,8 +494,9 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
     Returns:
         OpenAI completion object or generator (if streaming)
     """
-    effective_client = chat_client if chat_client else client
+    effective_client = _cfg('chat_client') or _cfg('client')
     chat_config = get_chat_config()
+    runtime = llm_config.runtime_settings()
 
     if not effective_client:
         raise ValueError("Chat LLM client not initialized")
@@ -577,7 +532,7 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
 
         # Add stream_options to get usage in final chunk for streaming
         # Some LLM servers don't support this OpenAI-specific option
-        if stream and ENABLE_STREAM_OPTIONS:
+        if stream and _cfg('ENABLE_STREAM_OPTIONS'):
             completion_args["stream_options"] = {"include_usage": True}
 
         if using_gpt5:
@@ -647,8 +602,8 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
         elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(
-            f"Chat LLM request timed out after {elapsed_str} (configured read_timeout={LLM_REQUEST_TIMEOUT}s, "
-            f"max_retries={LLM_MAX_RETRIES}, model={model_name}). "
+            f"Chat LLM request timed out after {elapsed_str} (configured read_timeout={runtime.request_timeout}s, "
+            f"max_retries={runtime.max_retries}, model={model_name}). "
             f"If the elapsed time is much shorter than the configured timeout, an upstream proxy or the "
             f"provider is closing the connection early. For reasoning models that take longer to think, "
             f"increase LLM_REQUEST_TIMEOUT."
@@ -679,8 +634,9 @@ def call_translation_completion(messages, temperature=0.7, response_format=None,
     Returns:
         OpenAI completion object or generator (if streaming)
     """
-    effective_client = translation_client if translation_client else client
+    effective_client = _cfg('translation_client') or _cfg('client')
     translation_config = get_translation_config()
+    runtime = llm_config.runtime_settings()
 
     if not effective_client:
         raise ValueError("Translation LLM client not initialized")
@@ -716,7 +672,7 @@ def call_translation_completion(messages, temperature=0.7, response_format=None,
 
         # Add stream_options to get usage in final chunk for streaming
         # Some LLM servers don't support this OpenAI-specific option
-        if stream and ENABLE_STREAM_OPTIONS:
+        if stream and _cfg('ENABLE_STREAM_OPTIONS'):
             completion_args["stream_options"] = {"include_usage": True}
 
         if using_gpt5:
@@ -778,8 +734,8 @@ def call_translation_completion(messages, temperature=0.7, response_format=None,
         elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(
-            f"Translation LLM request timed out after {elapsed_str} (configured read_timeout={LLM_REQUEST_TIMEOUT}s, "
-            f"max_retries={LLM_MAX_RETRIES}, model={model_name}). "
+            f"Translation LLM request timed out after {elapsed_str} (configured read_timeout={runtime.request_timeout}s, "
+            f"max_retries={runtime.max_retries}, model={model_name}). "
             f"If the elapsed time is much shorter than the configured timeout, an upstream proxy or the "
             f"provider is closing the connection early. For reasoning models that take longer to think, "
             f"increase LLM_REQUEST_TIMEOUT."
@@ -856,7 +812,7 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
                             prompt_tokens=chunk.usage.prompt_tokens,
                             completion_tokens=chunk.usage.completion_tokens,
                             total_tokens=chunk.usage.total_tokens,
-                            model_name=model_name or TEXT_MODEL_NAME,
+                            model_name=model_name or _cfg('TEXT_MODEL_NAME'),
                             cost=getattr(chunk.usage, 'cost', None),
                             cached_tokens=cached_tokens,
                             cache_write_tokens=cache_write_tokens
@@ -868,7 +824,7 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
                         prompt_tokens=chunk.usage.prompt_tokens,
                         completion_tokens=chunk.usage.completion_tokens,
                         total_tokens=chunk.usage.total_tokens,
-                        model_name=model_name or TEXT_MODEL_NAME,
+                        model_name=model_name or _cfg('TEXT_MODEL_NAME'),
                         cost=getattr(chunk.usage, 'cost', None),
                         cached_tokens=cached_tokens,
                         cache_write_tokens=cache_write_tokens

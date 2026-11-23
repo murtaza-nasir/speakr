@@ -144,7 +144,7 @@ def test_issue_412_title_uses_the_owner_local_time(made, admin_default):
     with app.app_context():
         u = _user(made, timezone="Europe/Istanbul")
         r = _templated(made, u, "{{datetime}} standup")
-        with patch.object(processing, "client", None):
+        with patch.object(processing.llm_config, "is_configured", return_value=False):
             assert compute_title(r) == "2026-10-01 09:13 standup"
 
 
@@ -152,7 +152,7 @@ def test_without_any_zone_titles_stay_utc_as_before(made, admin_default):
     with app.app_context():
         u = _user(made)
         r = _templated(made, u, "{{date}} {{time}}")
-        with patch.object(processing, "client", None):
+        with patch.object(processing.llm_config, "is_configured", return_value=False):
             assert compute_title(r) == "2026-10-01 06:13"
 
 
@@ -161,7 +161,7 @@ def test_admin_default_applies_to_users_without_a_zone(made, admin_default):
     with app.app_context():
         u = _user(made)
         r = _templated(made, u, "{{datetime}}")
-        with patch.object(processing, "client", None):
+        with patch.object(processing.llm_config, "is_configured", return_value=False):
             assert compute_title(r) == "2026-09-30 23:13"
 
 

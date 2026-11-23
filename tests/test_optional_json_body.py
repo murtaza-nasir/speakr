@@ -140,8 +140,7 @@ def _session(world):
 
 @pytest.mark.parametrize("data,content_type", NO_BODY)
 def test_web_reprocess_summary_without_a_body_queues_a_job(world, data, content_type):
-    import src.api.recordings as rec_module
-    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), \
+    with patch("src.services.llm_config.is_configured", return_value=True), patch("src.services.llm.client", object()), \
             patch.object(job_queue, "enqueue", return_value=12) as enq:
         resp = _session(world).post(f"/recording/{world['rec']}/reprocess_summary", data=data,
                                     content_type=content_type)
@@ -150,8 +149,7 @@ def test_web_reprocess_summary_without_a_body_queues_a_job(world, data, content_
 
 
 def test_web_reprocess_summary_with_malformed_json_is_a_client_error(world):
-    import src.api.recordings as rec_module
-    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), \
+    with patch("src.services.llm_config.is_configured", return_value=True), patch("src.services.llm.client", object()), \
             patch.object(job_queue, "enqueue") as enq:
         resp = _session(world).post(f"/recording/{world['rec']}/reprocess_summary", data="{not json",
                                     content_type="application/json")

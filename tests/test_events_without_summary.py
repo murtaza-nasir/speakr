@@ -64,7 +64,7 @@ def test_events_are_extracted_when_auto_summarization_is_off(made):
     with app.app_context():
         _, r = _setup(made)
         a, b, c = _quiet()
-        with a, b, c, patch.object(proc, "client", MagicMock()), \
+        with a, b, c, patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "extract_events_from_transcript") as ev:
             proc.generate_title_task(app.app_context(), r.id, will_auto_summarize=False)
         ev.assert_called_once()
@@ -76,7 +76,7 @@ def test_no_events_when_the_owner_has_extraction_off(made):
     with app.app_context():
         _, r = _setup(made, extract=False)
         a, b, c = _quiet()
-        with a, b, c, patch.object(proc, "client", MagicMock()), \
+        with a, b, c, patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "extract_events_from_transcript") as ev:
             proc.finish_processing(r.id)
         ev.assert_not_called()
@@ -86,7 +86,7 @@ def test_the_summary_path_extracts_events_once_with_the_summary(made):
     with app.app_context():
         _, r = _setup(made)
         a, b, c = _quiet()
-        with a, b, c, patch.object(proc, "client", MagicMock()), \
+        with a, b, c, patch.object(proc.llm_config, "is_configured", return_value=True), \
              patch.object(proc, "call_llm_completion", return_value=_completion("## Summary\nLaunch moved.")), \
              patch.object(proc, "extract_events_from_transcript") as ev:
             proc.generate_summary_only_task(app.app_context(), r.id)
@@ -105,7 +105,7 @@ def test_without_a_summary_the_prompt_carries_the_transcript_past_8000_chars(mad
             return _completion('{"events": []}')
 
         with patch.object(proc, "call_llm_completion", side_effect=fake_llm), \
-             patch.object(proc, "client", MagicMock()):
+             patch.object(proc.llm_config, "is_configured", return_value=True):
             proc.extract_events_from_transcript(r.id, long, "")
         prompt = seen["prompt"]
         assert "Transcript Summary" not in prompt

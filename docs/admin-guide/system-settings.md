@@ -329,12 +329,18 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | `enable_incognito_mode` | `ENABLE_INCOGNITO_MODE` |
 | `enable_internal_sharing` | `ENABLE_INTERNAL_SHARING` |
 | `enable_public_sharing` | `ENABLE_PUBLIC_SHARING` |
+| `enable_stream_options` | `ENABLE_STREAM_OPTIONS` |
 | `global_retention_days` | `GLOBAL_RETENTION_DAYS` |
 | `help_center_label` | `HELP_CENTER_LABEL` |
 | `help_center_url` | `HELP_CENTER_URL` |
 | `incognito_mode_default` | `INCOGNITO_MODE_DEFAULT` |
 | `incognito_temp_max_age_hours` | `INCOGNITO_TEMP_MAX_AGE_HOURS` |
+| `llm_connect_timeout` | `LLM_CONNECT_TIMEOUT` |
+| `llm_max_retries` | `LLM_MAX_RETRIES` |
+| `llm_request_timeout` | `LLM_REQUEST_TIMEOUT` |
+| `llm_write_timeout` | `LLM_WRITE_TIMEOUT` |
 | `max_concurrent_uploads` | `MAX_CONCURRENT_UPLOADS` |
+| `prefix_cache_optimized_prompts` | `PREFIX_CACHE_OPTIMIZED_PROMPTS` |
 | `recording_tombstone_days` | `RECORDING_TOMBSTONE_DAYS` |
 | `registration_allowed_domains` | `REGISTRATION_ALLOWED_DOMAINS` |
 | `require_email_verification` | `REQUIRE_EMAIL_VERIFICATION` |
@@ -346,6 +352,7 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | `sso_api_exchange_clients` | `SSO_API_EXCHANGE_CLIENTS` |
 | `sso_api_scopes` | `SSO_API_SCOPES` |
 | `sso_api_tokens_enabled` | `SSO_API_TOKENS_ENABLED` |
+| `text_model_cache_breakpoints` | `TEXT_MODEL_CACHE_BREAKPOINTS` |
 | `user_search_scope` | `USER_SEARCH_SCOPE` |
 | `users_can_delete` | `USERS_CAN_DELETE` |
 | `video_passthrough_asr` | `VIDEO_PASSTHROUGH_ASR` |

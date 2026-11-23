@@ -123,7 +123,7 @@ def test_extraction_keeps_the_wall_clock_time(world):
         db.session.get(User, world["user"]).extract_events = True
         db.session.commit()
         completion = MagicMock(choices=[MagicMock(message=MagicMock(content=reply, reasoning=None))])
-        with patch.object(proc, "client", MagicMock()), patch.object(proc, "call_llm_completion", return_value=completion), \
+        with patch.object(proc.llm_config, "is_configured", return_value=True), patch.object(proc, "call_llm_completion", return_value=completion), \
                 patch("src.services.webhook_dispatch.emit_webhook_event"):
             proc.extract_events_from_transcript(world["rec"], r.transcription, r.summary or "")
         ev = Event.query.filter_by(recording_id=world["rec"]).one()

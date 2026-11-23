@@ -55,9 +55,10 @@ def compute_title(recording, *, raise_budget_errors=False):
     interactive endpoint shows the reason); background callers skip the AI
     title instead.
     """
-    # Read through the processing module so tests and callers that patch
-    # processing.client / processing._generate_ai_title affect this step too.
+    # The AI-title call goes through the processing module so tests and
+    # callers that patch processing._generate_ai_title affect this step too.
     from src.tasks import processing
+    from src.services import llm_config
     from src.services.llm import TokenBudgetExceeded
 
     template, source = resolve_naming_template(recording)
@@ -68,7 +69,7 @@ def compute_title(recording, *, raise_budget_errors=False):
     ai_title = None
     if template is not None and not template.needs_ai_title():
         current_app.logger.info(f"Naming template needs no AI title for recording {recording.id}")
-    elif processing.client is None:
+    elif not llm_config.is_configured('text'):
         current_app.logger.warning(f"Skipping AI title for {recording.id}: LLM client not configured.")
     elif not recording.transcription or len(recording.transcription.strip()) < 10:
         current_app.logger.warning(f"Transcription for recording {recording.id} is too short for an AI title.")
