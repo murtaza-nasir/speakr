@@ -9,6 +9,7 @@ import html
 import os
 import smtplib
 import logging
+import unicodedata
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
@@ -20,6 +21,7 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask import current_app, url_for
 
 from src.utils.localization import match_language, translate
+from src.utils.titles import TITLE_MAX_LENGTH
 
 logger = logging.getLogger(__name__)
 
@@ -650,6 +652,17 @@ def _format_duration(seconds) -> Optional[str]:
     return f'{secs}s'
 
 
+def _subject_safe_title(title: str) -> str:
+    """Return a readable, bounded title safe for a mail subject.
+
+    C0/C1 controls include CR and LF, which can break MIME serialisation or
+    inject another header. Remove them only from the subject; the body keeps
+    the stored title, with user-controlled HTML escaped by ``_h``.
+    """
+    safe = ''.join(ch for ch in title if unicodedata.category(ch) != 'Cc')
+    return safe.strip()[:TITLE_MAX_LENGTH] or 'Untitled recording'
+
+
 def send_transcription_complete_email(user, recording) -> bool:
     """Tell a user their recording finished transcribing.
 
@@ -659,8 +672,9 @@ def send_transcription_complete_email(user, recording) -> bool:
         return False
 
     title = (getattr(recording, 'title', None) or 'Untitled recording').strip()
+    subject_title = _subject_safe_title(title)
     url = _recording_url(recording.id)
-    subject = f'Transcription ready: {title}'
+    subject = f'Transcription ready: {subject_title}'
 
     rows = [('Recording', title)]
     duration = _format_duration(getattr(recording, 'audio_duration_seconds', None))
@@ -710,8 +724,9 @@ def send_transcription_failed_email(user, recording, error: str = None) -> bool:
         return False
 
     title = (getattr(recording, 'title', None) or 'Untitled recording').strip()
+    subject_title = _subject_safe_title(title)
     url = _recording_url(recording.id)
-    subject = f'Transcription failed: {title}'
+    subject = f'Transcription failed: {subject_title}'
 
     # The worker's error text can carry an upstream URL or key, so it is
     # summarised rather than forwarded in full.

@@ -7,6 +7,7 @@ mailing somebody who did not ask rather than failing to mail somebody who did.
 """
 
 import os
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -15,6 +16,7 @@ from src.app import app
 from src.database import db
 from src.models import User, Recording
 from src.services import email as email_service
+from src.utils.titles import TITLE_MAX_LENGTH
 
 
 @pytest.fixture
@@ -289,6 +291,76 @@ def test_the_shared_verification_template_also_escapes_the_username(user_factory
         _, _, html, _ = send.call_args[0]
         assert '<b>bold</b>' not in html
         assert '&lt;b&gt;bold&lt;/b&gt;' in html
+
+
+# --- recording titles in the Subject header ------------------------------
+
+_NOTIFICATION_SENDERS = [
+    pytest.param(email_service.send_transcription_complete_email,
+                 'Transcription ready: ', id='complete'),
+    pytest.param(email_service.send_transcription_failed_email,
+                 'Transcription failed: ', id='failed'),
+]
+
+
+@pytest.mark.parametrize('sender,prefix', _NOTIFICATION_SENDERS)
+@pytest.mark.parametrize('title,safe_title', [
+    pytest.param('Evil\r\nX-Injected: yes', 'EvilX-Injected: yes', id='crlf-injection'),
+    pytest.param('Line one\nLine two', 'Line oneLine two', id='line-feed'),
+    pytest.param('Carriage\rReturn', 'CarriageReturn', id='carriage-return'),
+    pytest.param('Before\x00\t\x1f\x7f\x80\x85\x9fAfter', 'BeforeAfter', id='c0-c1-controls'),
+    pytest.param('\x00\x1f\x7f\x80\x85\x9f', 'Untitled recording', id='controls-only'),
+    pytest.param('Quarterly planning call', 'Quarterly planning call', id='normal-title'),
+])
+def test_notification_subject_sanitizes_title_without_changing_body(
+        user_factory, smtp_configured, sender, prefix, title, safe_title):
+    user = user_factory(notify_email_on_completion=True)
+    with app.app_context(), patch.object(email_service, '_send_email', return_value=True) as send:
+        rec = _recording(user.id, title=title)
+        rec.id = 13
+        assert sender(user, rec) is True
+
+        _, subject, html, text = send.call_args[0]
+        assert subject == f'{prefix}{safe_title}'
+        # Sanitising the header must not rewrite the stored title in the body.
+        body_title = title.strip()
+        assert body_title in html
+        assert body_title in text
+
+
+@pytest.mark.parametrize('sender,prefix', _NOTIFICATION_SENDERS)
+def test_notification_subject_caps_title_length(user_factory, smtp_configured, sender, prefix):
+    user = user_factory(notify_email_on_completion=True)
+    # A legacy SQLite row can exceed the model's assignment-time clip (#430).
+    rec = SimpleNamespace(id=14, title='a' * 500,
+                          audio_duration_seconds=None, transcription_duration_seconds=None)
+    with app.app_context(), patch.object(email_service, '_send_email', return_value=True) as send:
+        assert sender(user, rec) is True
+
+        _, subject, html, _ = send.call_args[0]
+        assert subject == f'{prefix}{"a" * TITLE_MAX_LENGTH}'
+        assert rec.title in html
+
+
+@pytest.mark.parametrize('sender,prefix', _NOTIFICATION_SENDERS)
+def test_control_character_title_still_reaches_smtp(user_factory, smtp_configured, sender, prefix):
+    """Exercise real MIME serialisation, not only the value passed to _send_email."""
+    from email import message_from_string
+
+    user = user_factory(notify_email_on_completion=True)
+    rec = _recording(user.id, title='Evil\r\nX-Injected: yes')
+    rec.id = 15
+    with app.app_context(), \
+            patch.object(email_service, 'get_email_config', return_value=_FAKE_SMTP_CONFIG), \
+            patch.object(email_service, '_load_logo_bytes', return_value=None), \
+            patch('smtplib.SMTP') as smtp:
+        assert sender(user, rec) is True
+        smtp.return_value.sendmail.assert_called_once()
+        raw = smtp.return_value.sendmail.call_args[0][2]
+
+    msg = message_from_string(raw)
+    assert msg['Subject'] == f'{prefix}EvilX-Injected: yes'
+    assert msg.get('X-Injected') is None
 
 
 # --- the header logo -----------------------------------------------------
