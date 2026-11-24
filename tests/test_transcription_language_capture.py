@@ -89,6 +89,43 @@ def test_what_the_backend_reports_is_normalised_before_storage(reported, expecte
     assert normalize_language_code(reported) == expected
 
 
+@pytest.mark.parametrize('value,expected', [
+    ('   ', None),
+    ('Auto-Detect', None),
+    ('FR', 'fr'),
+    ('zh', 'zh'),
+    ('yue', 'yue'),           # a three-letter code (Cantonese)
+    ('french', 'fr'),
+    ('German', 'de'),
+    ('Chinese', 'zh'),
+    ('Cantonese', 'yue'),
+    # Native names (#256)
+    ('Français', 'fr'),
+    ('français', 'fr'),
+    ('Francais', 'fr'),
+    ('Deutsch', 'de'),
+    ('Español', 'es'),
+    ('Português', 'pt'),
+    ('русский', 'ru'),
+    ('日本語', 'ja'),
+    ('中文', 'zh'),
+    ('fr-FR', 'fr'),
+    ('zh_CN', 'zh'),
+    ('pt-BR', 'pt'),
+    ('Klingon', None),
+    ('xyz', None),
+    ('123', None),
+    ('???', None),
+])
+def test_display_and_native_language_names_are_normalised(value, expected):
+    assert normalize_language_code(value) == expected
+
+
+def test_the_supported_set_holds_codes_only():
+    from src.utils.language import SUPPORTED_CODES
+    assert 'fr' in SUPPORTED_CODES
+    assert 'français' not in SUPPORTED_CODES
+
 def test_the_stored_value_fits_the_column(owner):
     """VARCHAR(20) against normalised output, which is a 2-letter code."""
     length = Recording.__table__.columns['transcription_language'].type.length
