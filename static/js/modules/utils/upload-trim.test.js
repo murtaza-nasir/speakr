@@ -32,6 +32,11 @@ describe('keptSeconds', () => {
         expect(keptSeconds(2, 5)).toBe(3);
         expect(keptSeconds(0, 7)).toBe(7);
     });
+    it('stops at the file when an end is past it', () => {
+        expect(keptSeconds(0, 301220, 300)).toBe(300);
+        expect(keptSeconds(60, 301220, 300)).toBe(240);
+        expect(keptSeconds(0, 120, 300)).toBe(120);
+    });
 });
 
 describe('previewSpans', () => {

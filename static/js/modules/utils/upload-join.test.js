@@ -65,6 +65,13 @@ describe('totalJoinDuration', () => {
           const whole = item('b', 'b', 2, 'queued', 30);
           expect(totalJoinDuration([cut, whole])).toBe(60);
       });
+      it('does not count a kept span past the file', () => {
+          const cut = item('a', 'a', 1, 'queued', 300);
+          cut.trimOn = true;
+          cut.trimStart = 60;
+          cut.trimEnd = 301220;
+          expect(totalJoinDuration([cut])).toBe(240);
+      });
 });
 
 describe('newJoinGroupId and isVideoFileName', () => {

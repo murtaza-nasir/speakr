@@ -4,6 +4,8 @@
  * ({ clientId, status, file, duration }), so they can be tested alone.
  */
 
+import { keptSeconds } from './upload-trim.js';
+
 export const MAX_JOIN_FILES = 20;
 
 // The upload dialog's own list of video containers (#510).
@@ -72,10 +74,9 @@ export function placeQueuedItem(queue, clientId, to) {
 export function partDuration(item) {
     if (!item.duration) return null;
     if (!item.trimOn) return item.duration;
-    const start = Number(item.trimStart);
-    const end = Number(item.trimEnd);
-    if (!Number.isInteger(start) || !Number.isInteger(end)) return item.duration;
-    return Math.max(0, end - start);
+    const kept = keptSeconds(item.trimStart, item.trimEnd, item.duration);
+    if (kept == null) return item.duration;
+    return kept;
 }
 
 /** Total duration in seconds, or null while any file's duration is unknown. */

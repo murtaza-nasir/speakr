@@ -112,7 +112,7 @@ export function useAudio(state, utils) {
         captureTrimPreviewFailed.value = false;
     };
 
-    const captureKeptSeconds = () => keptSeconds(captureTrimStart.value, captureTrimEnd.value);
+    const captureKeptSeconds = () => keptSeconds(captureTrimStart.value, captureTrimEnd.value, captureDuration.value);
 
     const captureTrimPayload = () => {
         if (!captureTrimOn.value) return {};
@@ -122,7 +122,7 @@ export function useAudio(state, utils) {
     const previewCaptureTrim = async () => {
         if (!captureTrimOn.value || !audioBlobURL.value) return;
         captureTrimPreviewFailed.value = false;
-        const spans = previewSpans(captureTrimStart.value, captureTrimEnd.value);
+        const spans = previewSpans(captureTrimStart.value, captureTrimEnd.value, captureDuration.value);
         if (!spans.length) return;
         const audio = new Audio();
         audio.preload = 'auto';

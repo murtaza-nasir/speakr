@@ -32,12 +32,22 @@ export function trimFields(start, end, durationSeconds) {
     return fields;
 }
 
-/** How many seconds the named range keeps, for the line under the file. */
-export function keptSeconds(start, end) {
+/**
+ * How many seconds the named range keeps, for the line under the file.
+ * An end past the file, or a start before it, stops at the file itself.
+ */
+export function keptSeconds(start, end, durationSeconds) {
     const startSeconds = wholeSeconds(start);
     const endSeconds = wholeSeconds(end);
     if (startSeconds === null || endSeconds === null) return null;
-    return Math.max(0, endSeconds - startSeconds);
+    let from = startSeconds;
+    let to = endSeconds;
+    const duration = Number(durationSeconds);
+    if (Number.isFinite(duration) && duration > 0) {
+        from = Math.min(Math.max(0, from), duration);
+        to = Math.min(Math.max(0, to), duration);
+    }
+    return Math.max(0, to - from);
 }
 
 /**
@@ -45,10 +55,16 @@ export function keptSeconds(start, end) {
  * start and three seconds before the end, or the whole kept span once when
  * that span is six seconds or shorter.
  */
-export function previewSpans(start, end) {
-    const startSeconds = wholeSeconds(start);
-    const endSeconds = wholeSeconds(end);
-    if (startSeconds === null || endSeconds === null || endSeconds <= startSeconds) return [];
+export function previewSpans(start, end, durationSeconds) {
+    let startSeconds = wholeSeconds(start);
+    let endSeconds = wholeSeconds(end);
+    if (startSeconds === null || endSeconds === null) return [];
+    const duration = Number(durationSeconds);
+    if (Number.isFinite(duration) && duration > 0) {
+        startSeconds = Math.min(Math.max(0, startSeconds), duration);
+        endSeconds = Math.min(Math.max(0, endSeconds), duration);
+    }
+    if (endSeconds <= startSeconds) return [];
     if (endSeconds - startSeconds <= 6) return [{ start: startSeconds, end: endSeconds }];
     return [
         { start: startSeconds, end: startSeconds + 3 },

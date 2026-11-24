@@ -1612,7 +1612,7 @@ export function useUpload(state, utils) {
       const previewQueueTrim = async (item) => {
           if (!item?.trimOn || !item.file) return;
           item.trimPreviewFailed = false;
-          const spans = previewSpans(item.trimStart, item.trimEnd);
+          const spans = previewSpans(item.trimStart, item.trimEnd, item.duration);
           if (!spans.length) return;
           const url = URL.createObjectURL(item.file);
           const audio = new Audio();
@@ -1648,7 +1648,7 @@ export function useUpload(state, utils) {
           }
       };
 
-      const queueKeptSeconds = (item) => keptSeconds(item?.trimStart, item?.trimEnd);
+      const queueKeptSeconds = (item) => keptSeconds(item?.trimStart, item?.trimEnd, item?.duration);
 
       return {
           uploadAccept: UPLOAD_ACCEPT,
