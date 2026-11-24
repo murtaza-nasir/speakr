@@ -38,7 +38,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import ROOT, PageProblems, login  # noqa: E402
+from browser_checks import ROOT, PageProblems, login, precondition_unmet  # noqa: E402
 from seed_recordings import TITLES  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
@@ -115,7 +115,7 @@ def share_link(owner):
     items = listing.json().get("recordings", []) if listing.ok else []
     ids = [r["id"] for r in items if r.get("title") in TITLES]
     if not ids:
-        pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+        precondition_unmet("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
     token = page.locator('meta[name="csrf-token"]').first.get_attribute("content")
     headers = {"X-CSRFToken": token, "Content-Type": "application/json"}
     # A link is made only over https, which a proxy reports this way.
@@ -123,7 +123,7 @@ def share_link(owner):
     response = page.request.post(f"{BASE}/api/recording/{ids[0]}/share", headers={**headers, **https},
                                  data=json.dumps({"share_summary": True, "share_notes": False, "force_new": True}))
     if response.status == 403:
-        pytest.skip(f"public links cannot be made on this instance: {response.text()[:200]}")
+        precondition_unmet(f"public links cannot be made on this instance: {response.text()[:200]}")
     assert response.ok, f"could not share: HTTP {response.status} {response.text()[:200]}"
     body = response.json()
     yield "/share/" + body["share_url"].rsplit("/share/", 1)[1]

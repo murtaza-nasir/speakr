@@ -41,7 +41,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, en, login  # noqa: E402
+from browser_checks import PageProblems, check_common, en, login, precondition_unmet  # noqa: E402
 from seed_recordings import AUDIO_SECONDS, TITLES, meeting_segments  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
@@ -141,7 +141,7 @@ class Owner:
         response = self.post(f"/api/recording/{recording_id}/share",
                              {"share_summary": True, "share_notes": notes, "force_new": True}, headers=https)
         if response.status == 403:
-            pytest.skip(f"public links cannot be made on this instance: {response.text()[:200]}")
+            precondition_unmet(f"public links cannot be made on this instance: {response.text()[:200]}")
         assert response.ok, f"could not share: HTTP {response.status} {response.text()[:200]}"
         body = response.json()
         self.shares.append(body["share"]["id"])
@@ -241,7 +241,7 @@ def owner(browser):
     session = Owner(browser)
     if set(session.ids) != set(TITLES):
         session.close()
-        pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+        precondition_unmet("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
     yield session
     session.close()
 

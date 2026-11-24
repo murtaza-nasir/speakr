@@ -58,7 +58,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, clear_finished_jobs, en, login  # noqa: E402
+from browser_checks import PageProblems, check_common, clear_finished_jobs, en, login, precondition_unmet  # noqa: E402
 from seed_recordings import AUDIO_SECONDS, TITLES, meeting_segments  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
@@ -321,7 +321,7 @@ def phone(browser):
     session = Phone(browser)
     if set(session.ids) != set(TITLES):
         session.close()
-        pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+        precondition_unmet("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
     # The layout is measured without rows in the processing queue: a finished
     # job left by an earlier file adds one to every page
     clear_finished_jobs(session.page.request, BASE)

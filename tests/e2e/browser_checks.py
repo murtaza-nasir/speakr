@@ -7,6 +7,9 @@
   (``${`` or ``{{``) and on Tailwind utilities that are not applied.
 - ``login`` signs in through the login form.
 - ``open_page`` opens a path after leaving the previous page.
+- ``precondition_unmet`` stops a test whose instance lacks what
+  run_speakr.py provides (the seeded recordings, Inquire, public links):
+  a skip on another instance, a failure with SPEAKR_E2E_STRICT=1 (CI).
 
 Console messages that are not failures (documented allowlist):
 - messages from browser extensions (chrome-extension://);
@@ -18,11 +21,28 @@ import json
 import os
 import re
 
+import pytest
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 IGNORED_CONSOLE = (re.compile(r"chrome-extension://"), re.compile(r"Failed to load resource"))
 PLAY_CDN = re.compile(r"tailwind\.min\.js|cdn\.tailwindcss\.com")
 
+
+
+def precondition_unmet(message):
+    """Stop the test: the instance lacks what run_speakr.py gives it.
+
+    An instance that run_speakr.py started has the seeded recordings
+    (seed_recordings.py), Inquire and public links. A test run against
+    another instance, such as a developer's own, skips the tests that need
+    them. With SPEAKR_E2E_STRICT=1, as in CI, where the instance is always
+    started by run_speakr.py, a missing precondition is a regression (a
+    listing, permission or seed fault) and the test fails with the message.
+    """
+    if os.environ.get("SPEAKR_E2E_STRICT") == "1":
+        pytest.fail(f"{message} (SPEAKR_E2E_STRICT=1: the instance must provide it)", pytrace=False)
+    pytest.skip(message)
 
 class PageProblems:
     """Failed responses and JavaScript errors for the current page.

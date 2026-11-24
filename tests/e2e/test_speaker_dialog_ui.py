@@ -43,7 +43,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, en, login  # noqa: E402
+from browser_checks import PageProblems, check_common, en, login, precondition_unmet  # noqa: E402
 from seed_recordings import AUDIO_SECONDS, TITLES, meeting_segments  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
@@ -235,7 +235,7 @@ def dialog(browser, segments):
     session = Dialog(browser, {"width": 1400, "height": 900})
     if set(session.ids) != set(TITLES):
         session.close()
-        pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+        precondition_unmet("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
     session.store(session.ids[LONG_TITLE], segments)
     yield session
     session.store(session.ids[LONG_TITLE], meeting_segments())

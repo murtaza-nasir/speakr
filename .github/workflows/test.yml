@@ -271,10 +271,13 @@ jobs:
 
       # Every tests/e2e/test_*_ui.py module runs here on the same instance,
       # after the smoke test, so a new browser test cannot be left out (#643).
-      # Each module restores the settings it changes.
+      # Each module restores the settings it changes. SPEAKR_E2E_STRICT: a test
+      # that finds no seeded recordings (or no Inquire, no public links) fails
+      # instead of skipping, since run_speakr.py always provides them (#641).
       - name: Browser smoke test and browser UI tests
         env:
           SPEAKR_BROWSER_SMOKE: '1'
+          SPEAKR_E2E_STRICT: '1'
           SPEAKR_BASE_URL: http://127.0.0.1:8899
           SPEAKR_CONTROL_URL: http://127.0.0.1:8898
         run: pytest tests/e2e/test_browser_smoke.py tests/e2e/test_*_ui.py -q -p no:cacheprovider --noconftest -rs

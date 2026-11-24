@@ -42,7 +42,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, en, login, open_page  # noqa: E402
+from browser_checks import PageProblems, check_common, en, login, open_page, precondition_unmet  # noqa: E402
 from seed_recordings import TITLES  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
@@ -131,7 +131,7 @@ def world():
         if MEETING_TITLE not in ids:
             admin.context.close()
             browser.close()
-            pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+            precondition_unmet("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
         w.recording_id = ids[MEETING_TITLE]
         try:
             r = admin.api("POST", "/admin/settings", {"key": "enable_internal_sharing", "value": "true", "setting_type": "boolean"})

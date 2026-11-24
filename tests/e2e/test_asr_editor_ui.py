@@ -47,7 +47,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, en, login, open_page  # noqa: E402
+from browser_checks import PageProblems, check_common, en, login, open_page, precondition_unmet  # noqa: E402
 from seed_recordings import SENTENCES, TITLES, meeting_segments  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
@@ -328,7 +328,7 @@ def editor(browser):
     session = Editor(browser, {"width": 1400, "height": 900})
     if set(session.ids) != set(TITLES):
         session.close()
-        pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+        precondition_unmet("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
     yield session
     session.store(session.ids[MEETING_TITLE], meeting_segments())
     session.store(session.ids[LONG_TITLE], meeting_segments())
@@ -1645,7 +1645,7 @@ def test_lane_names_and_add_speaker_on_a_phone(browser):
     phone = Editor(browser, {"width": 390, "height": 800})
     try:
         if set(phone.ids) != set(TITLES):
-            pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+            precondition_unmet("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
         recording_id = phone.ids[MEETING_TITLE]
         seeded = meeting_segments()
         phone.store(recording_id, seeded)
@@ -1712,7 +1712,7 @@ def test_phone_width(browser):
     phone = Editor(browser, {"width": 390, "height": 800})
     try:
         if set(phone.ids) != set(TITLES):
-            pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+            precondition_unmet("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
         recording_id = phone.ids[MEETING_TITLE]
         phone.store(recording_id, meeting_segments())
         phone.open(recording_id)

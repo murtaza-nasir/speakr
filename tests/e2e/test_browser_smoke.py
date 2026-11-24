@@ -42,7 +42,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, login, open_page  # noqa: E402
+from browser_checks import PageProblems, check_common, login, open_page, precondition_unmet  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
 BASE = os.environ.get("SPEAKR_BASE_URL", "http://127.0.0.1:8899").rstrip("/")
@@ -471,7 +471,7 @@ def test_inquire_page(browser_page):
     page, problems = browser_page
     response = _open(page, problems, "/inquire")
     if response is None or response.status != 200 or "/inquire" not in page.url:
-        pytest.skip("Inquire mode is not enabled")
+        precondition_unmet("Inquire mode is not enabled")
     problems.failed[:] = [f for f in problems.failed if "/inquire " not in f]
     assert page.locator("#inquire-app[data-v-app]").count() == 1, "/inquire: the app did not mount"
     _check_header_translated(page, "/inquire", "#inquire-app header")
@@ -484,7 +484,7 @@ def test_a_recording_detail_view(browser_page):
     listing = page.request.get(f"{BASE}/api/recordings?per_page=1")
     items = listing.json().get("recordings", []) if listing.ok else []
     if not items:
-        pytest.skip("no recordings on this instance")
+        precondition_unmet("no recordings on this instance")
     path = f"/recordings/{items[0]['id']}"
     _open(page, problems, path)
     _check_user_menu(page, path)
@@ -512,7 +512,7 @@ def test_the_chat_panel_layout_is_shared_and_anchored(browser_page):
     listing = page.request.get(f"{BASE}/api/recordings?per_page=2")
     items = listing.json().get("recordings", []) if listing.ok else []
     if len(items) < 2:
-        pytest.skip("needs two recordings")
+        precondition_unmet("needs two recordings")
     first, second = (f"/recordings/{r['id']}" for r in items[:2])
     page.goto(f"{BASE}{first}")
     page.wait_for_timeout(2500)

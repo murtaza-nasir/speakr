@@ -45,7 +45,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, en, login  # noqa: E402
+from browser_checks import PageProblems, check_common, en, login, precondition_unmet  # noqa: E402
 from seed_recordings import TITLES  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
@@ -133,7 +133,7 @@ def recording_id(page):
     items = listing.json().get("recordings", []) if listing.ok else []
     ids = [r["id"] for r in items if r.get("title") in TITLES]
     if not ids:
-        pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+        precondition_unmet("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
     return ids[0], next(r["title"] for r in items if r["id"] == ids[0])
 
 

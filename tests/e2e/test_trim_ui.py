@@ -35,7 +35,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, clear_finished_jobs, en  # noqa: E402
+from browser_checks import PageProblems, check_common, clear_finished_jobs, en, precondition_unmet  # noqa: E402
 from seed_recordings import TRIM_TITLE  # noqa: E402
 from test_asr_editor_ui import BASE, CANVAS, DIALOG, TL, Editor  # noqa: E402
 
@@ -127,7 +127,7 @@ def desk(browser):
     session.trim_id = trim_id(session)
     if session.trim_id is None:
         session.close()
-        pytest.skip("no seeded trim recording on this instance (tests/e2e/seed_recordings.py)")
+        precondition_unmet("no seeded trim recording on this instance (tests/e2e/seed_recordings.py)")
     try:
         yield session
     finally:
@@ -145,7 +145,7 @@ def test_trim_mode_drag_type_preview_and_cut(desk):
     total = float(before["audio_duration"])
     segments_before = json.loads(before["transcription"])
     if total < 20:
-        pytest.skip(f"the trim recording was trimmed to {total:.0f} s by earlier runs; start a new instance")
+        precondition_unmet(f"the trim recording was trimmed to {total:.0f} s by earlier runs; start a new instance")
 
     editor.open(rid)
     editor.tl_ready()
