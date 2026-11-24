@@ -137,8 +137,33 @@
                                     :title="t('tooltips.removeFromQueue')">
                                 <i class="fas fa-times text-xs"></i>
                             </button>
-                        </div>
-                        <!-- Inline hint when VIDEO_RETENTION is off at the
+                          </div>
+                          <div v-if="item.duration" class="pl-5 mt-1" @click.stop>
+                              <button v-if="!item.trimOn" type="button" @click="enableQueueTrim(item)"
+                                      class="text-[11px] text-[var(--text-accent)] hover:underline">
+                                  <span v-text="t('upload.trimToggle')"></span>
+                              </button>
+                              <div v-else class="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)]">
+                                  <label class="inline-flex items-center gap-1">
+                                      <span v-text="t('upload.trimStart')"></span>
+                                      <input type="number" min="0" step="1" inputmode="numeric"
+                                             v-model.number="item.trimStart"
+                                             class="w-14 px-1 py-0.5 rounded border border-[var(--border-secondary)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                  </label>
+                                  <label class="inline-flex items-center gap-1">
+                                      <span v-text="t('upload.trimEnd')"></span>
+                                      <input type="number" min="0" step="1" inputmode="numeric"
+                                             v-model.number="item.trimEnd"
+                                             class="w-14 px-1 py-0.5 rounded border border-[var(--border-secondary)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                  </label>
+                                  <span v-text="t('upload.trimKept', { kept: formatDuration(queueKeptSeconds(item)), total: formatDuration(item.duration) })"></span>
+                                  <button type="button" @click="previewQueueTrim(item)"
+                                          class="text-[var(--text-accent)] hover:underline"
+                                          v-text="t('upload.trimPreview')"></button>
+                                  <span v-if="item.trimPreviewFailed" class="text-[var(--text-muted)]" v-text="t('upload.trimPreviewFailed')"></span>
+                              </div>
+                          </div>
+                          <!-- Inline hint when VIDEO_RETENTION is off at the
                              server. Shows on each video file so users
                              aren't surprised the video stream is dropped
                              and that the larger size limit applies.

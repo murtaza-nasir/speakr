@@ -18,6 +18,7 @@ import {
     newJoinGroupId, MAX_JOIN_FILES,
 } from '../utils/upload-join.js';
 import { UPLOAD_ACCEPT, isAcceptedUploadFile, isVideoFileName } from '../utils/upload-file-type.js';
+import { keptSeconds, previewSpans, trimFields, wholeEnd } from '../utils/upload-trim.js';
 import * as ServerSessions from '../db/server-recording-sessions.js';
 import {
     failedUploadRecord, partitionByOwner, belongsTo, resurfaceAction, queueItemFromRecord, coveredByPendingUpload,
@@ -370,9 +371,15 @@ export function useUpload(state, utils) {
                     // show e.g. "12:34" next to the filename. Leaving
                     // it null shows just size until probing finishes
                     // (usually well under a second).
-                    duration: null,
-                    willAutoSummarize: false // Server will tell us via SUMMARIZING status
-                };
+                      duration: null,
+                      // The range control stays off until the person turns it
+                      // on, and it stays hidden until a duration has been read.
+                      trimOn: false,
+                      trimStart: 0,
+                      trimEnd: null,
+                      trimPreviewFailed: false,
+                      willAutoSummarize: false // Server will tell us via SUMMARIZING status
+                  };
                 uploadQueue.value.push(queueItem);
                 // Fire-and-forget duration probe. Mutating the queue
                 // item's `duration` field after the push is reactive
@@ -711,8 +718,9 @@ export function useUpload(state, utils) {
                 formData.append('keep_audio_only', 'true');
             }
 
-            // Names this upload for POST /upload/cancel (cancelUpload below).
-            formData.append('client_upload_id', fileItem.clientId);
+              // Names this upload for POST /upload/cancel (cancelUpload below).
+              formData.append('client_upload_id', fileItem.clientId);
+              appendQueueTrim(formData, fileItem);
 
             // Use XMLHttpRequest for per-file upload progress. XHR bypasses
             // the fetch interceptor in csrf-refresh.js, so this path must
@@ -1232,9 +1240,10 @@ export function useUpload(state, utils) {
 
         try {
             const formData = new FormData();
-            formData.append('file', fileItem.file);
+              formData.append('file', fileItem.file);
+              appendQueueTrim(formData, fileItem);
 
-            // Add ASR options
+              // Add ASR options
             const asrOpts = fileItem.asrOptions || {};
             const language = asrOpts.language || uploadLanguage.value;
             const minSpeakers = asrOpts.min_speakers || uploadMinSpeakers.value;
@@ -1575,17 +1584,77 @@ export function useUpload(state, utils) {
      * with this id) is held by a record that waits for its upload (#650).
      * Such a copy is not offered: the record is uploaded instead.
      */
-    const pendingUploadCovers = async ({ startTime = null, sessionId = null } = {}) => {
-        try {
-            const failed = await FailedUploads.getFailedUploads();
-            return coveredByPendingUpload(partitionByOwner(failed, currentUserId()).mine, { startTime, sessionId });
-        } catch (e) {
-            return false;
-        }
-    };
+      const pendingUploadCovers = async ({ startTime = null, sessionId = null } = {}) => {
+          try {
+              const failed = await FailedUploads.getFailedUploads();
+              return coveredByPendingUpload(partitionByOwner(failed, currentUserId()).mine, { startTime, sessionId });
+          } catch (e) {
+              return false;
+          }
+      };
 
-    return {
-        uploadAccept: UPLOAD_ACCEPT,
+      const enableQueueTrim = (item) => {
+          if (!item || !item.duration) return;
+          item.trimOn = true;
+          item.trimStart = 0;
+          item.trimEnd = wholeEnd(item.duration);
+          item.trimPreviewFailed = false;
+      };
+
+      const appendQueueTrim = (formData, item) => {
+          if (!item?.trimOn) return;
+          const fields = trimFields(item.trimStart, item.trimEnd, item.duration);
+          for (const [key, value] of Object.entries(fields)) formData.append(key, value);
+      };
+
+      // Preview plays the local file. It makes no request, and a file the
+      // browser cannot play is not uploaded in its place.
+      const previewQueueTrim = async (item) => {
+          if (!item?.trimOn || !item.file) return;
+          item.trimPreviewFailed = false;
+          const spans = previewSpans(item.trimStart, item.trimEnd);
+          if (!spans.length) return;
+          const url = URL.createObjectURL(item.file);
+          const audio = new Audio();
+          audio.preload = 'auto';
+          try {
+              await new Promise((resolve, reject) => {
+                  audio.onloadedmetadata = () => resolve();
+                  audio.onerror = () => reject(new Error('unplayable'));
+                  audio.src = url;
+              });
+              for (const span of spans) {
+                  audio.currentTime = span.start;
+                  await audio.play();
+                  await new Promise((resolve) => {
+                      const stop = () => {
+                          audio.pause();
+                          audio.removeEventListener('timeupdate', onTime);
+                          resolve();
+                      };
+                      const onTime = () => {
+                          if (audio.currentTime >= span.end - 0.05) stop();
+                      };
+                      audio.addEventListener('timeupdate', onTime);
+                      audio.addEventListener('ended', stop, { once: true });
+                  });
+              }
+          } catch {
+              item.trimPreviewFailed = true;
+          } finally {
+              audio.pause();
+              audio.removeAttribute('src');
+              URL.revokeObjectURL(url);
+          }
+      };
+
+      const queueKeptSeconds = (item) => keptSeconds(item?.trimStart, item?.trimEnd);
+
+      return {
+          uploadAccept: UPLOAD_ACCEPT,
+          enableQueueTrim,
+          previewQueueTrim,
+          queueKeptSeconds,
         // Join several files into one recording
         joinMode,
         joinTitle,
