@@ -16,10 +16,10 @@ B. ``is_token_authenticated()`` returned True for the mere presence of a
 The fix introduced:
 
 1. ``load_user_from_token_headers_only()`` — DB-validated, header-only.
-2. A per-request ``csrf_token_aware_check`` before_request hook that
-   calls ``csrf.protect()`` unless a valid header token is present.
-3. ``WTF_CSRF_CHECK_DEFAULT = False`` so Flask-WTF's own auto-check
-   does not double-run.
+2. A per-request decision that skips the CSRF check only when a valid
+   header token is present. Since #690 it lives in
+   ``TokenAwareCSRFProtect.protect`` (src/app.py), which Flask-WTF's own
+   default check calls; ``WTF_CSRF_CHECK_DEFAULT`` is no longer turned off.
 
 These tests assert that:
 
