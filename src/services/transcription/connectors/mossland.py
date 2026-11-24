@@ -18,7 +18,7 @@ from ..base import (
 from ..exceptions import ConfigurationError, ProviderError, TranscriptionError
 from src.utils.error_body import summarize_error_body
 
-from src.utils.error_text import describe_body, log_failure
+from src.utils.error_text import log_failure
 logger = logging.getLogger(__name__)
 
 _DEFAULT_BASE_URL = "https://api.mosi.cn"

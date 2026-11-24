@@ -3,7 +3,7 @@ Transcription usage tracking service for monitoring audio transcription consumpt
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Tuple, Optional, Dict, List
 
 from sqlalchemy import func, extract

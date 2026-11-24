@@ -27,7 +27,6 @@ class TokenBudgetExceeded(Exception):
         super().__init__(message)
 
 from src.services import llm_config
-from src.utils import extract_json_object, safe_json_loads
 from src.utils.error_text import log_failure
 
 
@@ -454,7 +453,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
 
     except TokenBudgetExceeded:
         raise
-    except APITimeoutError as e:
+    except APITimeoutError:
         elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(
@@ -598,7 +597,7 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
 
     except TokenBudgetExceeded:
         raise
-    except APITimeoutError as e:
+    except APITimeoutError:
         elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(
@@ -730,7 +729,7 @@ def call_translation_completion(messages, temperature=0.7, response_format=None,
 
     except TokenBudgetExceeded:
         raise
-    except APITimeoutError as e:
+    except APITimeoutError:
         elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(

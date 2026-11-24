@@ -2,7 +2,7 @@
 Push Notification API Endpoints
 Handles push notification subscriptions and delivery
 """
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, jsonify, current_app
 from flask_login import login_required, current_user
 from src.database import db
 from src.models.push_subscription import PushSubscription

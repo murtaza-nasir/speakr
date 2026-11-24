@@ -17,11 +17,10 @@ from functools import partial
 from sqlalchemy import text, inspect
 
 from src.database import db
-from src.models import Recording, TranscriptChunk, SystemSetting, User
+from src.models import Recording, TranscriptChunk, SystemSetting
 from src.services.embeddings import process_recording_chunks
 from src.utils import (
     add_column_if_not_exists,
-    migrate_column_type,
     create_index_if_not_exists,
     drop_not_null,
     migration_lock,

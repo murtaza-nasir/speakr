@@ -6,7 +6,6 @@ It returns plain text transcriptions without speaker diarization.
 """
 
 import logging
-import os
 import httpx
 from openai import OpenAI
 from typing import Dict, Any, Set
@@ -20,7 +19,7 @@ from ..base import (
 )
 from ..exceptions import TranscriptionError, ConfigurationError
 
-from src.utils.error_text import describe_body, log_failure
+from src.utils.error_text import log_failure
 logger = logging.getLogger(__name__)
 
 

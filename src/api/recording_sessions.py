@@ -62,7 +62,7 @@ from flask_login import login_required, current_user
 from werkzeug.datastructures import FileStorage
 
 from src.database import db
-from src.models import RecordingSession, Recording, User, RECORDING_SESSION_STATUSES
+from src.models import RecordingSession, Recording, User
 from src.services.job_queue import job_queue
 from src.services.recording_stitch import byte_join, session_chunk_paths
 from src.utils.localization import api_error

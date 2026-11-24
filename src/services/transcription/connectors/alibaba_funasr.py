@@ -10,7 +10,7 @@ import logging
 import os
 import re
 import time
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, Set
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -27,7 +27,7 @@ from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.utils.error_body import summarize_error_body
 from src.utils.log_filters import loggable_error, loggable_locator
 
-from src.utils.error_text import describe_body, log_failure
+from src.utils.error_text import log_failure
 logger = logging.getLogger(__name__)
 
 

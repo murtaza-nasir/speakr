@@ -41,7 +41,6 @@ from datetime import datetime
 from flask import current_app
 
 from src.database import db
-from src.models import Recording
 from src.services.storage.service import get_storage_service
 
 # Shortest audio a trim may keep, in seconds.

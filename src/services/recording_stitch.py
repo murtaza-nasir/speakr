@@ -46,7 +46,6 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
-from pathlib import Path
 from typing import Tuple
 
 from src.database import db

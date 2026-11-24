@@ -155,15 +155,12 @@ def extract_json_object(text):
     """
     # Find the first { or [ that starts a JSON structure
     start = None
-    close_char = None
     for i, ch in enumerate(text):
         if ch == '{':
             start = i
-            close_char = '}'
             break
         elif ch == '[':
             start = i
-            close_char = ']'
             break
 
     if start is None:

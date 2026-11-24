@@ -8,15 +8,14 @@ This blueprint handles:
 """
 
 import os
-import re
 import json
-from flask import Blueprint, render_template, request, redirect, url_for, jsonify, send_file, current_app
+from flask import Blueprint, render_template, request, redirect, jsonify, send_file, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
 
 from src.database import db
-from src.models import Recording, Share, InternalShare, SharedRecordingState, User, TranscriptChunk, Folder
+from src.models import Recording, Share, InternalShare, SharedRecordingState, User, Folder
 from src.services import audit
 from src.utils import md_to_html
 from src.utils.route_errors import internal_error
@@ -306,7 +305,7 @@ def get_shares_overview():
     The recordings, users, source tags and source folders of the shares are
     read once per list (D#483), with only the recording columns shown here.
     """
-    from sqlalchemy.orm import joinedload, load_only, selectinload
+    from sqlalchemy.orm import joinedload, selectinload
     folders = {}
 
     def _source(share):

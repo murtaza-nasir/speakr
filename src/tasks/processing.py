@@ -14,30 +14,26 @@ import json
 import logging
 import time
 import tempfile
-import subprocess
-import httpx
 from datetime import datetime
 from flask import current_app
-from openai import OpenAI
 
 from src.services.llm_settings import get_temperature
 from src.database import db
-from src.models import Recording, Tag, Event, TranscriptChunk, SystemSetting, GroupMembership, RecordingTag, InternalShare, SharedRecordingState, User, NamingTemplate
-from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, http_client_no_proxy, TokenBudgetExceeded
+from src.models import Recording, Tag, Event, SystemSetting, RecordingTag, User
+from src.services.llm import call_llm_completion, format_api_error_message, TokenBudgetExceeded
 from src.services import llm_config
-from src.utils import extract_json_object, safe_json_loads
+from src.utils import safe_json_loads
 from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError, has_audio_stream, probe_rejected_input
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, AUDIO_DECODE_FAILED_MESSAGE
-from src.utils.audio_conversion import convert_if_needed, ConversionResult
-from src.utils.error_formatting import format_error_for_storage, sanitize_error_message
+from src.utils.audio_conversion import convert_if_needed
+from src.utils.error_formatting import sanitize_error_message
 from src.utils.error_text import log_failure, user_error_text
 from src.utils.transcript_render import resolve_timestamp_template_format
 from src.services.titling import user_title_instructions
 from src.utils.incognito_logging import incognito_log, describe_error, short_code
 from src.utils.mime import guess_media_type
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
-import src.config.app_config as _app_config
-from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
+from src.audio_chunking import ChunkProcessingError
 from src.transcription_prompts import (
     _SHARED_LLM_SYSTEM_MSG as _SHARED_LLM_SYSTEM_MSG,
     _shared_user_prefix as _shared_user_prefix,
@@ -49,8 +45,7 @@ from src.transcription_prompts import (
     format_transcription_for_llm,
 )
 from src.config.app_config import (
-    ASR_DIARIZE, ASR_BASE_URL, ASR_RETURN_SPEAKER_EMBEDDINGS,
-    transcription_api_key, transcription_base_url, chunking_service, ENABLE_CHUNKING,
+    chunking_service,
 )
 from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
 from src.services.transcription_tracking import transcription_tracker
@@ -1057,17 +1052,14 @@ def extract_events_from_transcript(recording_id, transcript_text, summary_text):
         context_parts = []
 
         # CRITICAL: Determine the reference date for relative date calculations
-        reference_date = None
         reference_date_source = ""
 
         if recording.meeting_date:
             # Prefer meeting date if available
-            reference_date = local_meeting
             reference_date_source = "Meeting Date"
             context_parts.append(f"**MEETING DATE (use this for relative date calculations): {local_meeting.strftime('%A, %B %d, %Y')}**")
         elif recording.created_at:
             # Fall back to upload date
-            reference_date = local_created.date()
             reference_date_source = "Upload Date (no meeting date available)"
             context_parts.append(f"**REFERENCE DATE (use this for relative date calculations): {local_created.strftime('%A, %B %d, %Y')}**")
 
@@ -1519,13 +1511,9 @@ def compress_lossless_audio(filepath, codec='mp3', bitrate='128k', codec_info=No
     output_mime = codec_info[codec]['mime']
 
     base_filepath = os.path.splitext(filepath)[0]
-    temp_filepath = f"{base_filepath}_compressed_temp{output_ext}"
     final_filepath = f"{base_filepath}{output_ext}"
 
     try:
-        # Get original file size for logging
-        original_size = os.path.getsize(filepath)
-
         current_app.logger.info(f"Compressing {loggable_path(filepath)} to {codec.upper()}...")
 
         # Use centralized compression utility
@@ -1572,7 +1560,6 @@ def merge_diarized_chunks(chunk_results):
         Tuple of (merged_text, merged_segments, all_speakers)
     """
     from src.services.transcription import TranscriptionSegment
-    import re
 
     if not chunk_results:
         return "", [], []
@@ -1712,7 +1699,6 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
     Returns:
         Merged transcription text (with speaker labels if diarization enabled)
     """
-    import tempfile
     import uuid
     from src.services.transcription import TranscriptionRequest
     from src.services.transcription.provider_tasks import audio_task_key
@@ -1970,7 +1956,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
         initial_prompt: Optional initial prompt to steer transcription
     """
     from src.services.transcription import (
-        get_connector, get_registry, TranscriptionRequest, TranscriptionCapability
+        get_connector, get_registry, TranscriptionRequest
     )
     from src.utils.language import normalize_language_code
 

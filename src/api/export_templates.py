@@ -7,7 +7,7 @@ following the same pattern as transcript templates.
 
 import os
 from datetime import datetime
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, jsonify, current_app
 from flask_login import login_required, current_user
 
 from src.database import db

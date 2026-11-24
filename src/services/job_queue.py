@@ -494,8 +494,7 @@ class FairJobQueue:
 
         with self._app_context():
             from src.database import db
-            from src.models import ProcessingJob, Recording
-            from flask import current_app
+            from src.models import Recording
 
             loaded_created_at = None
             try:

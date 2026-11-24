@@ -5,7 +5,6 @@ This blueprint handles folder CRUD operations and recording-folder assignments.
 Folders are one-to-many (a recording can only belong to one folder).
 """
 
-import os
 import re
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app
@@ -677,7 +676,6 @@ def assign_recording_folder(recording_id):
             return jsonify(api_error(error_key)), 403
 
         # Handle auto-sharing for group folders
-        old_folder_id = recording.folder_id
         recording.folder_id = folder_id
 
         # Apply auto-shares if moving to a group folder

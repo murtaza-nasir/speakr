@@ -9,14 +9,11 @@ and reassemble the transcriptions while maintaining accuracy and speaker continu
 import os
 import json
 import subprocess
-import tempfile
 import logging
 import math
 import re
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Tuple, TYPE_CHECKING
-from datetime import datetime
-import mimetypes
 
 from src.utils.ffmpeg_utils import convert_to_mp3, decode_ffmpeg_output, FFmpegError, FFmpegNotFoundError
 from src.utils.log_filters import loggable_error, loggable_path

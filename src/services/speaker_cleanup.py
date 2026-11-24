@@ -13,7 +13,6 @@ to enable automatic cleanup of speakers with no remaining recordings.
 import os
 import logging
 import json
-from datetime import datetime
 from sqlalchemy import exists
 from src.database import db
 from src.models import Speaker, SpeakerSnippet, Recording

@@ -12,7 +12,7 @@ import threading
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import request, g, has_request_context
-from src.models import APIToken, User
+from src.models import APIToken
 
 logger = logging.getLogger(__name__)
 

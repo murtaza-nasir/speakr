@@ -8,7 +8,7 @@ these are ASR hints, not summarization prompts, and carry no variables.
 """
 
 from datetime import datetime
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_login import login_required, current_user
 
 from src.database import db

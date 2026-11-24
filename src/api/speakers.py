@@ -5,12 +5,9 @@ This blueprint was auto-generated from app.py route extraction.
 """
 
 import os
-import json
-import time
-from datetime import datetime, timedelta
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app
+from datetime import datetime
+from flask import Blueprint, request, jsonify, send_file, current_app
 from flask_login import login_required, current_user
-from werkzeug.utils import secure_filename
 
 from src.database import db
 from src.models import *
@@ -18,7 +15,6 @@ from src.utils import *
 from src.utils.ffmpeg_utils import extract_audio_segment, FFmpegError, FFmpegNotFoundError
 from src.utils.ffprobe import get_codec_info, FFProbeError
 from src.utils.search import LIKE_ESCAPE, contains_pattern
-from src.services.speaker_embedding_matcher import find_matching_speakers
 from src.services.speaker_snippets import get_speaker_snippets, get_speaker_recordings_with_snippets
 from src.services.speaker_merge import merge_speakers, preview_merge, can_merge_speakers
 from src.utils.localization import api_error, translate
@@ -481,7 +477,6 @@ def get_snippet_audio(recording_id):
         Audio file segment in the original format
     """
     import tempfile
-    from pathlib import Path
 
     try:
         # Get query parameters

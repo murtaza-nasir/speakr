@@ -2,7 +2,6 @@
 Version information helper.
 """
 
-import os
 
 
 

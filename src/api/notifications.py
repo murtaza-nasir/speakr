@@ -5,7 +5,7 @@ somebody else's notices: instance-level notices are fanned out to each admin
 at raise time, so an admin reads their own copy.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_login import login_required, current_user
 
 from src.services import notifications as notification_service

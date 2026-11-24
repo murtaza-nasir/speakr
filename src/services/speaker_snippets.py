@@ -253,7 +253,7 @@ def _generate_dynamic_snippets(speaker_id, limit=3):
                     'created_at': recording.created_at.isoformat() if recording.created_at else None
                 })
 
-        except (json.JSONDecodeError, TypeError, KeyError) as e:
+        except (json.JSONDecodeError, TypeError, KeyError):
             # Skip recordings with invalid transcription format
             continue
 
