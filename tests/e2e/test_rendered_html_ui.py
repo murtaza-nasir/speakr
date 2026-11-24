@@ -26,7 +26,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
-from browser_checks import PageProblems, check_common, en, login  # noqa: E402
+from browser_checks import PageProblems, check_common, en, login, precondition_unmet  # noqa: E402
 from seed_recordings import TITLES  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
@@ -89,7 +89,7 @@ def test_server_html_is_sanitized_in_summary_and_notes():
         listing = page.request.get(f"{BASE}/api/recordings?per_page=50")
         ids = {r["title"]: r["id"] for r in listing.json().get("recordings", [])} if listing.ok else {}
         if MEETING_TITLE not in ids:
-            pytest.skip("the seeded recordings are not on this instance")
+            precondition_unmet("the seeded recordings are not on this instance (tests/e2e/seed_recordings.py)")
         rid = ids[MEETING_TITLE]
         page.route(re.compile(rf".*/api/recordings/{rid}(\?.*)?$"), _hostile)
         problems.reset()
