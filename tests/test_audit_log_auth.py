@@ -161,9 +161,14 @@ def test_password_reset_request_and_reset(created):
     user = make_user(created)
     start = max_id()
     client = anonymous_client()
+    # SQLite can give this user the id of a user an earlier test deleted, and
+    # a reset request of that user may still sit in the same five-minute
+    # de-duplication bucket. A bucket of this test's own avoids that.
+    own_bucket = 2_000_000_000 + (uuid.uuid4().int % 100_000) * audit.DEDUP_RESET_REQUESTED
     with mock.patch.object(auth_mod, 'is_smtp_configured', return_value=True), \
             mock.patch.object(auth_mod, 'can_resend_password_reset', return_value=(True, 0)), \
-            mock.patch.object(auth_mod, 'send_password_reset_email', return_value=True):
+            mock.patch.object(auth_mod, 'send_password_reset_email', return_value=True), \
+            mock.patch.object(audit, '_epoch', return_value=own_bucket):
         client.post('/forgot-password', data={'email': user.email})
         client.post('/forgot-password', data={'email': user.email})
         client.post('/forgot-password', data={'email': 'SENTINELADDR@nowhere.test'})
