@@ -214,6 +214,8 @@ SMTP_PASSWORD=your-password
 
 Users can request new links if their tokens expire.
 
+Each link works once. A newer email replaces the link of an earlier one. Only a SHA-256 hash of the token in a link is stored in the database, so a copy of the database holds no working link. Links sent by v0.11.4 or earlier stop working on the upgrade to v0.11.5, and a new link can be requested.
+
 ## Migration Behavior
 
 When enabling email verification on an existing instance:

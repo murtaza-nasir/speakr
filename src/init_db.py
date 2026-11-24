@@ -124,6 +124,26 @@ def _remove_orphaned_speaker_rows(engine, app):
                         f"and {samples} orphaned voice sample(s)")
 
 
+def _clear_plaintext_account_tokens(engine, app):
+    """Remove email verification and password reset tokens stored in plaintext.
+
+    Only the SHA-256 hash of such a token is stored since #693. A token that an
+    earlier version stored is the signed itsdangerous token of the emailed
+    link, which has dots; a hash has none. Such a token is removed rather than
+    hashed in place: a copy of the database made before the upgrade then holds
+    no link that still works. The link in the email stops working, and a new
+    one can be requested.
+    """
+    with engine.begin() as conn:
+        counts = {column: conn.execute(text(
+            f'UPDATE "user" SET {column} = NULL WHERE {column} LIKE :dotted'),
+            {'dotted': '%.%'}).rowcount
+            for column in ('email_verification_token', 'password_reset_token')}
+    if any(counts.values()):
+        app.logger.info(f"Removed {counts['email_verification_token']} email verification and "
+                        f"{counts['password_reset_token']} password reset token(s) stored in plaintext")
+
+
 def _clear_ended_session_text(engine, app):
     """Clear the text of the user in recording sessions that have ended.
 
@@ -1460,6 +1480,15 @@ def _run_migrations(app, engine):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"Recording-session text cleanup skipped, retried next start: {e}")
+
+        # Email verification and password reset tokens were stored in
+        # plaintext (#693); only their hash is stored now.
+        try:
+            run_once(engine, '0011_clear_plaintext_account_tokens',
+                     lambda eng: _clear_plaintext_account_tokens(eng, app), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Plaintext account token cleanup skipped, retried next start: {e}")
 
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)

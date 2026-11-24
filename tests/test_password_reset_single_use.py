@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.app import app, db, bcrypt
 from src.models import User
 from src.services.email import generate_password_reset_token
+from src.utils.token_auth import hash_token
 
 app.config['WTF_CSRF_ENABLED'] = False
 
@@ -28,7 +29,7 @@ def _make_user():
 
 def _issue_token(user):
     token = generate_password_reset_token(user.id)
-    user.password_reset_token = token
+    user.password_reset_token = hash_token(token)
     db.session.commit()
     return token
 
@@ -68,7 +69,7 @@ def test_superseded_token_is_rejected():
     with app.app_context():
         user = _make_user()
         old_token = generate_password_reset_token(user.id)  # validly signed
-        user.password_reset_token = old_token + 'SUPERSEDED'  # newer stored token differs
+        user.password_reset_token = hash_token(old_token + 'SUPERSEDED')  # newer stored token differs
         db.session.commit()
         client = app.test_client()
 

@@ -5,6 +5,7 @@ This module provides email functionality using Python's built-in smtplib.
 All email features are opt-in via environment variables.
 """
 
+import hmac
 import html
 import os
 import smtplib
@@ -89,6 +90,17 @@ def generate_password_reset_token(user_id: int) -> str:
     """Generate a password reset token."""
     serializer = get_serializer('password-reset')
     return serializer.dumps(user_id)
+
+
+def stored_token_matches(stored: Optional[str], token: str) -> bool:
+    """Whether a link token belongs to the hash stored on the user (#693).
+
+    Only the SHA-256 hash of a verification or reset token is stored, as for
+    API tokens, so a copy of the database holds no usable link. A link whose
+    token was used, cleared or replaced by a newer one does not match.
+    """
+    from src.utils.token_auth import hash_token
+    return bool(stored) and bool(token) and hmac.compare_digest(stored, hash_token(token))
 
 
 def verify_email_token(token: str) -> Optional[int]:
@@ -350,9 +362,10 @@ def send_verification_email(user) -> bool:
         logger.warning("Cannot send verification email: SMTP not configured")
         return False
 
-    # Generate token and store it
+    # Generate token and store its hash (#693)
+    from src.utils.token_auth import hash_token
     token = generate_verification_token(user.id)
-    user.email_verification_token = token
+    user.email_verification_token = hash_token(token)
     user.email_verification_sent_at = datetime.utcnow()
     db.session.commit()
 
@@ -421,9 +434,10 @@ def send_password_reset_email(user) -> bool:
         logger.warning("Cannot send password reset email: SMTP not configured")
         return False
 
-    # Generate token and store it
+    # Generate token and store its hash (#693)
+    from src.utils.token_auth import hash_token
     token = generate_password_reset_token(user.id)
-    user.password_reset_token = token
+    user.password_reset_token = hash_token(token)
     user.password_reset_sent_at = datetime.utcnow()
     db.session.commit()
 

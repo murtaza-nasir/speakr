@@ -171,10 +171,12 @@ def test_password_reset_request_and_reset(created):
     assert sorted((r.target_user_id or 0) for r in requested) == [0, user.id]
 
     user = db.session.get(User, user.id)
-    user.password_reset_token = 'tok-' + 'a' * 20
+    from src.utils.token_auth import hash_token
+    link_token = 'tok-' + 'a' * 20
+    user.password_reset_token = hash_token(link_token)
     db.session.commit()
     with mock.patch.object(auth_mod, 'verify_reset_token', return_value=user.id):
-        resp = client.post(f'/reset-password/{user.password_reset_token}', data={
+        resp = client.post(f'/reset-password/{link_token}', data={
             'password': 'An0ther-Passw0rd!', 'confirm_password': 'An0ther-Passw0rd!'})
     assert resp.status_code == 302
     reset = rows_after(start, 'auth.password.reset')

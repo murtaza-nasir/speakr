@@ -5,7 +5,6 @@ This blueprint handles user registration, login, logout, account management,
 and password changes.
 """
 
-import hmac
 import os
 import re
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, current_app, make_response
@@ -40,6 +39,7 @@ from src.services.email import (
     send_password_reset_email,
     verify_email_token,
     verify_reset_token,
+    stored_token_matches,
     can_resend_verification,
     can_resend_password_reset,
 )
@@ -635,6 +635,13 @@ def verify_email(token):
         flash(translate('server.flash.emailAlreadyVerified'), 'info')
         return redirect(url_for('auth.login'))
 
+    # Single use (#693): the link must belong to the hash of the latest
+    # verification token stored on the user. A used link (cleared below) or
+    # one replaced by a newer email no longer matches.
+    if not stored_token_matches(user.email_verification_token, token):
+        flash(translate('server.flash.verificationLinkInvalid'), 'danger')
+        return redirect(url_for('auth.login'))
+
     # Verify the email
     user.email_verified = True
     user.email_verification_token = None  # Clear the token
@@ -767,11 +774,10 @@ def reset_password(token):
 
     # Single-use enforcement: the itsdangerous token is only signature+expiry
     # checked, so on its own it stays replayable for the whole TTL even after
-    # it has been used or superseded. Bind it to the token currently stored on
-    # the user: a used token (cleared on reset) or one superseded by a newer
-    # reset request no longer matches and is rejected immediately.
-    stored_token = user.password_reset_token or ''
-    if not stored_token or not hmac.compare_digest(stored_token, token):
+    # it has been used or superseded. Bind it to the hash of the token stored
+    # on the user (#693): a used token (cleared on reset) or one superseded by
+    # a newer reset request no longer matches and is rejected immediately.
+    if not stored_token_matches(user.password_reset_token, token):
         flash(translate('server.flash.resetLinkInvalid'), 'danger')
         return redirect(url_for('auth.forgot_password'))
 

@@ -247,7 +247,8 @@ def test_reset_password_clears_lock(_ctx):
     for _ in range(5):
         _login(user, 'wrong')
     token = generate_password_reset_token(user.id)
-    user.password_reset_token = token
+    from src.utils.token_auth import hash_token
+    user.password_reset_token = hash_token(token)
     db.session.commit()
     resp = app.test_client().post(f'/reset-password/{token}',
                                   data={'password': 'NewPassw0rd!', 'confirm_password': 'NewPassw0rd!'})

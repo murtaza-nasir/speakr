@@ -63,7 +63,8 @@ class User(db.Model, UserMixin):
     # Storage quota in megabytes (None = unlimited, #413)
     storage_quota_mb = db.Column(db.Integer, nullable=True)
 
-    # Email verification fields
+    # Email verification fields. The two token columns hold the SHA-256 hash
+    # of the token in the emailed link, never the token itself (#693).
     email_verified = db.Column(db.Boolean, default=False)
     email_verification_token = db.Column(db.String(200), nullable=True, index=True)
     email_verification_sent_at = db.Column(db.DateTime, nullable=True)
