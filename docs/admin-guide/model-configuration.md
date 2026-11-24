@@ -850,44 +850,36 @@ setting is turned off.
 
 ## Per-Upload, Per-Tag, Per-Folder Transcription Models
 
-By default Speakr uses the single `TRANSCRIPTION_MODEL` set in `.env` for every recording. If your users transcribe different kinds of recordings (calls, meetings, dictations, multi-speaker interviews) you can publish a list of models they're allowed to choose from at upload time.
+By default Speakr transcribes with the ASR provider configured through environment variables. An administrator can add more providers, with their own credentials, in **System settings -> Transcription models**, and publish them to users at upload time.
 
-```bash
-# Comma-separated list of model identifiers users can pick.
-TRANSCRIPTION_MODELS_AVAILABLE=whisper-1,gpt-4o-transcribe,gpt-4o-transcribe-diarize,vibevoice
-# Optional parallel list of display names. Falls back to the model id when omitted.
-TRANSCRIPTION_MODEL_LABELS=Whisper,GPT-4o,GPT-4o (Diarize),VibeVoice
-```
+The section always lists the environment row, built from `TRANSCRIPTION_CONNECTOR`, `TRANSCRIPTION_BASE_URL` (or `ASR_BASE_URL`), `TRANSCRIPTION_API_KEY` and `TRANSCRIPTION_MODEL`. **Add model** opens the form for one connector: a label, the connector, the fields that connector needs, and its options under **Advanced**. **Test connection** makes a real request to the provider, and **Discover models** lists what the provider reports from its OpenAI-compatible `/v1/models` endpoint. **Import from environment** stores the environment row as an entry.
 
-When the list is non-empty, a "Transcription model" dropdown appears in the upload form's Advanced ASR Options and in the reprocess modal. Tags and folders also gain a "Default transcription model" field in their edit forms — set one and any recording uploaded with that tag or in that folder uses the chosen model unless the user picks a different one at upload time.
+Every entry has a label, a connector, a configuration and a **Visible to users** switch. The label is suggested from the connector and the model (for example `whisper-asr:small`) and can be replaced with anything clearer; the suggestion only applies while the label is untouched, and a label left ending in `:` gets the model appended on save. Because each entry carries its own credentials and connector, one installation can offer an OpenAI model and a local WhisperX model side by side, and the dropdown switches provider, not only the model name.
+
+Credentials are write-only. The table shows `********` when an entry stores a key and **No key** when it stores none. On edit the key field is empty, with `********` as its placeholder when a key is stored: leave it empty to keep the key while the base URL or endpoint does not change, type a new key to replace it, or tick **Remove the stored key**. Changing the address requires the key again, or **Remove the stored key** to save the entry without one. Every schema field marked write-only follows the same rule, Tencent's `secret_key` included. The environment row is the exception: it is not stored, so editing it shows the configured environment values exactly, and saving copies them into a new entry.
+
+One entry can be marked **Default**. With no marked default the environment is used; the first entry is never picked implicitly. The default entry cannot be hidden, and deleting it leaves the environment as the default.
+
+!!! note "Environment entries"
+    The environment row itself is not an entry. Editing it copies its connector and configuration into a new entry with the label prefilled. A stored entry whose configuration is the environment's can also be addressed as `env:<connector>:<model>`, which resolves to the environment credentials with that model.
+
+When the table has a visible entry, a "Transcription model" dropdown appears in the upload form's Advanced ASR Options and in the reprocess modal. Tags and folders also gain a "Default transcription model" field in their edit forms, listing the same visible entries. Hidden entries stay configured and still resolve for recordings, tags, folders and API clients that already name their id, but they are not offered in any dropdown.
 
 Resolution order at upload time:
 
 1. Per-upload selection (Advanced ASR Options dropdown)
 2. First tag's `default_transcription_model`
 3. Folder's `default_transcription_model`
-4. The default transcription model chosen by an administrator in the admin settings
-5. The connector's own model. For the OpenAI, Mistral and VibeVoice connectors this is `TRANSCRIPTION_MODEL`. The `asr_endpoint` connector has none: it sends no `model` parameter, and the ASR service uses its own default.
+4. The entry marked as default by an administrator
+5. The environment: `TRANSCRIPTION_MODEL` with the environment connector. For the `asr_endpoint` connector the environment model is whatever the ASR service loads; Speakr sends no `model` parameter unless one is selected.
 
-If the override isn't in `TRANSCRIPTION_MODELS_AVAILABLE`, it's dropped with a warning in the log and the recording uses the connector's own model, which guards against stale browser caches sending old model ids. The same resolution applies to reprocessing, bulk reprocessing, API v1, watch folders, incognito mode and the startup voice embedding check.
+A selection is carried as the id of the entry. A plain model name such as `whisper-1` keeps its earlier meaning: the environment connector with that model as an override, which guards against stale browser caches sending ids that no longer exist. An `env:` id pins the environment connector with a specific model. The same resolution applies to reprocessing, bulk reprocessing, API v1, watch folders, incognito mode and the startup voice embedding check.
 
 The override is propagated to the connector via the `model` field on `TranscriptionRequest`. Connectors that key on a model name (OpenAI Whisper / Transcribe, Mistral, VibeVoice) honour it directly. The `asr_endpoint` connector forwards the override as a `model=` query parameter; the [whisperx-asr-service](https://github.com/murtaza-nasir/whisperx-asr-service) fork uses it to switch the loaded Whisper model on demand, while the upstream `ahmetoner/whisper-asr-webservice` ignores unknown query parameters, so the override is safe in either case.
 
-!!! warning "List only models compatible with the active connector"
-    The dropdown changes the model name **within the currently active connector**; it does not switch between providers. Speakr selects exactly one connector at startup based on `TRANSCRIPTION_CONNECTOR`, `USE_ASR_ENDPOINT`, and `TRANSCRIPTION_BASE_URL`, and every transcription request is routed there. If the list contains a model name the active connector does not recognise (for example, putting `gpt-4o-transcribe` in the list while `USE_ASR_ENDPOINT=true` is set), requests for that model fail with a 500 from the upstream service.
+Labels are shown verbatim, in every UI language. Model identifiers are brand names (Whisper, GPT-4o, VibeVoice) and are not translated; write the label in the language your users read.
 
-    For a WhisperX backend, list Whisper variants (`large-v3`, `medium`, `distil-medium.en`, etc.). For OpenAI's API, list `whisper-1`, `gpt-transcribe`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `gpt-4o-transcribe-diarize`. Mixing providers in one dropdown is a planned feature for a future release.
-
-### Admin-Managed Model List with `/v1/models` Discovery
-
-For connectors that expose an OpenAI-compatible `/v1/models` endpoint (OpenAI, Azure OpenAI, vLLM, and the WhisperX ASR service when configured to advertise its loaded models), admins can curate the available list directly from the **Default Prompts → Transcription Models** section of the admin dashboard rather than via env var. Click "Refresh from connector" to query `/v1/models`, tick the models you want users to see, and save.
-
-The DB-backed list (stored in the `system_setting` table) overrides `TRANSCRIPTION_MODELS_AVAILABLE` when set. To revert to env-var control, clear the list in the dashboard. The env var is still useful for installations where the connector does not advertise its models or where you want config-as-code behaviour.
-
-When a connector returns a richer model object (display name, description, supported languages), those fields are used to render the dropdown labels. Otherwise the model id is used as both id and label, the same as with `TRANSCRIPTION_MODEL_LABELS`.
-
-!!! note "Localising model labels"
-    Model identifiers are typically brand names (Whisper, GPT-4o, VibeVoice) and are not translated by Speakr's i18n system. If you want localised labels for users on a non-English UI, set `TRANSCRIPTION_MODEL_LABELS` to your translated names: the labels you provide are used verbatim in the dropdown regardless of UI language. The same applies to admin-managed lists curated from the dashboard.
+The Docker/`.env` list from earlier releases, `TRANSCRIPTION_MODELS_AVAILABLE` with `TRANSCRIPTION_MODEL_LABELS`, is no longer the way to publish models: the table in the admin settings replaces it. On first start, an installation that still sets those variables, or that has a visible list in the admin settings, gets those models migrated once into visible entries that keep their models and labels; the environment row is always listed as the fallback.
 
 ## Configurable Embedding Model
 

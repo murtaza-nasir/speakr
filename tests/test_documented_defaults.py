@@ -62,7 +62,8 @@ pytestmark = pytest.mark.slow
 app.config["WTF_CSRF_ENABLED"] = False
 
 EXAMPLE = os.path.join(ROOT, "config", "env.whisperx.example")
-MODEL_SETTINGS = ("transcription_default_model", "transcription_models_visible_json")
+MODEL_SETTINGS = ("transcription_default_model", "transcription_models_visible_json",
+                  "asr_config_json")
 
 # Settings in the example that decide what reaches the ASR service. Anything
 # else the example adds under these prefixes must be handled here too (the
@@ -141,11 +142,21 @@ def documented_speakr(service, admin_default=None, embeddings=None):
             os.environ["TRANSCRIPTION_API_KEY"] = ""
             for key in MODEL_SETTINGS:
                 SystemSetting.set_setting(key, "", setting_type="string")
-            if admin_default:
-                SystemSetting.set_setting("transcription_default_model", admin_default, setting_type="string")
             with patch("src.config.app_config.TRANSCRIPTION_MODELS_AVAILABLE", []), \
                     patch("src.tasks.processing.call_llm_completion", side_effect=_fake_llm):
                 assert get_registry().reinitialize().__class__.__name__ == "ASREndpointConnector"
+                if admin_default:
+                    # The documented "admin default" is now an explicitly
+                    # marked profile over the environment connector.
+                    from src.services import asr_config as ac
+                    environment = ac.environment_profile()
+                    change = ac.create_profile({
+                        "label": f"Documented {admin_default}",
+                        "connector": environment["connector"],
+                        "config": {**environment["config"], "model": admin_default},
+                        "visible": True,
+                    })
+                    ac.set_default(change.model["id"])
                 yield asr
         finally:
             db.session.rollback()
