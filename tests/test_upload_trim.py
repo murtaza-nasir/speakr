@@ -256,6 +256,15 @@ def test_a_range_the_server_cannot_apply_creates_no_recording(user, tmp_path, fi
         assert Recording.query.filter_by(user_id=user).count() == 0
 
 
+def test_a_trim_of_thousands_of_digits_is_an_invalid_range(user):
+    with app.app_context():
+        res = _post_upload(user, b"not audio\n", "notes.mp3", {"trim_start": "9" * 4301})
+        _assert_refused(res, "invalid_trim_range")
+        res = _post_upload(user, b"not audio\n", "notes.mp3", {"trim_end": "-" + "9" * 4301})
+        _assert_refused(res, "invalid_trim_range")
+        assert Recording.query.filter_by(user_id=user).count() == 0
+
+
 def test_the_api_refuses_a_decimal_trim_with_no_recording(user, tmp_path):
     payload = _two_tone_mp3(tmp_path / "two.mp3")
     with app.app_context():

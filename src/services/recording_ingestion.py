@@ -453,13 +453,18 @@ class UploadTrimError(Exception):
 
 
 _WHOLE_SECONDS = re.compile(r"-?\d+\Z")
+# int() refuses a digit string longer than this (sys.get_int_max_str_digits,
+# 4300 by default) with ValueError. A trim field that long is not a duration.
+# Refusing it here keeps the upload on invalid_trim_range instead of a 500.
+_MAX_TRIM_DIGITS = 4300
 
 
 def _whole_seconds_field(form, name):
     """The form field as a whole number of seconds, or None when it is absent.
 
     An empty string is absent. Anything else that is not a whole number
-    raises UploadTrimError.
+    raises UploadTrimError. A digit string longer than ``_MAX_TRIM_DIGITS``
+    is the same refusal: converting it would raise ValueError.
     """
     raw = form.get(name) if form is not None else None
     if raw is None:
@@ -469,7 +474,13 @@ def _whole_seconds_field(form, name):
         return None
     if _WHOLE_SECONDS.fullmatch(text) is None:
         raise UploadTrimError("invalid_trim_range")
-    return int(text)
+    digits = text[1:] if text.startswith("-") else text
+    if len(digits) > _MAX_TRIM_DIGITS:
+        raise UploadTrimError("invalid_trim_range")
+    try:
+        return int(text)
+    except ValueError:
+        raise UploadTrimError("invalid_trim_range") from None
 
 
 def resolve_upload_trim(form, filepath, codec_info):
