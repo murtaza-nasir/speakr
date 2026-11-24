@@ -279,9 +279,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // The service worker is registered by js/service-worker-client.js, which
     // every signed-in page loads.
 
-    // Escapes text placed into the help markup returned by helpCode/helpLink.
-    const escapeHelpHtml = (text) => String(text)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // The help markup returned by helpCode/helpLink escapes its text (#692).
+    const safeHtml = window.safeHtml;
 
     // Create a safe t function that's always available
     const safeT = (key, params = {}) => {
@@ -5219,8 +5218,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 uiLocale: () => window.i18n?.getIntlLocale?.(),
                 // Markup for translated help text shown with v-html (the
                 // system-audio guide): a command or path, an external link.
-                helpCode: (text) => `<code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">${escapeHelpHtml(text)}</code>`,
-                helpLink: (href, label) => `<a href="${escapeHelpHtml(href)}" target="_blank" rel="noopener" style="color: var(--text-accent); text-decoration: underline;">${escapeHelpHtml(label)}</a>`,
+                helpCode: (text) => String(safeHtml`<code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">${text}</code>`),
+                helpLink: (href, label) => String(safeHtml`<a href="${href}" target="_blank" rel="noopener" style="color: var(--text-accent); text-decoration: underline;">${label}</a>`),
                 parseServerInstant,
                 formatDisplayDate,
                 formatShortDate,

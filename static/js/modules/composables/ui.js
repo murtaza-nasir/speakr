@@ -1729,38 +1729,31 @@ export function useUI(state, utils, processedTranscription) {
             // primitives as Vue-rendered modals so the chrome matches).
             let templateId = null;
             if (templates.length > 0) {
-                // Escape user-supplied template name/description before
-                // injection. Translations and is_default flag are
-                // controlled values; template id is constrained by the
-                // DOM data attribute.
-                const _esc = (s) => String(s == null ? '' : s)
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#39;');
+                // safeHtml escapes every value, the user's template names
+                // and descriptions included (#692).
+                const safeHtml = window.safeHtml;
                 const modal = document.createElement('div');
                 modal.className = 'modal-overlay';
-                modal.innerHTML = `
+                modal.innerHTML = safeHtml`
                     <div class="modal-panel modal-panel--sm">
                         <div class="modal-header">
-                            <h3 class="modal-title">${_esc(t('transcriptTemplates.selectTemplate'))}</h3>
-                            <button class="modal-close cancel-btn" title="${_esc(t('common.close'))}"><i class="fas fa-times"></i></button>
+                            <h3 class="modal-title">${t('transcriptTemplates.selectTemplate')}</h3>
+                            <button class="modal-close cancel-btn" title="${t('common.close')}"><i class="fas fa-times"></i></button>
                         </div>
                         <div class="modal-body" style="padding: var(--sp-2);">
                             <div class="space-y-1 max-h-60 overflow-y-auto">
-                                ${templates.map(tmpl => `
-                                    <button class="template-option w-full text-left p-3 rounded-md border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors ${tmpl.is_default ? 'ring-1 ring-[var(--text-accent)]' : ''}" data-template-id="${_esc(tmpl.id)}">
-                                        <div class="t-body-strong">${_esc(tmpl.name)}</div>
-                                        ${tmpl.description ? `<div class="t-meta">${_esc(tmpl.description)}</div>` : ''}
-                                        ${tmpl.is_default ? `<div class="t-meta mt-1" style="color: var(--text-accent);"><i class="fas fa-star mr-1"></i>${_esc(t('transcriptTemplates.default'))}</div>` : ''}
+                                ${templates.map(tmpl => safeHtml`
+                                    <button class="template-option w-full text-left p-3 rounded-md border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors ${tmpl.is_default ? 'ring-1 ring-[var(--text-accent)]' : ''}" data-template-id="${tmpl.id}">
+                                        <div class="t-body-strong">${tmpl.name}</div>
+                                        ${tmpl.description ? safeHtml`<div class="t-meta">${tmpl.description}</div>` : ''}
+                                        ${tmpl.is_default ? safeHtml`<div class="t-meta mt-1" style="color: var(--text-accent);"><i class="fas fa-star mr-1"></i>${t('transcriptTemplates.default')}</div>` : ''}
                                     </button>
-                                `).join('')}
+                                `)}
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button class="cancel-btn btn btn--ghost">${_esc(t('transcriptTemplates.cancel'))}</button>
-                            <button class="download-without-template-btn btn btn--primary">${_esc(t('transcriptTemplates.downloadWithoutTemplate'))}</button>
+                            <button class="cancel-btn btn btn--ghost">${t('transcriptTemplates.cancel')}</button>
+                            <button class="download-without-template-btn btn btn--primary">${t('transcriptTemplates.downloadWithoutTemplate')}</button>
                         </div>
                     </div>
                 `;

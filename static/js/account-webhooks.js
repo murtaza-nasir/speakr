@@ -1,10 +1,11 @@
 /* Webhooks tab for the Account settings page (#275).
  *
  * Self-contained module attached when the Account template loads.
- * Talks to /api/v1/webhooks; all user-supplied strings are escaped
- * via escapeHtml() before being written into the DOM.
+ * Talks to /api/v1/webhooks. Markup is built with safeHtml (safe-html.js),
+ * which escapes every interpolated value (#692).
  */
 (function () {
+    const safeHtml = window.safeHtml;
     const list = document.getElementById('webhook-list');
     const modal = document.getElementById('webhook-modal');
     const modalTitle = document.getElementById('webhook-modal-title');
@@ -58,12 +59,6 @@
         return body;
     }
 
-    function escapeHtml(s) {
-        const d = document.createElement('div');
-        d.textContent = s == null ? '' : String(s);
-        return d.innerHTML;
-    }
-
     // Backend timestamps are naive UTC (no zone). Append 'Z' so they're parsed
     // as UTC and rendered in the viewer's timezone, not mis-read as local.
     function parseServerInstant(s) {
@@ -80,13 +75,13 @@
     }
 
     function statusBadge(wh) {
-        if (wh.auto_paused) return '<span class="text-xs px-2 py-0.5 rounded bg-amber-500/15 text-amber-600">' + escapeHtml(tr('webhooks.statusAutoPaused', 'auto-paused')) + '</span>';
-        if (!wh.enabled) return '<span class="text-xs px-2 py-0.5 rounded bg-gray-500/15 text-gray-500">' + escapeHtml(tr('webhooks.statusDisabled', 'disabled')) + '</span>';
+        if (wh.auto_paused) return safeHtml`<span class="text-xs px-2 py-0.5 rounded bg-amber-500/15 text-amber-600">${tr('webhooks.statusAutoPaused', 'auto-paused')}</span>`;
+        if (!wh.enabled) return safeHtml`<span class="text-xs px-2 py-0.5 rounded bg-gray-500/15 text-gray-500">${tr('webhooks.statusDisabled', 'disabled')}</span>`;
         if (wh.consecutive_failures > 0) {
             const n = Number(wh.consecutive_failures);
-            return '<span class="text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-500">' + escapeHtml(tr('webhooks.statusFailures', n + ' consecutive failures', { count: n })) + '</span>';
+            return safeHtml`<span class="text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-500">${tr('webhooks.statusFailures', n + ' consecutive failures', { count: n })}</span>`;
         }
-        return '<span class="text-xs px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600">' + escapeHtml(tr('webhooks.statusHealthy', 'healthy')) + '</span>';
+        return safeHtml`<span class="text-xs px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600">${tr('webhooks.statusHealthy', 'healthy')}</span>`;
     }
 
     function deliveryStatusBadge(d) {
@@ -102,45 +97,37 @@
             failed: tr('webhooks.deliveryFailed', 'failed'),
             permanent_failure: tr('webhooks.deliveryPermanentFailure', 'permanent failure')
         }[d.status] || d.status;
-        return '<span class="text-xs px-2 py-0.5 rounded ' + cls + '">' + escapeHtml(label) + '</span>';
+        return safeHtml`<span class="text-xs px-2 py-0.5 rounded ${cls}">${label}</span>`;
     }
 
     function eventChips(events) {
-        if (!events || !events.length) return '<span class="text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.noEvents', 'no events')) + '</span>';
+        if (!events || !events.length) return safeHtml`<span class="text-xs text-[var(--text-muted)]">${tr('webhooks.noEvents', 'no events')}</span>`;
         return events.map(function (e) {
-            return '<span class="text-xs px-2 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-secondary)] mr-1 mb-1 inline-block">' + escapeHtml(e) + '</span>';
-        }).join('');
+            return safeHtml`<span class="text-xs px-2 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-secondary)] mr-1 mb-1 inline-block">${e}</span>`;
+        });
     }
 
+    // No white space between the elements, as when this was concatenated:
+    // the event chips are inline blocks.
     function renderWebhookCard(wh) {
         const id = Number(wh.id);
-        return ''
-            + '<div class="border border-[var(--border-primary)] rounded-lg p-4 bg-[var(--bg-secondary)]" data-webhook-id="' + id + '">'
-            +   '<div class="flex items-start justify-between gap-3 flex-wrap">'
-            +     '<div class="flex-1 min-w-0">'
-            +       '<div class="flex items-center gap-2 flex-wrap">'
-            +         '<h3 class="text-sm font-semibold text-[var(--text-primary)]">' + escapeHtml(wh.name) + '</h3>'
-            +         statusBadge(wh)
-            +       '</div>'
-            +       '<p class="mt-1 text-xs font-mono text-[var(--text-muted)] break-all">' + escapeHtml(wh.url) + '</p>'
-            +       '<div class="mt-2">' + eventChips(wh.events) + '</div>'
-            +       '<p class="mt-2 text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.lastDelivery', 'Last delivery: ' + fmt(wh.last_delivery_at), { time: fmt(wh.last_delivery_at) })) + '</p>'
-            +     '</div>'
-            +     '<div class="flex flex-wrap items-center gap-2 shrink-0">'
-            +       '<button data-action="test" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]" title="' + escapeHtml(tr('webhooks.testTitle', 'Send a synthetic webhook.test event')) + '"><i class="fas fa-paper-plane mr-1"></i>' + escapeHtml(tr('webhooks.test', 'Test')) + '</button>'
-            +       '<button data-action="deliveries" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]"><i class="fas fa-list mr-1"></i>' + escapeHtml(tr('webhooks.deliveries', 'Deliveries')) + '</button>'
-            +       '<button data-action="rotate" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]" title="' + escapeHtml(tr('webhooks.rotateTitle', 'Rotate HMAC secret')) + '"><i class="fas fa-key mr-1"></i>' + escapeHtml(tr('webhooks.rotate', 'Rotate')) + '</button>'
-            +       '<button data-action="edit" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]"><i class="fas fa-pen mr-1"></i>' + escapeHtml(tr('common.edit', 'Edit')) + '</button>'
-            +       '<button data-action="delete" class="px-2 py-1 text-xs rounded bg-red-500/10 hover:bg-red-500/20 text-red-500"><i class="fas fa-trash mr-1"></i>' + escapeHtml(tr('common.delete', 'Delete')) + '</button>'
-            +     '</div>'
-            +   '</div>'
-            +   '<div class="mt-3 hidden" data-deliveries-panel>'
-            +     '<div class="border-t border-[var(--border-primary)] pt-3">'
-            +       '<h4 class="text-xs font-medium text-[var(--text-muted)] mb-2">' + escapeHtml(tr('webhooks.recentDeliveries', 'Recent deliveries')) + '</h4>'
-            +       '<div data-deliveries-list class="space-y-1 text-xs"></div>'
-            +     '</div>'
-            +   '</div>'
-            + '</div>';
+        return safeHtml`<div class="border border-[var(--border-primary)] rounded-lg p-4 bg-[var(--bg-secondary)]" data-webhook-id="${id}">${
+            safeHtml`<div class="flex items-start justify-between gap-3 flex-wrap">${
+                safeHtml`<div class="flex-1 min-w-0">${
+                    safeHtml`<div class="flex items-center gap-2 flex-wrap"><h3 class="text-sm font-semibold text-[var(--text-primary)]">${wh.name}</h3>${statusBadge(wh)}</div>`
+                }<p class="mt-1 text-xs font-mono text-[var(--text-muted)] break-all">${wh.url}</p>${
+                    safeHtml`<div class="mt-2">${eventChips(wh.events)}</div>`
+                }<p class="mt-2 text-xs text-[var(--text-muted)]">${tr('webhooks.lastDelivery', 'Last delivery: ' + fmt(wh.last_delivery_at), { time: fmt(wh.last_delivery_at) })}</p></div>`
+            }${
+                safeHtml`<div class="flex flex-wrap items-center gap-2 shrink-0">${[
+                    safeHtml`<button data-action="test" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]" title="${tr('webhooks.testTitle', 'Send a synthetic webhook.test event')}"><i class="fas fa-paper-plane mr-1"></i>${tr('webhooks.test', 'Test')}</button>`,
+                    safeHtml`<button data-action="deliveries" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]"><i class="fas fa-list mr-1"></i>${tr('webhooks.deliveries', 'Deliveries')}</button>`,
+                    safeHtml`<button data-action="rotate" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]" title="${tr('webhooks.rotateTitle', 'Rotate HMAC secret')}"><i class="fas fa-key mr-1"></i>${tr('webhooks.rotate', 'Rotate')}</button>`,
+                    safeHtml`<button data-action="edit" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]"><i class="fas fa-pen mr-1"></i>${tr('common.edit', 'Edit')}</button>`,
+                    safeHtml`<button data-action="delete" class="px-2 py-1 text-xs rounded bg-red-500/10 hover:bg-red-500/20 text-red-500"><i class="fas fa-trash mr-1"></i>${tr('common.delete', 'Delete')}</button>`,
+                ]}</div>`
+            }</div>`
+        }<div class="mt-3 hidden" data-deliveries-panel><div class="border-t border-[var(--border-primary)] pt-3"><h4 class="text-xs font-medium text-[var(--text-muted)] mb-2">${tr('webhooks.recentDeliveries', 'Recent deliveries')}</h4><div data-deliveries-list class="space-y-1 text-xs"></div></div></div></div>`;
     }
 
     function showModalFor(webhook) {
@@ -155,14 +142,10 @@
             .filter(function (e) { return e !== 'webhook.test'; })
             .map(function (e) {
                 const checked = subscribed.indexOf(e) !== -1 ? 'checked' : '';
-                return ''
-                    + '<label class="inline-flex items-center gap-2 text-sm">'
-                    +   '<input type="checkbox" value="' + escapeHtml(e) + '" class="rounded border-[var(--border-secondary)]" ' + checked + '>'
-                    +   '<span class="font-mono text-xs">' + escapeHtml(e) + '</span>'
-                    + '</label>';
-            }).join('');
+                return safeHtml`<label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="${e}" class="rounded border-[var(--border-secondary)]" ${checked}><span class="font-mono text-xs">${e}</span></label>`;
+            });
         eventsContainer.replaceChildren();
-        eventsContainer.insertAdjacentHTML('afterbegin', checkboxes);
+        eventsContainer.insertAdjacentHTML('afterbegin', safeHtml`${checkboxes}`);
         modal.classList.remove('hidden');
     }
 
@@ -180,10 +163,10 @@
             allEventTypes = body.event_types || [];
             list.replaceChildren();
             if (!body.webhooks || body.webhooks.length === 0) {
-                list.insertAdjacentHTML('beforeend', '<p class="text-sm text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.empty', 'No webhooks yet.')) + '</p>');
+                list.insertAdjacentHTML('beforeend', safeHtml`<p class="text-sm text-[var(--text-muted)]">${tr('webhooks.empty', 'No webhooks yet.')}</p>`);
                 return;
             }
-            body.webhooks.forEach(function (wh) { list.insertAdjacentHTML('beforeend', renderWebhookCard(wh)); });
+            list.insertAdjacentHTML('beforeend', safeHtml`${body.webhooks.map(renderWebhookCard)}`);
             list.querySelectorAll('[data-webhook-id]').forEach(function (card) {
                 const id = card.getAttribute('data-webhook-id');
                 card.querySelectorAll('[data-action]').forEach(function (btn) {
@@ -192,7 +175,7 @@
             });
         } catch (e) {
             list.replaceChildren();
-            list.insertAdjacentHTML('beforeend', '<p class="text-sm text-red-500">' + escapeHtml(tr('webhooks.loadFailed', 'Error loading webhooks: ' + e.message, { error: e.message })) + '</p>');
+            list.insertAdjacentHTML('beforeend', safeHtml`<p class="text-sm text-red-500">${tr('webhooks.loadFailed', 'Error loading webhooks: ' + e.message, { error: e.message })}</p>`);
         }
     }
     window.loadWebhooks = loadWebhooks;
@@ -227,33 +210,23 @@
                 const listEl = card.querySelector('[data-deliveries-list]');
                 if (!panel.classList.contains('hidden')) { panel.classList.add('hidden'); return; }
                 listEl.replaceChildren();
-                listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.loading', 'Loading…')) + '</p>');
+                listEl.insertAdjacentHTML('beforeend', safeHtml`<p class="text-xs text-[var(--text-muted)]">${tr('webhooks.loading', 'Loading…')}</p>`);
                 panel.classList.remove('hidden');
                 const body = await fetchJson('/api/v1/webhooks/' + Number(id) + '/deliveries?limit=25');
                 listEl.replaceChildren();
                 if (!body.deliveries || body.deliveries.length === 0) {
-                    listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.noDeliveries', 'No deliveries yet.')) + '</p>');
+                    listEl.insertAdjacentHTML('beforeend', safeHtml`<p class="text-xs text-[var(--text-muted)]">${tr('webhooks.noDeliveries', 'No deliveries yet.')}</p>`);
                     return;
                 }
-                body.deliveries.forEach(function (d) {
-                    const httpStatus = d.response_status ? '<span class="text-xs text-[var(--text-muted)]">HTTP ' + Number(d.response_status) + '</span>' : '';
-                    const errLine = d.error_message ? '<div class="text-xs text-red-500 mt-0.5 break-all">' + escapeHtml(d.error_message) + '</div>' : '';
-                    const retryLine = d.next_retry_at ? ' · ' + escapeHtml(tr('webhooks.nextRetry', 'next retry: ' + fmt(d.next_retry_at), { time: fmt(d.next_retry_at) })) : '';
-                    const row = ''
-                        + '<div class="flex items-center justify-between gap-2 py-1 border-b border-[var(--border-primary)] last:border-0">'
-                        +   '<div class="flex-1 min-w-0">'
-                        +     '<div class="flex items-center gap-2 flex-wrap">'
-                        +       '<span class="font-mono text-xs text-[var(--text-secondary)]">' + escapeHtml(d.event_type) + '</span>'
-                        +       deliveryStatusBadge(d)
-                        +       httpStatus
-                        +     '</div>'
-                        +     '<div class="text-xs text-[var(--text-muted)] mt-0.5">' + escapeHtml(fmt(d.created_at)) + ' · ' + escapeHtml(tr('webhooks.attempts', 'attempts: ' + Number(d.attempt_count), { count: Number(d.attempt_count) })) + retryLine + '</div>'
-                        +     errLine
-                        +   '</div>'
-                        +   '<button class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]" data-replay="' + Number(d.id) + '" title="' + escapeHtml(tr('webhooks.replayTitle', 'Replay this delivery')) + '"><i class="fas fa-redo"></i></button>'
-                        + '</div>';
-                    listEl.insertAdjacentHTML('beforeend', row);
-                });
+                listEl.insertAdjacentHTML('beforeend', safeHtml`${body.deliveries.map(function (d) {
+                    const httpStatus = d.response_status ? safeHtml`<span class="text-xs text-[var(--text-muted)]">HTTP ${Number(d.response_status)}</span>` : '';
+                    const errLine = d.error_message ? safeHtml`<div class="text-xs text-red-500 mt-0.5 break-all">${d.error_message}</div>` : '';
+                    const retryLine = d.next_retry_at ? ' · ' + tr('webhooks.nextRetry', 'next retry: ' + fmt(d.next_retry_at), { time: fmt(d.next_retry_at) }) : '';
+                    const attempts = tr('webhooks.attempts', 'attempts: ' + Number(d.attempt_count), { count: Number(d.attempt_count) });
+                    return safeHtml`<div class="flex items-center justify-between gap-2 py-1 border-b border-[var(--border-primary)] last:border-0">${
+                        safeHtml`<div class="flex-1 min-w-0"><div class="flex items-center gap-2 flex-wrap"><span class="font-mono text-xs text-[var(--text-secondary)]">${d.event_type}</span>${deliveryStatusBadge(d)}${httpStatus}</div><div class="text-xs text-[var(--text-muted)] mt-0.5">${fmt(d.created_at)} · ${attempts}${retryLine}</div>${errLine}</div>`
+                    }<button class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]" data-replay="${Number(d.id)}" title="${tr('webhooks.replayTitle', 'Replay this delivery')}"><i class="fas fa-redo"></i></button></div>`;
+                })}`);
                 listEl.querySelectorAll('[data-replay]').forEach(function (btn) {
                     btn.addEventListener('click', async function () {
                         const did = btn.getAttribute('data-replay');

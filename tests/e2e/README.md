@@ -243,3 +243,12 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
 SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
   pytest tests/e2e/test_rendered_html_ui.py -q --noconftest -rs
 ```
+
+## Account page markup browser test
+
+`test_account_markup_ui.py` covers the cards and lists that the account page builds in script with `safeHtml` (#692): Speakers (with voice snippets and the merge, delete and clear dialogs), Shares (with the permission editor and revoke), Tags, Templates, API tokens (with revoke) and Webhooks (with deliveries). The answers of their routes are replaced in the browser. With names, titles, identifiers and dates that hold markup and quotes, the values show as text, no attribute gains a handler and no script runs. With plain records, each tab is shown in the six UI themes, light and dark; with `SPEAKR_E2E_SHOTS` set, the markup of each tab in the default theme is saved as `account-markup-<tab>.html` for comparison with another version. It runs with the same gate and instance as the smoke test:
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
+  pytest tests/e2e/test_account_markup_ui.py -q --noconftest -rs
+```
