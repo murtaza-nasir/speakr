@@ -7,6 +7,7 @@ import { savedColorScheme } from '../utils/theme-defaults.js';
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 import { confirmDialog } from '../utils/dialogs.js';
 import { realSpeakers } from '../utils/speaker-labels.js';
+import { playedDuration, seekableTime } from '../utils/playback-duration.js';
 
 /**
  * Decide whether the sidebar should start collapsed.
@@ -1133,10 +1134,12 @@ export function useUI(state, utils, processedTranscription) {
         const audio = getAudioElement();
         if (!audio || !isFinite(time)) return;
 
-        // Use our tracked duration (server-side) as fallback if browser duration is broken
-        const maxTime = audioDuration.value || (isFinite(audio.duration) ? audio.duration : time);
+        // The bar can still show the whole file after a cut. The seek has to
+        // stop inside the file the browser actually has, or it jumps to 0.
+        const landed = seekableTime(time, audioDuration.value, audio.duration);
+        if (landed == null) return;
         try {
-            audio.currentTime = Math.max(0, Math.min(time, maxTime));
+            audio.currentTime = landed;
         } catch (e) {
             console.warn('Seek failed:', e);
         }
@@ -1148,7 +1151,8 @@ export function useUI(state, utils, processedTranscription) {
         const dur = audioDuration.value || audio?.duration;
         if (!audio || !dur || !isFinite(dur)) return;
 
-        const time = (percent / 100) * dur;
+        const time = seekableTime((percent / 100) * dur, audioDuration.value, audio.duration);
+        if (time == null) return;
         try {
             audio.currentTime = time;
         } catch (e) {
@@ -1958,9 +1962,18 @@ export function useUI(state, utils, processedTranscription) {
         watch(selectedRecording, (newRecording, oldRecording) => {
             if (newRecording && oldRecording && newRecording.id === oldRecording.id) {
                 // Same recording, just a refreshed object — keep player state.
-                // Pick up a server-side duration if it only just became available.
-                if (newRecording.audio_duration && !audioDuration.value) {
-                    audioDuration.value = newRecording.audio_duration;
+                // The first copy can be the upload answer, whose length is the
+                // whole file. The detail after the cut is shorter and replaces it.
+                const nextDuration = playedDuration(audioDuration.value, newRecording.audio_duration);
+                if (nextDuration !== audioDuration.value) {
+                    audioDuration.value = nextDuration;
+                    if (audioCurrentTime.value > nextDuration) {
+                        audioCurrentTime.value = 0;
+                        const audio = getAudioElement();
+                        if (audio) {
+                            try { audio.currentTime = 0; } catch (_) { /* the element may not be ready */ }
+                        }
+                    }
                 }
                 return;
             }
