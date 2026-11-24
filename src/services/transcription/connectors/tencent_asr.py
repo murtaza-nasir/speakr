@@ -30,6 +30,8 @@ TASK_MAX_AGE = 23 * 3600
 
 class TencentASRConnector(BaseTranscriptionConnector):
     PROVIDER_NAME = 'tencent_asr'
+    DISPLAY_NAME = 'Tencent ASR'
+    DESCRIPTION = 'Tencent Cloud speech recognition, authenticated with a SecretId and SecretKey.'
     SUPPORTS_TASK_RESUME = True
     CAPABILITIES = {TranscriptionCapability.DIARIZATION,
                     TranscriptionCapability.TIMESTAMPS, TranscriptionCapability.HOTWORDS}
@@ -289,7 +291,19 @@ class TencentASRConnector(BaseTranscriptionConnector):
 
     @classmethod
     def get_config_schema(cls):
-        return {'type': 'object', 'required': ['secret_id', 'secret_key'], 'properties': {
-            'secret_id': {'type': 'string'}, 'secret_key': {'type': 'string', 'writeOnly': True},
-            'model': {'type': 'string', 'enum': list(MODELS), 'default': MODELS[0]},
-            'hotword_id': {'type': 'string'}, 'timeout': {'type': 'number', 'default': 1800}}}
+        return {
+            'type': 'object',
+            'required': ['secret_id', 'secret_key'],
+            'properties': {
+                'secret_id': {'type': 'string', 'description': 'Tencent SecretId'},
+                'secret_key': {'type': 'string', 'writeOnly': True, 'description': 'Tencent SecretKey'},
+                'model': {'type': 'string', 'enum': list(MODELS), 'default': MODELS[0],
+                          'description': 'Tencent ASR engine model'},
+                'hotword_id': {'type': 'string', 'default': '', 'description': 'Hotword list id'},
+                'timeout': {'type': 'number', 'default': 1800, 'description': 'Request timeout in seconds'},
+                'poll_interval': {'type': 'number', 'default': 5, 'description': 'Seconds between status polls'},
+                'diarize': {'type': 'boolean', 'default': True, 'description': 'Enable speaker diarization'},
+                'staging_prefix': {'type': 'string', 'default': 'tencent-asr',
+                                   'description': 'Object storage staging prefix'},
+            },
+        }

@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Optional, List, Dict, Any, BinaryIO, Callable, Set, Type, FrozenSet
 
+import httpx
+
 
 class TranscriptionCapability(Enum):
     """Capabilities that connectors can declare support for."""
@@ -59,6 +61,98 @@ class ConnectorSpecifications:
 
 # Default specifications for connectors that don't define their own
 DEFAULT_SPECIFICATIONS = ConnectorSpecifications()
+
+
+class ProbeUnsupportedError(Exception):
+    """The connector has no cheap authenticated request that proves its config."""
+
+
+@dataclass
+class ProbeResult:
+    """Outcome of a real, cheap request against the provider.
+
+    ``ok`` is True only when the provider authenticated the request. ``models``
+    is the unfiltered model list when the provider reports one. A provider
+    error keeps ``status``; a timeout or a refused connection leaves it None
+    and explains the failure in ``message``.
+    """
+
+    ok: bool = False
+    models: List[Dict[str, Any]] = field(default_factory=list)
+    status: Optional[int] = None
+    message: str = ''
+
+
+# A probe must be cheap; the provider gets ten seconds to answer.
+PROBE_TIMEOUT_SECONDS = 10.0
+
+
+def probe_result_from_response(response: httpx.Response) -> ProbeResult:
+    """Turn an OpenAI-style ``/models`` response into a ProbeResult."""
+    status = response.status_code
+    if status != 200:
+        return ProbeResult(
+            ok=False,
+            status=status,
+            message=_probe_error_detail(response),
+        )
+    models = []
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {}
+    data = payload.get('data') if isinstance(payload, dict) else None
+    for item in data or []:
+        if not isinstance(item, dict):
+            continue
+        model_id = item.get('id') or item.get('name')
+        if not isinstance(model_id, str) or not model_id.strip():
+            continue
+        entry = {'id': model_id.strip(), 'label': model_id.strip()}
+        if item.get('owned_by'):
+            entry['owned_by'] = item['owned_by']
+        models.append(entry)
+    return ProbeResult(ok=True, models=models, status=status, message='Connected.')
+
+
+def probe_failure(error: Exception) -> ProbeResult:
+    """Turn a transport error into a failed ProbeResult."""
+    if isinstance(error, httpx.TimeoutException):
+        return ProbeResult(ok=False, message='The provider request timed out.')
+    return ProbeResult(ok=False, message=f'Could not reach the provider: {error}')
+
+
+def filter_probe_models(models: List[Dict[str, Any]], filters) -> List[Dict[str, Any]]:
+    """Keep the models whose id contains one of ``filters`` (case-insensitive)."""
+    terms = tuple(term.lower() for term in (filters or ()) if term)
+    if not terms:
+        return list(models)
+    return [
+        model for model in models
+        if any(term in str(model.get('id', '')).lower() for term in terms)
+    ]
+
+
+def _probe_error_detail(response: httpx.Response) -> str:
+    detail = ''
+    try:
+        payload = response.json()
+        if isinstance(payload, dict):
+            error = payload.get('error')
+            if isinstance(error, dict):
+                detail = error.get('message') or error.get('code') or ''
+            elif isinstance(error, str):
+                detail = error
+            detail = detail or payload.get('message') or payload.get('detail') or ''
+    except ValueError:
+        pass
+    if not detail:
+        try:
+            detail = (response.text or '').strip()
+        except Exception:  # noqa: BLE001
+            detail = ''
+    detail = ' '.join(str(detail).split())
+    return detail[:300] or f'HTTP {response.status_code}'
 
 
 @dataclass
@@ -239,6 +333,14 @@ class BaseTranscriptionConnector(ABC):
     CAPABILITIES: Set[TranscriptionCapability] = set()
     PROVIDER_NAME: str = "unknown"
 
+    # Readable name and one-line description shown by the admin UI.
+    DISPLAY_NAME: str = ""
+    DESCRIPTION: str = ""
+
+    # Substring filters applied by "Discover models" to the probe result.
+    # Empty means every model the provider reports is offered.
+    MODEL_FILTERS: tuple = ()
+
     # Provider-specific constraints - subclasses should override
     SPECIFICATIONS: ConnectorSpecifications = DEFAULT_SPECIFICATIONS
 
@@ -361,6 +463,17 @@ class BaseTranscriptionConnector(ABC):
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not implement list_models()"
+        )
+
+    def probe(self) -> 'ProbeResult':
+        """Perform one real, cheap request that proves the configuration.
+
+        Returns a ProbeResult on success or provider error. Connectors without
+        a cheap authenticated request raise ProbeUnsupportedError instead of
+        pretending the configuration works.
+        """
+        raise ProbeUnsupportedError(
+            f"{type(self).__name__} does not implement probe()"
         )
 
     def health_check(self) -> bool:

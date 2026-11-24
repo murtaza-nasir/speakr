@@ -9,7 +9,7 @@ import os
 import logging
 from typing import Dict, Any, Optional, Type, List
 
-from .base import BaseTranscriptionConnector, TranscriptionCapability, TranscriptionRequest, TranscriptionResponse
+from .base import BaseTranscriptionConnector, TranscriptionRequest, TranscriptionResponse
 from .exceptions import ConfigurationError
 
 logger = logging.getLogger(__name__)
@@ -120,6 +120,8 @@ class ConnectorRegistry:
         for name, cls in self._connectors.items():
             result.append({
                 'name': name,
+                'display_name': cls.DISPLAY_NAME or name,
+                'description': cls.DESCRIPTION,
                 'provider_name': cls.PROVIDER_NAME,
                 'capabilities': [c.name for c in cls.CAPABILITIES],
                 'config_schema': cls.get_config_schema()
@@ -485,22 +487,41 @@ connector_registry = get_registry()
 
 def transcribe(request: TranscriptionRequest) -> TranscriptionResponse:
     """
-    Transcribe audio using the active connector.
+    Transcribe audio using the resolved connector.
 
-    This is a convenience function that uses the global registry.
-
-    Args:
-        request: The transcription request
-
-    Returns:
-        Transcription response
+    When the request carries a model that names a configured ASR profile (or a
+    legacy model name), the connector is resolved through ``asr_config``;
+    otherwise the environment connector is used, exactly as before.
     """
-    connector = get_registry().get_active_connector()
+    model = getattr(request, 'model', None)
+    connector = None
+    try:
+        from src.services import asr_config
+        connector, resolved_model = asr_config.resolve_asr_connector(model)
+        if resolved_model and hasattr(request, 'model'):
+            request.model = resolved_model
+    except Exception:  # noqa: BLE001
+        connector = None
+    if connector is None:
+        connector = get_registry().get_active_connector()
     return connector.transcribe(request)
 
 
-def get_connector() -> BaseTranscriptionConnector:
-    """Get the active transcription connector."""
+def get_connector(profile_id=None) -> BaseTranscriptionConnector:
+    """Get a transcription connector.
+
+    Without an argument (or with None) this returns the environment connector,
+    preserving the historical behaviour. With a profile id it resolves the
+    configured profile through ``asr_config``.
+    """
+    if profile_id:
+        try:
+            from src.services import asr_config
+            connector, _ = asr_config.resolve_asr_connector(profile_id)
+            if connector is not None:
+                return connector
+        except Exception:  # noqa: BLE001
+            pass
     return get_registry().get_active_connector()
 
 

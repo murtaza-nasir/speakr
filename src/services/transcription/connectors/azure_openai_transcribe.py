@@ -24,6 +24,10 @@ from ..base import (
     TranscriptionResponse,
     TranscriptionSegment,
     ConnectorSpecifications,
+    PROBE_TIMEOUT_SECONDS,
+    ProbeResult,
+    probe_failure,
+    probe_result_from_response,
 )
 from ..exceptions import TranscriptionError, ConfigurationError
 from src.utils.error_body import summarize_error_body
@@ -44,6 +48,8 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
         TranscriptionCapability.INITIAL_PROMPT,
     }
     PROVIDER_NAME = "azure_openai_transcribe"
+    DISPLAY_NAME = "Azure OpenAI"
+    DESCRIPTION = "Azure OpenAI transcription deployments, addressed by deployment name and API version."
 
     # Default specifications (will be overridden per-model in __init__)
     SPECIFICATIONS = ConnectorSpecifications(
@@ -353,6 +359,35 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
             self.config.get('deployment_name')
         )
 
+    def probe(self) -> ProbeResult:
+        endpoint = (self.config.get('endpoint') or '').rstrip('/')
+        api_version = self.config.get('api_version') or self.DEFAULT_API_VERSION
+        headers = {'api-key': self.config.get('api_key', '')}
+        try:
+            response = httpx.get(
+                f'{endpoint}/openai/deployments',
+                params={'api-version': api_version},
+                headers=headers,
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        if response.status_code == 200:
+            return probe_result_from_response(response)
+        if response.status_code in (401, 403):
+            return ProbeResult(
+                ok=False, status=response.status_code,
+                message=f'HTTP {response.status_code}: the API key was rejected.')
+        # The deployments endpoint can be disabled; a reachable endpoint still
+        # proves that the URL and key are usable.
+        try:
+            head = httpx.head(endpoint, headers=headers, timeout=PROBE_TIMEOUT_SECONDS)
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        if head.status_code < 400:
+            return ProbeResult(ok=True, models=[], status=head.status_code, message='Connected.')
+        return ProbeResult(ok=False, status=head.status_code, message=f'HTTP {head.status_code}')
+
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
         """Return JSON schema for configuration."""
@@ -362,6 +397,7 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
             "properties": {
                 "api_key": {
                     "type": "string",
+                    "writeOnly": True,
                     "description": "Azure OpenAI API key"
                 },
                 "endpoint": {
@@ -380,6 +416,7 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
                 "model": {
                     "type": "string",
                     "enum": list(cls.MODELS.keys()),
+                    "default": next(iter(cls.MODELS)),
                     "description": "Model type (for capability detection, defaults to deployment_name)"
                 }
             }

@@ -14,6 +14,7 @@ import httpx
 from ..base import (
     BaseTranscriptionConnector, ConnectorSpecifications, TranscriptionCapability,
     TranscriptionRequest, TranscriptionResponse, TranscriptionSegment,
+    PROBE_TIMEOUT_SECONDS, ProbeResult, probe_failure, probe_result_from_response,
 )
 from ..exceptions import ConfigurationError, ProviderError, TranscriptionError
 from src.utils.error_body import summarize_error_body
@@ -53,6 +54,9 @@ class MosslandTranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.HOTWORDS,
     }
     PROVIDER_NAME = "mossland"
+    DISPLAY_NAME = "Mossland"
+    DESCRIPTION = "MOSI (Mossland) speech transcription, with diarization and streaming task recovery."
+    MODEL_FILTERS = ('moss-transcribe',)
 
     # Any declared hard limit makes Speakr chunk before it checks this flag.
     # Leave limits unset so one MOSI task retains speaker identity end to end.
@@ -341,6 +345,18 @@ class MosslandTranscriptionConnector(BaseTranscriptionConnector):
     def health_check(self) -> bool:
         return bool(self.api_key)
 
+    def probe(self) -> ProbeResult:
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        try:
+            response = httpx.get(
+                f"{self.base_url}/v1/models",
+                headers=headers,
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        return probe_result_from_response(response)
+
     def list_models(self) -> list[dict[str, str]]:
         """Discover models on demand; use documented models while offline."""
         try:
@@ -367,10 +383,16 @@ class MosslandTranscriptionConnector(BaseTranscriptionConnector):
         return {
             "type": "object", "required": ["api_key"],
             "properties": {
-                "api_key": {"type": "string", "description": "MOSI/Mossland API key"},
+                "api_key": {"type": "string", "writeOnly": True, "description": "MOSI/Mossland API key"},
                 "base_url": {"type": "string", "default": _DEFAULT_BASE_URL,
                              "description": "MOSI/Mossland API base URL"},
                 "model": {"type": "string", "default": _DEFAULT_MODEL,
                           "description": "Model returned by MOSI GET /v1/models"},
+                "poll_interval": {"type": "number", "default": 5.0,
+                                  "description": "Seconds between status polls"},
+                "poll_timeout": {"type": "number", "default": 7200.0,
+                                 "description": "Polling timeout in seconds"},
+                "stream_read_timeout": {"type": "number", "default": 180.0,
+                                        "description": "Stream read timeout in seconds"},
             },
         }

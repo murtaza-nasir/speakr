@@ -19,6 +19,10 @@ from ..base import (
     TranscriptionResponse,
     TranscriptionSegment,
     ConnectorSpecifications,
+    PROBE_TIMEOUT_SECONDS,
+    ProbeResult,
+    probe_failure,
+    probe_result_from_response,
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.utils.error_body import summarize_error_body
@@ -40,6 +44,9 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.HOTWORDS,
     }
     PROVIDER_NAME = "mistral"
+    DISPLAY_NAME = "Mistral Voxtral"
+    DESCRIPTION = "Mistral's Voxtral transcription API, with diarization and context bias."
+    MODEL_FILTERS = ('voxtral',)
 
     # Default class-level spec assumes no chunking — Voxtral handles up to 3
     # hours natively. Instances can override this in __init__ when
@@ -262,6 +269,18 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
         """Check if the connector is properly configured."""
         return bool(self.config.get('api_key'))
 
+    def probe(self) -> ProbeResult:
+        headers = {'Authorization': f'Bearer {self.config.get("api_key", "")}'}
+        try:
+            response = httpx.get(
+                f'{self.base_url}/v1/models',
+                headers=headers,
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        return probe_result_from_response(response)
+
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
         """Return JSON schema for configuration."""
@@ -271,6 +290,7 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
             "properties": {
                 "api_key": {
                     "type": "string",
+                    "writeOnly": True,
                     "description": "Mistral API key"
                 },
                 "base_url": {

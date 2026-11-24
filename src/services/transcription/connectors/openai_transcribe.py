@@ -20,6 +20,10 @@ from ..base import (
     TranscriptionResponse,
     TranscriptionSegment,
     ConnectorSpecifications,
+    PROBE_TIMEOUT_SECONDS,
+    ProbeResult,
+    probe_failure,
+    probe_result_from_response,
 )
 from ..exceptions import TranscriptionError, ConfigurationError
 
@@ -45,6 +49,9 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
         TranscriptionCapability.INITIAL_PROMPT,
     }
     PROVIDER_NAME = "openai_transcribe"
+    DISPLAY_NAME = "OpenAI Transcribe"
+    DESCRIPTION = "OpenAI's GPT transcription models, with diarization on the diarize model."
+    MODEL_FILTERS = ('transcribe', 'whisper')
 
     # GPT-4o Transcribe models have specific constraints
     # - 25MB file size limit (all models)
@@ -377,6 +384,19 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
         """Check if the connector is properly configured."""
         return bool(self.config.get('api_key'))
 
+    def probe(self) -> ProbeResult:
+        base_url = (self.config.get('base_url') or 'https://api.openai.com/v1').rstrip('/')
+        headers = {'Authorization': f"Bearer {self.config.get('api_key', '')}"}
+        try:
+            response = httpx.get(
+                f'{base_url}/models',
+                headers=headers,
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        return probe_result_from_response(response)
+
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
         """Return JSON schema for configuration."""
@@ -386,6 +406,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
             "properties": {
                 "api_key": {
                     "type": "string",
+                    "writeOnly": True,
                     "description": "OpenAI API key"
                 },
                 "base_url": {

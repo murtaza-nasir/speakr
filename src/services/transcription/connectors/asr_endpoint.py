@@ -25,6 +25,10 @@ from ..base import (
     TranscriptionResponse,
     TranscriptionSegment,
     ConnectorSpecifications,
+    PROBE_TIMEOUT_SECONDS,
+    ProbeResult,
+    probe_failure,
+    probe_result_from_response,
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.config.app_config import ASR_ENABLE_CHUNKING, ASR_MAX_DURATION_SECONDS
@@ -49,6 +53,8 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         TranscriptionCapability.INITIAL_PROMPT,
     }
     PROVIDER_NAME = "asr_endpoint"
+    DISPLAY_NAME = "WhisperX / ASR endpoint"
+    DESCRIPTION = "A self-hosted WhisperX or whisper-asr webservice that Speakr sends audio to over HTTP."
     # A job of the WhisperX jobs API is saved on the processing job, so a
     # retry or a restart polls it instead of submitting the audio again.
     SUPPORTS_TASK_RESUME = True
@@ -69,14 +75,14 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             config: Configuration dict with keys:
                 - base_url: ASR service base URL (required)
                 - timeout: Request timeout in seconds (default: 1800)
-                - return_speaker_embeddings: Whether to request embeddings (default: False)
+                - return_speaker_embeddings: Whether to request embeddings (default: True)
                 - diarize: Whether to enable diarization by default (default: True)
         """
         super().__init__(config)
 
         self.base_url = config['base_url'].rstrip('/')
         self._config_timeout = config.get('timeout', 1800)  # 30 minutes default
-        self.return_embeddings = config.get('return_speaker_embeddings', False)
+        self.return_embeddings = config.get('return_speaker_embeddings', True)
         self.default_diarize = config.get('diarize', True)
 
         # Configure chunking behavior based on environment variables
@@ -761,6 +767,35 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         except Exception:
             return False
 
+    def probe(self) -> ProbeResult:
+        health_status = None
+        last_error = None
+        last_status = None
+        for path in ('/health', '/'):
+            try:
+                response = httpx.get(f'{self.base_url}{path}', timeout=PROBE_TIMEOUT_SECONDS)
+            except httpx.HTTPError as error:
+                last_error = error
+                continue
+            if response.status_code < 500:
+                health_status = response.status_code
+                break
+            last_status = response.status_code
+        if health_status is None:
+            if last_status is not None:
+                return ProbeResult(ok=False, status=last_status, message=f'HTTP {last_status}')
+            if last_error is not None:
+                return probe_failure(last_error)
+            return ProbeResult(ok=False, message='The ASR service did not answer.')
+        models = []
+        try:
+            response = httpx.get(f'{self.base_url}/v1/models', timeout=PROBE_TIMEOUT_SECONDS)
+            if response.status_code == 200:
+                models = probe_result_from_response(response).models
+        except httpx.HTTPError:
+            pass
+        return ProbeResult(ok=True, models=models, status=health_status, message='Connected.')
+
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
         """Return JSON schema for configuration."""
@@ -771,6 +806,17 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 "base_url": {
                     "type": "string",
                     "description": "ASR service base URL (e.g., http://whisper-asr:9000)"
+                },
+                "api_key": {
+                    "type": "string",
+                    "writeOnly": True,
+                    "default": "",
+                    "description": "API key for the ASR service (if required)"
+                },
+                "model": {
+                    "type": "string",
+                    "examples": ["large-v3", "distil-large-v3", "medium", "small", "base", "tiny"],
+                    "description": "WhisperX model to request (the service must have it installed)"
                 },
                 "timeout": {
                     "type": "integer",
@@ -784,7 +830,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 },
                 "return_speaker_embeddings": {
                     "type": "boolean",
-                    "default": False,
+                    "default": True,
                     "description": "Request speaker embeddings (WhisperX only)"
                 }
             }

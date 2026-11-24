@@ -28,6 +28,9 @@ from ..base import (
     TranscriptionResponse,
     TranscriptionSegment,
     ConnectorSpecifications,
+    PROBE_TIMEOUT_SECONDS,
+    ProbeResult,
+    probe_failure,
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.utils.error_body import summarize_error_body
@@ -48,6 +51,8 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.HOTWORDS,               # word_boost
     }
     PROVIDER_NAME = "assemblyai"
+    DISPLAY_NAME = "AssemblyAI"
+    DESCRIPTION = "AssemblyAI's asynchronous transcription API, with diarization and word boosting."
     SUPPORTS_TASK_RESUME = True
 
     # AssemblyAI's own speech models. The transcription-model that reaches a
@@ -274,17 +279,39 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
     def health_check(self) -> bool:
         return bool(self.api_key)
 
+    def probe(self) -> ProbeResult:
+        # The account endpoint authenticates the raw key and returns no model
+        # list, so a 200 proves the credentials without transcribing audio.
+        try:
+            response = httpx.get(
+                f'{self.base_url}/v2/account',
+                headers={'Authorization': self.api_key},
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        if response.status_code != 200:
+            return ProbeResult(ok=False, status=response.status_code,
+                               message=f'HTTP {response.status_code}')
+        return ProbeResult(ok=True, models=[], status=200, message='Connected.')
+
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
         return {
             "type": "object",
             "required": ["api_key"],
             "properties": {
-                "api_key": {"type": "string", "description": "AssemblyAI API key"},
+                "api_key": {"type": "string", "writeOnly": True, "description": "AssemblyAI API key"},
                 "base_url": {"type": "string", "default": "https://api.assemblyai.com",
                               "description": "API base URL"},
                 "model": {"type": "string", "default": "",
                            "description": "Optional speech_model (account default when blank)"},
+                "poll_interval": {"type": "number", "default": 3.0,
+                                  "description": "Seconds between status polls"},
+                "poll_timeout": {"type": "number", "default": 3600.0,
+                                 "description": "Polling timeout in seconds"},
+                "boost_param": {"type": "string", "default": "default",
+                                "description": "Boost strength for word_boost (low/default/high)"},
             },
         }
 
