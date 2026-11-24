@@ -6,6 +6,8 @@ omit =
     */tests/*
 
 [report]
+# The suite measured 85.2% branch coverage in November 2026.
+fail_under = 83
 show_missing = True
 skip_covered = False
 # Don't count defensive/unreachable lines against coverage.
