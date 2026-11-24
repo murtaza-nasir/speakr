@@ -47,9 +47,14 @@ def generate_vapid_keys():
 
 
 def get_vapid_keys_file():
-    """Get path to VAPID keys storage file"""
-    # Store in /config directory (persistent in Docker)
-    config_dir = Path(os.getenv('CONFIG_DIR', '/config'))
+    """The file of the VAPID key pair.
+
+    CONFIG_DIR when it is set; otherwise /data/instance, the directory of the
+    secret key, which the example compose file keeps on a volume. A key pair
+    that is lost with a recreated container would end every push
+    subscription at each update.
+    """
+    config_dir = Path(os.getenv('CONFIG_DIR') or '/data/instance')
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir / 'vapid_keys.json'
 

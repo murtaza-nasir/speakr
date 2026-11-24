@@ -125,3 +125,16 @@ def test_push_config_stays_disabled_without_the_provider(vapid, monkeypatch, tmp
             assert response.status_code == 503
         finally:
             remove_users(created)
+
+
+def test_key_pair_is_kept_in_the_instance_directory_by_default(monkeypatch):
+    """Without CONFIG_DIR, the key pair sits next to the secret key, on the volume of the example compose file."""
+    from pathlib import Path
+    from src.utils import vapid_keys
+
+    monkeypatch.delenv('CONFIG_DIR', raising=False)
+    monkeypatch.setattr(Path, 'mkdir', lambda self, *a, **k: None)
+    assert vapid_keys.get_vapid_keys_file() == Path('/data/instance/vapid_keys.json')
+
+    monkeypatch.setenv('CONFIG_DIR', '/srv/speakr-config')
+    assert vapid_keys.get_vapid_keys_file() == Path('/srv/speakr-config/vapid_keys.json')

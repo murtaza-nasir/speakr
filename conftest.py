@@ -72,7 +72,7 @@ os.environ["SQLALCHEMY_DATABASE_URI"] = _base_uri or f"sqlite:///{_TEST_DB_PATH}
 # The app os.makedirs(UPLOAD_FOLDER) at import time; default is /data/uploads
 # which isn't writable in CI / outside Docker. Point it at the temp dir.
 os.environ["UPLOAD_FOLDER"] = os.path.join(_TEST_DIR, "uploads")
-# The VAPID key pair is written to CONFIG_DIR (default /config) on first use
+# The VAPID key pair is written to CONFIG_DIR (default /data/instance) on first use
 # of the push API; keep it in the temp dir too.
 os.environ["CONFIG_DIR"] = os.path.join(_TEST_DIR, "config")
 
