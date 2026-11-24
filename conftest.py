@@ -22,12 +22,52 @@ import tempfile
 # connections / app contexts, which an in-memory SQLite DB would not share.
 _TEST_DIR = tempfile.mkdtemp(prefix="speakr_pytest_")
 _TEST_DB_PATH = os.path.join(_TEST_DIR, "test.db")
+
+
+def _worker_database_uri(base_uri):
+    """Give each pytest-xdist worker a PostgreSQL database of its own.
+
+    Every worker creates the schema and leaves rows behind, so four workers
+    sharing one database would see each other's data and fail at random.
+    Each worker instead uses a database named after the given one and its
+    id (`speakr_suite_gw0`, ...). Like the given database, it belongs to the
+    tests, so it is dropped and created empty at the start of every run;
+    stale rows from an earlier run on the same server cannot reach a test.
+    A run without xdist uses the given database as it is.
+    """
+    worker = os.environ.get("PYTEST_XDIST_WORKER")
+    if not worker:
+        return base_uri
+
+    import psycopg2
+    from sqlalchemy.engine import make_url
+
+    url = make_url(base_uri)
+    worker_db = f"{url.database}_{worker}"
+    admin = psycopg2.connect(
+        dbname="postgres",
+        user=url.username,
+        password=url.password,
+        host=url.host or "localhost",
+        port=url.port or 5432,
+    )
+    try:
+        admin.autocommit = True
+        with admin.cursor() as cursor:
+            cursor.execute(f'DROP DATABASE IF EXISTS "{worker_db}"')
+            cursor.execute(f'CREATE DATABASE "{worker_db}"')
+    finally:
+        admin.close()
+    return url.set(database=worker_db).render_as_string(hide_password=False)
+
+
 # PYTEST_DATABASE_URI runs the suite against another database, such as the
 # PostgreSQL service of the CI job. That database must be empty and is used
-# only by the tests.
-os.environ["SQLALCHEMY_DATABASE_URI"] = (
-    os.environ.get("PYTEST_DATABASE_URI") or f"sqlite:///{_TEST_DB_PATH}"
-)
+# only by the tests; under pytest-xdist each worker gets a copy of its own.
+_base_uri = os.environ.get("PYTEST_DATABASE_URI")
+if _base_uri and _base_uri.startswith("postgresql"):
+    _base_uri = _worker_database_uri(_base_uri)
+os.environ["SQLALCHEMY_DATABASE_URI"] = _base_uri or f"sqlite:///{_TEST_DB_PATH}"
 
 # The app os.makedirs(UPLOAD_FOLDER) at import time; default is /data/uploads
 # which isn't writable in CI / outside Docker. Point it at the temp dir.

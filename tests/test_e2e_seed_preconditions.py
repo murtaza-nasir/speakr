@@ -39,8 +39,11 @@ def test_a_missing_precondition_skips_outside_strict_mode(monkeypatch, value):
 
 def test_the_browser_job_runs_in_strict_mode():
     workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text()
-    step = workflow[workflow.index("name: Browser smoke test and browser UI tests"):]
-    step = step[:step.index("run:")]
+    # The step that runs the browser files, from its name to its command
+    run = workflow.index("python tests/e2e/shards.py") if "python tests/e2e/shards.py" in workflow \
+        else workflow.index("tests/e2e/test_*_ui.py")
+    step = workflow[workflow.rindex("- name:", 0, run):run]
+    assert "SPEAKR_BROWSER_SMOKE: '1'" in step
     assert "SPEAKR_E2E_STRICT: '1'" in step
 
 

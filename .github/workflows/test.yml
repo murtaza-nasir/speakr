@@ -127,11 +127,13 @@ jobs:
 
       - name: Run test suite on PostgreSQL
         env:
-          # conftest.py points the app at this database instead of SQLite.
+          # conftest.py points the app at this database instead of SQLite and
+          # gives each xdist worker a database of its own (speakr_suite_gw0,
+          # ...), so four workers do not create the schema in the same place.
           # The migration tests read TEST_DATABASE_URI, which is not set
           # here, so they cannot drop the suite's tables.
           PYTEST_DATABASE_URI: postgresql://speakr:speakr@localhost:5432/speakr_suite
-        run: pytest tests/ -q -p no:cacheprovider --timeout=120
+        run: pytest tests/ -q -p no:cacheprovider --timeout=120 -n 4 --dist loadfile --durations=15
 
   # Speakr and whisperx-asr-service set up exactly as their docs describe
   # (config/env.whisperx.example; the service's docker-compose.yml plus its
@@ -217,7 +219,13 @@ jobs:
       - name: Audit the lock files
         run: scripts/audit-dependencies.sh
 
-  browser-smoke:
+  # The browser suite runs as four shards on four runners. Each shard starts
+  # its own Speakr instance, so the files are independent, and a failure is
+  # isolated to one job. tests/e2e/shards.py spreads every
+  # tests/e2e/test_*_ui.py file and the smoke test over the shards by their
+  # measured run time, so a new browser test file runs in one of them
+  # without an edit here (#643); --durations=15 reports drift in each log.
+  browser-smoke-shards:
     # Opens every page in headless Chromium and fails on failed requests,
     # JavaScript errors, leftover template text, or a header whose user menu
     # does not open (tests/e2e/test_browser_smoke.py). Vendor files are
@@ -225,6 +233,10 @@ jobs:
     # reference to a file the image lacks fails here. The Tailwind stylesheet
     # is compiled with the same pinned CLI as the Dockerfile css-stage.
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
 
     steps:
       - name: Checkout repository
@@ -269,22 +281,40 @@ jobs:
           curl -fs -o /dev/null http://127.0.0.1:8899/login
           curl -fs -o /dev/null http://127.0.0.1:8898/state
 
-      # Every tests/e2e/test_*_ui.py module runs here on the same instance,
-      # after the smoke test, so a new browser test cannot be left out (#643).
-      # Each module restores the settings it changes. SPEAKR_E2E_STRICT: a test
-      # that finds no seeded recordings (or no Inquire, no public links) fails
-      # instead of skipping, since run_speakr.py always provides them (#641).
-      - name: Browser smoke test and browser UI tests
+      # The files of this shard run on the shard's own instance, the smoke
+      # test first. Each module restores the settings it changes.
+      # SPEAKR_E2E_STRICT: a test that finds no seeded recordings (or no
+      # Inquire, no public links) fails instead of skipping, since
+      # run_speakr.py always provides them (#641).
+      - name: Browser tests, shard ${{ matrix.shard }}
         env:
           SPEAKR_BROWSER_SMOKE: '1'
           SPEAKR_E2E_STRICT: '1'
           SPEAKR_BASE_URL: http://127.0.0.1:8899
           SPEAKR_CONTROL_URL: http://127.0.0.1:8898
-        run: pytest tests/e2e/test_browser_smoke.py tests/e2e/test_*_ui.py -q -p no:cacheprovider --noconftest -rs
+        run: |
+          FILES=$(python tests/e2e/shards.py ${{ matrix.shard }} 4)
+          echo "shard ${{ matrix.shard }}: $FILES"
+          pytest $FILES -q -p no:cacheprovider --noconftest -rs --durations=15
 
       - name: Speakr log
         if: always()
         run: tail -n 200 /tmp/speakr.log || true
+
+  browser-smoke:
+    # The check name the release flow and branch protection know. It only
+    # aggregates the shards, so the matrix can gain or lose a shard without
+    # renaming the required check.
+    needs: browser-smoke-shards
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every shard passed
+        env:
+          SHARD_RESULT: ${{ needs.browser-smoke-shards.result }}
+        run: |
+          echo "browser-smoke-shards: $SHARD_RESULT"
+          test "$SHARD_RESULT" = "success"
 
   image-smoke:
     # Builds the lite image for amd64 and opens its pages in a browser
