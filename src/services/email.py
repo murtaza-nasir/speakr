@@ -670,11 +670,13 @@ def _subject_safe_title(title: str) -> str:
     """Return a readable, bounded title safe for a mail subject.
 
     C0/C1 controls include CR and LF, which can break MIME serialisation or
-    inject another header. Remove them only from the subject; the body keeps
-    the stored title, with user-controlled HTML escaped by ``_h``.
+    inject another header. In the subject only, each run of them becomes one
+    space, so the words on either side stay apart; the body keeps the stored
+    title, with user-controlled HTML escaped by ``_h``.
     """
-    safe = ''.join(ch for ch in title if unicodedata.category(ch) != 'Cc')
-    return safe.strip()[:TITLE_MAX_LENGTH] or 'Untitled recording'
+    safe = ''.join(' ' if unicodedata.category(ch) == 'Cc' else ch for ch in title)
+    safe = ' '.join(safe.split())
+    return safe[:TITLE_MAX_LENGTH].strip() or 'Untitled recording'
 
 
 def send_transcription_complete_email(user, recording) -> bool:

@@ -305,10 +305,10 @@ _NOTIFICATION_SENDERS = [
 
 @pytest.mark.parametrize('sender,prefix', _NOTIFICATION_SENDERS)
 @pytest.mark.parametrize('title,safe_title', [
-    pytest.param('Evil\r\nX-Injected: yes', 'EvilX-Injected: yes', id='crlf-injection'),
-    pytest.param('Line one\nLine two', 'Line oneLine two', id='line-feed'),
-    pytest.param('Carriage\rReturn', 'CarriageReturn', id='carriage-return'),
-    pytest.param('Before\x00\t\x1f\x7f\x80\x85\x9fAfter', 'BeforeAfter', id='c0-c1-controls'),
+    pytest.param('Evil\r\nX-Injected: yes', 'Evil X-Injected: yes', id='crlf-injection'),
+    pytest.param('Line one\nLine two', 'Line one Line two', id='line-feed'),
+    pytest.param('Carriage\rReturn', 'Carriage Return', id='carriage-return'),
+    pytest.param('Before\x00\t\x1f\x7f\x80\x85\x9fAfter', 'Before After', id='c0-c1-controls'),
     pytest.param('\x00\x1f\x7f\x80\x85\x9f', 'Untitled recording', id='controls-only'),
     pytest.param('Quarterly planning call', 'Quarterly planning call', id='normal-title'),
 ])
@@ -359,7 +359,7 @@ def test_control_character_title_still_reaches_smtp(user_factory, smtp_configure
         raw = smtp.return_value.sendmail.call_args[0][2]
 
     msg = message_from_string(raw)
-    assert msg['Subject'] == f'{prefix}EvilX-Injected: yes'
+    assert msg['Subject'] == f'{prefix}Evil X-Injected: yes'
     assert msg.get('X-Injected') is None
 
 
