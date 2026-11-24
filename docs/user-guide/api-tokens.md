@@ -49,7 +49,7 @@ A token with scopes can call only the API v1 routes those scopes cover. The scop
 | `account` | Account settings under `/api/v1/settings` |
 
 - **Existing tokens have full access.** Tokens created before scopes existed, and tokens created through the API without `scopes`, keep full access. The token list shows them as **Full access**.
-- **Scoped tokens work only in a header.** A scoped token sent as `?token=` gets `401`. A full-access token is still accepted in the query parameter on `GET` requests only; that form is deprecated.
+- **Scoped tokens work only in a header.** A scoped token sent as `?token=` gets `401`. A full-access token is accepted in the query parameter on `GET` requests only, and only when an administrator has turned the deprecated query parameter on.
 - **Scoped tokens work only on API v1.** Web-interface routes, token management and every route without a declared scope refuse a scoped token with `403`.
 - **Scopes can be narrowed, never widened.** `PATCH /api/tokens/{id}` with a smaller `scopes` list removes scopes from a token. A token that needs more scopes needs a new token.
 - A request a token is not allowed to make is refused before anything changes, with `403` and the code `insufficient_scope`.
@@ -92,13 +92,15 @@ curl -H "API-Token: YOUR_TOKEN_HERE" \
 
 ### Query Parameter (deprecated)
 
-The `?token=` query parameter is deprecated. A header is the preferred way to send a token, because a URL that contains a token can be recorded in proxy logs and browser history. The query parameter is accepted only on `GET` requests and only with a full-access token. A request with any other method that carries the token only in the query string gets `401` with the code `query_token_read_only`, and every response to a request that uses `?token=` carries the header `Deprecation: true`:
+The `?token=` query parameter is deprecated and is off by default. A request that carries its token only in `?token=` is answered with `401` and the code `query_token_disabled`, on every method. A token is sent in a header, because a URL that contains a token can be recorded in proxy logs and browser history.
+
+An administrator can turn the query parameter on again with the `api_query_tokens_enabled` setting (`API_QUERY_TOKENS_ENABLED=true`) while older clients are changed. It is then accepted only on `GET` requests and only with a full-access token. A request with any other method that carries the token only in the query string gets `401` with the code `query_token_read_only`, and every response to a request that uses `?token=` carries the header `Deprecation: true`:
 
 ```bash
 curl "https://your-speakr-instance.com/api/v1/recordings?token=YOUR_TOKEN_HERE"
 ```
 
-The query parameter will be removed in a later release. An administrator can already turn it off with the `api_query_tokens_enabled` setting. A request that carries its token only in `?token=` is then answered with `401` and the code `query_token_disabled`, on every method.
+The query parameter will be removed in a later release.
 
 ## ASR Voice Recorder Integration
 

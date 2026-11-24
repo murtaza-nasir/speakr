@@ -5,8 +5,9 @@
   a browser session with no request for that long must sign in again. API
   tokens are not affected, the requests a page sends by itself do not count
   as activity, and the remember-me cookie is not accepted while it is set.
-* api_query_tokens_enabled (API_QUERY_TOKENS_ENABLED, default true): off
-  refuses a token in ?token= on every method.
+* api_query_tokens_enabled (API_QUERY_TOKENS_ENABLED, default false, #688):
+  off refuses a token in ?token= on every method; on accepts it on GET and
+  HEAD.
 * A warning when Speakr is reached over HTTPS, or APP_BASE_URL is https,
   while SESSION_COOKIE_SECURE is false.
 * A warning per service whose address is plain http to another machine.
@@ -97,7 +98,7 @@ def _timeout(minutes):
 
 def test_defaults():
     assert ENV_BACKED_SETTINGS['session_idle_timeout_minutes'][:3] == ('SESSION_IDLE_TIMEOUT_MINUTES', 0, 'integer')
-    assert ENV_BACKED_SETTINGS['api_query_tokens_enabled'][:3] == ('API_QUERY_TOKENS_ENABLED', True, 'boolean')
+    assert ENV_BACKED_SETTINGS['api_query_tokens_enabled'][:3] == ('API_QUERY_TOKENS_ENABLED', False, 'boolean')
 
 
 def test_with_the_timeout_off_nothing_is_checked_or_written(world):
@@ -200,10 +201,36 @@ def _query_tokens(value):
         SystemSetting.set_setting('api_query_tokens_enabled', value, setting_type='boolean')
 
 
-def test_query_token_is_accepted_on_get_by_default(world):
+def test_query_token_disabled_by_default(world):
+    """#688, #691: with no value saved and nothing in .env, a token in
+    ?token= authenticates nothing, on any method."""
     with app.test_client() as c:
         resp = c.get(f"/api/v1/recordings?token={world['plain']}")
-    assert resp.status_code == 200 and resp.headers.get('Deprecation') == 'true'
+        assert resp.status_code == 401 and resp.get_json()['code'] == 'query_token_disabled'
+        assert c.head(f"/api/v1/recordings?token={world['plain']}").status_code == 401
+        resp = c.post(f"/api/v1/tags?token={world['plain']}", json={'name': 'via-query'})
+        assert resp.status_code == 401 and resp.get_json()['code'] == 'query_token_disabled'
+
+
+@pytest.mark.parametrize("how", ["setting", "env"])
+def test_query_token_still_works_when_opted_in(world, monkeypatch, how):
+    if how == "env":
+        monkeypatch.setenv('API_QUERY_TOKENS_ENABLED', 'true')
+    else:
+        _query_tokens('true')
+    with app.test_client() as c:
+        for method in ('get', 'head'):
+            resp = getattr(c, method)(f"/api/v1/recordings?token={world['plain']}")
+            assert resp.status_code == 200, method
+            assert resp.headers.get('Deprecation') == 'true', method
+
+
+@pytest.mark.parametrize("header", ["Authorization", "X-API-Token", "API-Token"])
+def test_header_token_still_authenticates_by_default(world, header):
+    value = f"Bearer {world['plain']}" if header == "Authorization" else world['plain']
+    with app.test_client() as c:
+        resp = c.get('/api/v1/recordings', headers={header: value})
+    assert resp.status_code == 200 and 'Deprecation' not in resp.headers
 
 
 @pytest.mark.parametrize("how", ["setting", "env"])

@@ -1,7 +1,8 @@
-"""?token= is deprecated and read-only (#500).
+"""?token= is deprecated and read-only (#500), and off by default (#688).
 
-A personal API token in the ?token= query parameter is accepted on GET and
-HEAD only, and every response to such a request carries Deprecation: true.
+These tests turn api_query_tokens_enabled on, as an administrator who still
+needs the query parameter would. A personal API token in the ?token= query
+parameter is then accepted on GET and HEAD only, and every response to such a request carries Deprecation: true.
 Any other method that supplies the token only as ?token= gets 401 with the
 code query_token_read_only, before the CSRF check and before the view runs.
 Header tokens are unchanged.
@@ -19,17 +20,21 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
-from src.models import APIToken, Recording, Tag, User
+from src.models import APIToken, Recording, SystemSetting, Tag, User
 from src.utils import token_auth
 from src.utils.token_auth import hash_token
 
 
 @pytest.fixture
-def world():
+def world(monkeypatch):
     saved = app.config.get('WTF_CSRF_ENABLED', True)
     app.config['WTF_CSRF_ENABLED'] = True
     plain = f"tok-{secrets.token_urlsafe(16)}"
+    monkeypatch.delenv('API_QUERY_TOKENS_ENABLED', raising=False)
     with app.app_context():
+        row = SystemSetting.query.filter_by(key='api_query_tokens_enabled').first()
+        saved_setting = (row.value, row.setting_type) if row else None
+        SystemSetting.set_setting('api_query_tokens_enabled', 'true', setting_type='boolean')
         n = f"qtok_{secrets.token_hex(4)}"
         u = User(username=n, email=f"{n}@local.test", password="x")
         db.session.add(u)
@@ -47,6 +52,11 @@ def world():
     finally:
         app.config['WTF_CSRF_ENABLED'] = saved
         with app.app_context():
+            if saved_setting is None:
+                SystemSetting.query.filter_by(key='api_query_tokens_enabled').delete()
+                db.session.commit()
+            else:
+                SystemSetting.set_setting('api_query_tokens_enabled', saved_setting[0], None, saved_setting[1])
             Tag.query.filter_by(user_id=ids['user']).delete()
             Recording.query.filter_by(user_id=ids['user']).delete()
             APIToken.query.filter_by(user_id=ids['user']).delete()

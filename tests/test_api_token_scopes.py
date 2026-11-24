@@ -95,7 +95,8 @@ def test_a_full_token_works_everywhere_as_before(world):
         assert c.get("/api/v1/recordings", headers=_h(plain)).status_code == 200
         assert c.patch(f"/api/v1/recordings/{world['rec']}", json={"title": "Renamed"}, headers=_h(plain)).status_code == 200
         assert c.get("/api/recordings", headers=_h(plain)).status_code == 200          # web-UI route
-        assert c.get(f"/api/v1/recordings?token={plain}").status_code == 200          # query token
+        query = c.get(f"/api/v1/recordings?token={plain}")                             # query token: off by default (#688)
+        assert query.status_code == 401 and query.get_json()["code"] == "query_token_disabled"
     assert _title(world["rec"]) == "Renamed"
 
 

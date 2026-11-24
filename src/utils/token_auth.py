@@ -16,7 +16,8 @@ from src.models import APIToken
 
 logger = logging.getLogger(__name__)
 
-# ?token= is deprecated (#500). It is accepted only on these read-only methods;
+# ?token= is deprecated (#500) and off unless api_query_tokens_enabled is on
+# (#688). When on, it is accepted only on these read-only methods;
 # a token supplied only as ?token= on any other method is refused with 401.
 QUERY_TOKEN_METHODS = frozenset({'GET', 'HEAD'})
 
@@ -221,7 +222,7 @@ def _warn_query_token(api_token):
 
 
 def query_tokens_enabled():
-    """api_query_tokens_enabled (API_QUERY_TOKENS_ENABLED); on unless turned off."""
+    """api_query_tokens_enabled (API_QUERY_TOKENS_ENABLED); off unless turned on (#688)."""
     from src.models import SystemSetting
     from src.utils.system_settings import ENV_BACKED_SETTINGS, env_fallback
     env_var, default = ENV_BACKED_SETTINGS['api_query_tokens_enabled'][:2]

@@ -362,12 +362,9 @@ curl -H "Authorization: Bearer YOUR_TOKEN" https://speakr.example.com/api/record
 
 # X-API-Token header
 curl -H "X-API-Token: YOUR_TOKEN" https://speakr.example.com/api/recordings
-
-# Query parameter (deprecated; GET requests only)
-curl "https://speakr.example.com/api/recordings?token=YOUR_TOKEN"
 ```
 
-The Authorization header is the preferred form. The `?token=` query parameter is deprecated and is accepted only on `GET` requests; a request with any other method that carries the token only in the query string gets `401`.
+The Authorization header is the preferred form. The `?token=` query parameter is deprecated and is off by default; a request that carries the token only in the query string gets `401`. An administrator can turn it on again for `GET` requests, as described in [API Tokens](api-tokens.md#query-parameter-deprecated).
 
 ### Revoking Tokens
 

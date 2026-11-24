@@ -223,7 +223,7 @@ On the desktop, the recording list, the open recording and the player can be use
 
 Speakr provides [API token authentication](user-guide/api-tokens.md) for programmatic access to your recordings. Create personal access tokens from your Account Settings to authenticate automation tools, scripts, and custom integrations without sharing your password.
 
-Tokens work with multiple authentication methods - the standard Authorization Bearer header, custom X-API-Token or API-Token headers, or query parameters for simple integrations. Each token is tied to your user account and provides the same access as logging in through the web interface.
+Tokens are sent in the standard Authorization Bearer header or in the custom X-API-Token or API-Token headers. Each token is tied to your user account and provides the same access as logging in through the web interface.
 
 ### Integration Support
 

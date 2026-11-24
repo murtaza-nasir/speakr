@@ -10,7 +10,8 @@ All endpoints require token authentication via:
 - Authorization: Bearer <token>
 - X-API-Token: <token>
 - API-Token: <token>
-- ?token=<token> query parameter (deprecated; GET and HEAD only, #500)
+- ?token=<token> query parameter (deprecated; off unless api_query_tokens_enabled
+  is on, and then GET and HEAD only, #500, #688)
 """
 
 import os
@@ -129,7 +130,7 @@ OPENAPI_SPEC = {
     "openapi": "3.0.3",
     "info": {
         "title": "Speakr API",
-        "description": "REST API for Speakr - Audio transcription and note-taking application.\n\n## Authentication\nMost endpoints require token authentication via one of:\n- `Authorization: Bearer <token>`\n- `X-API-Token: <token>`\n- `API-Token: <token>`\n- `?token=<token>` query parameter (deprecated, GET only)\n\nA header is the preferred way to send a token. A token in `?token=` is accepted only on GET requests; any other method that carries the token only in the query string gets `401` with the code `query_token_read_only`, and every response to a request that uses `?token=` carries the header `Deprecation: true`.\n\nThe ASR Voice Recorder integration is the one exception: its required multipart `secret` field contains the personal Speakr API token because that client cannot set custom authorization headers. Generate tokens in Settings > API Tokens.",
+        "description": "REST API for Speakr - Audio transcription and note-taking application.\n\n## Authentication\nMost endpoints require token authentication via one of:\n- `Authorization: Bearer <token>`\n- `X-API-Token: <token>`\n- `API-Token: <token>`\n- `?token=<token>` query parameter (deprecated, off by default)\n\nA header is the preferred way to send a token. A token in `?token=` is accepted only when the administrator turns on `api_query_tokens_enabled`; otherwise a request that carries the token only in the query string gets `401` with the code `query_token_disabled`, on every method. When it is on, a token in `?token=` is accepted only on GET requests; any other method that carries the token only in the query string gets `401` with the code `query_token_read_only`. Every response to a request that uses `?token=` carries the header `Deprecation: true`.\n\nThe ASR Voice Recorder integration is the one exception: its required multipart `secret` field contains the personal Speakr API token because that client cannot set custom authorization headers. Generate tokens in Settings > API Tokens.",
         "version": "1.0.0"
     },
     "servers": [{"url": "/api/v1", "description": "API v1"}],
@@ -147,8 +148,10 @@ OPENAPI_SPEC = {
                                           "header."},
             "apiKeyHeader": {"type": "apiKey", "in": "header", "name": "X-API-Token"},
             "apiKeyQuery": {"type": "apiKey", "in": "query", "name": "token", "x-deprecated": True,
-                            "description": "Deprecated. Accepted only on GET (and HEAD) requests; any other method "
-                                           "that carries the token only here gets 401 query_token_read_only. "
+                            "description": "Deprecated, and off by default: unless the administrator turns on "
+                                           "api_query_tokens_enabled, a token here gets 401 query_token_disabled. "
+                                           "When it is on, a token here is accepted only on GET (and HEAD) requests; "
+                                           "any other method that carries the token only here gets 401 query_token_read_only. "
                                            "Responses carry the header Deprecation: true. Send the token in "
                                            "the Authorization header instead. Scoped tokens are not accepted here."}
         },

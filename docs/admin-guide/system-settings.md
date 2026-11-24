@@ -227,7 +227,7 @@ The settings in this section were added for deployments with regulated data. The
 | Setting | Variable in `.env` | Default | Effect |
 |---|---|---|---|
 | `session_idle_timeout_minutes` | `SESSION_IDLE_TIMEOUT_MINUTES` | `0` | Minutes without a request after which the user of a browser session must sign in again. `0`: no idle timeout. |
-| `api_query_tokens_enabled` | `API_QUERY_TOKENS_ENABLED` | `true` | `false`: an API token in the `?token=` query parameter is refused on every method. |
+| `api_query_tokens_enabled` | `API_QUERY_TOKENS_ENABLED` | `false` | `false`: an API token in the `?token=` query parameter is refused on every method. `true`: it is accepted on `GET` and `HEAD` requests. |
 | `webhook_delivery_retention_days` | `WEBHOOK_DELIVERY_RETENTION_DAYS` | `30` | Days after which a webhook delivery record is removed. `0`: the records are kept without limit. |
 | `webhook_omit_titles` | `WEBHOOK_OMIT_TITLES` | `false` | `true`: the recording title and the original file name are left out of webhook payloads. |
 | `auto_export_delete_with_recording` | `AUTO_EXPORT_DELETE_WITH_RECORDING` | `false` | `true`: the automatically exported file is deleted together with its recording. |
@@ -254,14 +254,16 @@ With `session_idle_timeout_minutes` above `0`, the time of the last request is k
 
 ### Tokens in the query parameter
 
-The `?token=` query parameter is deprecated, because a URL with a token is recorded in proxy logs and in the browser history. By default the parameter is still accepted on `GET` and `HEAD` requests with a full-access token. With `api_query_tokens_enabled` set to `false`, a request that carries its token only in the query parameter is answered with `401` and the code `query_token_disabled`, on every method. Tokens in the `Authorization: Bearer`, `X-API-Token` and `API-Token` headers are accepted as before.
+The `?token=` query parameter is deprecated, because a URL with a token is recorded in proxy logs and in the browser history. It is off by default, also on an installation upgraded from v0.11.4 or earlier, unless a value was saved for `api_query_tokens_enabled` on this page. A request that carries its token only in the query parameter is answered with `401` and the code `query_token_disabled`, on every method. Tokens in the `Authorization: Bearer`, `X-API-Token` and `API-Token` headers are accepted as before.
+
+With `api_query_tokens_enabled` set to `true`, the parameter is accepted on `GET` and `HEAD` requests with a full-access token, and each response has the header `Deprecation: true`. The setting is meant for the time needed to change older clients.
 
 Requests that cannot carry a header are affected as follows:
 
 - The web interface is not affected. Its audio and video players are authenticated by the session cookie.
 - Public links are not affected. The page and the audio of a public link are addressed by the id of the link.
 - The ASR Voice Recorder integration is not affected. Its token is sent in the `secret` field of the upload form.
-- A client that plays `GET /api/v1/recordings/{id}/audio?token=...` in a media element must be changed before the setting is turned off. The audio is then requested with a header, for example with `fetch`, and played from the downloaded data, or a player with support for request headers is used.
+- A client that plays `GET /api/v1/recordings/{id}/audio?token=...` in a media element must be changed, or the setting must be turned on until it is changed. The audio is then requested with a header, for example with `fetch`, and played from the downloaded data, or a player with support for request headers is used.
 
 ### Webhook delivery records
 

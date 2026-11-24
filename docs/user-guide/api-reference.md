@@ -29,12 +29,9 @@ All endpoints require authentication, except the API description and the interac
          https://speakr.example.com/api/v1/stats
     ```
 
-=== "Query Parameter (deprecated)"
-    ```bash
-    curl "https://speakr.example.com/api/v1/stats?token=YOUR_TOKEN"
-    ```
+A token is sent in a header. The `?token=` query parameter is deprecated and is off by default: every request that carries its token only in `?token=` gets `401` with the code `query_token_disabled`. A URL that contains a token can be recorded in proxy logs and browser history, so a header is the safer choice for every client.
 
-A header is the preferred way to send a token. The `?token=` query parameter is deprecated and is accepted only on `GET` requests, and only with full-access tokens. A `POST`, `PUT`, `PATCH` or `DELETE` request that carries the token only in `?token=` gets `401` with the code `query_token_read_only`. Every response to a request that uses `?token=` carries the header `Deprecation: true`. A URL that contains a token can be recorded in proxy logs and browser history, so a header is the safer choice for every client. The query parameter will be removed in a later release, and an administrator can turn it off now (`api_query_tokens_enabled`): every request that carries its token only in `?token=` then gets `401` with the code `query_token_disabled`.
+An administrator can turn the query parameter on again with the `api_query_tokens_enabled` setting (`API_QUERY_TOKENS_ENABLED=true`) while older clients are changed. It is then accepted only on `GET` requests, and only with full-access tokens. A `POST`, `PUT`, `PATCH` or `DELETE` request that carries the token only in `?token=` gets `401` with the code `query_token_read_only`. Every response to a request that uses `?token=` carries the header `Deprecation: true`. The query parameter will be removed in a later release.
 
 ### Scopes
 

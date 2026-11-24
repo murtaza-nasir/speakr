@@ -120,7 +120,7 @@ ENV_BACKED_SETTINGS: Dict[str, Tuple[str, Any, str, str]] = {
     'enable_email_verification': ('ENABLE_EMAIL_VERIFICATION', False, 'boolean', 'Whether email verification is enabled.'),
     'require_email_verification': ('REQUIRE_EMAIL_VERIFICATION', False, 'boolean', 'Whether verified email is required.'),
     'session_idle_timeout_minutes': ('SESSION_IDLE_TIMEOUT_MINUTES', 0, 'integer', 'Minutes without a request after which a browser session must sign in again. 0 means no idle timeout. API tokens are not affected.'),
-    'api_query_tokens_enabled': ('API_QUERY_TOKENS_ENABLED', True, 'boolean', 'Whether an API token is accepted in the deprecated ?token= query parameter (GET and HEAD only). Off: a token is accepted in a header only.'),
+    'api_query_tokens_enabled': ('API_QUERY_TOKENS_ENABLED', False, 'boolean', 'Whether an API token is accepted in the deprecated ?token= query parameter (GET and HEAD only). Off (the default): a token is accepted in a header only.'),
     'sso_api_tokens_enabled': ('SSO_API_TOKENS_ENABLED', False, 'boolean', 'Whether SSO access tokens from allowed apps are accepted on the API and can be exchanged for API tokens.'),
     'sso_api_allowed_clients': ('SSO_API_ALLOWED_CLIENTS', '', 'string', 'Comma-separated OIDC client IDs whose access tokens are accepted (matched against aud or azp). Empty means none.'),
     'sso_api_exchange_clients': ('SSO_API_EXCHANGE_CLIENTS', '', 'string', 'Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. Each must also be in sso_api_allowed_clients. Empty means no exchange.'),

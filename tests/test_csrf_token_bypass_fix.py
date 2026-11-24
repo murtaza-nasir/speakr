@@ -368,7 +368,7 @@ def test_sso_only_user_can_add_password_via_password_reset_flow():
 def test_api_v1_blueprint_remains_csrf_exempt_for_all_token_methods():
     """The documented programmatic surface (every example in
     docs/user-guide/api-tokens.md points at /api/v1/*) must continue
-    to work for all four documented token methods even after the
+    to work for all three documented token headers even after the
     csrf_exempt_for_api_tokens hook was removed. The v1 blueprint is
     CSRF-exempt at registration time, so neither the hook nor its
     replacement is in the picture; this test pins that.
@@ -376,7 +376,8 @@ def test_api_v1_blueprint_remains_csrf_exempt_for_all_token_methods():
     We exercise the /api/v1/stats endpoint because it is a GET that
     Flask-WTF would normally not check anyway, plus it does not need
     any setup. The real assertion is that authentication completes
-    via the request_loader and the route returns the user's stats."""
+    via the request_loader and the route returns the user's stats.
+    The query string is off by default (#688) and gets 401."""
     saved = app.config.get('WTF_CSRF_ENABLED', True)
     app.config['WTF_CSRF_ENABLED'] = True
     try:
@@ -389,13 +390,15 @@ def test_api_v1_blueprint_remains_csrf_exempt_for_all_token_methods():
                 ('Authorization Bearer', {'headers': {'Authorization': f'Bearer {plaintext}'}}),
                 ('X-API-Token', {'headers': {'X-API-Token': plaintext}}),
                 ('API-Token', {'headers': {'API-Token': plaintext}}),
-                ('query string', {'query_string': {'token': plaintext}}),
             ]:
                 resp = client.get('/api/v1/stats', **kwargs)
                 assert resp.status_code == 200, (
                     f'/api/v1/stats with {method_name} returned '
                     f'{resp.status_code}; documented token method broke'
                 )
+            resp = client.get('/api/v1/stats', query_string={'token': plaintext})
+            assert resp.status_code == 401, resp.status_code
+            assert resp.get_json()['code'] == 'query_token_disabled'
             for t in APIToken.query.filter_by(user_id=user.id).all():
                 db.session.delete(t)
             db.session.delete(user)
@@ -405,10 +408,11 @@ def test_api_v1_blueprint_remains_csrf_exempt_for_all_token_methods():
 
 
 def test_api_v1_post_with_query_string_token_is_refused():
-    """#500: ``?token=`` is deprecated and accepted only on GET and HEAD.
+    """#500, #688: ``?token=`` is deprecated and off by default.
     A POST to /api/v1/* that carries the token only in the query string
-    gets 401 query_token_read_only (never a 400 CSRF rejection), and the
-    view does not run."""
+    gets 401 query_token_disabled (never a 400 CSRF rejection), and the
+    view does not run. With the setting on, the answer is
+    query_token_read_only (tests/test_query_token_read_only.py)."""
     saved = app.config.get('WTF_CSRF_ENABLED', True)
     app.config['WTF_CSRF_ENABLED'] = True
     try:
@@ -440,7 +444,7 @@ def test_api_v1_post_with_query_string_token_is_refused():
                     f'/api/v1/recordings/{rec.id}/regenerate_title?token={plaintext}',
                 )
             assert resp.status_code == 401, (resp.status_code, resp.data)
-            assert resp.get_json()['code'] == 'query_token_read_only'
+            assert resp.get_json()['code'] == 'query_token_disabled'
             db.session.refresh(rec)
             assert rec.title == 'for-test'
 
