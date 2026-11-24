@@ -617,16 +617,19 @@ def test_extracted_audio_limit_applies_to_an_audio_only_video_without_chunking()
     assert (chunked.chunking_will_handle_large_audio, chunked.extracted_audio_limit_mb) == (True, None)
 
 
-def _convert(staged, outcome):
+def _convert(staged, outcome, keep_start=None, keep_end=None):
     convert = MagicMock(side_effect=outcome) if isinstance(outcome, Exception) else MagicMock(return_value=outcome)
     specs = object()
     with patch("src.services.recording_ingestion.convert_if_needed", convert), \
             patch("src.api.recordings.USE_ASR_ENDPOINT", True):
-        converted = convert_upload_in_request(staged, original_filename="talk.m4a", codec_info=AUDIO,
-                                              needs_chunking_for_processing=False, connector_specs=specs)
-    convert.assert_called_once_with(staged, original_filename="talk.m4a", codec_info=AUDIO,
-                                    needs_chunking=False, is_asr_endpoint=True, delete_original=True,
-                                    connector_specs=specs)
+        converted = convert_upload_in_request(
+            staged, original_filename="talk.m4a", codec_info=AUDIO,
+            needs_chunking_for_processing=False, connector_specs=specs,
+            keep_start=keep_start, keep_end=keep_end)
+    convert.assert_called_once_with(
+        staged, original_filename="talk.m4a", codec_info=AUDIO,
+        needs_chunking=False, is_asr_endpoint=True, delete_original=True,
+        connector_specs=specs, keep_start=keep_start, keep_end=keep_end)
     return converted
 
 
@@ -637,6 +640,14 @@ def test_convert_upload_in_request_returns_the_converted_path(staged):
         converted = _convert(staged, result)
     assert converted == ConvertedUpload("/staging/talk.mp3", None)
     info.assert_called_once_with("File converted: alac -> mp3")
+
+
+def test_convert_upload_in_request_forwards_the_kept_span(staged):
+    result = SimpleNamespace(output_path="/staging/talk.mp3", was_converted=True, was_compressed=False,
+                             original_codec="alac", final_codec="mp3")
+    with app.app_context():
+        converted = _convert(staged, result, keep_start=2, keep_end=5)
+    assert converted == ConvertedUpload("/staging/talk.mp3", None)
 
 
 @pytest.mark.parametrize("error,status,code", [
