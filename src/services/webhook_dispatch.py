@@ -23,8 +23,10 @@ Security:
   and cheap routing.
 - ``Speakr-Timestamp`` so receivers can reject stale deliveries.
 - SSRF guard: outbound URLs are resolved and validated against a
-  private-network blocklist. ``allow_http`` only opens the http://
-  scheme; private hosts still require the admin allowlist.
+  private-network blocklist, and the delivery connects only to the
+  addresses that were validated (no second DNS lookup, #694).
+  ``allow_http`` only opens the http:// scheme; private hosts still
+  require the admin allowlist.
 """
 
 import hashlib
@@ -35,6 +37,7 @@ import logging
 import os
 import re
 import socket
+from socket import timeout as SocketTimeout
 import threading
 import time
 import uuid
@@ -46,6 +49,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.poolmanager import PoolManager
 from urllib3.connection import HTTPConnection, HTTPSConnection
 from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from src.database import db
 from src.models import Webhook, WebhookDelivery, WEBHOOK_EVENT_TYPES
@@ -192,26 +196,46 @@ def _is_blocked_ip(ip_str) -> bool:
 
 
 class _WebhookSSRFError(Exception):
-    """Raised at connect time when a webhook's real peer IP is a blocked address."""
+    """Raised at connect time when a webhook connection would reach an address
+    that was not validated, or a blocked one."""
+
+
+def _normalize_host(host) -> str:
+    """Lower-cased host without IPv6 brackets or a trailing dot, so the URL
+    host and the connection host compare equal."""
+    return (host or '').strip('[]').rstrip('.').lower()
 
 
 def _guard_peer(conn) -> None:
-    """Abort the connection if its actual peer IP is blocked.
+    """Abort the connection unless its actual peer IP is acceptable.
 
     Runs after ``connect()`` (TCP + TLS) but before any HTTP request bytes are
-    sent, so a rebound host is dropped before it can receive the payload or leak
-    a response. This closes the DNS-rebinding TOCTOU window that a separate
-    validate-then-``requests.post`` (two independent DNS lookups) leaves open
-    (GHSA-2m89-mxcv-gv93).
+    sent, so an unexpected peer is dropped before it can receive the payload or
+    leak a response (GHSA-2m89-mxcv-gv93). A pinned connection (#694) must end
+    at one of the addresses validated for its host; any connection to a blocked
+    address is refused unless the host is on the intranet allowlist.
     """
     try:
         peer_ip = conn.sock.getpeername()[0]
     except Exception as e:  # pragma: no cover - defensive
         _quiet_close(conn)
         raise _WebhookSSRFError(f'could not determine peer address: {e}')
-    if _is_blocked_ip(peer_ip):
+    pins = getattr(conn, '_ssrf_pins', None)
+    if pins is not None:
+        allowed = pins.get(_normalize_host(conn.host), ())
+        if not any(_same_ip(peer_ip, ip) for ip in allowed):
+            _quiet_close(conn)
+            raise _WebhookSSRFError(f'connection reached an unvalidated address ({peer_ip})')
+    if _is_blocked_ip(peer_ip) and not getattr(conn, '_ssrf_allow_private', False):
         _quiet_close(conn)
         raise _WebhookSSRFError(f'connection resolved to a blocked address ({peer_ip})')
+
+
+def _same_ip(a, b) -> bool:
+    try:
+        return ipaddress.ip_address(a) == ipaddress.ip_address(b)
+    except ValueError:
+        return False
 
 
 def _quiet_close(conn) -> None:
@@ -221,13 +245,79 @@ def _quiet_close(conn) -> None:
         pass
 
 
-class _GuardedHTTPConnection(HTTPConnection):
+def _open_pinned_socket(ip, port, timeout, source_address=None, socket_options=None):
+    """A TCP socket connected to the literal address ``ip``.
+
+    No name resolution takes place here: the address is the one validated
+    before the request, so a DNS change between validation and connection
+    cannot retarget it (#694).
+    """
+    family = socket.AF_INET6 if ':' in ip else socket.AF_INET
+    sock = socket.socket(family, socket.SOCK_STREAM)
+    try:
+        for opt in socket_options or ():
+            sock.setsockopt(*opt)
+        if isinstance(timeout, (int, float)):
+            sock.settimeout(timeout)
+        if source_address:
+            sock.bind(source_address)
+        sock.connect((ip, port))
+        return sock
+    except BaseException:
+        sock.close()
+        raise
+
+
+class _PinnedConnectionMixin:
+    """Connect to the validated addresses of the host instead of resolving it
+    again. The URL host stays the HTTP Host header, the TLS SNI name and the
+    name the certificate is verified against; only the TCP target is pinned.
+
+    ``_ssrf_pins`` maps a normalized host to its validated addresses; None
+    keeps the default resolution (the peer is still checked after connect).
+    A host that is not pinned, such as a redirect target, fails closed.
+    """
+    _ssrf_pins = None
+    _ssrf_allow_private = False
+
+    def _new_conn(self):
+        if self._ssrf_pins is None:
+            return super()._new_conn()
+        host = _normalize_host(self.host)
+        if host not in self._ssrf_pins:
+            raise _WebhookSSRFError(f'no validated address for host {self.host}')
+        addresses = self._ssrf_pins[host]
+        if not addresses:
+            # The host did not resolve at validation: a normal, retryable
+            # network error, never a fresh lookup.
+            raise NewConnectionError(self, f'Failed to resolve {self.host}')
+        error = None
+        for ip in addresses:
+            try:
+                sock = _open_pinned_socket(
+                    ip, self.port, self.timeout,
+                    source_address=self.source_address,
+                    socket_options=self.socket_options,
+                )
+            except SocketTimeout as e:
+                error = ConnectTimeoutError(
+                    self, f'Connection to {self.host} ({ip}) timed out. (connect timeout={self.timeout})')
+                error.__cause__ = e
+            except OSError as e:
+                error = NewConnectionError(self, f'Failed to establish a new connection to {ip}: {e}')
+                error.__cause__ = e
+            else:
+                return sock
+        raise error
+
+
+class _GuardedHTTPConnection(_PinnedConnectionMixin, HTTPConnection):
     def connect(self):
         super().connect()
         _guard_peer(self)
 
 
-class _GuardedHTTPSConnection(HTTPSConnection):
+class _GuardedHTTPSConnection(_PinnedConnectionMixin, HTTPSConnection):
     def connect(self):
         super().connect()
         _guard_peer(self)
@@ -242,29 +332,48 @@ class _GuardedHTTPSConnectionPool(HTTPSConnectionPool):
 
 
 class _SSRFGuardPoolManager(PoolManager):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, pins=None, allow_private=False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.pool_classes_by_scheme = {
-            'http': _GuardedHTTPConnectionPool,
-            'https': _GuardedHTTPSConnectionPool,
-        }
+        if pins is None and not allow_private:
+            http_pool, https_pool = _GuardedHTTPConnectionPool, _GuardedHTTPSConnectionPool
+        else:
+            settings = {'_ssrf_pins': pins, '_ssrf_allow_private': allow_private}
+            http_conn = type('_PinnedHTTPConnection', (_GuardedHTTPConnection,), settings)
+            https_conn = type('_PinnedHTTPSConnection', (_GuardedHTTPSConnection,), settings)
+            http_pool = type('_PinnedHTTPConnectionPool', (HTTPConnectionPool,), {'ConnectionCls': http_conn})
+            https_pool = type('_PinnedHTTPSConnectionPool', (HTTPSConnectionPool,), {'ConnectionCls': https_conn})
+        self.pool_classes_by_scheme = {'http': http_pool, 'https': https_pool}
 
 
 class SSRFGuardAdapter(HTTPAdapter):
-    """requests adapter that verifies the socket's real peer IP after connect
-    and aborts on a private/loopback/etc. address (see _guard_peer)."""
+    """requests adapter whose connections go to pinned, validated addresses
+    (when ``pins`` is given) and whose real peer IP is verified after connect
+    (see _guard_peer)."""
+
+    def __init__(self, *args, pins=None, allow_private=False, **kwargs):
+        self._ssrf_pins = pins
+        self._ssrf_allow_private = allow_private
+        super().__init__(*args, **kwargs)
 
     def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
         self.poolmanager = _SSRFGuardPoolManager(
-            num_pools=connections, maxsize=maxsize, block=block, **pool_kwargs
+            num_pools=connections, maxsize=maxsize, block=block,
+            pins=getattr(self, '_ssrf_pins', None),
+            allow_private=getattr(self, '_ssrf_allow_private', False),
+            **pool_kwargs
         )
 
 
-def ssrf_guarded_session() -> requests.Session:
+def ssrf_guarded_session(pins=None, allow_private=False) -> requests.Session:
     """A requests Session whose connections are peer-IP-verified. Retries are
-    disabled so a blocked connection fails fast rather than re-resolving."""
+    disabled so a blocked connection fails fast rather than re-resolving.
+
+    ``pins`` ({host: [validated IPs]}) makes every connection go to those
+    addresses only (#694); ``allow_private`` relaxes the blocked-address check
+    for an allowlisted intranet host, never the pinning.
+    """
     session = requests.Session()
-    adapter = SSRFGuardAdapter(max_retries=0)
+    adapter = SSRFGuardAdapter(max_retries=0, pins=pins, allow_private=allow_private)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
     return session
@@ -273,7 +382,8 @@ def ssrf_guarded_session() -> requests.Session:
 def _host_is_allowlisted(url: str) -> bool:
     """True if the URL's host matches WEBHOOK_INTRANET_HOST_ALLOWLIST — an
     operator opt-in that intentionally permits an internal host, so the
-    connect-time peer guard is relaxed for it (matching is_url_safe_for_webhook)."""
+    blocked-address check is relaxed for it (matching is_url_safe_for_webhook).
+    Pinning to the validated addresses still applies."""
     try:
         host = (urlparse(url).hostname or '').lower()
     except Exception:
@@ -282,13 +392,15 @@ def _host_is_allowlisted(url: str) -> bool:
     return bool(host and allowlist and allowlist.search(host))
 
 
-def _http_post(url, **kwargs):
+def _http_post(url, pinned_ips=None, **kwargs):
     """The single outbound-POST seam for webhook delivery.
 
-    Public hosts go through the SSRF-guard session, which verifies the real
-    connected peer IP and aborts on a private/loopback address (closing the
-    DNS-rebinding TOCTOU window). Explicitly allowlisted intranet hosts use the
-    plain client by operator choice. Tests patch this function.
+    The request connects only to ``pinned_ips``, the addresses validated for
+    the URL host by resolve_webhook_target(); without them the URL is resolved
+    and validated here, once. No second DNS lookup takes place, so a rebound
+    hostname cannot retarget the request (#694). Allowlisted intranet hosts get
+    the same pinning; only the private-address check is relaxed for them.
+    Redirects are never followed. Tests patch this function.
 
     Every call is bounded: a caller that passes no timeout (or None) gets the
     delivery timeout, so a slow destination cannot hold a worker (#568).
@@ -296,9 +408,17 @@ def _http_post(url, **kwargs):
     timeout = kwargs.pop('timeout', None)
     if timeout is None:
         timeout = _delivery_timeout()
-    if _host_is_allowlisted(url):
-        return requests.post(url, timeout=timeout, **kwargs)
-    return ssrf_guarded_session().post(url, timeout=timeout, **kwargs)
+    kwargs['allow_redirects'] = False
+    if pinned_ips is None:
+        problem, pinned_ips = resolve_webhook_target(url, allow_http=True)
+        if problem and problem[0] == 'webhook_url_private_address':
+            raise _WebhookSSRFError(f"URL resolves to a blocked address ({problem[1]['ip']})")
+    host = _normalize_host(urlparse(url).hostname)
+    session = ssrf_guarded_session(
+        pins={host: list(pinned_ips)},
+        allow_private=_host_is_allowlisted(url),
+    )
+    return session.post(url, timeout=timeout, **kwargs)
 
 
 def is_url_safe_for_webhook(url: str, allow_http: bool = False, language=None) -> tuple:
@@ -321,22 +441,33 @@ def is_url_safe_for_webhook(url: str, allow_http: bool = False, language=None) -
 def webhook_url_problem(url: str, allow_http: bool = False):
     """The check behind is_url_safe_for_webhook: None for a safe URL, else
     (server.apiError code, placeholder values)."""
+    return resolve_webhook_target(url, allow_http)[0]
+
+
+def resolve_webhook_target(url: str, allow_http: bool = False):
+    """Resolve the URL host once and validate every address it maps to.
+
+    Returns ``(problem, addresses)``: ``problem`` is None for a safe URL, else
+    (server.apiError code, placeholder values); ``addresses`` lists the
+    validated IPs in resolution order, empty when there is a problem. Delivery
+    connects to exactly these addresses (#694).
+    """
     if not url:
-        return 'url_required', {}
+        return ('url_required', {}), []
     try:
         parsed = urlparse(url)
     except Exception:
-        return 'webhook_url_unparseable', {}
+        return ('webhook_url_unparseable', {}), []
 
     scheme = (parsed.scheme or '').lower()
     if scheme not in ('http', 'https'):
-        return 'webhook_url_bad_scheme', {}
+        return ('webhook_url_bad_scheme', {}), []
     if scheme == 'http' and not allow_http:
-        return 'webhook_url_http_not_allowed', {}
+        return ('webhook_url_http_not_allowed', {}), []
 
     host = parsed.hostname
     if not host:
-        return 'webhook_url_missing_host', {}
+        return ('webhook_url_missing_host', {}), []
 
     # Always resolve and inspect every address the hostname maps to,
     # THEN decide whether the allowlist permits a private/loopback IP.
@@ -349,12 +480,13 @@ def webhook_url_problem(url: str, allow_http: bool = False):
     try:
         addrinfos = socket.getaddrinfo(host, None)
     except socket.gaierror:
-        return 'webhook_dns_failed', {'host': host}
+        return ('webhook_dns_failed', {'host': host}), []
 
     allowlist = _intranet_host_allowlist()
     host_lower = host.lower()
     allowlist_matches = bool(allowlist and allowlist.search(host_lower))
 
+    addresses = []
     for _af, _stype, _proto, _name, sockaddr in addrinfos:
         ip_str = sockaddr[0]
         try:
@@ -362,9 +494,11 @@ def webhook_url_problem(url: str, allow_http: bool = False):
         except ValueError:
             continue
         if _is_blocked_ip(ip_str) and not allowlist_matches:
-            return 'webhook_url_private_address', {'ip': ip_str}
+            return ('webhook_url_private_address', {'ip': ip_str}), []
+        if ip_str not in addresses:
+            addresses.append(ip_str)
 
-    return None
+    return None, addresses
 
 
 # ---- Signing & headers -----------------------------------------------------
@@ -563,19 +697,20 @@ def _post_delivery(delivery: WebhookDelivery, webhook: Webhook) -> tuple:
     """
     body_bytes = (delivery.payload or '').encode('utf-8')
 
-    # Re-validate the URL at SEND time, not just at create/update. The
-    # create-time check can be defeated by DNS rebinding: register a webhook on
-    # a domain that resolves to a public IP when validated, then repoint it at
-    # 127.0.0.1 / 169.254.169.254 / an internal host before delivery. Re-running
-    # the resolve-and-block check immediately before the POST closes that window
-    # (the stored response preview is readable back via the deliveries API, so
-    # an internal target would otherwise be an exfiltration channel). A transient
-    # DNS failure is NOT treated as a block — no resolution means no connection
-    # and thus no SSRF; we let requests surface it as a normal network error.
-    # English: the reason goes into the stored delivery log, and the check
-    # below matches its text.
-    safe, reason = is_url_safe_for_webhook(webhook.url, allow_http=bool(webhook.allow_http), language='en')
-    if not safe and 'resolves to a private' in reason:
+    # Re-validate the URL at SEND time, not just at create/update, and keep
+    # the validated addresses: the POST connects to exactly those (no second,
+    # independent DNS lookup), so a domain repointed at 127.0.0.1 /
+    # 169.254.169.254 / an internal host after validation is never reached
+    # (#694). This applies to allowlisted intranet hosts too. (The stored
+    # response preview is readable back via the deliveries API, so an internal
+    # target would otherwise be an exfiltration channel.) A transient DNS
+    # failure is NOT treated as a block: no address is pinned, so the POST
+    # fails as a normal, retryable network error.
+    # English: the reason goes into the stored delivery log.
+    problem, addresses = resolve_webhook_target(webhook.url, allow_http=bool(webhook.allow_http))
+    if problem and problem[0] == 'webhook_url_private_address':
+        from src.utils.localization import translate
+        reason = translate(f'server.apiError.{problem[0]}', 'en', **problem[1])
         return None, None, f'blocked at delivery: {reason}'[:500]
 
     signature = sign_payload(webhook.secret, body_bytes)
@@ -591,13 +726,13 @@ def _post_delivery(delivery: WebhookDelivery, webhook: Webhook) -> tuple:
         'Speakr-Event': delivery.event_type,
         'Speakr-Timestamp': datetime.utcnow().isoformat() + 'Z',
     }
-    # Delivery goes through _http_post, which verifies the ACTUAL connected peer
-    # IP (not a fresh, separate DNS lookup) and aborts on a private/loopback
-    # address — closing the rebinding window left by the resolve-and-block check
-    # above. Allowlisted intranet hosts are exempt by operator choice.
+    # Delivery goes through _http_post, which connects only to the validated
+    # addresses and then verifies the ACTUAL connected peer IP before any byte
+    # of the request is sent.
     try:
         resp = _http_post(
             webhook.url,
+            pinned_ips=addresses,
             data=body_bytes,
             headers=headers,
             timeout=_delivery_timeout(),
@@ -610,7 +745,7 @@ def _post_delivery(delivery: WebhookDelivery, webhook: Webhook) -> tuple:
     except requests.RequestException as e:
         # urllib3 may surface the connect-time abort wrapped as a ConnectionError.
         msg = str(e)
-        if 'blocked address' in msg or 'peer address' in msg:
+        if 'blocked address' in msg or 'peer address' in msg or 'unvalidated address' in msg:
             return None, None, f'blocked at delivery: {msg}'[:500]
         return None, None, msg[:500]
 

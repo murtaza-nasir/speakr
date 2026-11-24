@@ -275,6 +275,12 @@ Webhook URLs are validated at save time and again at dispatch time:
 - Operators can carve out internal hosts via
   `WEBHOOK_INTRANET_HOST_ALLOWLIST` — a regex matched against the
   hostname.
+- At dispatch, the hostname is resolved once and the request connects
+  only to the addresses that passed the check, including for
+  allowlisted hosts. A DNS change between the check and the connection
+  therefore cannot send the delivery elsewhere. The hostname is still
+  the `Host` header and the TLS certificate name. Redirects are not
+  followed.
 
 This prevents accidentally pointing a webhook at an internal service
 (metadata endpoints, admin consoles) that should not receive Speakr

@@ -1268,26 +1268,29 @@ def test_language_is_omitted_rather_than_null_when_it_is_unknown():
 
 def test_http_post_applies_default_timeout():
     from src.services import webhook_dispatch as wd
+    session = MagicMock()
     with patch.object(wd, '_host_is_allowlisted', return_value=True), \
-         patch.object(wd.requests, 'post') as post:
-        wd._http_post('https://example.com/hook', data=b'{}')
-    assert post.call_args.kwargs['timeout'] == wd._delivery_timeout()
-    assert post.call_args.kwargs['data'] == b'{}'
+         patch.object(wd, 'ssrf_guarded_session', return_value=session):
+        wd._http_post('https://example.com/hook', pinned_ips=['93.184.215.14'], data=b'{}')
+    assert session.post.call_args.kwargs['timeout'] == wd._delivery_timeout()
+    assert session.post.call_args.kwargs['data'] == b'{}'
 
 
 def test_http_post_preserves_explicit_timeout():
     from src.services import webhook_dispatch as wd
+    session = MagicMock()
     with patch.object(wd, '_host_is_allowlisted', return_value=True), \
-         patch.object(wd.requests, 'post') as post:
-        wd._http_post('https://example.com/hook', data=b'{}', timeout=3)
-    assert post.call_args.kwargs['timeout'] == 3
+         patch.object(wd, 'ssrf_guarded_session', return_value=session):
+        wd._http_post('https://example.com/hook', pinned_ips=['93.184.215.14'], data=b'{}', timeout=3)
+    assert session.post.call_args.kwargs['timeout'] == 3
 
 
 def test_http_post_ssrf_branch_applies_default_timeout():
     from src.services import webhook_dispatch as wd
     session = MagicMock()
     with patch.object(wd, '_host_is_allowlisted', return_value=False), \
-         patch.object(wd, 'ssrf_guarded_session', return_value=session):
-        wd._http_post('https://example.com/hook', data=b'{}', timeout=None)
+         patch.object(wd, 'ssrf_guarded_session', return_value=session) as make:
+        wd._http_post('https://example.com/hook', pinned_ips=['93.184.215.14'], data=b'{}', timeout=None)
     assert session.post.call_args.kwargs['timeout'] == wd._delivery_timeout()
+    assert make.call_args.kwargs == {'pins': {'example.com': ['93.184.215.14']}, 'allow_private': False}
 
