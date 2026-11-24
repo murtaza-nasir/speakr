@@ -123,6 +123,11 @@ EVENTS = {
     'admin.llm_role.assigned': ('admin', frozenset({'role', 'model', 'old'})),
     'admin.llm_role.reverted': ('admin', frozenset({'role', 'old'})),
     'admin.retention.run': ('admin', frozenset({'checked', 'deleted_audio_only', 'deleted_full', 'errors'})),
+    'admin.asr_model.created': ('admin', frozenset({'model', 'fields'})),
+    'admin.asr_model.changed': ('admin', frozenset({'model', 'fields'})),
+    'admin.asr_model.deleted': ('admin', frozenset({'model'})),
+    'admin.asr_model.imported': ('admin', frozenset({'model', 'fields'})),
+    'admin.asr_default.changed': ('admin', frozenset({'old', 'new'})),
     'admin.inquire.processed': ('admin', frozenset({'processed', 'failed', 'total', 'force'})),
     'group.created': ('admin', _NONE),
     'group.changed': ('admin', frozenset({'fields'})),
@@ -1016,6 +1021,7 @@ _DEFINED_SETTING_KEYS = frozenset({
     'login_lockout_minutes', 'login_max_failed_attempts', 'max_audio_only_video_size_mb',
     'max_file_size_mb', 'recording_disclaimer', 'show_whats_new', 'transcript_length_limit',
     'upload_disclaimer', 'transcription_models_visible_json', 'transcription_default_model',
+    'asr_config_json',
 })
 
 
@@ -1089,3 +1095,28 @@ def llm_role_reverted(role, old):
     """admin.llm_role.reverted in the transaction of the change."""
     return record_in_tx('admin.llm_role.reverted',
                         details={'role': role, 'old': old})
+
+
+def asr_model_created(model_id, fields):
+    return record_in_tx('admin.asr_model.created',
+                        details={'model': model_id, 'fields': list(fields)})
+
+
+def asr_model_changed(model_id, fields):
+    return record_in_tx('admin.asr_model.changed',
+                        details={'model': model_id, 'fields': list(fields)})
+
+
+def asr_model_deleted(model_id):
+    return record_in_tx('admin.asr_model.deleted',
+                        details={'model': model_id})
+
+
+def asr_model_imported(model_id, fields=None):
+    return record_in_tx('admin.asr_model.imported',
+                        details={'model': model_id, 'fields': list(fields or [])})
+
+
+def asr_default_changed(old, new):
+    return record_in_tx('admin.asr_default.changed',
+                        details={'old': old, 'new': new})

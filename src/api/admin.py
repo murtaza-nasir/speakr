@@ -1424,8 +1424,8 @@ def admin_get_settings():
     settings = SystemSetting.query.order_by(func.lower(SystemSetting.key)).all()
     result = []
     for setting in settings:
-        if setting.key == llm_config.SETTING_KEY:
-            # Managed by the LLM configuration API only.
+        if setting.key in (llm_config.SETTING_KEY, 'asr_config_json'):
+            # Managed by the LLM and ASR configuration APIs only.
             continue
         data = setting.to_dict()
         if setting.key in ENV_BACKED_SETTINGS:
@@ -1470,7 +1470,8 @@ def admin_update_setting():
 
     if key == llm_config.SETTING_KEY:
         return jsonify(api_error('llm_config_managed_elsewhere')), 400
-    
+    if key == 'asr_config_json':
+        return jsonify(api_error('asr_config_managed_elsewhere')), 400
     # An empty value for a setting that falls back to .env clears the saved
     # value, so the .env value applies again (#567).
     from src.utils.system_settings import ENV_BACKED_SETTINGS
@@ -2203,158 +2204,6 @@ def admin_trigger_auto_process():
 
 
 
-@admin_bp.route('/admin/transcription/discover-models', methods=['GET'])
-@login_required
-def admin_discover_transcription_models():
-    """Probe the active transcription connector's /v1/models endpoint.
-
-    Used by the admin UI to populate a "models available on this provider"
-    list when curating which models users can pick from. Returns a list of
-    {id, label, owned_by} dicts. Empty list if the connector does not
-    implement list_models() or the upstream is unreachable.
-    """
-    if not current_user.is_admin:
-        return jsonify(api_error('unauthorized')), 403
-
-    try:
-        from src.services.transcription import get_registry
-        registry = get_registry()
-        connector = registry.get_active_connector()
-        if not connector:
-            return jsonify(api_error('no_transcription_connector')), 503
-
-        connector_name = registry.get_active_connector_name()
-        try:
-            models = connector.list_models()
-        except NotImplementedError:
-            return jsonify({
-                'connector': connector_name,
-                'supported': False,
-                'models': [],
-                'message': translate('server.apiMessage.modelDiscoveryUnsupported', connector=connector_name),
-            })
-
-        return jsonify({
-            'connector': connector_name,
-            'supported': True,
-            'models': models or [],
-        })
-
-    except Exception as e:
-        current_app.logger.error(f"Error discovering transcription models: {e}")
-        return internal_error(e)
-
-
-@admin_bp.route('/admin/transcription/visible-models', methods=['GET'])
-@login_required
-def admin_get_visible_models():
-    """Return the admin-curated list of models exposed in the user dropdown.
-
-    Falls back to the TRANSCRIPTION_MODELS_AVAILABLE env var when no DB
-    setting has been saved yet. The shape matches what /api/config returns
-    so the admin UI can pre-populate its form.
-    """
-    if not current_user.is_admin:
-        return jsonify(api_error('unauthorized')), 403
-
-    try:
-        from src.models import SystemSetting
-        from src.config.app_config import TRANSCRIPTION_MODEL_OPTIONS
-        import json as _json
-
-        raw = SystemSetting.get_setting('transcription_models_visible_json', None)
-        if raw:
-            try:
-                parsed = _json.loads(raw)
-                if isinstance(parsed, list):
-                    return jsonify({
-                        'source': 'database',
-                        'options': parsed,
-                        'default_model': SystemSetting.get_setting('transcription_default_model', None),
-                    })
-            except (ValueError, TypeError):
-                pass
-
-        return jsonify({
-            'source': 'env' if TRANSCRIPTION_MODEL_OPTIONS else 'unset',
-            'options': TRANSCRIPTION_MODEL_OPTIONS,
-            'default_model': None,
-        })
-
-    except Exception as e:
-        current_app.logger.error(f"Error reading visible transcription models: {e}")
-        return internal_error(e)
-
-
-@admin_bp.route('/admin/transcription/visible-models', methods=['POST'])
-@login_required
-def admin_save_visible_models():
-    """Save the admin-curated list of user-facing transcription models.
-
-    Body: { "options": [{"value": "...", "label": "..."}, ...],
-            "default_model": "..." | null }
-    """
-    if not current_user.is_admin:
-        return jsonify(api_error('unauthorized')), 403
-
-    try:
-        from src.models import SystemSetting
-        import json as _json
-
-        # A body is required, as before ({} for the defaults)
-        data, body_error = json_object_body()
-        if body_error:
-            return body_error
-        options = data.get('options', [])
-        if not isinstance(options, list):
-            return jsonify(api_error('invalid_options_list')), 400
-
-        # Normalise each option into {value, label}.
-        normalised = []
-        for opt in options:
-            if isinstance(opt, str):
-                normalised.append({'value': opt, 'label': opt})
-            elif isinstance(opt, dict) and opt.get('value'):
-                normalised.append({
-                    'value': str(opt['value']).strip(),
-                    'label': str(opt.get('label') or opt['value']).strip(),
-                })
-
-        audit.setting_changed('transcription_models_visible_json', None, None)
-        audit.setting_changed('transcription_default_model', None, None)
-        SystemSetting.set_setting(
-            key='transcription_models_visible_json',
-            value=_json.dumps(normalised),
-            description='Admin-curated list of transcription models exposed in user dropdowns. Overrides TRANSCRIPTION_MODELS_AVAILABLE env var when set.',
-            setting_type='string',
-        )
-
-        default_model = (data.get('default_model') or '').strip()
-        if default_model:
-            SystemSetting.set_setting(
-                key='transcription_default_model',
-                value=default_model,
-                description='Admin-selected default transcription model. Used when no per-upload, tag, or folder override is set.',
-                setting_type='string',
-            )
-        else:
-            existing = SystemSetting.query.filter_by(key='transcription_default_model').first()
-            if existing:
-                db.session.delete(existing)
-                db.session.commit()
-
-        return jsonify({
-            'success': True,
-            'options': normalised,
-            'default_model': default_model or None,
-        })
-
-    except Exception as e:
-        current_app.logger.error(f"Error saving visible transcription models: {e}")
-        db.session.rollback()
-        return internal_error(e)
-
-
 @admin_bp.route('/admin/inquire/process-recordings', methods=['POST'])
 @login_required
 @audit.emits('admin.inquire.processed')
@@ -2712,3 +2561,275 @@ _SYSTEM_SETTING_MAP = {
     "DELETION_MODE": ('deletion_mode', 'DELETION_MODE', 'full_recording'),
 }
 _self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)
+
+
+# --- ASR (transcription) models ---------------------------------------------
+
+
+class _ASRBodyError(Exception):
+    """A request body that cannot be read, with its ready response."""
+
+    def __init__(self, response):
+        super().__init__('unusable request body')
+        self.response = response
+
+
+def _asr_payload(optional=False):
+    """The JSON object body of a request, parsed strictly.
+
+    A malformed body, a content type other than JSON or a value that is not an
+    object is a 400 or 415 with an error code, never an empty object that would
+    read as a choice. With optional=True a request without a body reads as {}.
+    """
+    payload, error = json_object_body(optional=optional)
+    if error:
+        raise _ASRBodyError(error)
+    return payload
+
+
+def _asr_error_response(error):
+    from src.services import asr_config as _ac
+
+    if isinstance(error, _ASRBodyError):
+        return error.response
+    if isinstance(error, _ac.ASRProfileNotFound):
+        return jsonify(api_error('asr_profile_not_found', profile=error.profile_id)), 404
+    if isinstance(error, _ac.ASRProfileLabelTaken):
+        return jsonify(api_error('asr_profile_label_taken', label=error.label)), 400
+    if isinstance(error, _ac.ASRProfileLimitReached):
+        return jsonify(api_error('asr_profile_limit_reached', limit=error.limit)), 400
+    if isinstance(error, _ac.ASRProfileNotVisible):
+        return jsonify(api_error('asr_profile_not_visible', profile=error.profile_id)), 400
+    body = api_error('invalid_asr_config')
+    body['detail'] = str(error)
+    return jsonify(body), 400
+
+
+def _asr_connectors():
+    from src.services.transcription.registry import get_registry
+
+    return get_registry().list_connectors()
+
+
+def _asr_probe_request():
+    """The ``(profile_id, values)`` pair a test or discovery request names.
+
+    ``values`` is None for a saved profile tested as stored, otherwise the
+    connector and config the modal holds, with the stored config merged by the
+    service so an unchanged secret is not lost.
+    """
+    from src.services import asr_config as _ac
+
+    payload = _asr_payload(optional=True)
+    profile_id = payload.get('profile_id')
+    if profile_id is not None:
+        if not isinstance(profile_id, str) or not profile_id.strip():
+            raise _ac.ASRConfigError('profile_id must be a non-empty string')
+        profile_id = profile_id.strip()
+    values = None
+    if 'connector' in payload or 'config' in payload:
+        config = payload.get('config')
+        if config is None:
+            config = {}
+        if not isinstance(config, dict):
+            raise _ac.ASRConfigError('config must be a JSON object')
+        values = {'connector': payload.get('connector'), 'config': config}
+    if profile_id is None and values is None:
+        raise _ac.ASRConfigError('profile_id or connector is required')
+    return profile_id, values
+
+
+def _asr_probe_response(probe):
+    """Render a ProbeResult with the documented status codes."""
+    from src.services.transcription.base import ProbeResult
+
+    assert isinstance(probe, ProbeResult)
+    if not probe.ok:
+        if probe.status is not None:
+            return jsonify({
+                'success': False,
+                'ok': False,
+                'error': 'asr_provider_http_error',
+                'status': probe.status,
+                'detail': probe.message,
+            }), 502
+        return jsonify({
+            'success': False,
+            'ok': False,
+            'error': 'asr_provider_unreachable',
+            'detail': probe.message or 'The provider did not answer.',
+        }), 502
+    return jsonify({
+        'success': True,
+        'ok': True,
+        'models': probe.models,
+        'message': probe.message or 'Connected.',
+    })
+
+
+def _asr_unsupported_response(error):
+    # No message: the exception text names the connector class, which means
+    # nothing to an admin. The two admin surfaces fall back to their localized
+    # "no connection test" string.
+    return jsonify({
+        'success': True,
+        'ok': False,
+        'unsupported': True,
+    })
+
+
+@admin_bp.route('/admin/asr-config', methods=['GET'])
+@login_required
+def admin_get_asr_config():
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import asr_config as _ac
+
+    _ac.ensure_migrated()
+    # The environment profile is not stored: it is the synthetic profile the
+    # connector resolves from the process environment, and the edit prefill
+    # snapshots it into a profile exactly as configured.
+    return jsonify({
+        'models': _ac.list_models(),
+        'masked_api_key': _ac.MASKED_API_KEY,
+        'model_limit': _ac.MAX_MODELS,
+        'default': _ac.default_profile_id(),
+        'connectors': _asr_connectors(),
+        'environment': _ac.environment_profile(),
+    })
+
+
+@admin_bp.route('/admin/asr-config/models', methods=['POST'])
+@login_required
+def admin_create_asr_model():
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import asr_config as _ac
+    from src.services import audit
+
+    try:
+        result = _ac.create_profile(_asr_payload())
+    except (_ac.ASRConfigError, _ASRBodyError) as error:
+        db.session.rollback()
+        return _asr_error_response(error)
+    audit.asr_model_created(result.model['id'], result.changed_fields)
+    db.session.commit()
+    return jsonify({'success': True, 'model': result.model}), 201
+
+
+@admin_bp.route('/admin/asr-config/models/<profile_id>', methods=['POST'])
+@login_required
+def admin_update_asr_model(profile_id):
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import asr_config as _ac
+    from src.services import audit
+
+    try:
+        result = _ac.update_profile(profile_id, _asr_payload())
+    except (_ac.ASRConfigError, _ASRBodyError) as error:
+        db.session.rollback()
+        return _asr_error_response(error)
+    if result.changed_fields:
+        audit.asr_model_changed(profile_id, result.changed_fields)
+        db.session.commit()
+    return jsonify({'success': True, 'model': result.model})
+
+
+@admin_bp.route('/admin/asr-config/models/<profile_id>', methods=['DELETE'])
+@login_required
+def admin_delete_asr_model(profile_id):
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import asr_config as _ac
+    from src.services import audit
+
+    try:
+        removed = _ac.delete_profile(profile_id)
+    except _ac.ASRConfigError as error:
+        db.session.rollback()
+        return _asr_error_response(error)
+    audit.asr_model_deleted(removed['id'])
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/admin/asr-config/default', methods=['POST'])
+@login_required
+def admin_set_asr_default():
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import asr_config as _ac
+    from src.services import audit
+
+    try:
+        payload = _asr_payload()
+        # profile_id is required: null returns to the environment, so a body
+        # without it must not read as that choice.
+        if 'profile_id' not in payload:
+            return jsonify(api_error('missing_required_field', field='profile_id')), 400
+        profile_id = payload['profile_id']
+        if profile_id is not None and not isinstance(profile_id, str):
+            raise _ac.ASRConfigError('profile_id must be a string or null')
+        change = _ac.set_default(profile_id)
+    except (_ac.ASRConfigError, _ASRBodyError) as error:
+        db.session.rollback()
+        return _asr_error_response(error)
+    if change.old != change.new:
+        audit.asr_default_changed(change.old, change.new)
+        db.session.commit()
+    return jsonify({'success': True, 'default': _ac.default_profile_id()})
+
+
+@admin_bp.route('/admin/asr-config/import', methods=['POST'])
+@login_required
+def admin_import_asr_from_environment():
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import asr_config as _ac
+    from src.services import audit
+
+    try:
+        result = _ac.import_from_environment()
+    except _ac.ASRConfigError as error:
+        db.session.rollback()
+        return _asr_error_response(error)
+    audit.asr_model_imported(result.model['id'], result.changed_fields)
+    db.session.commit()
+    return jsonify({'success': True, 'model': result.model}), 201
+
+
+@admin_bp.route('/admin/asr-config/test', methods=['POST'])
+@login_required
+def admin_test_asr_config():
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import asr_config as _ac
+    from src.services.transcription.base import ProbeUnsupportedError
+
+    try:
+        profile_id, values = _asr_probe_request()
+        probe = _ac.probe_profile(profile_id, values)
+    except (_ac.ASRConfigError, _ASRBodyError) as error:
+        return _asr_error_response(error)
+    except ProbeUnsupportedError as error:
+        return _asr_unsupported_response(error)
+    return _asr_probe_response(probe)
+
+
+@admin_bp.route('/admin/asr-config/discover', methods=['POST'])
+@login_required
+def admin_discover_asr_models():
+    if not current_user.is_admin:
+        return jsonify(api_error('unauthorized')), 403
+    from src.services import asr_config as _ac
+    from src.services.transcription.base import ProbeUnsupportedError
+
+    try:
+        profile_id, values = _asr_probe_request()
+        probe = _ac.discover_models(profile_id, values)
+    except (_ac.ASRConfigError, _ASRBodyError) as error:
+        return _asr_error_response(error)
+    except ProbeUnsupportedError as error:
+        return _asr_unsupported_response(error)
+    return _asr_probe_response(probe)
