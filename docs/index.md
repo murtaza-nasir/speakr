@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.11.4: Trimming, language models in the admin panel, system audio offline"
-    A recording can be trimmed in the segment editor, with the transcript cut to match. Admins can configure text, chat and translation models in System settings without a restart, and the offline recording page can record system audio.
+!!! success "Latest Release: v0.11.5: Security fixes, API tokens only in headers by default, push notifications"
+    API tokens in the `?token=` query parameter are refused by default, password reset and verification links are stored as hashes, and push notifications can be enabled again.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.4) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.5) for details.
 
 ## Quick Navigation
 

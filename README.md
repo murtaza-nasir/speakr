@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.4-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.5-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -238,7 +238,13 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.11.4)
+## Latest Release (v0.11.5)
+
+- API tokens in the `?token=` query parameter are refused by default. `API_QUERY_TOKENS_ENABLED=true` accepts them again.
+- Password reset and verification links are stored as hashes and can be used once, and CSRF checks, markup escaping and webhook delivery are hardened.
+- Push notifications can be enabled again, and their keys are kept across updates.
+
+### v0.11.4
 
 - A recording can be trimmed to a start and an end in the segment editor, with the transcript cut to match.
 - Admins can configure text, chat and translation models in System settings without a restart.
@@ -252,15 +258,8 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - `gpt-transcribe` is supported, and `CHUNK_LIMIT` in seconds applies to OpenAI Whisper.
 - The auto-process controls in the admin dashboard work again, and malformed API requests receive a 400 error.
 
-### v0.11.2
 
-- The new recording dialog has two tabs, Upload files and Record, with the options in groups.
-- Admins can set defaults for user settings.
-- The prompt of a summary is stored with the recording and offered first when the summary is regenerated.
-- Words outside ASCII are found in transcripts.
-
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.4) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.5) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
