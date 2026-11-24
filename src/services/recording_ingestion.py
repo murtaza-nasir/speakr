@@ -522,6 +522,23 @@ def resolve_upload_trim(form, filepath, codec_info):
     return params or None
 
 
+def kept_duration(full_seconds, start, end):
+    """Length of a span that has not been cut yet.
+
+    The upload is answered while a deferred cut still has the whole file.
+    Reporting that whole length makes the player show it, then jump to the
+    span once the convert job finishes.
+    """
+    if not full_seconds or full_seconds <= 0:
+        return full_seconds
+    begin = float(start or 0)
+    stop = float(full_seconds) if end is None else min(float(end), float(full_seconds))
+    span = stop - begin
+    if span <= 0:
+        return float(full_seconds)
+    return span
+
+
 def has_video_after_failed_probe(*, codec_info, probe_error, has_video, original_filename):
     """Take a video extension as video when the probe did not finish.
 
@@ -1252,8 +1269,9 @@ def ingest(
         keep_video_for_this_upload = conversion.keep_video_for_this_upload
         extracted_audio_limit_mb = conversion.extracted_audio_limit_mb
         conversion_deferred = conversion.conversion_deferred
-        # A retained video stays a video. A real cut is a stream copy, which
-        # may land on a keyframe, and transcription reads that shorter file.
+          # A retained video stays a video. A real cut keeps that shorter file
+          # for playback and for transcription. A start between keyframes is
+          # re-encoded so the picture begins with the audio.
         # With convert workers the copy runs after this response, the same
         # way an audio cut does. With none, it runs here so the file is not
         # left whole.
@@ -1358,6 +1376,16 @@ def ingest(
                 audio_duration_seconds = float(detected_duration)
         except Exception as e:
             current_app.logger.warning(f"Could not determine duration for upload {loggable_path(filepath)}: {loggable_error(e, filepath)}")
+        # A deferred cut still has the whole file here. Store the span the
+        # player will have, so a video does not show its full length and
+        # then jump when the convert job replaces the file. A cut that
+        # already ran in this request is probed above and left as it is.
+        if conversion_deferred and trim_params and audio_duration_seconds:
+            audio_duration_seconds = kept_duration(
+                audio_duration_seconds,
+                trim_params.get('trim_start'),
+                trim_params.get('trim_end'),
+            )
 
         # Get notes from the form
         notes = form.get('notes')

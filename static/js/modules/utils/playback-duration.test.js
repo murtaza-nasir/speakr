@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { playedDuration, seekableTime } from './playback-duration.js';
+import { playedDuration, recordingMediaUrl, seekableTime } from './playback-duration.js';
+
+describe('recordingMediaUrl', () => {
+    it('changes when the stored file is replaced', () => {
+        const whole = { id: 7, file_size: 8000 };
+        const kept = { id: 7, file_size: 1200 };
+        expect(recordingMediaUrl(whole)).toBe('/audio/7?v=8000');
+        expect(recordingMediaUrl(kept)).toBe('/audio/7?v=1200');
+        expect(recordingMediaUrl(kept)).not.toBe(recordingMediaUrl(whole));
+    });
+
+    it('keeps the download flag beside the size', () => {
+        expect(recordingMediaUrl({ id: 7, file_size: 1200 }, { download: true }))
+            .toBe('/audio/7?download=true&v=1200');
+    });
+});
 
 describe('playedDuration', () => {
     it('replaces the whole-file length with the kept span', () => {

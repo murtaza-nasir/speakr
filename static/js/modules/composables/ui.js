@@ -7,7 +7,7 @@ import { savedColorScheme } from '../utils/theme-defaults.js';
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 import { confirmDialog } from '../utils/dialogs.js';
 import { realSpeakers } from '../utils/speaker-labels.js';
-import { playedDuration, seekableTime } from '../utils/playback-duration.js';
+import { playedDuration, recordingMediaUrl, seekableTime } from '../utils/playback-duration.js';
 
 /**
  * Decide whether the sidebar should start collapsed.
@@ -2357,7 +2357,8 @@ export function useUI(state, utils, processedTranscription) {
         handleAudioWaiting,
         handleAudioCanPlay,
         handleAudioDurationChange,
-        formatAudioTime,
+          formatAudioTime,
+          recordingMediaUrl,
         audioProgressPercent,
         displayCurrentTime,
         isDraggingProgress,

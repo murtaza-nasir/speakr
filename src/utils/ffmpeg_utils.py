@@ -327,30 +327,108 @@ def _with_keep_span(cmd, keep_start, keep_end):
     return [*cmd[:input_at], *options, *cmd[input_at:]]
 
 
-def stream_copy_span(input_path, keep_start=None, keep_end=None):
-    """Write a stream copy of the kept span and leave the input in place.
+# A stream copy has to open on a keyframe. Anything longer than this and the
+# picture starts before the audio, which can begin on the requested second.
+_KEYFRAME_LEAD_IN_SECONDS = 0.05
 
-    ``-ss`` and ``-to`` sit before the input, so the cut may land on the
-    nearest keyframe. The new file keeps the input's container. Returns the
-    input path when neither bound is set.
+
+def _keyframe_lead_in(path, keep_start):
+    """Seconds from the previous video keyframe up to ``keep_start``.
+
+    Zero when the span starts at the beginning of the file. None when the
+    keyframes could not be read, which the caller treats as "do not copy".
+    """
+    if not keep_start:
+        return 0.0
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
+             '-skip_frame', 'nokey', '-show_entries', 'frame=pts_time',
+             '-of', 'csv=p=0', path],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    start = float(int(keep_start))
+    previous = None
+    for line in result.stdout.splitlines():
+        text = line.strip().rstrip(',')
+        if not text:
+            continue
+        try:
+            pts = float(text)
+        except ValueError:
+            continue
+        if pts <= start + 0.001:
+            previous = pts
+        elif previous is not None:
+            break
+    if previous is None:
+        return start
+    return start - previous
+
+
+def _span_output_path(input_path):
+    root, ext = os.path.splitext(input_path)
+    return f"{root}.span{ext or '.mp4'}"
+
+
+def _faststart(output_path):
+    if output_path.lower().endswith(('.mp4', '.mov', '.m4v', '.m4a')):
+        return ['-movflags', '+faststart']
+    return []
+
+
+def _copy_span_command(input_path, output_path, keep_start, keep_end):
+    return _with_keep_span(
+        ['ffmpeg', '-y', '-i', input_path, '-map', '0', '-c', 'copy',
+         '-avoid_negative_ts', 'make_zero', *_faststart(output_path), output_path],
+        keep_start, keep_end)
+
+
+def _encode_span_command(input_path, output_path, keep_start, keep_end):
+    """Re-encode the span so both streams start on the requested second.
+
+    ``-ss`` before ``-i`` still seeks to the previous keyframe, then the
+    encode drops the frames before the requested second. The container stays
+    the one the input used.
+    """
+    if output_path.lower().endswith(('.webm', '.mkv')):
+        codec = ['-c:v', 'libvpx', '-deadline', 'realtime', '-cpu-used', '8',
+                 '-b:v', '1M', '-c:a', 'libopus', '-b:a', '96k']
+    else:
+        codec = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',
+                 '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k']
+    return _with_keep_span(
+        ['ffmpeg', '-y', '-i', input_path, '-map', '0:v:0', '-map', '0:a:0?',
+         *codec, *_faststart(output_path), output_path],
+        keep_start, keep_end)
+
+
+def stream_copy_span(input_path, keep_start=None, keep_end=None):
+    """Write the kept span and leave the input in place.
+
+    A start on a video keyframe is copied. Any other start is re-encoded, so
+    the picture and the audio both begin on the requested second. The new
+    file keeps the input's container. Returns the input path when neither
+    bound is set.
     """
     if not keep_start and keep_end is None:
         return input_path
-    root, ext = os.path.splitext(input_path)
-    output_path = f"{root}.span{ext or '.mp4'}"
-    faststart = (
-        ['-movflags', '+faststart']
-        if output_path.lower().endswith(('.mp4', '.mov', '.m4v', '.m4a'))
-        else []
-    )
-    cmd = _with_keep_span(
-        ['ffmpeg', '-y', '-i', input_path, '-map', '0', '-c', 'copy',
-         '-avoid_negative_ts', 'make_zero', *faststart, output_path],
-        keep_start, keep_end)
+    output_path = _span_output_path(input_path)
+    lead = _keyframe_lead_in(input_path, keep_start)
+    if lead is not None and lead <= _KEYFRAME_LEAD_IN_SECONDS:
+        cmd = _copy_span_command(input_path, output_path, keep_start, keep_end)
+        action = 'stream copy'
+    else:
+        cmd = _encode_span_command(input_path, output_path, keep_start, keep_end)
+        action = 'kept-span encode'
     try:
-        _run_ffmpeg_command(cmd, f"stream copy of {os.path.basename(input_path)}")
+        _run_ffmpeg_command(cmd, f"{action} of {os.path.basename(input_path)}")
         if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
-            raise FFmpegError(f"stream copy of {os.path.basename(input_path)} produced no output")
+            raise FFmpegError(f"{action} of {os.path.basename(input_path)} produced no output")
     except Exception:
         if os.path.exists(output_path):
             try:

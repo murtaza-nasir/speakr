@@ -7,6 +7,23 @@
  * past the file makes the browser jump back to the start.
  */
 
+/**
+ * URL of the stored media. The query carries the stored size, so replacing
+ * the file (a deferred video cut) changes the URL and the player loads the
+ * new bytes instead of keeping the whole upload it fetched first.
+ */
+export function recordingMediaUrl(recording, options = {}) {
+    if (!recording || recording.id == null || recording.id === '' || recording.id === 'incognito') {
+        return '';
+    }
+    const params = [];
+    if (options.download) params.push('download=true');
+    const size = Number(recording.file_size);
+    if (Number.isFinite(size) && size > 0) params.push(`v=${size}`);
+    const query = params.length ? `?${params.join('&')}` : '';
+    return `/audio/${recording.id}${query}`;
+}
+
 export function playedDuration(current, incoming) {
     const next = Number(incoming);
     if (!Number.isFinite(next) || next <= 0) return current || 0;

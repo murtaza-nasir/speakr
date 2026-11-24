@@ -461,7 +461,10 @@ def test_a_retained_video_stores_the_kept_span(user, tmp_path):
         assert rec.mime_type.startswith("video/")
         assert _has_video(_local_path(rec.audio_path))
         assert _jobs(rid) == [("convert", "queued")]
+        # The file is still whole until the convert job. The length the
+        # player is told is already the span, not those six seconds.
         assert _duration_seconds(_local_path(rec.audio_path)) == pytest.approx(6, abs=0.4)
+        assert rec.audio_duration_seconds == pytest.approx(3, abs=0.4)
         uploaded_size = rec.file_size
 
         assert _run_convert_job().status == "completed"
@@ -483,6 +486,53 @@ def test_a_retained_video_stores_the_kept_span(user, tmp_path):
         queued = ProcessingJob.query.filter_by(recording_id=rid, job_type="transcribe").one()
         assert "trim_start" not in (queued.params or {})
         assert "trim_end" not in (queued.params or {})
+
+
+def _long_gop_two_tone_mp4(path):
+    """Three red seconds, then three blue seconds, with a single opening keyframe.
+
+    A stream copy of a start at 3 seconds has to begin at that keyframe, so the
+    stored picture opens on red while the audible tone is the second one.
+    """
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y",
+         "-f", "lavfi", "-i", "color=c=red:s=160x120:r=25:d=3",
+         "-f", "lavfi", "-i", "color=c=blue:s=160x120:r=25:d=3",
+         "-f", "lavfi", "-i", f"sine=frequency={HEAD_HZ}:duration=3",
+         "-f", "lavfi", "-i", f"sine=frequency={TAIL_HZ}:duration=3",
+         "-filter_complex", "[0:v][1:v]concat=n=2:v=1:a=0[v];[2:a][3:a]concat=n=2:v=0:a=1[a]",
+         "-map", "[v]", "-map", "[a]",
+         "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+         "-g", "1000", "-keyint_min", "1000", "-sc_threshold", "0",
+         "-c:a", "aac", "-b:a", "64k", "-shortest", str(path)],
+        check=True, capture_output=True)
+    return path.read_bytes()
+
+
+def _pixel(path):
+    probe = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(path),
+         "-frames:v", "1", "-vf", "scale=1:1,format=rgb24", "-f", "rawvideo", "-"],
+        capture_output=True)
+    if len(probe.stdout) < 3:
+        raise AssertionError(probe.stderr)
+    return tuple(probe.stdout[:3])
+
+
+def test_a_retained_video_cut_between_keyframes_starts_the_picture_with_the_audio(user, tmp_path):
+    payload = _long_gop_two_tone_mp4(tmp_path / "gap.mp4")
+    with app.app_context(), patch("src.services.recording_ingestion.VIDEO_RETENTION", True):
+        res = _post_upload(user, payload, "gap.mp4", {"trim_start": "3"})
+        assert res.status_code == 202, res.get_json()
+        rid = res.get_json()["id"]
+        assert _run_convert_job().status == "completed"
+        kept = _local_path(db.session.get(Recording, rid).audio_path)
+        assert _has_video(kept)
+        assert _duration_seconds(kept) == pytest.approx(3, abs=0.4)
+        assert _band_mean_db(kept, TAIL_HZ) > LOUD_DB
+        assert _band_mean_db(kept, HEAD_HZ) < QUIET_DB
+        red, _green, blue = _pixel(kept)
+        assert blue > 150 and red < 80
 
 
 def test_a_retained_video_keeps_only_the_head_when_the_end_is_set(user, tmp_path):

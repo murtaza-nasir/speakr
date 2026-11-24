@@ -43,9 +43,9 @@ def convert_uploaded_recording(recording_id, params):
     the upload limit, that limit in MB ('extracted_audio_limit_mb'). A real
     cut also carries 'trim_start' and/or 'trim_end', whole seconds. The
     encode keeps that span; a range that is the whole file carries neither.
-    'retain_video' stores a stream copy of that span instead, so playback
-    and the transcription share the shorter file. The copy may land on a
-    keyframe.
+      'retain_video' stores that span as a video, so playback and the
+      transcription share the shorter file. A start between keyframes is
+      re-encoded so the picture begins with the audio.
     """
     from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE, chunking_service
     from src.services.job_queue import job_queue

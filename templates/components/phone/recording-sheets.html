@@ -123,7 +123,7 @@
             <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0" class="ph-row__val" v-text="selectedRecording.shared_with_count"></span>
         </button>
         <a v-if="!selectedRecording.audio_deleted_at" class="ph-row" data-phone-action="download-audio"
-           :href="'/audio/' + selectedRecording.id + '?download=true'" download @click="closePhoneSheet()">
+           :href="recordingMediaUrl(selectedRecording, {download: true})" download @click="closePhoneSheet()">
             <i class="fas fa-download" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.downloadAudio')"></span>
         </a>
 

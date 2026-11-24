@@ -284,30 +284,19 @@ def kept_span(metadata):
 
 
 def _stream_copy_span(path, start, end):
-    """Keep a video's span by stream copy. The cut may land on a keyframe."""
+    """Keep a video's span. A start between keyframes is re-encoded so the
+    picture and the audio begin together."""
     if not start and end is None:
         return path
-    root, ext = os.path.splitext(path)
-    destination = root + ".span" + (ext or ".webm")
-    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
-    if start:
-        cmd += ["-ss", str(int(start))]
-    if end is not None:
-        cmd += ["-to", str(int(end))]
-    cmd += ["-i", path, "-c", "copy"]
-    if destination.lower().endswith((".m4a", ".mp4", ".mov")):
-        cmd += ["-movflags", "+faststart"]
-    cmd.append(destination)
+    from src.utils.ffmpeg_utils import (
+        FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, stream_copy_span,
+    )
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=600)
-    except FileNotFoundError:
-        raise StitchError("ffmpeg binary not found on server PATH")
-    except subprocess.TimeoutExpired:
-        raise StitchError("ffmpeg span copy timed out after 10 minutes")
-    if result.returncode != 0:
-        stderr = decode_ffmpeg_output(result.stderr).strip()
-        raise StitchError(f"ffmpeg span copy failed (exit {result.returncode}): {stderr[:500]}")
-    os.replace(destination, path)
+        produced = stream_copy_span(path, keep_start=start, keep_end=end)
+    except (FFmpegNotFoundError, FFmpegTimeoutError, FFmpegError) as exc:
+        raise StitchError(str(exc)) from None
+    if produced != path:
+        os.replace(produced, path)
     return path
 
 

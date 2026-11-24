@@ -30,7 +30,7 @@
                 <component :is="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'video' : 'audio'"
                        ref="audioPlayerElement"
                        id="mainPlayerMedia"
-                       :src="'/audio/' + selectedRecording.id"
+                       :src="recordingMediaUrl(selectedRecording)"
                        :volume="playerVolume"
                        @play="handleAudioPlayPause"
                        @pause="handleAudioPlayPause"
@@ -196,7 +196,7 @@
             </div>
 
             <!-- Download -->
-            <a :href="'/audio/' + selectedRecording.id + '?download=true'"
+            <a :href="recordingMediaUrl(selectedRecording, {download: true})"
                download
                class="btn btn--icon"
                style="color: var(--text-accent);"
