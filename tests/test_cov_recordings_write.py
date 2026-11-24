@@ -1158,23 +1158,25 @@ def test_resolve_transcription_model_no_allowlist_accepts():
 def test_resolve_transcription_model_falls_back_to_admin_default():
     from src.api.recordings import _resolve_transcription_model
     with app.app_context(), \
-         patch.object(SystemSetting, "get_setting",
-                      side_effect=lambda k, d=None:
-                      "admin-default" if k == "transcription_default_model" else None):
-        assert _resolve_transcription_model("") == "admin-default"
-        assert _resolve_transcription_model(None) == "admin-default"
+         patch("src.services.asr_config.default_profile_id",
+               return_value="m_default"):
+        assert _resolve_transcription_model("") == "m_default"
+        assert _resolve_transcription_model(None) == "m_default"
 
 
-def test_resolve_transcription_model_drops_value_not_in_allowlist():
+def test_resolve_transcription_model_keeps_an_explicit_value():
+    """The retired env allowlist no longer drops a value: profile ids,
+    environment ids and legacy model names all resolve later."""
     from src.api.recordings import _resolve_transcription_model
-    with app.app_context(), \
-         patch("src.config.app_config.TRANSCRIPTION_MODELS_AVAILABLE", ["model-a"]), \
-         patch.object(SystemSetting, "get_setting", return_value=None):
-        assert _resolve_transcription_model("model-b") is None
+    with app.app_context():
+        assert _resolve_transcription_model("model-b") == "model-b"
         assert _resolve_transcription_model("model-a") == "model-a"
+        assert _resolve_transcription_model("m_1a2b3c4d") == "m_1a2b3c4d"
+        assert _resolve_transcription_model("env:openai-whisper:small") == "env:openai-whisper:small"
 
 
-def test_resolve_transcription_model_accepts_from_db_visible_list():
+def test_resolve_transcription_model_ignores_the_legacy_visible_list():
+    """The legacy DB list is read once by the migration, never at runtime."""
     from src.api.recordings import _resolve_transcription_model
     import json as _json
 
@@ -1183,8 +1185,7 @@ def test_resolve_transcription_model_accepts_from_db_visible_list():
             return _json.dumps([{"value": "vis-model"}, "plain-model"])
         return None
     with app.app_context(), \
-         patch("src.config.app_config.TRANSCRIPTION_MODELS_AVAILABLE", []), \
          patch.object(SystemSetting, "get_setting", side_effect=_get):
         assert _resolve_transcription_model("vis-model") == "vis-model"
         assert _resolve_transcription_model("plain-model") == "plain-model"
-        assert _resolve_transcription_model("nope") is None
+        assert _resolve_transcription_model("nope") == "nope"

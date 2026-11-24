@@ -2009,9 +2009,31 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             transcription_start_time = time.time()
             db.session.commit()
 
-            # Get the active transcription connector
-            connector = get_connector()
-            connector_name = connector.PROVIDER_NAME
+            # Resolve the connector from the chosen transcription model when it
+            # names a configured ASR profile (or a legacy model name). With no
+            # explicit model, the marked default profile applies if there is
+            # one; otherwise the environment connector (and its model) is used,
+            # keeping the get_connector() seam for callers that replace it.
+            connector = None
+            try:
+                from src.services import asr_config
+                chosen = transcription_model or asr_config.default_profile_id()
+                if chosen:
+                    resolved_connector, resolved_model = asr_config.resolve_asr_connector(chosen)
+                    if resolved_connector is not None:
+                        connector = resolved_connector
+                    if resolved_model:
+                        transcription_model = resolved_model
+                else:
+                    environment = asr_config.environment_profile() or {}
+                    environment_model = (environment.get('config') or {}).get('model')
+                    if isinstance(environment_model, str) and environment_model.strip():
+                        transcription_model = environment_model.strip()
+            except Exception as error:  # noqa: BLE001
+                current_app.logger.debug(f"ASR profile resolution failed, using env connector: {error}")
+            if connector is None:
+                connector = get_connector()
+            connector_name = getattr(connector, 'PROVIDER_NAME', None) or ''
             current_app.logger.info(f"Using transcription connector: {connector_name}")
 
             # Fall back to admin default hotwords if none provided
@@ -2991,6 +3013,28 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         min_speakers, max_speakers = _resolved['min_speakers'], _resolved['max_speakers']
         hotwords, initial_prompt = _resolved['hotwords'], _resolved['initial_prompt']
         transcription_model = _resolved['transcription_model']
+
+        # Resolve the connector from the chosen transcription model (profile id
+        # or legacy model name). With no explicit model, only an explicitly
+        # marked default profile replaces the connector chosen above; otherwise
+        # the environment connector and its model apply.
+        try:
+            from src.services import asr_config
+            chosen = transcription_model or asr_config.default_profile_id()
+            if chosen:
+                resolved_connector, resolved_model = asr_config.resolve_asr_connector(chosen)
+                if resolved_connector is not None:
+                    connector = resolved_connector
+                    connector_specs = getattr(connector, 'specifications', connector_specs)
+                if resolved_model:
+                    transcription_model = resolved_model
+            else:
+                environment = asr_config.environment_profile() or {}
+                environment_model = (environment.get('config') or {}).get('model')
+                if isinstance(environment_model, str) and environment_model.strip():
+                    transcription_model = environment_model.strip()
+        except Exception:  # noqa: BLE001
+            pass
 
         # Normalize at the boundary — legacy values like "français" must
         # become "fr" before the connector receives them (issue #256).

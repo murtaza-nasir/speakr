@@ -240,8 +240,9 @@ def test_folder_default_applied_when_no_tag():
         assert params.get("transcription_model") == "whisper-1", f"got {params!r}"
 
 
-def test_user_supplied_model_outside_allowlist_dropped():
-    """An explicit override that isn't in the allowlist gets stripped."""
+def test_user_supplied_model_is_kept_without_an_allowlist():
+    """Any explicit value is carried through; the retired allowlist no longer
+    drops it, and legacy names keep using the environment credentials."""
     with app.app_context():
         user, rec = setup_recording(tag_model="vibevoice")
         client = app.test_client()
@@ -250,12 +251,7 @@ def test_user_supplied_model_outside_allowlist_dropped():
                                        {"transcription_model": "secret-internal-model"},
                                        available_models=["whisper-1", "vibevoice"])
         assert resp.status_code in (200, 202)
-        # Falls back to the tag default since user value was rejected.
-        # Note: the endpoint validates AFTER applying the precedence chain. The
-        # precedence chain runs first, so user input wins; then validation drops
-        # the bad value to None. Tag default is not re-applied — so we expect
-        # transcription_model to be None here.
-        assert params.get("transcription_model") is None, f"got {params!r}"
+        assert params.get("transcription_model") == "secret-internal-model", f"got {params!r}"
 
 
 def test_no_defaults_means_no_model_in_job_params():
@@ -329,7 +325,7 @@ def main():
         run("user input wins over tag/folder", test_user_input_wins_over_defaults)
         run("tag default applies when no user input", test_tag_default_applied_when_no_user_input)
         run("folder default applies when no tag", test_folder_default_applied_when_no_tag)
-        run("model outside allowlist dropped", test_user_supplied_model_outside_allowlist_dropped)
+        run("model kept without allowlist", test_user_supplied_model_is_kept_without_an_allowlist)
         run("nothing configured → None", test_no_defaults_means_no_model_in_job_params)
         print("\n--- TranscriptionRequest plumbing ---")
         run("model field exists", test_transcription_request_has_model_field)

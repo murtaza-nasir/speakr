@@ -293,6 +293,15 @@ def resolve_size_policy(*, file, form, original_filename, enforce_upload_limits)
             from src.services.transcription import get_registry
             registry = get_registry()
             connector = registry.get_active_connector()
+            try:
+                from src.services import asr_config
+                pid = asr_config.default_profile_id()
+                if pid:
+                    c2, _ = asr_config.resolve_asr_connector(pid)
+                    if c2 is not None:
+                        connector = c2
+            except Exception:  # noqa: BLE001
+                pass
             if connector:
                 connector_specs = connector.specifications
         except Exception as e:

@@ -105,13 +105,28 @@ def backend_fingerprint():
         from src.services.transcription.registry import get_registry
         registry = get_registry()
         connector = registry.get_active_connector()
+        try:
+            from src.services import asr_config
+            pid = asr_config.default_profile_id()
+            if pid:
+                c2, _ = asr_config.resolve_asr_connector(pid)
+                if c2 is not None:
+                    connector = c2
+        except Exception:  # noqa: BLE001
+            pass
+        provider_name = getattr(connector, 'PROVIDER_NAME', None)
+        if not isinstance(provider_name, str):
+            provider_name = registry.get_active_connector_name()
+        base_url = getattr(connector, 'base_url', None)
+        if not isinstance(base_url, str):
+            base_url = ''
+        model = getattr(connector, 'model', None)
+        if not isinstance(model, str):
+            model = ''
         parts = [
-            registry.get_active_connector_name() or '',
-            str(getattr(connector, 'base_url', '') or ''),
-            # The model the probe sends. Without an admin default this is the
-            # connector's own model, as before, so stored fingerprints stay
-            # valid; choosing a default model triggers one fresh probe.
-            str(default_transcription_model() or getattr(connector, 'model', '') or ''),
+            provider_name or '',
+            str(base_url or ''),
+            str(default_transcription_model() or model or ''),
         ]
     except Exception as e:
         logger.debug(f"Could not fingerprint the transcription backend: {e}")
@@ -125,6 +140,15 @@ def embeddings_supported():
         from src.services.transcription.base import TranscriptionCapability
         from src.services.transcription.registry import get_registry
         connector = get_registry().get_active_connector()
+        try:
+            from src.services import asr_config
+            pid = asr_config.default_profile_id()
+            if pid:
+                c2, _ = asr_config.resolve_asr_connector(pid)
+                if c2 is not None:
+                    connector = c2
+        except Exception:  # noqa: BLE001
+            pass
         return bool(connector.supports(TranscriptionCapability.SPEAKER_EMBEDDINGS))
     except Exception as e:
         logger.debug(f"Could not determine speaker-embedding support: {e}")
@@ -150,6 +174,20 @@ def probe_backend():
     except Exception as e:
         raise CanaryUnavailable(f'no active transcription connector: {e}')
 
+    # The probe must use the configuration recordings actually use: the
+    # explicitly marked default profile, else the environment (#380, #409).
+    model = default_transcription_model()
+    try:
+        from src.services import asr_config
+        pid = asr_config.default_profile_id()
+        if pid:
+            resolved, resolved_model = asr_config.resolve_asr_connector(pid)
+            if resolved is not None:
+                connector = resolved
+                model = resolved_model or model
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f'Could not resolve the default ASR profile for the canary: {e}')
+
     try:
         with open(CANARY_PATH, 'rb') as f:
             response = connector.transcribe(TranscriptionRequest(
@@ -160,7 +198,7 @@ def probe_backend():
                 diarize=True,
                 min_speakers=1,
                 max_speakers=1,
-                model=default_transcription_model(),
+                model=model,
                 task_key=audio_task_key('speakr-voice-check', CANARY_PATH),
             ))
     except Exception as e:

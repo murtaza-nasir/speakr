@@ -121,9 +121,6 @@ _ADMIN_ENDPOINTS = [
     ('POST', '/admin/auto-process/stop', None),
     ('POST', '/admin/auto-process/config', {'foo': 'bar'}),
     ('POST', '/admin/auto-process/trigger', None),
-    ('GET', '/admin/transcription/discover-models', None),
-    ('GET', '/admin/transcription/visible-models', None),
-    ('POST', '/admin/transcription/visible-models', {'options': []}),
     ('POST', '/admin/inquire/process-recordings', None),
     ('GET', '/admin/inquire/status', None),
 ]
@@ -512,48 +509,16 @@ def test_inquire_status_ok(admin_client):
     assert 'total_chunks' in data and 'embeddings_available' in data
 
 
-def test_discover_models_no_connector(admin_client):
-    """discover-models with no active connector returns 503 (mocked registry)."""
-    reg = MagicMock()
-    reg.get_active_connector.return_value = None
-    with patch('src.services.transcription.get_registry', return_value=reg):
-        resp = admin_client.get('/admin/transcription/discover-models')
-    assert resp.status_code == 503
+def test_discover_models_route_is_gone(admin_client):
+    """The per-profile discovery endpoint replaced the connector-wide one."""
+    assert admin_client.get('/admin/transcription/discover-models').status_code == 404
 
 
-def test_visible_models_get_ok(admin_client):
-    resp = admin_client.get('/admin/transcription/visible-models')
-    assert resp.status_code == 200
-    assert 'options' in resp.get_json()
-
-
-def test_visible_models_save_roundtrip(admin_client):
-    try:
-        resp = admin_client.post('/admin/transcription/visible-models',
-                                 json={'options': [{'value': 'whisper-1',
-                                                    'label': 'Whisper'}],
-                                       'default_model': 'whisper-1'})
-        assert resp.status_code == 200, resp.data
-        body = resp.get_json()
-        assert body['success'] is True
-        assert body['default_model'] == 'whisper-1'
-        # Persisted to DB.
-        raw = SystemSetting.get_setting('transcription_models_visible_json')
-        assert raw and 'whisper-1' in raw
-        assert SystemSetting.get_setting('transcription_default_model') == 'whisper-1'
-    finally:
-        for k in ('transcription_models_visible_json',
-                  'transcription_default_model'):
-            s = SystemSetting.query.filter_by(key=k).first()
-            if s:
-                db.session.delete(s)
-                db.session.commit()
-
-
-def test_visible_models_save_bad_options_400(admin_client):
-    resp = admin_client.post('/admin/transcription/visible-models',
-                             json={'options': 'notalist'})
-    assert resp.status_code == 400
+def test_visible_models_routes_are_gone(admin_client):
+    """Visibility and the default live in asr_config_json, not in these routes."""
+    assert admin_client.get('/admin/transcription/visible-models').status_code == 404
+    assert admin_client.post('/admin/transcription/visible-models',
+                             json={'options': []}).status_code == 404
 
 
 # ---------------------------------------------------------------------------

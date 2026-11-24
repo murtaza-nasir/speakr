@@ -23,10 +23,6 @@ optional ``overrides`` dict of already-parsed per-request values, and gets back
 the complete params dict used by the transcribe job.
 """
 
-import json as _json
-
-from flask import current_app
-
 # Sentinel so callers can pass tag_id=None explicitly (meaning "no tag prompt")
 # and have it respected, versus omitting the key to get the first-tag default.
 _UNSET = object()
@@ -42,48 +38,23 @@ def _int_or_none(value):
 
 
 def resolve_transcription_model(value):
-    """Validate a candidate transcription model against the admin-curated
-    allowlist and fall back to the admin-saved default.
+    """The model selection a transcription job carries.
 
-    Resolution:
-      1. If a non-empty value is passed and an allowlist exists (admin-saved
-         visible list or TRANSCRIPTION_MODELS_AVAILABLE), the value is accepted
-         only when it is in that list; otherwise it is dropped with a warning.
-         With no allowlist configured, any value is accepted.
-      2. If nothing was passed, fall back to the admin-saved default model
-         (system_setting key ``transcription_default_model``) when set.
-    Returns the validated model id or None.
+    An explicit value is kept as-is: profile ids, environment ids and legacy
+    model names all resolve in ``asr_config.resolve_asr_connector`` at
+    transcription time, where legacy names keep using the environment
+    credentials. With no value, the explicitly marked default profile is used;
+    otherwise ``None`` means the environment. There is no first-profile
+    fallback and no read of the retired legacy settings.
     """
-    from src.config.app_config import TRANSCRIPTION_MODELS_AVAILABLE
-    from src.models import SystemSetting
-
     candidate = (value or '').strip() or None
-    visible = []
-    try:
-        raw = SystemSetting.get_setting('transcription_models_visible_json', None)
-        if raw:
-            parsed = _json.loads(raw)
-            if isinstance(parsed, list):
-                visible = [
-                    (item['value'] if isinstance(item, dict) else item)
-                    for item in parsed if item
-                ]
-    except Exception:
-        visible = []
-
     if candidate:
-        in_db_list = bool(visible) and candidate in visible
-        in_env_list = bool(TRANSCRIPTION_MODELS_AVAILABLE) and candidate in TRANSCRIPTION_MODELS_AVAILABLE
-        if visible or TRANSCRIPTION_MODELS_AVAILABLE:
-            if not (in_db_list or in_env_list):
-                current_app.logger.warning(
-                    f"Ignoring transcription_model={candidate!r} — not in admin-curated list or TRANSCRIPTION_MODELS_AVAILABLE"
-                )
-                candidate = None
         return candidate
-
-    default = SystemSetting.get_setting('transcription_default_model', None)
-    return (default or '').strip() or None
+    try:
+        from src.services import asr_config
+        return asr_config.default_profile_id()
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def resolve_transcription_params(recording=None, overrides=None, *, tags=None, folder=None, owner=None):

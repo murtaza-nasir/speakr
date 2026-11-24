@@ -85,7 +85,6 @@ OPTIONAL = [
 
 # Routes whose errors go through internal_error (admin, not edited here)
 ADMIN = [
-    ("POST", "/admin/transcription/visible-models"),
     ("POST", "/admin/inquire/process-recordings"),
     ("POST", "/admin/auto-process/config"),
 ]
