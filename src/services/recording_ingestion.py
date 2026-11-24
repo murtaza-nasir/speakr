@@ -60,6 +60,7 @@ Assembly:
 
 import json
 import os
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, NamedTuple, Optional
@@ -436,6 +437,72 @@ def probe_upload(*, filepath, original_filename):
     return UploadProbe(codec_info, probe_error, has_video)
 
 
+class UploadTrimError(Exception):
+    """A trim range the upload cannot apply. ``code`` is the API error code."""
+
+    def __init__(self, code):
+        self.code = code
+
+
+_WHOLE_SECONDS = re.compile(r"-?\d+\Z")
+
+
+def _whole_seconds_field(form, name):
+    """The form field as a whole number of seconds, or None when it is absent.
+
+    An empty string is absent. Anything else that is not a whole number
+    raises UploadTrimError.
+    """
+    raw = form.get(name) if form is not None else None
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if text == "":
+        return None
+    if _WHOLE_SECONDS.fullmatch(text) is None:
+        raise UploadTrimError("invalid_trim_range")
+    return int(text)
+
+
+def resolve_upload_trim(form, filepath, codec_info):
+    """The convert-job trim for this upload, or None when the whole file is kept.
+
+    ``trim_start`` alone keeps from that second through the real end.
+    ``trim_end`` alone keeps from the start through that second. An end at or
+    beyond the probed duration keeps through the real end. A range that still
+    covers the whole file returns None, so nothing is cut and no extra encode
+    is added. Raises UploadTrimError when a present field is not a whole
+    number of seconds, the start is negative or past the end, the span is
+    empty, or the fields are present and the duration cannot be read.
+    """
+    start = _whole_seconds_field(form, "trim_start")
+    end = _whole_seconds_field(form, "trim_end")
+    if start is None and end is None:
+        return None
+    duration = None
+    if codec_info is not None:
+        try:
+            duration = get_duration(filepath, timeout=30, codec_info=codec_info)
+        except Exception:
+            duration = None
+    if not duration or duration <= 0:
+        raise UploadTrimError("audio_decode_failed")
+    if start is not None and start < 0:
+        raise UploadTrimError("invalid_trim_range")
+    if start is not None and start >= duration:
+        raise UploadTrimError("invalid_trim_range")
+    if end is not None and end >= duration:
+        end = None
+    if end is not None and end <= (0 if start is None else start):
+        raise UploadTrimError("invalid_trim_range")
+    params = {}
+    if start:
+        params["trim_start"] = start
+    if end is not None:
+        params["trim_end"] = end
+    return params or None
+
+
 def has_video_after_failed_probe(*, codec_info, probe_error, has_video, original_filename):
     """Take a video extension as video when the probe did not finish.
 
@@ -559,7 +626,8 @@ class ConvertedUpload(NamedTuple):
 
 
 def convert_upload_in_request(filepath, *, original_filename, codec_info,
-                              needs_chunking_for_processing, connector_specs):
+                                needs_chunking_for_processing, connector_specs,
+                                keep_start=None, keep_end=None):
     """Convert the staged upload before the request is answered.
 
     Returns the path of the file left (the same path when nothing needed
@@ -579,7 +647,9 @@ def convert_upload_in_request(filepath, *, original_filename, codec_info,
             needs_chunking=needs_chunking_for_processing,
             is_asr_endpoint=USE_ASR_ENDPOINT,
             delete_original=True,
-            connector_specs=connector_specs  # Pass connector specs for codec restrictions
+            connector_specs=connector_specs,  # Pass connector specs for codec restrictions
+            keep_start=keep_start,
+            keep_end=keep_end,
         )
         filepath = result.output_path
 
@@ -868,7 +938,7 @@ def build_ingestion_response(recording, *, owner, duplicate_warning, reuse_dupli
 
 
 def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_deferred,
-                           extracted_audio_limit_mb):
+                            extracted_audio_limit_mb, trim_params=None):
     """Queue the committed recording's first job and emit its recording.created event.
 
     A deferred conversion queues the convert job, which carries the
@@ -903,11 +973,16 @@ def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_defe
 
     if conversion_deferred:
         # The convert job queues the transcription with these params.
+        # trim_params is set only for a real cut. The job encodes that
+        # span; the whole file carries no trim.
+        convert_params = {'transcribe': job_params, 'extracted_audio_limit_mb': extracted_audio_limit_mb}
+        if trim_params:
+            convert_params.update(trim_params)
         job_queue.enqueue(
             user_id=owner_id,
             recording_id=recording_id,
             job_type='convert',
-            params={'transcribe': job_params, 'extracted_audio_limit_mb': extracted_audio_limit_mb},
+            params=convert_params,
             is_new_upload=True
         )
         current_app.logger.info(f"Conversion job queued for recording ID: {recording_id}")
@@ -1122,6 +1197,15 @@ def ingest(
             has_video=has_video,
             original_filename=original_filename,
         )
+        # A joined part is cut in the merge encode, not on this upload.
+        trim_params = None
+        if not join:
+            try:
+                trim_params = resolve_upload_trim(form, filepath, codec_info)
+            except UploadTrimError as trim_error:
+                _discard_staging(filepath)
+                filepath = None
+                return jsonify(api_error(trim_error.code)), 400
         conversion = decide_conversion(
             codec_info=codec_info,
             has_video=has_video,
@@ -1146,6 +1230,8 @@ def ingest(
                 codec_info=codec_info,
                 needs_chunking_for_processing=needs_chunking_for_processing,
                 connector_specs=connector_specs,
+                keep_start=(trim_params or {}).get('trim_start'),
+                keep_end=(trim_params or {}).get('trim_end'),
             )
             if converted.error_response is not None:
                 return converted.error_response
@@ -1395,6 +1481,7 @@ def ingest(
             resolved_params=resolved_params,
             conversion_deferred=conversion_deferred,
             extracted_audio_limit_mb=extracted_audio_limit_mb,
+            trim_params=trim_params,
         )
 
         return build_ingestion_response(

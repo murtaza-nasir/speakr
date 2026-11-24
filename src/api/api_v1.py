@@ -558,13 +558,15 @@ OPENAPI_SPEC = {
                                     "tag_id": {"type": "integer"},
                                     "tag_ids[0]": {"type": "integer"},
                                     "tag_ids[1]": {"type": "integer"},
-                                    "keep_audio_only": {"type": "boolean", "description": "If true, the server discards the video stream and stores only the extracted audio. Allows uploads up to max_audio_only_video_size_mb (vs max_file_size_mb) for video files, as long as the extracted audio still fits the regular limit."}
+                                    "keep_audio_only": {"type": "boolean", "description": "If true, the server discards the video stream and stores only the extracted audio. Allows uploads up to max_audio_only_video_size_mb (vs max_file_size_mb) for video files, as long as the extracted audio still fits the regular limit."},
+                                    "trim_start": {"type": "integer", "description": "Optional whole second to keep from. Absent, blank, or 0 with no earlier end keeps the start of the file. The cut runs in the conversion after this response."},
+                                    "trim_end": {"type": "integer", "description": "Optional whole second to keep through. Absent, blank, or at or beyond the file duration keeps through the real end."}
                                 }
                             }
                         }
                     }
                 },
-                "responses": {"202": {"description": "Upload accepted and queued"}, "400": {"description": "Invalid parameters, or a file that cannot be ingested (code empty_file or audio_decode_failed)"}, "507": {"description": "The upload would exceed the user's storage quota (code storage_quota_exceeded, with used_bytes, quota_bytes and file_bytes)"}}
+                  "responses": {"202": {"description": "Upload accepted and queued"}, "400": {"description": "Invalid parameters (code invalid_trim_range), or a file that cannot be ingested (code empty_file or audio_decode_failed). A trim sent with a duration that cannot be read is audio_decode_failed."}, "507": {"description": "The upload would exceed the user's storage quota (code storage_quota_exceeded, with used_bytes, quota_bytes and file_bytes). The quota judges the uploaded file, not the kept span."}}
             }
         },
         "/integrations/asr-voice-recorder/upload": {
@@ -4442,6 +4444,11 @@ def upload_recording():
       - external_refs (optional, JSON array of references)
       - idempotency_key (optional, 1 to 100 characters)
       - strict (optional, true: a tag or folder you cannot use is an error)
+      - trim_start (optional, whole seconds): keep from this second through
+        the real end. An empty string is the same as omitting it.
+      - trim_end (optional, whole seconds): keep from the start through this
+        second. An empty string is the same as omitting it. A value at or
+        beyond the probed duration keeps through the real end.
     """
     from src.api.recordings import ingest_uploaded_recording
     from src.models import Folder, GroupMembership, Tag

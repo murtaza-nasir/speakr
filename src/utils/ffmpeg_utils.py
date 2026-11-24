@@ -124,7 +124,9 @@ def extract_audio_from_video(
     bitrate: str = DEFAULT_MP3_BITRATE,
     cleanup_original: bool = True,
     copy_stream: bool = False,
-    allow_debug_copy: bool = True
+    allow_debug_copy: bool = True,
+    keep_start: Optional[int] = None,
+    keep_end: Optional[int] = None,
 ) -> Tuple[str, str]:
     """
     Extract audio track from video file.
@@ -273,6 +275,7 @@ def extract_audio_from_video(
         else:
             raise ValueError(f"Unsupported output format: {output_format}")
         
+        cmd = _with_keep_span(cmd, keep_start, keep_end)
         _run_ffmpeg_command(cmd, f"Audio extraction from {os.path.basename(video_path)}")
         
         # Optionally preserve temp file for debugging
@@ -304,12 +307,34 @@ def extract_audio_from_video(
         raise
 
 
+def _with_keep_span(cmd, keep_start, keep_end):
+    """Place `-ss` and `-to` before `-i` so the encode keeps that span.
+
+    Both values are whole seconds. A missing end reads through the real end
+    of the input. The command is unchanged when neither value is set.
+    """
+    options = []
+    if keep_start:
+        options.extend(['-ss', str(int(keep_start))])
+    if keep_end is not None:
+        options.extend(['-to', str(int(keep_end))])
+    if not options:
+        return cmd
+    try:
+        input_at = cmd.index('-i')
+    except ValueError:
+        return ['ffmpeg', *options, *cmd[1:]]
+    return [*cmd[:input_at], *options, *cmd[input_at:]]
+
+
 def compress_audio(
     input_path: str,
     codec: str = 'mp3',
     bitrate: str = DEFAULT_MP3_BITRATE,
     delete_original: bool = True,
-    codec_info: Optional[dict] = None
+    codec_info: Optional[dict] = None,
+    keep_start: Optional[int] = None,
+    keep_end: Optional[int] = None,
 ) -> Tuple[str, str, Optional[dict]]:
     """
     Compress audio file to specified codec.
@@ -364,7 +389,9 @@ def compress_audio(
         # Get original file size for logging
         original_size = os.path.getsize(input_path)
         
-        cmd = ['ffmpeg', '-i', input_path, '-y'] + config['cmd_args'] + [temp_output_path]
+        cmd = _with_keep_span(
+            ['ffmpeg', '-i', input_path, '-y'] + config['cmd_args'] + [temp_output_path],
+            keep_start, keep_end)
         
         _run_ffmpeg_command(cmd, f"Compression of {os.path.basename(input_path)} to {codec}")
         

@@ -40,7 +40,9 @@ def convert_uploaded_recording(recording_id, params):
 
     params holds the transcription parameters resolved at upload time
     ('transcribe') and, when only the extracted audio of a video has to fit
-    the upload limit, that limit in MB ('extracted_audio_limit_mb').
+    the upload limit, that limit in MB ('extracted_audio_limit_mb'). A real
+    cut also carries 'trim_start' and/or 'trim_end', whole seconds. The
+    encode keeps that span; a range that is the whole file carries neither.
     """
     from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE, chunking_service
     from src.services.job_queue import job_queue
@@ -83,6 +85,8 @@ def convert_uploaded_recording(recording_id, params):
                 is_asr_endpoint=use_asr_endpoint,
                 delete_original=False,
                 connector_specs=connector_specs,
+                keep_start=params.get('trim_start'),
+                keep_end=params.get('trim_end'),
             )
         except FFmpegNotFoundError as e:
             current_app.logger.error(f"FFmpeg not found while converting recording {recording_id}: {loggable_error(e, local_path, recording_id=recording_id)}")

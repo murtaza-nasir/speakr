@@ -428,8 +428,12 @@ Upload a recording as multipart form-data and immediately queue transcription.
 | `transcription_model` | string | no | One of the models the administrator allows |
 | `prompt_variables` | string | no | JSON object of `{{name}}` values for the summary prompt |
 | `keep_audio_only` | boolean | no | If `true`, the server discards the video stream and stores only the extracted audio. Lets you upload videos larger than `max_file_size_mb`, up to `max_audio_only_video_size_mb`, as long as the extracted audio fits the regular limit. When `VIDEO_RETENTION` is off at the server, this is implicit for video uploads. |
+| `trim_start` | integer | no | Whole seconds. Keep from this second through the real end of the file. An empty string is the same as omitting the field. |
+| `trim_end` | integer | no | Whole seconds. Keep from the start through this second. An empty string is the same as omitting the field. A value at or beyond the probed duration keeps through the real end. |
 
 The meeting date is chosen in this order: `meeting_date`, a date in the file name (when you turned that on in your settings), `file_last_modified`, the date stored in the file, the upload time.
+
+`trim_start` and `trim_end` are optional. Omit both, or send empty strings, and Speakr stores and transcribes the whole file. `trim_start` alone drops the head and keeps through the real end. `trim_end` alone drops the tail and keeps from the start. Together they keep that span. A range that still covers the whole file (start at 0, end omitted or at or beyond the duration) is stored with no cut. The upload is answered before the encode. The cut runs in the conversion that already happens before transcription, so the Transcript starts at the beginning of the kept audio and the Summary is of that Transcript. The size limit and the storage quota judge the file that was uploaded. After the kept media replaces it, the Recording's size and the Owner's quota follow the kept media.
 
 **Idempotent uploads.** Send an `idempotency_key` (for example a message id and attachment number) when a client may retry. A repeat with the same key by the same user within 24 hours returns the recording the first call created, with `200` and `"idempotent_replay": true`; the file is not stored again and no second transcription is queued. Keys are per user.
 
@@ -475,7 +479,8 @@ A file that cannot be ingested is refused with `400`. No recording is created an
 | Code | Meaning |
 |------|---------|
 | `empty_file` | The file part has no content. |
-| `audio_decode_failed` | The file cannot be decoded as audio or video, for example a text file with an `.mp3` extension or a damaged file. |
+| `audio_decode_failed` | The file cannot be decoded as audio or video, for example a text file with an `.mp3` extension or a damaged file. Also a `trim_start` or `trim_end` sent when the duration cannot be read. |
+| `invalid_trim_range` | A present trim field is not a whole number of seconds, the start is negative or past the end, or the span is empty (`trim_end` is not after `trim_start`). No Recording is created. |
 
 ```json
 {

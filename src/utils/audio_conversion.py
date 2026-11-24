@@ -118,7 +118,9 @@ def convert_if_needed(
     needs_chunking: bool = False,
     is_asr_endpoint: bool = False,
     delete_original: bool = True,
-    connector_specs: Optional[Any] = None
+    connector_specs: Optional[Any] = None,
+    keep_start: Optional[int] = None,
+    keep_end: Optional[int] = None,
 ) -> ConversionResult:
     """
     Handle ALL audio conversion needs in one place.
@@ -139,6 +141,10 @@ def convert_if_needed(
         is_asr_endpoint: Whether using ASR endpoint (affects AAC handling)
         delete_original: Whether to delete original file after successful conversion
         connector_specs: Optional ConnectorSpecifications with provider-specific codec restrictions
+        keep_start: Whole second to keep from, when a head is dropped
+        keep_end: Whole second to keep through, when a tail is dropped. None reads
+            through the real end. A range that is the whole file leaves both unset,
+            so a file that needs no conversion is still stored as it arrived.
 
     Returns:
         ConversionResult with output path, mime type, and conversion stats
@@ -155,7 +161,8 @@ def convert_if_needed(
 
     # Get original file size
     original_size = os.path.getsize(filepath)
-    if getattr(connector_specs, 'preserve_original_audio', False):
+    real_cut = bool(keep_start) or keep_end is not None
+    if getattr(connector_specs, 'preserve_original_audio', False) and not real_cut:
         from src.utils.mime import guess_media_type
         return ConversionResult(
             output_path=filepath,
@@ -205,6 +212,11 @@ def convert_if_needed(
             except Exception as e:
                 logger.warning(f"Could not determine if audio is lossless: {loggable_error(e, filepath)}. Will transcode.")
 
+        # A real cut has to encode the kept span. A stream copy would land on a
+        # keyframe, not the whole second.
+        if real_cut:
+            can_remux = False
+
         try:
             if can_remux:
                 logger.info(f"Extracting audio from video (remux, no transcoding): {loggable_path(filepath)}")
@@ -212,7 +224,9 @@ def convert_if_needed(
                     filepath,
                     output_format='copy',
                     cleanup_original=delete_original,
-                    copy_stream=True
+                    copy_stream=True,
+                    keep_start=keep_start,
+                    keep_end=keep_end,
                 )
                 final_codec = audio_codec
             else:
@@ -222,7 +236,9 @@ def convert_if_needed(
                     output_format=video_target_codec,
                     bitrate=AUDIO_BITRATE,
                     cleanup_original=delete_original,
-                    copy_stream=False
+                    copy_stream=False,
+                    keep_start=keep_start,
+                    keep_end=keep_end,
                 )
                 final_codec = video_target_codec
 
@@ -279,8 +295,10 @@ def convert_if_needed(
     elif audio_codec not in supported_codecs:
         needs_conversion = True
         logger.info(f"Converting {loggable_path(filepath)} (codec: {audio_codec}) - unsupported for processing")
-    
-    if needs_conversion:
+
+    # A supported file is stored as it arrived unless a real cut has to
+    # encode the kept span. That encode is the conversion, not a second one.
+    if needs_conversion or real_cut:
         # Determine target codec
         # If chunking is needed, always convert to MP3 (chunking requires MP3 anyway)
         # This avoids double conversion: original → configured codec → mp3
@@ -306,7 +324,9 @@ def convert_if_needed(
                 codec=target_codec,
                 bitrate=AUDIO_BITRATE,
                 delete_original=delete_original,
-                codec_info=codec_info
+                codec_info=codec_info,
+                keep_start=keep_start,
+                keep_end=keep_end,
             )
             
             final_size = os.path.getsize(output_filepath)
@@ -373,7 +393,9 @@ def convert_if_needed(
                     codec=compress_target_codec,
                     bitrate=AUDIO_BITRATE,
                     delete_original=delete_original,
-                    codec_info=codec_info
+                    codec_info=codec_info,
+                    keep_start=keep_start,
+                    keep_end=keep_end,
                 )
 
                 final_size = os.path.getsize(compressed_path)
