@@ -5,6 +5,7 @@ browser recorded. Safari records Opus in 2.5 ms frames, which iOS and VLC play
 back distorted, so an audio recording goes through the upload conversion
 before it is transcribed. A video capture is kept as recorded.
 """
+import json
 import os
 import shutil
 import subprocess
@@ -44,10 +45,13 @@ def _safari_like_webm(path, seconds=4):
             '-c:a', 'libopus', '-application', 'lowdelay', '-frame_duration', '2.5', '-f', 'webm', path)
 
 
-def _video_webm(path, seconds=3):
+def _video_webm(path, seconds=3, gop=None):
+    video = ['-c:v', 'libvpx']
+    if gop:
+        video += ['-g', str(gop)]
     _ffmpeg('-f', 'lavfi', '-i', f'testsrc=duration={seconds}:size=160x120:rate=10',
             '-f', 'lavfi', '-i', f'sine=frequency=440:duration={seconds}',
-            '-c:v', 'libvpx', '-c:a', 'libopus', '-ac', '1', '-ar', '48000', '-f', 'webm', path)
+            *video, '-c:a', 'libopus', '-ac', '1', '-ar', '48000', '-f', 'webm', path)
 
 
 def _probe(path, entries):
@@ -62,7 +66,7 @@ def stitched():
     upload_folder = tempfile.mkdtemp(prefix="speakr-stitch-convert-")
     created = []
 
-    def make(writer, mime_type):
+    def make(writer, mime_type, finalize_metadata=None):
         app.config["UPLOAD_FOLDER"] = upload_folder
         suffix = uuid.uuid4().hex[:8]
         user = User(username=f"stconv_{suffix}", email=f"stconv_{suffix}@local.test", password="x")
@@ -80,6 +84,9 @@ def stitched():
         sess_dir = os.path.join(upload_folder, "_sessions", session.id)
         os.makedirs(sess_dir)
         writer(os.path.join(sess_dir, 'chunk-000001.bin'))
+        if finalize_metadata is not None:
+            session.finalize_metadata = json.dumps(finalize_metadata)
+            db.session.commit()
         recording_id, _, metadata = stitch_recording_session(session.id)
         return db.session.get(Recording, recording_id), user, metadata
 
@@ -146,3 +153,38 @@ def test_a_stitched_video_capture_is_kept_as_recorded(stitched):
     assert enqueue.call_args.kwargs['job_type'] == 'transcribe'
     db.session.expire_all()
     assert db.session.get(Recording, rec.id).audio_path == stitched_path
+
+
+def test_a_capture_range_is_cut_by_the_convert_job(stitched):
+    rec, user, metadata = stitched(
+        lambda path: _safari_like_webm(path, seconds=6),
+        'audio/webm',
+        finalize_metadata={'trim_start': 3},
+    )
+    assert metadata['trim_start'] == 3
+    with patch("src.services.job_queue.CONVERT_WORKERS", 0), \
+         patch("src.services.job_queue.job_queue.enqueue") as enqueue:
+        kickoff_transcription_for_stitched(recording_id=rec.id, user_id=user.id, metadata=metadata)
+    db.session.expire_all()
+    rec = db.session.get(Recording, rec.id)
+    with get_storage_service().materialize(rec.audio_path) as stored:
+        duration = float(_probe(stored.local_path, 'format=duration'))
+    assert 2.4 <= duration <= 3.6
+    assert enqueue.call_args.kwargs['job_type'] == 'transcribe'
+
+
+def test_a_video_capture_stores_the_kept_span(stitched):
+    rec, user, metadata = stitched(
+        lambda path: _video_webm(path, seconds=6, gop=10),
+        'video/webm',
+        finalize_metadata={'trim_start': 2, 'trim_end': 5},
+    )
+    with get_storage_service().materialize(rec.audio_path) as stored:
+        duration = float(_probe(stored.local_path, 'format=duration'))
+        kinds = _probe(stored.local_path, 'stream=codec_type').splitlines()
+    assert 'video' in kinds
+    assert 2.0 <= duration <= 4.5
+    with patch("src.services.job_queue.job_queue.enqueue") as enqueue:
+        kickoff_transcription_for_stitched(recording_id=rec.id, user_id=user.id, metadata=metadata)
+    assert enqueue.call_args.kwargs['job_type'] == 'transcribe'
+    assert 'trim_start' not in (enqueue.call_args.kwargs['params'] or {})

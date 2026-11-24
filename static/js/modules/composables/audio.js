@@ -12,6 +12,7 @@ import {
     shouldAutoOfferExternalAudioInput
 } from '../utils/platform.js';
 import { DISPLAY_MEDIA_CONSTRAINTS, closeAudioContext, stopStreams } from '../utils/audio-capture.js';
+import { keptSeconds, previewSpans, trimFields, wholeEnd } from '../utils/upload-trim.js';
 
 export function buildMicrophoneConstraints(deviceId = '', disableAudioProcessing = false) {
     const constraints = {
@@ -67,6 +68,95 @@ export function useAudio(state, utils) {
     } = state;
 
     const { showToast, setGlobalError, formatFileSize, startUploadQueue } = utils;
+
+    // The range on a finished Capture. Hidden until the blob's duration is read.
+    const captureDuration = Vue.ref(null);
+    const captureTrimOn = Vue.ref(false);
+    const captureTrimStart = Vue.ref(0);
+    const captureTrimEnd = Vue.ref(0);
+    const captureTrimPreviewFailed = Vue.ref(false);
+
+    const resetCaptureTrim = () => {
+        captureTrimOn.value = false;
+        captureTrimStart.value = 0;
+        captureTrimEnd.value = 0;
+        captureTrimPreviewFailed.value = false;
+    };
+
+    const readCaptureDuration = (url) => {
+        captureDuration.value = null;
+        resetCaptureTrim();
+        if (!url) return;
+        const audio = new Audio();
+        audio.preload = 'metadata';
+        const finish = (duration) => {
+            if (Number.isFinite(duration) && duration > 0) captureDuration.value = duration;
+            audio.onloadedmetadata = null;
+            audio.onerror = null;
+            audio.removeAttribute('src');
+        };
+        audio.onloadedmetadata = () => finish(audio.duration);
+        audio.onerror = () => finish(null);
+        audio.src = url;
+    };
+
+    if (typeof Vue !== 'undefined' && Vue.watch) {
+        Vue.watch(audioBlobURL, (url) => readCaptureDuration(url));
+    }
+
+    const enableCaptureTrim = () => {
+        if (!captureDuration.value) return;
+        captureTrimOn.value = true;
+        captureTrimStart.value = 0;
+        captureTrimEnd.value = wholeEnd(captureDuration.value);
+        captureTrimPreviewFailed.value = false;
+    };
+
+    const captureKeptSeconds = () => keptSeconds(captureTrimStart.value, captureTrimEnd.value);
+
+    const captureTrimPayload = () => {
+        if (!captureTrimOn.value) return {};
+        return trimFields(captureTrimStart.value, captureTrimEnd.value, captureDuration.value);
+    };
+
+    const previewCaptureTrim = async () => {
+        if (!captureTrimOn.value || !audioBlobURL.value) return;
+        captureTrimPreviewFailed.value = false;
+        const spans = previewSpans(captureTrimStart.value, captureTrimEnd.value);
+        if (!spans.length) return;
+        const audio = new Audio();
+        audio.preload = 'auto';
+        try {
+            await new Promise((resolve, reject) => {
+                audio.onloadedmetadata = () => resolve();
+                audio.onerror = () => reject(new Error('unplayable'));
+                audio.src = audioBlobURL.value;
+            });
+            for (const span of spans) {
+                audio.currentTime = span.start;
+                await audio.play();
+                await new Promise((resolve) => {
+                    const stop = () => {
+                        audio.pause();
+                        audio.removeEventListener('timeupdate', onTime);
+                        resolve();
+                    };
+                    const onTime = () => {
+                        if (audio.currentTime >= span.end - 0.05) stop();
+                    };
+                    audio.addEventListener('timeupdate', onTime);
+                    audio.addEventListener('ended', stop, { once: true });
+                });
+            }
+        } catch {
+            captureTrimPreviewFailed.value = true;
+        } finally {
+            audio.pause();
+            audio.onloadedmetadata = null;
+            audio.onerror = null;
+            audio.removeAttribute('src');
+        }
+    };
 
     // Local state for pending streams and chunk tracking
     let pendingDisplayStream = null;
@@ -1287,6 +1377,7 @@ export function useAudio(state, utils) {
                 if (mergeIntent) {
                     metadata.merge_intent = mergeIntent;
                 }
+                Object.assign(metadata, captureTrimPayload());
                 const result = await ServerSessions.finalizeSession(serverSessionId, metadata);
                 showToast?.((utils.t && utils.t('toasts.recordingFinalized')) || 'Recording uploaded', 'fa-cloud-upload-alt');
 
@@ -1357,6 +1448,10 @@ export function useAudio(state, utils) {
             status: 'queued',
             recordingId: null,
             clientId: queueClientId,
+            duration: captureDuration.value,
+            trimOn: captureTrimOn.value,
+            trimStart: captureTrimStart.value,
+            trimEnd: captureTrimEnd.value,
             fromInProgressRecording: true,  // marker: upload-success handler clears RecordingDB session
             recordingSessionStartTime: currentRecordingSessionStartTime,  // clear only this session (#407)
             // The server session that could not be finished (finalize failed
@@ -1527,6 +1622,9 @@ export function useAudio(state, utils) {
         try {
             const formData = new FormData();
             formData.append('file', recordedFile);
+            for (const [key, value] of Object.entries(captureTrimPayload())) {
+                formData.append(key, value);
+            }
 
             // Add ASR options
             if (asrLanguage.value) {
@@ -1920,6 +2018,14 @@ export function useAudio(state, utils) {
         discardRecording,
         normalizeLiveMediaDuration,
         uploadRecordedAudio,
+        captureDuration,
+        captureTrimOn,
+        captureTrimStart,
+        captureTrimEnd,
+        captureTrimPreviewFailed,
+        enableCaptureTrim,
+        captureKeptSeconds,
+        previewCaptureTrim,
         mergeRecordedWithExisting,
         finalizeRecordingMerge,
         uploadRecordedAudioIncognito,

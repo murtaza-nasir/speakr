@@ -582,3 +582,70 @@ def test_an_existing_recorder_session_survives_the_migration_as_a_recorder_sessi
         assert survivor.is_sliced_upload is False
 
     shutil.rmtree(db_dir, ignore_errors=True)
+
+
+def test_chunk_posts_do_not_carry_the_range_and_finalize_applies_it():
+    upload_folder = _tmp_upload_folder()
+    with app.app_context():
+        app.config["UPLOAD_FOLDER"] = upload_folder
+        user = _mk_user("slice_trim")
+        client = app.test_client()
+        _login(client, user)
+        payload = _payload(SLICE_BYTES * 2)
+        session_id = _open_session(client, filename="sample.mp3", mime_type="audio/mpeg",
+                                   total_bytes=len(payload))["session_id"]
+        # A trim field on a chunk post is not part of that request.
+        response = client.post(
+            f"/upload/session/{session_id}/chunks/1?trim_start=1",
+            data=payload[:SLICE_BYTES],
+            content_type="application/octet-stream",
+        )
+        assert response.status_code == 204, response.data
+        response = client.post(
+            f"/upload/session/{session_id}/chunks/2",
+            data=payload[SLICE_BYTES:],
+            content_type="application/octet-stream",
+        )
+        assert response.status_code == 204, response.data
+
+        staging = os.path.join(upload_folder, f"stg_{uuid.uuid4().hex[:6]}")
+        with _upload_mocks(staging):
+            refused = client.post(
+                f"/upload/session/{session_id}/finalize-upload",
+                data={"trim_start": "30"},
+                content_type="multipart/form-data",
+            )
+        assert refused.status_code == 400, refused.data
+        assert refused.get_json()["code"] == "invalid_trim_range"
+        assert Recording.query.filter_by(user_id=user.id).count() == 0
+
+        # The refusal does not consume the slices. A range that fits is applied
+        # only on this finalize.
+        session_id = _open_session(client, filename="sample.mp3", mime_type="audio/mpeg",
+                                   total_bytes=len(payload))["session_id"]
+        _send_slices(client, session_id, payload)
+        with _upload_mocks(staging) as (_, enqueue), \
+             patch("src.services.recording_ingestion.CONVERT_WORKERS", 1):
+            accepted = client.post(
+                f"/upload/session/{session_id}/finalize-upload",
+                data={"trim_start": "3"},
+                content_type="multipart/form-data",
+            )
+        assert accepted.status_code == 202, accepted.data
+        assert enqueue.call_args.kwargs["params"]["trim_start"] == 3
+        assert "trim_end" not in enqueue.call_args.kwargs["params"]
+
+        session_id = _open_session(client, filename="sample.mp3", mime_type="audio/mpeg",
+                                   total_bytes=len(payload))["session_id"]
+        _send_slices(client, session_id, payload)
+        with _upload_mocks(staging) as (_, enqueue):
+            whole = client.post(
+                f"/upload/session/{session_id}/finalize-upload",
+                data={"trim_start": "0", "trim_end": "12"},
+                content_type="multipart/form-data",
+            )
+        assert whole.status_code == 202, whole.data
+        params = enqueue.call_args.kwargs["params"]
+        assert "trim_start" not in params and "trim_end" not in params
+        _cleanup(user)
+    shutil.rmtree(upload_folder, ignore_errors=True)

@@ -255,6 +255,31 @@
                     <i class="fas fa-stop mr-2"></i><span v-text="t('recording.stopRecording')"></span>
                 </button>
             </div>
+            <div v-if="!isRecording && audioBlobURL && captureDuration" class="mb-3" @click.stop>
+                <button v-if="!captureTrimOn" type="button" @click="enableCaptureTrim"
+                        class="text-[11px] text-[var(--text-accent)] hover:underline">
+                    <span v-text="t('upload.trimToggle')"></span>
+                </button>
+                <div v-else class="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)]">
+                    <label class="inline-flex items-center gap-1">
+                        <span v-text="t('upload.trimStart')"></span>
+                        <input type="number" min="0" step="1" inputmode="numeric"
+                               v-model.number="captureTrimStart"
+                               class="w-14 px-1 py-0.5 rounded border border-[var(--border-secondary)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                    </label>
+                    <label class="inline-flex items-center gap-1">
+                        <span v-text="t('upload.trimEnd')"></span>
+                        <input type="number" min="0" step="1" inputmode="numeric"
+                               v-model.number="captureTrimEnd"
+                               class="w-14 px-1 py-0.5 rounded border border-[var(--border-secondary)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                    </label>
+                    <span v-text="t('upload.trimKept', { kept: formatDuration(captureKeptSeconds()), total: formatDuration(captureDuration) })"></span>
+                    <button type="button" @click="previewCaptureTrim"
+                            class="text-[var(--text-accent)] hover:underline"
+                            v-text="t('upload.trimPreview')"></button>
+                    <span v-if="captureTrimPreviewFailed" class="text-[var(--text-muted)]" v-text="t('upload.trimPreviewFailed')"></span>
+                </div>
+            </div>
             <div v-if="!isRecording && audioBlobURL" class="flex flex-col sm:flex-row gap-3 justify-center">
                 <!-- Normal Upload Button (split: main uploads, caret opens options) -->
                 <div v-if="!incognitoMode || !enableIncognitoMode" class="flex-1 flex relative">

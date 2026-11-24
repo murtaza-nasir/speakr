@@ -17,6 +17,7 @@ companion test of the stitch module itself goes in test_recording_stitch.
 
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import uuid
@@ -607,3 +608,71 @@ if __name__ == "__main__":
     test_ownership_enforced_other_user_gets_404()
     test_cleanup_auto_finalizes_with_chunks_expires_empty_and_rekicks_stalled()
     print("All recording-session tests passed.")
+
+
+def _six_second_mp3(path):
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+         "-f", "lavfi", "-i", "sine=frequency=440:duration=6",
+         "-c:a", "libmp3lame", path],
+        check=True, capture_output=True,
+    )
+
+
+def test_a_finished_capture_refuses_a_bad_range_and_keeps_a_covering_one():
+    if not shutil.which("ffmpeg"):
+        return
+    upload_folder = _make_tmp_upload_folder()
+    with app.app_context():
+        app.config["UPLOAD_FOLDER"] = upload_folder
+        user = _setup_user("cap_trim")
+        client = app.test_client()
+        _login(client, user)
+        clip = os.path.join(upload_folder, "take.mp3")
+        try:
+            _six_second_mp3(clip)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            shutil.rmtree(upload_folder, ignore_errors=True)
+            return
+        payload = open(clip, "rb").read()
+
+        def _session():
+            sid = client.post("/upload/session", json={"mime_type": "audio/mpeg"}).get_json()["session_id"]
+            posted = client.post(
+                f"/upload/session/{sid}/chunks/1",
+                data=payload,
+                content_type="application/octet-stream",
+            )
+            assert posted.status_code == 204, posted.data
+            return sid
+
+        sid = _session()
+        with patch("src.services.job_queue.job_queue.enqueue", return_value=1):
+            refused = client.post(f"/upload/session/{sid}/finalize", json={"trim_start": 30})
+        assert refused.status_code == 400, refused.data
+        assert refused.get_json()["code"] == "invalid_trim_range"
+        assert Recording.query.filter_by(user_id=user.id).count() == 0
+        assert db.session.get(RecordingSession, sid).status == "recording"
+
+        with patch("src.services.job_queue.job_queue.enqueue", return_value=1):
+            whole = client.post(
+                f"/upload/session/{sid}/finalize",
+                json={"trim_start": 0, "trim_end": 99},
+            )
+        assert whole.status_code == 202, whole.data
+        stored = db.session.get(RecordingSession, sid).finalize_metadata or ""
+        assert "trim_start" not in stored and "trim_end" not in stored
+
+        sid = _session()
+        with patch("src.services.job_queue.job_queue.enqueue", return_value=1):
+            kept = client.post(f"/upload/session/{sid}/finalize", json={"trim_start": 3})
+        assert kept.status_code == 202, kept.data
+        import json
+        meta = json.loads(db.session.get(RecordingSession, sid).finalize_metadata)
+        assert meta["trim_start"] == 3
+        assert "trim_end" not in meta
+        assert Recording.query.filter_by(user_id=user.id).count() == 2
+
+        db.session.delete(user)
+        db.session.commit()
+    shutil.rmtree(upload_folder, ignore_errors=True)

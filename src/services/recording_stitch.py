@@ -228,6 +228,89 @@ def _assemble_session_audio(chunk_paths: list, output_path: str, mime_type: str)
         shutil.rmtree(work_dir, ignore_errors=True)
 
 
+def capture_keep_span(upload_folder, session, metadata):
+    """The kept span for a finished Capture, or None when the take stays whole.
+
+    A present field that is not a whole-second range inside the assembled
+    take raises UploadTrimError. The probe happens before a Recording is
+    created, so a refusal leaves no row.
+    """
+    from src.services.recording_ingestion import (
+        UploadTrimError, _whole_seconds_field, resolve_upload_trim,
+    )
+    form = {
+        "trim_start": None if not metadata else metadata.get("trim_start"),
+        "trim_end": None if not metadata else metadata.get("trim_end"),
+    }
+    start = _whole_seconds_field(form, "trim_start")
+    end = _whole_seconds_field(form, "trim_end")
+    if start is None and end is None:
+        return None
+
+    import tempfile
+    from src.utils.ffprobe import get_codec_info
+
+    sess_dir = _session_dir(upload_folder or "/data/uploads", session.id)
+    chunks = session_chunk_paths(sess_dir)
+    if not chunks:
+        raise UploadTrimError("audio_decode_failed")
+    work = tempfile.mkdtemp(prefix="speakr-capture-trim-")
+    try:
+        assembled = os.path.join(work, "assembled.bin")
+        try:
+            _assemble_session_audio(chunks, assembled, session.mime_type)
+            info = get_codec_info(assembled, timeout=30)
+        except UploadTrimError:
+            raise
+        except Exception as exc:
+            logger.warning("Could not read a finished Capture to apply its range: %s", exc)
+            raise UploadTrimError("audio_decode_failed")
+        return resolve_upload_trim(form, assembled, info)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def kept_span(metadata):
+    """Whole seconds stored on a Capture finalize, or (None, None)."""
+    if not metadata:
+        return None, None
+    start = metadata.get("trim_start")
+    end = metadata.get("trim_end")
+    if isinstance(start, bool) or not isinstance(start, int) or start <= 0:
+        start = None
+    if isinstance(end, bool) or not isinstance(end, int):
+        end = None
+    return start, end
+
+
+def _stream_copy_span(path, start, end):
+    """Keep a video's span by stream copy. The cut may land on a keyframe."""
+    if not start and end is None:
+        return path
+    root, ext = os.path.splitext(path)
+    destination = root + ".span" + (ext or ".webm")
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
+    if start:
+        cmd += ["-ss", str(int(start))]
+    if end is not None:
+        cmd += ["-to", str(int(end))]
+    cmd += ["-i", path, "-c", "copy"]
+    if destination.lower().endswith((".m4a", ".mp4", ".mov")):
+        cmd += ["-movflags", "+faststart"]
+    cmd.append(destination)
+    try:
+        result = subprocess.run(cmd, capture_output=True, timeout=600)
+    except FileNotFoundError:
+        raise StitchError("ffmpeg binary not found on server PATH")
+    except subprocess.TimeoutExpired:
+        raise StitchError("ffmpeg span copy timed out after 10 minutes")
+    if result.returncode != 0:
+        stderr = decode_ffmpeg_output(result.stderr).strip()
+        raise StitchError(f"ffmpeg span copy failed (exit {result.returncode}): {stderr[:500]}")
+    os.replace(destination, path)
+    return path
+
+
 def _apply_finalize_metadata(recording, metadata):
     """Attach the tags picked in the recorder's Upload Settings panel and
     resolve tag/folder ASR-option defaults, mirroring ``upload_file``.
@@ -410,6 +493,15 @@ def stitch_recording_session(session_id: str) -> Tuple[int, str, dict]:
     # ASR-option defaults into the metadata (same precedence as upload_file).
     metadata = _apply_finalize_metadata(recording, metadata)
 
+    # A video Capture is not sent through the upload convert job. Copy the
+    # kept span onto the stored file so playback and the transcript share
+    # it. An audio Capture is cut later, by that convert job.
+    span_start, span_end = kept_span(metadata)
+    if (recording.mime_type or "").startswith("video/") and (span_start or span_end is not None):
+        _stream_copy_span(final_path, span_start, span_end)
+        file_size = os.path.getsize(final_path)
+        recording.file_size = file_size
+
     session.status = 'finalized'
     session.finalized_at = datetime.utcnow()
     session.last_seen_at = datetime.utcnow()
@@ -562,6 +654,13 @@ def kickoff_transcription_for_stitched(
     if not (recording.mime_type or '').startswith('video/'):
         from src.services.job_queue import CONVERT_WORKERS
         convert_params = {'transcribe': job_params}
+        # The assembled file is still whole. This convert encodes the kept
+        # span, the same cut an upload uses, and then queues transcription.
+        span_start, span_end = kept_span(metadata)
+        if span_start:
+            convert_params['trim_start'] = span_start
+        if span_end is not None:
+            convert_params['trim_end'] = span_end
         if CONVERT_WORKERS > 0:
             job_queue.enqueue(
                 user_id=user_id,

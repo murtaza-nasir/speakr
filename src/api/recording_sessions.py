@@ -665,6 +665,19 @@ def finalize_session(session_id):
                 return jsonify(api_error('target_folder_access_denied')), 403
         resolved_folder_id = target.id
 
+    # A range is judged on the assembled take before any Recording exists.
+    # Absent fields, and a range that still covers the take, leave it whole.
+    from src.services.recording_ingestion import UploadTrimError
+    from src.services.recording_stitch import capture_keep_span
+    try:
+        trim_params = capture_keep_span(
+            current_app.config.get('UPLOAD_FOLDER'), session, metadata)
+    except UploadTrimError as trim_error:
+        return jsonify(api_error(trim_error.code)), 400
+    metadata.pop('trim_start', None)
+    metadata.pop('trim_end', None)
+    if trim_params:
+        metadata.update(trim_params)
     # Create the placeholder Recording, flip the session to finalizing, and
     # enqueue the async stitch job — shared with the cleanup auto-finalize
     # path so both behave identically. The worker dispatches to _run_stitch

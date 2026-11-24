@@ -164,6 +164,7 @@ describe('uploadFileInSlices', () => {
         const finalizeCall = sent[sent.length - 1];
         expect(finalizeCall.url).toBe('/upload/session/sess-1/finalize-upload');
         expect(finalizeCall.body).toBe(form);
+        expect(slicePosts().every((call) => call.body !== form)).toBe(true);
         expect(result).toEqual({ id: 42, title: 'talk' });
         expect(progress[progress.length - 1]).toBe(1);
     });
