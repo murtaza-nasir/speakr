@@ -161,8 +161,12 @@ class Controlled:
 
         signal.signal(signal.SIGTERM, shutdown)
         signal.signal(signal.SIGINT, shutdown)
+        # Bound before gunicorn boots: a caller that waits for /login and then
+        # asks /state must not catch the moment between the first answer and
+        # the control port opening.
+        server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
         self.start()
-        ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+        server.serve_forever()
 
 
 if __name__ == "__main__":
