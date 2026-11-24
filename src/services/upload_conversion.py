@@ -43,6 +43,9 @@ def convert_uploaded_recording(recording_id, params):
     the upload limit, that limit in MB ('extracted_audio_limit_mb'). A real
     cut also carries 'trim_start' and/or 'trim_end', whole seconds. The
     encode keeps that span; a range that is the whole file carries neither.
+    'retain_video' stores a stream copy of that span instead, so playback
+    and the transcription share the shorter file. The copy may land on a
+    keyframe.
     """
     from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE, chunking_service
     from src.services.job_queue import job_queue
@@ -78,16 +81,26 @@ def convert_uploaded_recording(recording_id, params):
             chunking_service and chunking_service.needs_chunking(local_path, use_asr_endpoint, connector_specs)
         )
         try:
-            result = convert_if_needed(
-                local_path,
-                original_filename=original_filename,
-                needs_chunking=needs_chunking,
-                is_asr_endpoint=use_asr_endpoint,
-                delete_original=False,
-                connector_specs=connector_specs,
-                keep_start=params.get('trim_start'),
-                keep_end=params.get('trim_end'),
-            )
+            if params.get('retain_video'):
+                from src.utils.ffmpeg_utils import stream_copy_span
+                output_path = stream_copy_span(
+                    local_path,
+                    keep_start=params.get('trim_start'),
+                    keep_end=params.get('trim_end'),
+                )
+                result = None
+            else:
+                result = convert_if_needed(
+                    local_path,
+                    original_filename=original_filename,
+                    needs_chunking=needs_chunking,
+                    is_asr_endpoint=use_asr_endpoint,
+                    delete_original=False,
+                    connector_specs=connector_specs,
+                    keep_start=params.get('trim_start'),
+                    keep_end=params.get('trim_end'),
+                )
+                output_path = result.output_path
         except FFmpegNotFoundError as e:
             current_app.logger.error(f"FFmpeg not found while converting recording {recording_id}: {loggable_error(e, local_path, recording_id=recording_id)}")
             raise ConversionFailed(translate('server.apiError.audio_converter_missing', language)) from None
@@ -99,7 +112,6 @@ def convert_uploaded_recording(recording_id, params):
             current_app.logger.error(f"Conversion of recording {recording_id} failed: {loggable_error(e, local_path, recording_id=recording_id)}")
             raise ConversionFailed(AUDIO_DECODE_FAILED_MESSAGE) from None
 
-        output_path = result.output_path
         converted = output_path != local_path
         try:
             final_size = os.path.getsize(output_path)
@@ -157,11 +169,13 @@ def convert_uploaded_recording(recording_id, params):
             storage.delete(old_locator)
         except Exception as e:
             current_app.logger.warning(f"Could not delete the original upload of recording {recording_id}: {loggable_error(e, old_locator, recording_id=recording_id)}")
-    if result.was_converted or result.was_compressed:
+    if result is not None and (result.was_converted or result.was_compressed):
         current_app.logger.info(
             f"Converted recording {recording_id}: {result.original_codec} -> {result.final_codec}, "
             f"{result.size_change_label}"
         )
+    elif params.get('retain_video') and converted:
+        current_app.logger.info(f"Stored the kept span of retained video {recording_id}")
 
     # A safe point: the converted audio is stored, and a canceled conversion
     # queues no transcription.

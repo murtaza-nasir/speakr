@@ -327,6 +327,40 @@ def _with_keep_span(cmd, keep_start, keep_end):
     return [*cmd[:input_at], *options, *cmd[input_at:]]
 
 
+def stream_copy_span(input_path, keep_start=None, keep_end=None):
+    """Write a stream copy of the kept span and leave the input in place.
+
+    ``-ss`` and ``-to`` sit before the input, so the cut may land on the
+    nearest keyframe. The new file keeps the input's container. Returns the
+    input path when neither bound is set.
+    """
+    if not keep_start and keep_end is None:
+        return input_path
+    root, ext = os.path.splitext(input_path)
+    output_path = f"{root}.span{ext or '.mp4'}"
+    faststart = (
+        ['-movflags', '+faststart']
+        if output_path.lower().endswith(('.mp4', '.mov', '.m4v', '.m4a'))
+        else []
+    )
+    cmd = _with_keep_span(
+        ['ffmpeg', '-y', '-i', input_path, '-map', '0', '-c', 'copy',
+         '-avoid_negative_ts', 'make_zero', *faststart, output_path],
+        keep_start, keep_end)
+    try:
+        _run_ffmpeg_command(cmd, f"stream copy of {os.path.basename(input_path)}")
+        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+            raise FFmpegError(f"stream copy of {os.path.basename(input_path)} produced no output")
+    except Exception:
+        if os.path.exists(output_path):
+            try:
+                os.remove(output_path)
+            except OSError:
+                pass
+        raise
+    return output_path
+
+
 def compress_audio(
     input_path: str,
     codec: str = 'mp3',

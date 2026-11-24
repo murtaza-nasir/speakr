@@ -18,7 +18,7 @@ import pytest
 
 from src.app import app
 from src.database import db
-from src.models import APIToken, Recording, User
+from src.models import APIToken, ProcessingJob, Recording, User
 from src.services.storage_quota import storage_used
 from src.utils.ffmpeg_utils import FFmpegError
 from src.utils.token_auth import hash_token
@@ -416,6 +416,130 @@ def test_a_join_encode_keeps_each_span_and_only_audio_from_a_video(tmp_path):
          "-of", "csv=p=0", str(out)],
         check=True, capture_output=True, text=True)
     assert probe.stdout.strip() == ""
+
+
+def _two_tone_mp4(path):
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y",
+         "-f", "lavfi", "-i", f"sine=frequency={HEAD_HZ}:duration=3",
+         "-f", "lavfi", "-i", f"sine=frequency={TAIL_HZ}:duration=3",
+         "-f", "lavfi", "-i", "color=c=black:s=160x120:r=25:d=6",
+         "-filter_complex", "[0:a][1:a]concat=n=2:v=0:a=1[a]",
+         "-map", "2:v", "-map", "[a]",
+         "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+         "-g", "25", "-keyint_min", "25",
+         "-c:a", "aac", "-b:a", "64k", "-shortest", str(path)],
+        check=True, capture_output=True)
+    return path.read_bytes()
+
+
+def _has_video(path):
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v", "-show_entries", "stream=codec_type",
+         "-of", "csv=p=0", str(path)],
+        check=True, capture_output=True, text=True)
+    return probe.stdout.strip() == "video"
+
+
+def test_a_retained_video_stores_the_kept_span(user, tmp_path):
+    """Playback keeps the video of the span, and transcription is queued for that file."""
+    payload = _two_tone_mp4(tmp_path / "two.mp4")
+    with app.app_context(), patch("src.services.recording_ingestion.VIDEO_RETENTION", True):
+        res = _post_upload(user, payload, "two.mp4", {"trim_start": "3"})
+        assert res.status_code == 202, res.get_json()
+        rid = res.get_json()["id"]
+        rec = db.session.get(Recording, rid)
+        assert rec.mime_type.startswith("video/")
+        assert _has_video(_local_path(rec.audio_path))
+        assert _jobs(rid) == [("convert", "queued")]
+        assert _duration_seconds(_local_path(rec.audio_path)) == pytest.approx(6, abs=0.4)
+        uploaded_size = rec.file_size
+
+        assert _run_convert_job().status == "completed"
+
+        rec = db.session.get(Recording, rid)
+        kept = _local_path(rec.audio_path)
+        assert rec.mime_type.startswith("video/")
+        assert _has_video(kept)
+        # The stream copy may land on a keyframe. This fixture has one every second.
+        assert _duration_seconds(kept) == pytest.approx(3, abs=1.0)
+        assert _band_mean_db(kept, TAIL_HZ) > LOUD_DB
+        assert _band_mean_db(kept, HEAD_HZ) < QUIET_DB
+        assert rec.file_size == os.path.getsize(kept)
+        assert rec.file_size < uploaded_size
+        assert storage_used(user) == rec.file_size
+        assert _jobs(rid) == [("convert", "completed"), ("transcribe", "queued")]
+        # The transcribe job reads the shorter video and does not cut again,
+        # so the Transcript starts at the beginning of the kept audio.
+        queued = ProcessingJob.query.filter_by(recording_id=rid, job_type="transcribe").one()
+        assert "trim_start" not in (queued.params or {})
+        assert "trim_end" not in (queued.params or {})
+
+
+def test_a_retained_video_keeps_only_the_head_when_the_end_is_set(user, tmp_path):
+    payload = _two_tone_mp4(tmp_path / "two.mp4")
+    with app.app_context(), patch("src.services.recording_ingestion.VIDEO_RETENTION", True):
+        res = _post_upload(user, payload, "two.mp4", {"trim_end": "3"})
+        assert res.status_code == 202, res.get_json()
+        rid = res.get_json()["id"]
+        assert _run_convert_job().status == "completed"
+        kept = _local_path(db.session.get(Recording, rid).audio_path)
+        assert _has_video(kept)
+        assert _duration_seconds(kept) == pytest.approx(3, abs=1.0)
+        assert _band_mean_db(kept, HEAD_HZ) > LOUD_DB
+        assert _band_mean_db(kept, TAIL_HZ) < QUIET_DB
+
+
+@pytest.mark.parametrize("fields", [None, {"trim_start": "0", "trim_end": "30"}])
+def test_a_retained_video_with_no_real_cut_is_stored_whole(user, tmp_path, fields):
+    payload = _two_tone_mp4(tmp_path / "two.mp4")
+    with app.app_context(), patch("src.services.recording_ingestion.VIDEO_RETENTION", True):
+        res = _post_upload(user, payload, "two.mp4", fields)
+        assert res.status_code == 202, res.get_json()
+        rid = res.get_json()["id"]
+        rec = db.session.get(Recording, rid)
+        assert _jobs(rid) == [("transcribe", "queued")]
+        assert rec.mime_type.startswith("video/")
+        with open(_local_path(rec.audio_path), "rb") as stored:
+            assert stored.read() == payload
+
+
+def test_a_failed_retained_video_cut_does_not_transcribe_the_whole_file(user, tmp_path):
+    payload = _two_tone_mp4(tmp_path / "two.mp4")
+    with app.app_context(), patch("src.services.recording_ingestion.VIDEO_RETENTION", True):
+        rid = _post_upload(user, payload, "two.mp4", {"trim_start": "3"}).get_json()["id"]
+        original = _local_path(db.session.get(Recording, rid).audio_path)
+        with patch("src.utils.ffmpeg_utils.stream_copy_span", side_effect=FFmpegError("cut failed")):
+            job = _run_convert_job()
+        assert job.status == "failed"
+        rec = db.session.get(Recording, rid)
+        assert rec.status == "FAILED"
+        assert _jobs(rid) == [("convert", "failed")]
+        assert _duration_seconds(original) == pytest.approx(6, abs=0.4)
+        assert os.path.exists(original)
+
+
+@pytest.mark.skipif(SAMPLE_ROOT is None, reason="test-audio-files is not beside this checkout")
+def test_a_real_video_is_stored_as_the_shorter_span(user, tmp_path):
+    src = SAMPLE_ROOT / "samples/en-inventing_spanish-snl-jn9afmklgla.mp4"
+    clip = tmp_path / src.name
+    payload = _clip_copy(src, clip)
+    uploaded = _duration_seconds(clip)
+    assert uploaded > 4
+    with app.app_context(), patch("src.services.recording_ingestion.VIDEO_RETENTION", True):
+        res = _post_upload(user, payload, src.name, {"trim_start": "1", "trim_end": "4"})
+        assert res.status_code == 202, res.get_json()
+        rid = res.get_json()["id"]
+        assert _jobs(rid) == [("convert", "queued")]
+        assert _run_convert_job().status == "completed"
+        rec = db.session.get(Recording, rid)
+        kept = _local_path(rec.audio_path)
+        assert rec.mime_type.startswith("video/")
+        assert _has_video(kept)
+        kept_duration = _duration_seconds(kept)
+        # A stream copy may stop a few seconds off the requested whole second.
+        assert 0.5 < kept_duration < uploaded - 0.5
+        assert _jobs(rid) == [("convert", "completed"), ("transcribe", "queued")]
 
 
 def test_the_upload_size_limit_judges_the_uploaded_file(user, tmp_path):

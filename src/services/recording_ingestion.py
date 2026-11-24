@@ -80,7 +80,9 @@ from src.services.transcription_defaults import resolve_transcription_params
 from src.utils.audio_conversion import convert_if_needed
 from src.utils.dates import to_utc_naive
 from src.utils.log_filters import loggable_error, loggable_locator, loggable_path
-from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError
+from src.utils.ffmpeg_utils import (
+    FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, stream_copy_span,
+)
 from src.utils.ffprobe import (
     FFProbeError, get_codec_info, get_creation_date, get_duration, has_audio_stream,
     probe_rejected_input, try_repair_malformed_webm,
@@ -938,14 +940,16 @@ def build_ingestion_response(recording, *, owner, duplicate_warning, reuse_dupli
 
 
 def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_deferred,
-                            extracted_audio_limit_mb, trim_params=None):
+                             extracted_audio_limit_mb, trim_params=None, retain_video=False):
     """Queue the committed recording's first job and emit its recording.created event.
 
-    A deferred conversion queues the convert job, which carries the
-    transcribe params and extracted_audio_limit_mb and queues the
-    transcription itself; otherwise the transcribe job is queued. Returns
-    nothing.
-    """
+      A deferred conversion queues the convert job, which carries the
+      transcribe params and extracted_audio_limit_mb and queues the
+      transcription itself; otherwise the transcribe job is queued. A retained
+      video with a real cut sets retain_video, and that job stream-copies the
+      stored video to the kept span instead of extracting audio. Returns
+      nothing.
+      """
     # Read from src.api.recordings at call time: its routes use it too, and
     # tests replace it there.
     from src.api.recordings import job_queue
@@ -978,6 +982,8 @@ def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_defe
         convert_params = {'transcribe': job_params, 'extracted_audio_limit_mb': extracted_audio_limit_mb}
         if trim_params:
             convert_params.update(trim_params)
+        if retain_video:
+            convert_params['retain_video'] = True
         job_queue.enqueue(
             user_id=owner_id,
             recording_id=recording_id,
@@ -1222,6 +1228,48 @@ def ingest(
         keep_video_for_this_upload = conversion.keep_video_for_this_upload
         extracted_audio_limit_mb = conversion.extracted_audio_limit_mb
         conversion_deferred = conversion.conversion_deferred
+        # A retained video stays a video. A real cut is a stream copy, which
+        # may land on a keyframe, and transcription reads that shorter file.
+        # With convert workers the copy runs after this response, the same
+        # way an audio cut does. With none, it runs here so the file is not
+        # left whole.
+        retain_video = bool(
+            keep_video_for_this_upload and trim_params and not join
+            and _self.VIDEO_RETENTION and not keep_audio_only_flag
+        )
+        if retain_video and CONVERT_WORKERS <= 0:
+            try:
+                cut_path = stream_copy_span(
+                    filepath,
+                    keep_start=trim_params.get('trim_start'),
+                    keep_end=trim_params.get('trim_end'),
+                )
+            except FFmpegNotFoundError as e:
+                current_app.logger.error(f"FFmpeg not found: {e}")
+                _discard_staging(filepath)
+                filepath = None
+                return jsonify(api_error('audio_converter_missing')), 500
+            except FFmpegTimeoutError as e:
+                current_app.logger.error(
+                    f"FFmpeg conversion timed out for {loggable_path(filepath)}: {loggable_error(e, filepath)}")
+                _discard_staging(filepath)
+                filepath = None
+                return jsonify({'error': translate('server.apiError.audio_conversion_timeout'),
+                                'code': 'audio_conversion_timeout'}), 500
+            except FFmpegError as e:
+                current_app.logger.error(
+                    f"FFmpeg conversion failed for {loggable_path(filepath)}: {loggable_error(e, filepath)}")
+                _discard_staging(filepath)
+                filepath = None
+                return jsonify(api_error('audio_decode_failed')), 400
+            if cut_path != filepath:
+                try:
+                    os.remove(filepath)
+                except OSError:
+                    pass
+                filepath = cut_path
+        elif retain_video:
+            conversion_deferred = True
         if conversion.convert_in_request:
             converted = convert_upload_in_request(
                 filepath,
@@ -1481,10 +1529,11 @@ def ingest(
             recording,
             owner=owner,
             resolved_params=resolved_params,
-            conversion_deferred=conversion_deferred,
-            extracted_audio_limit_mb=extracted_audio_limit_mb,
-            trim_params=trim_params,
-        )
+              conversion_deferred=conversion_deferred,
+              extracted_audio_limit_mb=extracted_audio_limit_mb,
+              trim_params=trim_params,
+              retain_video=retain_video and conversion_deferred,
+          )
 
         return build_ingestion_response(
             recording,
