@@ -4180,14 +4180,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return window.renderMarkdownSafe(customBanner.value);
             });
 
-            // Summary and notes of the open recording. The server's sanitized
-            // HTML is used when present; without it (a summary saved in this
-            // tab, an incognito recording) the markdown is rendered here and
-            // sanitized. The raw text is never used as HTML (#439).
+            // Summary and notes of the open recording. The server's HTML is
+            // used when present and sanitized again here, at the sink, like
+            // every other v-html value (#695); without it (a summary saved in
+            // this tab, an incognito recording) the markdown is rendered here
+            // and sanitized. The raw text is never used as HTML (#439).
             const renderedField = (field) => {
                 const rec = selectedRecording.value;
                 if (!rec) return '';
-                if (rec[field + '_html']) return rec[field + '_html'];
+                const serverHtml = rec[field + '_html'];
+                if (serverHtml) return window.sanitizeHtml(serverHtml);
                 return rec[field] ? window.renderMarkdownSafe(rec[field]) : '';
             };
             const summaryHtml = computed(() => renderedField('summary'));

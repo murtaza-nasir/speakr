@@ -234,3 +234,12 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/t
 SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
   pytest tests/e2e/test_llm_admin_ui.py -q --noconftest -rs
 ```
+
+## Rendered summary and notes browser test
+
+`test_rendered_html_ui.py` covers the summary and notes tabs of a recording when the `summary_html` and `notes_html` of the recording route hold hostile markup next to legitimate markup (#695). The answer of the route is rewritten in the browser. Headings, lists, a table, a highlighted code block, an https link and `dir="auto"` are shown; the `onerror` and `ontoggle` handlers and the `javascript:` link are removed, and no script runs. It runs with the same gate and instance as the smoke test:
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
+  pytest tests/e2e/test_rendered_html_ui.py -q --noconftest -rs
+```
