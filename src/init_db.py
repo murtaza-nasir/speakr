@@ -947,6 +947,11 @@ def _run_migrations(app, engine):
 
         # Add file_hash column for duplicate detection
         add_column('recording', 'file_hash', 'VARCHAR(64)')
+        # Kept span of the uploaded file, in whole seconds. NULL keeps the
+        # start or the real end. Existing rows stay NULL, which is the whole
+        # file, so a repeat of an untrimmed upload still matches.
+        add_column('recording', 'upload_trim_start', 'INTEGER')
+        add_column('recording', 'upload_trim_end', 'INTEGER')
         try:
             if create_index_if_not_exists(engine, 'ix_recording_user_file_hash', 'recording', 'user_id, file_hash'):
                 app.logger.info("Created index ix_recording_user_file_hash on recording (user_id, file_hash)")

@@ -594,7 +594,9 @@ OPENAPI_SPEC = {
                                     "secret": {"type": "string", "format": "password", "writeOnly": True, "description": "A personal Speakr API token"},
                                     "date": {"type": "integer", "format": "int64", "description": "Recording time as Unix epoch seconds or milliseconds"},
                                     "duration": {"type": "number", "description": "Accepted for ASR compatibility but ignored; Speakr measures the media duration"},
-                                    "note": {"type": "string", "description": "Stored as the recording notes"},
+                                      "note": {"type": "string", "description": "Stored as the recording notes"},
+                                      "trim_start": {"type": "integer", "description": "Optional whole second to keep from. A repeat is the same recording only when the bytes and this kept span match."},
+                                      "trim_end": {"type": "integer", "description": "Optional whole second to keep through. A repeat is the same recording only when the bytes and this kept span match."},
                                 },
                             }
                         }
@@ -4398,6 +4400,11 @@ def upload_from_asr_voice_recorder():
         meeting_date = _asr_meeting_date(request.form.get('date'))
         if meeting_date:
             form['meeting_date'] = meeting_date
+        # The same bytes are a new recording when the kept span differs.
+        # Absent fields stay absent so an empty string still means no cut.
+        for name in ('trim_start', 'trim_end'):
+            if request.form.get(name) is not None:
+                form[name] = request.form.get(name)
 
         return ingest_uploaded_recording(
             owner=owner,

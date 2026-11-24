@@ -542,7 +542,9 @@ def test_openapi_documents_asr_multipart_contract():
     schema = operation["requestBody"]["content"]["multipart/form-data"]["schema"]
     assert operation["security"] == []
     assert schema["required"] == ["secret"]
-    assert set(schema["properties"]) == {"file", "file_name", "secret", "date", "duration", "note"}
+    assert set(schema["properties"]) == {
+        "file", "file_name", "secret", "date", "duration", "note", "trim_start", "trim_end",
+    }
     assert operation["responses"]["200"]["description"]
     assert api_v1.upload_from_asr_voice_recorder._rate_limit == "520 per minute"
     assert api_v1.upload_from_asr_voice_recorder._rate_limit_options["cost"] is api_v1._asr_upload_rate_cost

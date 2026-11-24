@@ -9,7 +9,7 @@ handling and the staging cleanup (discussion #556).
 Duplicate detection:
 
 * :func:`lookup_duplicate` hashes the staged upload and finds an earlier
-  recording of the same file.
+  recording of the same bytes and the same kept span.
 * :func:`handle_duplicate_replay` answers a retried upload
   (``reuse_duplicate``) with the recording it already created.
 
@@ -121,13 +121,17 @@ class DuplicateLookup(NamedTuple):
 
 
 def lookup_duplicate(*, owner, filepath, form, processing_source, original_filename,
-                     reuse_duplicate):
+                     reuse_duplicate, trim_start=None, trim_end=None):
     """Hash the staged upload and look for an earlier recording of it.
 
-    With reuse_duplicate the match must also have the same source, filename,
-    notes and meeting date (or, without a meeting date, be under a day old).
-    duplicate_warning is set only when reuse_duplicate is off. A failure to
-    hash or query is logged and leaves the remaining fields None.
+    The match is the same bytes and the same kept span. ``trim_start`` and
+    ``trim_end`` are the resolved span: None keeps the start or the real end,
+    so a range that still covers the whole file matches an upload with no
+    range. A different span is a different recording. With reuse_duplicate the
+    match must also have the same source, filename, notes and meeting date
+    (or, without a meeting date, be under a day old). duplicate_warning is set
+    only when reuse_duplicate is off. A failure to hash or query is logged and
+    leaves the remaining fields None.
     """
     # Imported at call time so a patch of src.utils.file_hash reaches it.
     from src.utils.file_hash import compute_file_sha256
@@ -140,6 +144,8 @@ def lookup_duplicate(*, owner, filepath, form, processing_source, original_filen
         duplicate_query = Recording.query.filter_by(
             user_id=owner.id,
             file_hash=file_hash,
+            upload_trim_start=trim_start,
+            upload_trim_end=trim_end,
         )
         if reuse_duplicate:
             duplicate_query = duplicate_query.filter_by(
@@ -802,7 +808,8 @@ class StoredRecording(NamedTuple):
 def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_filename,
                     user_title, final_file_size, meeting_date, mime_type, audio_duration_seconds,
                     notes, selected_folder, selected_tags, processing_source, file_hash,
-                    prompt_variables, effective_audio_only, prepare):
+                    prompt_variables, effective_audio_only, prepare,
+                    upload_trim_start=None, upload_trim_end=None):
     """Create the recording, store the staged file and commit both.
 
     Unless the upload was recorded in this browser, the owner's quota is
@@ -843,6 +850,8 @@ def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_
         folder_id=selected_folder.id if selected_folder else None,
         processing_source=processing_source,
         file_hash=file_hash,
+        upload_trim_start=upload_trim_start,
+        upload_trim_end=upload_trim_end,
         prompt_variables=prompt_variables,
         # Per-upload override: record the effective audio-only flag so
         # the processing task knows whether to drop the video stream
@@ -1146,29 +1155,6 @@ def ingest(
             _discard_staging(filepath)
             return jsonify(api_error('empty_file')), 400
 
-        # Compute file hash on the ORIGINAL upload before any conversion/compression.
-        # Lossy re-encoding (e.g. FLAC→MP3) produces different bytes each run,
-        # so hashing after conversion would miss duplicates.
-        duplicate = lookup_duplicate(
-            owner=owner,
-            filepath=filepath,
-            form=form,
-            processing_source=processing_source,
-            original_filename=original_filename,
-            reuse_duplicate=reuse_duplicate,
-        )
-        file_hash = duplicate.file_hash
-        duplicate_warning = duplicate.duplicate_warning
-
-        if duplicate.existing and reuse_duplicate:
-            return handle_duplicate_replay(
-                duplicate.existing,
-                owner=owner,
-                filepath=filepath,
-                file_hash=file_hash,
-                success_status=success_status,
-            )
-
         # --- Convert files only when chunking is needed ---
 
         # Check if chunking will be needed for this file (uses connector-aware logic)
@@ -1211,6 +1197,33 @@ def ingest(
             _discard_staging(filepath)
             filepath = None
             return jsonify(api_error(trim_error.code)), 400
+        # Hash the original upload before any conversion. Lossy re-encoding
+        # (for example FLAC to MP3) produces different bytes each run, so
+        # hashing after the cut would miss a repeat of the same file. The
+        # kept span is the resolved one: a different span is a different
+        # recording, and a range that still covers the whole file matches
+        # an upload that named no range.
+        duplicate = lookup_duplicate(
+            owner=owner,
+            filepath=filepath,
+            form=form,
+            processing_source=processing_source,
+            original_filename=original_filename,
+            reuse_duplicate=reuse_duplicate,
+            trim_start=(trim_params or {}).get('trim_start'),
+            trim_end=(trim_params or {}).get('trim_end'),
+        )
+        file_hash = duplicate.file_hash
+        duplicate_warning = duplicate.duplicate_warning
+
+        if duplicate.existing and reuse_duplicate:
+            return handle_duplicate_replay(
+                duplicate.existing,
+                owner=owner,
+                filepath=filepath,
+                file_hash=file_hash,
+                success_status=success_status,
+            )
         conversion = decide_conversion(
             codec_info=codec_info,
             has_video=has_video,
@@ -1513,7 +1526,9 @@ def ingest(
             prompt_variables=prompt_variables,
             effective_audio_only=effective_audio_only,
             prepare=prepare,
-        )
+            upload_trim_start=(trim_params or {}).get('trim_start'),
+            upload_trim_end=(trim_params or {}).get('trim_end'),
+            )
         if stored.error_response is not None:
             return stored.error_response
         recording = stored.recording
