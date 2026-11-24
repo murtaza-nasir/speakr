@@ -121,7 +121,7 @@ def _upload_mocks(staging, durations=None):
         r.was_converted = r.was_compressed = False
         return r
 
-    def _duration(path, timeout=30):
+    def _duration(path, timeout=30, **kwargs):
         return durations.pop(0) if durations else 60.0
 
     with patch("src.api.recordings.get_storage_service", return_value=storage), \
@@ -183,6 +183,37 @@ def test_three_files_become_one_recording_with_the_upload_options(ctx):
     assert jobs[0]["params"]["transcribe_params"]["language"] == "de"
     assert [call.kwargs["event_type"] for call in webhook.call_args_list] == ["recording.created"]
     assert Recording.query.filter_by(user_id=user.id).count() == 1
+
+
+def test_each_part_keeps_its_own_range(ctx):
+    user = _user()
+    c, group = _client(user), _group()
+    # Each part is probed when the range is read and again for its stored length.
+    with _upload_mocks(ctx, durations=[60.0, 60.0, 40.0, 40.0]) as (_, enqueue, _):
+        first = _part(c, group, 0, 2, trim_start="10")
+        last = _part(c, group, 1, 2, trim_end="15")
+    assert first.status_code == 202 and last.status_code == 202
+    rec = db.session.get(Recording, last.get_json()["id"])
+    parts = UploadJoinPart.query.filter_by(user_id=user.id, group_id=group).order_by(UploadJoinPart.part_index).all()
+    assert [(p.trim_start, p.trim_end, p.audio_duration_seconds) for p in parts] == [(10, None, 60.0), (None, 15, 40.0)]
+    # 50 seconds of the first part and 15 of the second.
+    assert rec.audio_duration_seconds == pytest.approx(65.0)
+    assert enqueue.call_args.kwargs["params"]["part_ids"] == [p.id for p in parts]
+
+
+def test_a_part_without_a_range_is_joined_whole(ctx):
+    user = _user()
+    c, group = _client(user), _group()
+    # The first part has no range, so it is probed once. The second names a
+    # range that covers it, so it is probed for the range and for its length.
+    with _upload_mocks(ctx, durations=[60.0, 40.0, 40.0]):
+        _part(c, group, 0, 2, trim_start="", trim_end="")
+        last = _part(c, group, 1, 2, trim_start="0", trim_end="40")
+    rec = db.session.get(Recording, last.get_json()["id"])
+    assert rec.audio_duration_seconds == pytest.approx(100.0)
+    parts = UploadJoinPart.query.filter_by(user_id=user.id, group_id=group).order_by(UploadJoinPart.part_index).all()
+    assert parts[0].trim_start is None and parts[0].trim_end is None
+    assert parts[1].trim_start is None and parts[1].trim_end is None
 
 
 def test_parts_may_arrive_in_any_order(ctx):
@@ -353,7 +384,7 @@ def test_merge_job_joins_parts_and_queues_one_transcription(ctx):
     rec, parts, params = _claimed_group(user)
     storage = _MergeStorage(ctx)
 
-    def _fake_concat(inputs, output):
+    def _fake_concat(inputs, output, spans=None):
         assert len(inputs) == 2
         with open(output, "wb") as f:
             f.write(b"\x00" * 1024)

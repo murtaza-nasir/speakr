@@ -400,6 +400,24 @@ def _mean_volume_db(path):
     raise AssertionError(probe.stderr)
 
 
+@pytest.mark.skipif(SAMPLE_ROOT is None, reason="test-audio-files is not beside this checkout")
+def test_a_join_encode_keeps_each_span_and_only_audio_from_a_video(tmp_path):
+    from src.services.recording_merge import _concat_audio
+    speech = tmp_path / "speech.mp3"
+    video = tmp_path / "picture.mp4"
+    _clip_copy(SAMPLE_ROOT / "samples/zh-hello-mr-lin-i-got-it.mp3", speech)
+    _clip_copy(SAMPLE_ROOT / "format-matrix/fr-mono.mp4", video)
+    out = tmp_path / "joined.m4a"
+    with app.app_context():
+        _concat_audio([str(speech), str(video)], str(out), spans=[(1, 4), (2, 5)])
+    assert _duration_seconds(out) == pytest.approx(6, abs=0.45)
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v", "-show_entries", "stream=codec_type",
+         "-of", "csv=p=0", str(out)],
+        check=True, capture_output=True, text=True)
+    assert probe.stdout.strip() == ""
+
+
 def test_the_upload_size_limit_judges_the_uploaded_file(user, tmp_path):
     payload = _two_tone_mp3(tmp_path / "two.mp3")
     previous = app.config.get("MAX_CONTENT_LENGTH")

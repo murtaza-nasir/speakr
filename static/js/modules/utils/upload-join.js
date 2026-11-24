@@ -65,10 +65,23 @@ export function placeQueuedItem(queue, clientId, to) {
     return result;
 }
 
+/**
+ * Seconds this part contributes. A range that is on uses the kept span.
+ * Null while the file's duration has not been read.
+ */
+export function partDuration(item) {
+    if (!item.duration) return null;
+    if (!item.trimOn) return item.duration;
+    const start = Number(item.trimStart);
+    const end = Number(item.trimEnd);
+    if (!Number.isInteger(start) || !Number.isInteger(end)) return item.duration;
+    return Math.max(0, end - start);
+}
+
 /** Total duration in seconds, or null while any file's duration is unknown. */
 export function totalJoinDuration(items) {
-    if (!items.length || items.some(item => !item.duration)) return null;
-    return items.reduce((sum, item) => sum + item.duration, 0);
+    if (!items.length || items.some(item => partDuration(item) == null)) return null;
+    return items.reduce((sum, item) => sum + partDuration(item), 0);
 }
 
 /** An id for one join; the server accepts 8-64 of [A-Za-z0-9_-]. */

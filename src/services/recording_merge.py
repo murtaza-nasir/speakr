@@ -102,10 +102,22 @@ def _build_concat_filter(num_inputs: int) -> str:
     )
 
 
-def _concat_audio(input_paths: list, output_path: str) -> None:
-    """Concatenate local audio files into output_path (AAC/.m4a)."""
+def _concat_audio(input_paths: list, output_path: str, spans=None) -> None:
+    """Concatenate local audio files into output_path (AAC/.m4a).
+
+    ``spans`` is an optional list of ``(start, end)`` whole seconds, one per
+    input. A missing end keeps through the real end of that input. Video
+    inputs contribute only their audio, which this encode already takes.
+    """
     cmd = ['ffmpeg', '-y']
-    for path in input_paths:
+    for index, path in enumerate(input_paths):
+        start = end = None
+        if spans and index < len(spans) and spans[index]:
+            start, end = spans[index]
+        if start:
+            cmd += ['-ss', str(int(start))]
+        if end is not None:
+            cmd += ['-to', str(int(end))]
         cmd += ['-i', path]
     cmd += [
         '-filter_complex', _build_concat_filter(len(input_paths)),
@@ -349,7 +361,8 @@ def run_merge_job(recording, params):
             for locator in locators:
                 materialized = stack.enter_context(storage.materialize(locator))
                 local_paths.append(materialized.local_path)
-            _concat_audio(local_paths, staging_path)
+            spans = [(p.trim_start, p.trim_end) for p in parts] if parts else None
+            _concat_audio(local_paths, staging_path, spans)
 
         # Guard against a silent success that produced nothing usable. Capture
         # the size now, before upload — upload_local_file(delete_source=True)

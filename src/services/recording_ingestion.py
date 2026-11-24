@@ -1197,15 +1197,14 @@ def ingest(
             has_video=has_video,
             original_filename=original_filename,
         )
-        # A joined part is cut in the merge encode, not on this upload.
-        trim_params = None
-        if not join:
-            try:
-                trim_params = resolve_upload_trim(form, filepath, codec_info)
-            except UploadTrimError as trim_error:
-                _discard_staging(filepath)
-                filepath = None
-                return jsonify(api_error(trim_error.code)), 400
+        # Resolve the range for every upload, including a join part. The part
+        # is still cut only in the merge encode, not by this request's convert.
+        try:
+            trim_params = resolve_upload_trim(form, filepath, codec_info)
+        except UploadTrimError as trim_error:
+            _discard_staging(filepath)
+            filepath = None
+            return jsonify(api_error(trim_error.code)), 400
         conversion = decide_conversion(
             codec_info=codec_info,
             has_video=has_video,
@@ -1230,8 +1229,9 @@ def ingest(
                 codec_info=codec_info,
                 needs_chunking_for_processing=needs_chunking_for_processing,
                 connector_specs=connector_specs,
-                keep_start=(trim_params or {}).get('trim_start'),
-                keep_end=(trim_params or {}).get('trim_end'),
+                # A join part is cut in the merge encode, not before it.
+                keep_start=None if join else (trim_params or {}).get('trim_start'),
+                keep_end=None if join else (trim_params or {}).get('trim_end'),
             )
             if converted.error_response is not None:
                 return converted.error_response
@@ -1441,6 +1441,8 @@ def ingest(
                 title=user_title, notes=notes, folder=selected_folder, tags=selected_tags,
                 prompt_variables=prompt_variables, transcribe_params=resolved_params,
                 duplicate_warning=duplicate_warning, success_status=success_status,
+                trim_start=(trim_params or {}).get('trim_start'),
+                trim_end=(trim_params or {}).get('trim_end'),
             )
 
         stored = store_recording(

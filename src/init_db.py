@@ -977,6 +977,10 @@ def _run_migrations(app, engine):
         # so the Folder before_delete hook promotes children on every
         # backend.
         add_column('folder', 'parent_id', 'INTEGER REFERENCES "folder" (id) ON DELETE SET NULL')
+        # Whole seconds kept from a file joined at upload. NULL is the
+        # start or the real end, so a part with no range stays whole.
+        add_column('upload_join_part', 'trim_start', 'INTEGER')
+        add_column('upload_join_part', 'trim_end', 'INTEGER')
         if create_index_if_not_exists(engine, 'ix_folder_parent_id', 'folder', 'parent_id'):
             app.logger.info("Created index ix_folder_parent_id on folder.parent_id")
         # Create index for folder_id

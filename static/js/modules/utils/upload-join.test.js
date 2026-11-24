@@ -53,10 +53,18 @@ describe('totalJoinDuration', () => {
     it('sums known durations', () => {
         expect(totalJoinDuration([item('a', 'a', 1, 'queued', 60), item('b', 'b', 2, 'queued', 30.5)])).toBe(90.5);
     });
-    it('is null while any duration is unknown or for no items', () => {
-        expect(totalJoinDuration([item('a', 'a', 1, 'queued', 60), item('b', 'b', 2)])).toBeNull();
-        expect(totalJoinDuration([])).toBeNull();
-    });
+      it('is null while any duration is unknown or for no items', () => {
+          expect(totalJoinDuration([item('a', 'a', 1, 'queued', 60), item('b', 'b', 2)])).toBeNull();
+          expect(totalJoinDuration([])).toBeNull();
+      });
+      it('sums the kept span of a part that has its own range', () => {
+          const cut = item('a', 'a', 1, 'queued', 60);
+          cut.trimOn = true;
+          cut.trimStart = 10;
+          cut.trimEnd = 40;
+          const whole = item('b', 'b', 2, 'queued', 30);
+          expect(totalJoinDuration([cut, whole])).toBe(60);
+      });
 });
 
 describe('newJoinGroupId and isVideoFileName', () => {

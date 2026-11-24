@@ -2327,14 +2327,15 @@ def ingest_uploaded_recording(
 
 def _ingest_join_part(owner, join, filepath, storage, now, *, original_filename, file_size,
                       mime_type, duration, meeting_date, title, notes, folder, tags,
-                      prompt_variables, transcribe_params, duplicate_warning, success_status):
+                      prompt_variables, transcribe_params, duplicate_warning, success_status,
+                      trim_start=None, trim_end=None):
     """Store one file of a join; the file that completes the group creates the recording."""
     from src.services.upload_join import (
         store_part, claim_group, create_joined_recording, joined_recording, received_count)
     group, index, count = join
     store_part(owner, join, filepath, original_filename=original_filename, file_size=file_size,
                mime_type=mime_type, duration=duration, meeting_date=meeting_date,
-               storage=storage, now=now)
+               storage=storage, now=now, trim_start=trim_start, trim_end=trim_end)
 
     parts = claim_group(owner.id, group, count)
     if parts is None:

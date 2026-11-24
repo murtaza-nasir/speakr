@@ -70,7 +70,7 @@ def received_count(user_id, group):
 
 
 def store_part(owner, join, filepath, *, original_filename, file_size, mime_type,
-               duration, meeting_date, storage, now=None):
+               duration, meeting_date, storage, now=None, trim_start=None, trim_end=None):
     """Store one uploaded part; a retried upload of the same part replaces it. Commits."""
     group, index, count = join
     now = now or datetime.utcnow()
@@ -91,6 +91,8 @@ def store_part(owner, join, filepath, *, original_filename, file_size, mime_type
     part.file_size = file_size
     part.mime_type = mime_type
     part.audio_duration_seconds = duration
+    part.trim_start = trim_start
+    part.trim_end = trim_end
     part.meeting_date = meeting_date
     part.created_at = now
     db.session.commit()
@@ -136,6 +138,16 @@ def claim_group(user_id, group, count):
     return parts
 
 
+def _kept_seconds(part):
+    """Seconds of this part that the merge keeps. None when the length is unknown."""
+    full = part.audio_duration_seconds
+    if not full:
+        return full
+    start = part.trim_start or 0
+    end = full if part.trim_end is None else min(part.trim_end, full)
+    return max(0.0, end - start)
+
+
 def _joined_filename(first_name):
     stem = os.path.splitext(os.path.basename(first_name or 'recording'))[0] or 'recording'
     return f"{stem}.m4a"
@@ -150,7 +162,7 @@ def create_joined_recording(owner, parts, *, title=None, notes=None, folder=None
     now = datetime.utcnow()
     original_filename = _joined_filename(parts[0].original_filename)
     meeting_dates = [p.meeting_date for p in parts if p.meeting_date]
-    durations = [p.audio_duration_seconds for p in parts]
+    durations = [_kept_seconds(p) for p in parts]
     recording = Recording(
         audio_path=None,
         original_filename=original_filename,
