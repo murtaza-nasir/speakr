@@ -635,92 +635,6 @@
                         </button>
                     </div>
 
-                    <!-- Transcription Models curation. Single bordered
-                         section (no nested card chrome) — the section
-                         header carries the title + Discover button on
-                         one row; the table fills the panel below; the
-                         action row at the bottom carries Add + Save
-                         + status. The underlying SystemSetting rows
-                         (transcription_models_visible_json,
-                         transcription_default_model) are filtered out
-                         of the settings list below — managed here. -->
-                    <div class="mb-6 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg overflow-hidden">
-                        <!-- Section header -->
-                        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border-primary)]">
-                            <div class="min-w-0">
-                                <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                                    <i class="fas fa-microphone-lines text-[var(--text-accent)]"></i>
-                                    <span>${ t('adminDashboard.transcriptionModels') }</span>
-                                </h4>
-                                <p class="text-xs text-[var(--text-muted)] mt-0.5">${ t('adminDashboard.transcriptionModelsDesc') }</p>
-                            </div>
-                            <button @click="discoverTranscriptionModels" :disabled="discoveringModels"
-                                    class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
-                                <i :class="discoveringModels ? 'fas fa-spinner fa-spin' : 'fas fa-search'"></i>
-                                <span>${ discoveringModels ? t('adminDashboard.discovering') : t('adminDashboard.discover') }</span>
-                            </button>
-                        </div>
-
-                        <!-- Connector info / error banners -->
-                        <div v-if="modelDiscoveryError" class="banner banner--danger mx-4 mt-3">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>${ modelDiscoveryError }</span>
-                        </div>
-                        <div v-if="modelDiscoveryResult" class="px-4 pt-3 text-xs text-[var(--text-muted)]">
-                            ${ t('adminDashboard.activeConnector') }: <code class="bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--text-secondary)]">${ modelDiscoveryResult.connector }</code>
-                            <span v-if="!modelDiscoveryResult.supported"> · ${ t('adminDashboard.noDiscoveryApi') }</span>
-                        </div>
-
-                        <!-- Models table -->
-                        <div v-if="visibleTranscriptionModels.length > 0 || (modelDiscoveryResult && modelDiscoveryResult.models && modelDiscoveryResult.models.length > 0)"
-                             class="px-1 py-2">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="text-left t-label">
-                                        <th class="py-2 px-3 w-16">${ t('adminDashboard.modelVisible') }</th>
-                                        <th class="py-2 px-3 w-16">${ t('transcriptTemplates.default') }</th>
-                                        <th class="py-2 px-3">${ t('adminDashboard.modelId') }</th>
-                                        <th class="py-2 px-3">${ t('adminDashboard.modelLabel') }</th>
-                                        <th class="py-2 px-3 w-24">${ t('adminDashboard.modelSource') }</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="row in transcriptionModelRows" :key="row.value"
-                                        class="border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
-                                        <td class="py-2 px-3 text-center"><input type="checkbox" v-model="row.visible" class="h-4 w-4"></td>
-                                        <td class="py-2 px-3 text-center"><input type="radio" :value="row.value" v-model="transcriptionDefaultModel" :disabled="!row.visible" class="h-4 w-4"></td>
-                                        <td class="py-2 px-3 font-mono text-xs text-[var(--text-primary)]">${ row.value }</td>
-                                        <td class="py-2 px-3"><input type="text" v-model="row.label" class="field field--sm" :placeholder="t('adminDashboard.friendlyLabel')"></td>
-                                        <td class="py-2 px-3 text-xs text-[var(--text-muted)]">${ row.source }</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div v-else class="empty">
-                            <div class="empty__icon"><i class="fas fa-microphone-lines"></i></div>
-                            <div class="empty__title">${ t('adminDashboard.noModelsConfigured') }</div>
-                            <div class="empty__body">${ t('adminDashboard.noModelsConfiguredHelp') }</div>
-                        </div>
-
-                        <!-- Action row -->
-                        <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
-                            <button @click="addManualTranscriptionModel" class="btn btn--ghost btn--sm">
-                                <i class="fas fa-plus"></i><span>${ t('adminDashboard.addModelId') }</span>
-                            </button>
-                            <span v-if="modelSaveMessage" class="text-sm ml-2"
-                                  :class="modelSaveError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">
-                                <i :class="modelSaveError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'" class="mr-1"></i>
-                                ${ modelSaveMessage }
-                            </span>
-                            <button @click="saveVisibleTranscriptionModels" :disabled="savingModels"
-                                    class="btn btn--primary btn--sm ml-auto">
-                                <i :class="savingModels ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
-                                <span>${ savingModels ? t('adminDashboard.saving') : t('adminDashboard.saveSelection') }</span>
-                            </button>
-                        </div>
-                    </div>
-
                     <!-- Language Models: the configured provider profiles
                          and the model each role uses. The whole document is
                          one System Setting (llm_config_json), managed here
@@ -872,8 +786,323 @@
                             <i class="fas fa-circle-info mr-1"></i>
                             ${ t('adminDashboard.llmModels.emptyNote') }
                         </div>
+
+                    <!-- Transcription models: one panel for the environment
+                         provider, the configured profiles and the default.
+                         Every toggle and radio saves immediately; add and
+                         edit happen in the schema-driven modal below. -->
+                    <div id="asr-models" data-asr-panel class="mb-6 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg overflow-hidden">
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border-primary)]">
+                            <div class="min-w-0">
+                                <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                                    <i class="fas fa-microphone-lines text-[var(--text-accent)]"></i>
+                                    <span>${ t('adminDashboard.transcriptionModels') }</span>
+                                </h4>
+                                <p class="text-xs text-[var(--text-muted)] mt-0.5">${ t('adminDashboard.transcriptionModelsDesc') }</p>
+                            </div>
+                            <button type="button" data-asr-add @click="openAsrAdd()"
+                                    :disabled="asrAddDisabled"
+                                    class="btn btn--primary btn--sm flex-shrink-0 whitespace-nowrap">
+                                <i class="fas fa-plus"></i>
+                                <span>${ t('adminDashboard.addModel') }</span>
+                            </button>
+                        </div>
+                        <p v-if="asrAddDisabled && !asrLoading" class="px-4 pt-2 text-xs text-[var(--text-muted)]"
+                           v-text="t('adminDashboard.modelLimitReached', { count: asrModelLimit })"></p>
+
+                        <div v-if="asrLoading" class="px-4 py-8 text-center text-[var(--text-muted)]">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                        </div>
+
+                        <template v-else>
+                            <div v-if="asrModels.length > 0 || asrEnvironment" class="px-1 py-2 overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="text-left t-label">
+                                            <th class="py-2 px-3">${ t('adminDashboard.label') }</th>
+                                            <th class="py-2 px-3">${ t('adminDashboard.modelName') }</th>
+                                            <th class="py-2 px-3 hidden lg:table-cell">${ t('adminDashboard.baseUrl') }</th>
+                                            <th class="py-2 px-3">${ t('adminDashboard.apiKey') }</th>
+                                            <th class="py-2 px-3 text-center">${ t('adminDashboard.visible') }</th>
+                                            <th class="py-2 px-3 text-center">${ t('adminDashboard.default') }</th>
+                                            <th class="py-2 px-3 text-center">${ t('adminDashboard.actions') }</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="m in asrModels" :key="m.id" data-asr-row
+                                            class="border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                                            <td class="py-2 px-3">
+                                                <div class="font-medium text-[var(--text-primary)]">${ m.label }</div>
+                                                <div class="text-xs text-[var(--text-muted)]">${ asrConnectorDisplay(m) }</div>
+                                            </td>
+                                            <td class="py-2 px-3 font-mono text-xs text-[var(--text-secondary)]">${ asrRowModel(m) }</td>
+                                            <td class="py-2 px-3 hidden lg:table-cell text-xs text-[var(--text-muted)] break-all">${ asrRowBaseUrl(m) }</td>
+                                            <td class="py-2 px-3 text-xs" :class="asrRowHasSecret(m) ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">
+                                                ${ asrRowHasSecret(m) ? '********' : t('adminDashboard.noKey') }
+                                            </td>
+                                            <td class="py-2 px-3 text-center">
+                                                <input type="checkbox" data-asr-visible :checked="m.visible"
+                                                       :disabled="asrRowIsDefault(m)"
+                                                       :title="asrRowIsDefault(m) ? t('adminDashboard.defaultVisibleHint') : null"
+                                                       @change="changeAsrVisible(m, $event.target.checked)"
+                                                       class="h-4 w-4">
+                                            </td>
+                                            <td class="py-2 px-3 text-center">
+                                                <input type="radio" name="asr-default" data-asr-default :value="m.id"
+                                                       :checked="asrDefault === m.id" :disabled="!m.visible"
+                                                       @change="changeAsrDefault(m.id)" class="h-4 w-4">
+                                            </td>
+                                            <td class="py-2 px-3 text-center whitespace-nowrap">
+                                                <button type="button" data-asr-row-test @click="testAsrStored(m)"
+                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.test')">
+                                                    <i class="fas fa-vial"></i>
+                                                </button>
+                                                <button type="button" data-asr-edit @click="openAsrEdit(m)"
+                                                        class="btn btn--ghost btn--sm" :title="t('common.edit')">
+                                                    <i class="fas fa-pen"></i>
+                                                </button>
+                                                <button type="button" data-asr-delete @click="deleteAsrModel(m)"
+                                                        class="btn btn--ghost btn--sm" :title="t('common.delete')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="asrModels.length === 0 && asrEnvironment" data-asr-environment
+                                            class="border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                                            <td class="py-2 px-3">
+                                                <div class="font-medium text-[var(--text-primary)]">${ asrEnvironment.label }</div>
+                                                <div class="text-xs text-[var(--text-muted)]">
+                                                    <span class="inline-block mr-1 px-1.5 py-0.5 rounded bg-[var(--bg-accent)] text-[var(--text-accent)]">${ t('adminDashboard.environment') }</span>
+                                                    ${ asrConnectorDisplay(asrEnvironment) }
+                                                </div>
+                                            </td>
+                                            <td class="py-2 px-3 font-mono text-xs text-[var(--text-secondary)]">${ asrRowModel(asrEnvironment) }</td>
+                                            <td class="py-2 px-3 hidden lg:table-cell text-xs text-[var(--text-muted)] break-all">${ asrRowBaseUrl(asrEnvironment) }</td>
+                                            <td class="py-2 px-3 text-xs text-[var(--text-muted)]">${ asrRowHasSecret(asrEnvironment) ? '********' : t('adminDashboard.noKey') }</td>
+                                            <td class="py-2 px-3 text-center text-xs text-[var(--text-muted)]">${ t('adminDashboard.always') }</td>
+                                            <td class="py-2 px-3 text-center">
+                                                <input type="radio" name="asr-default" data-asr-default :checked="asrDefault === null"
+                                                       @change="changeAsrDefault(null)" class="h-4 w-4">
+                                            </td>
+                                            <td class="py-2 px-3 text-center whitespace-nowrap">
+                                                <button type="button" data-asr-row-test @click="testAsrEnvironment()"
+                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.test')">
+                                                    <i class="fas fa-vial"></i>
+                                                </button>
+                                                <button type="button" data-asr-edit @click="editAsrEnvironment()"
+                                                        class="btn btn--ghost btn--sm" :title="t('common.edit')">
+                                                    <i class="fas fa-pen"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div v-if="asrModels.length === 0 && !asrEnvironment" class="empty py-6">
+                                <div class="empty__icon"><i class="fas fa-microphone-lines"></i></div>
+                                <div class="empty__title">${ t('adminDashboard.noModels') }</div>
+                                <div class="empty__body">${ t('adminDashboard.noModelsHelp') }</div>
+                                <button type="button" data-asr-add-first @click="openAsrAdd()"
+                                        :disabled="asrAddDisabled"
+                                        class="btn btn--primary btn--sm mt-3">
+                                    <i class="fas fa-plus"></i>
+                                    <span>${ t('adminDashboard.addFirstModel') }</span>
+                                </button>
+                            </div>
+
+                            <div v-if="asrModels.length > 0 && asrEnvironment"
+                                 class="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
+                                <div class="min-w-0 mr-auto">
+                                    <div class="text-xs font-semibold text-[var(--text-muted)]">${ t('adminDashboard.environmentFallback') }</div>
+                                    <div class="font-mono text-xs text-[var(--text-primary)] break-all">${ asrEnvironment.label }</div>
+                                </div>
+                                <span v-if="asrDefault === null" class="px-1.5 py-0.5 rounded bg-[var(--bg-accent)] text-[var(--text-accent)] text-xs">${ t('adminDashboard.default') }</span>
+                                <button type="button" data-asr-use-env-default @click="changeAsrDefault(null)"
+                                        :disabled="asrDefault === null" class="btn btn--ghost btn--sm">
+                                    ${ t('adminDashboard.useEnvironment') }
+                                </button>
+                                <button type="button" data-asr-import @click="importAsrFromEnvironment"
+                                        class="btn btn--ghost btn--sm">
+                                    <i class="fas fa-file-import"></i>
+                                    <span>${ t('adminDashboard.importEnvironment') }</span>
+                                </button>
+                            </div>
+
+                            <p v-if="asrEnvironment" class="px-4 pb-3 text-xs text-[var(--text-muted)]">
+                                ${ t('adminDashboard.environmentNote') }
+                            </p>
+
+                            <div v-if="asrStatus" data-asr-status role="status"
+                                 class="px-4 py-2 text-sm border-t border-[var(--border-primary)]"
+                                 :class="asrStatusError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">
+                                <i :class="asrStatusError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'" class="mr-1"></i>
+                                ${ asrStatus }
+                            </div>
+                        </template>
                     </div>
 
+                    <!-- Add / edit transcription model modal -->
+                    <div v-if="asrModalOpen" data-asr-modal
+                         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                         @click.self="closeAsrModal">
+                        <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-sm font-semibold text-[var(--text-primary)]">
+                                    <i class="fas fa-microphone mr-2 text-[var(--text-accent)]"></i>
+                                    ${ asrEditingId ? t('adminDashboard.editModel') : t('adminDashboard.addModel') }
+                                </h3>
+                                <button type="button" data-asr-close @click="closeAsrModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="asr-label" class="block text-xs font-medium text-[var(--text-muted)] mb-1">${ t('adminDashboard.label') }</label>
+                                    <input id="asr-label" data-asr-label v-model="asrForm.label" maxlength="80"
+                                           @input="asrForm.labelTouched = true"
+                                           class="w-full px-3 py-2 border border-[var(--border-primary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]" />
+                                    <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.labelHelp') }</p>
+                                </div>
+                                <div>
+                                    <label for="asr-connector" class="block text-xs font-medium text-[var(--text-muted)] mb-1">${ t('adminDashboard.connector') }</label>
+                                    <select id="asr-connector" data-asr-connector v-model="asrForm.connector"
+                                            @change="changeAsrConnector($event.target.value)"
+                                            class="w-full px-3 py-2 border border-[var(--border-primary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                        <option v-for="c in asrConnectors" :key="c.name" :value="c.name">${ c.display_name }</option>
+                                    </select>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1">${ asrConnectorDescription() }</p>
+                                </div>
+
+                                <template v-for="entry in asrFieldEntries" :key="entry.key">
+                                    <div v-if="entry.firstAdvanced" class="pt-2 border-t border-[var(--border-primary)]">
+                                        <button type="button" data-asr-advanced-toggle @click="asrForm.showAdvanced = !asrForm.showAdvanced"
+                                                class="text-xs font-medium text-[var(--text-accent)] hover:opacity-80 flex items-center gap-1">
+                                            <i :class="asrForm.showAdvanced ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"></i>
+                                            <span>${ t('adminDashboard.advanced') }</span>
+                                        </button>
+                                        <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.advancedHelp') }</p>
+                                    </div>
+                                    <div v-if="!entry.advanced || asrForm.showAdvanced" :data-asr-field="entry.key">
+                                        <label :for="'asr-field-' + entry.key" class="block text-xs font-medium text-[var(--text-muted)] mb-1">
+                                            ${ asrFieldLabel(entry.key) }
+                                            <span v-if="asrRequiredFields.includes(entry.key)" class="text-[var(--text-danger-strong)]">*</span>
+                                        </label>
+
+                                        <template v-if="entry.key === 'model'">
+                                            <div v-if="asrForm.discovered && asrForm.discovered.length" class="space-y-2">
+                                                <select data-asr-discovered v-model="asrForm.modelChoice" @change="chooseAsrModel()"
+                                                        class="w-full px-3 py-2 border border-[var(--border-primary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                                    <option v-for="model in asrForm.discovered" :key="model.id" :value="model.id">${ model.label && model.label !== model.id ? model.label + ' (' + model.id + ')' : model.id }</option>
+                                                    <option value="__other__">${ t('adminDashboard.otherModel') }</option>
+                                                </select>
+                                                <p class="text-xs text-[var(--text-muted)]"
+                                                   v-text="t('adminDashboard.pickDiscoveredModel', { count: asrForm.discovered.length })"></p>
+                                            </div>
+                                            <select v-if="asrForm.modelChoice === '__other__' && asrControl(entry) === 'enum'"
+                                                    :id="'asr-field-' + entry.key" v-model="asrForm.values.model"
+                                                    @change="asrAutoLabel()"
+                                                    class="w-full px-3 py-2 border border-[var(--border-primary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                                <option v-for="value in entry.property.enum" :key="value" :value="value">${ value }</option>
+                                            </select>
+                                            <input v-else-if="asrForm.modelChoice === '__other__' || !(asrForm.discovered && asrForm.discovered.length)"
+                                                   :id="'asr-field-' + entry.key" type="text" v-model="asrForm.values.model"
+                                                   @input="asrAutoLabel()"
+                                                   :placeholder="asrFieldExamples(entry)"
+                                                   class="w-full px-3 py-2 border border-[var(--border-primary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]" />
+                                            <div class="flex flex-wrap items-center gap-2 mt-2">
+                                                <button type="button" data-asr-discover @click="discoverAsrModels" :disabled="asrDiscovering"
+                                                        class="btn btn--ghost btn--sm">
+                                                    <i :class="asrDiscovering ? 'fas fa-spinner fa-spin' : 'fas fa-search'"></i>
+                                                    <span>${ asrDiscovering ? t('adminDashboard.discovering') : t('adminDashboard.discover') }</span>
+                                                </button>
+                                                <span v-if="asrDiscoveryMessage" class="text-xs"
+                                                      :class="asrDiscoveryError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-muted)]'">
+                                                    ${ asrDiscoveryMessage }
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.modelNameHelp') }</p>
+                                        </template>
+
+                                        <template v-else-if="asrControl(entry) === 'boolean'">
+                                            <input :id="'asr-field-' + entry.key" type="checkbox" v-model="asrForm.values[entry.key]" class="h-4 w-4" />
+                                        </template>
+                                        <template v-else-if="asrControl(entry) === 'number'">
+                                            <input :id="'asr-field-' + entry.key" type="number" v-model="asrForm.values[entry.key]"
+                                                   :min="entry.property.minimum" :max="entry.property.maximum"
+                                                   class="w-full px-3 py-2 border border-[var(--border-primary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]" />
+                                        </template>
+                                        <template v-else-if="asrControl(entry) === 'secret'">
+                                            <div class="relative">
+                                                <input :id="'asr-field-' + entry.key" :type="asrForm.secretVisible[entry.key] ? 'text' : 'password'"
+                                                       v-model="asrForm.values[entry.key]" autocomplete="new-password"
+                                                       :placeholder="asrForm.values[entry.key] ? '' : (asrForm.storedSecrets ? '********' : t('adminDashboard.apiKeyPlaceholder'))"
+                                                       @focus="$event.target.select()"
+                                                       class="w-full px-3 py-2 pr-10 border border-[var(--border-primary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]" />
+                                                <button type="button" :data-asr-secret-toggle="entry.key"
+                                                        class="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--text-muted)] hover:text-[var(--text-primary)] focus:outline-none"
+                                                        :aria-pressed="asrForm.secretVisible[entry.key] ? 'true' : 'false'"
+                                                        @click="asrForm.secretVisible[entry.key] = !asrForm.secretVisible[entry.key]">
+                                                    <i :class="asrForm.secretVisible[entry.key] ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                                                </button>
+                                            </div>
+                                        </template>
+                                        <template v-else-if="asrControl(entry) === 'enum'">
+                                            <select :id="'asr-field-' + entry.key" v-model="asrForm.values[entry.key]"
+                                                    class="w-full px-3 py-2 border border-[var(--border-primary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                                <option v-for="value in entry.property.enum" :key="value" :value="value">${ value }</option>
+                                            </select>
+                                        </template>
+                                        <template v-else>
+                                            <input :id="'asr-field-' + entry.key" type="text" v-model="asrForm.values[entry.key]"
+                                                   :placeholder="asrFieldExamples(entry)"
+                                                   class="w-full px-3 py-2 border border-[var(--border-primary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]" />
+                                        </template>
+
+                                        <p v-if="entry.property.description && asrControl(entry) !== 'secret'" class="text-xs text-[var(--text-muted)] mt-1">${ entry.property.description }</p>
+                                        <p v-if="asrControl(entry) === 'secret'" class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.apiKeyHelp') }</p>
+                                    </div>
+                                </template>
+
+                                <div v-if="asrForm.storedSecrets" class="flex items-center gap-2 pt-1">
+                                    <input id="asr-clear-secrets" data-asr-clear-secrets type="checkbox" v-model="asrForm.clearSecrets" class="h-4 w-4" />
+                                    <label for="asr-clear-secrets" class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.clearApiKey') }</label>
+                                </div>
+                                <p v-if="asrForm.storedSecrets" class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.apiKeyKept') }</p>
+                                <div v-if="asrUrlChangeWarning" data-asr-url-warning class="text-xs text-[var(--text-danger-strong)]">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>${ t('adminDashboard.apiKeyClearedOnUrlChange') }
+                                </div>
+
+                                <div class="flex items-start gap-2 pt-1">
+                                    <input id="asr-visible" data-asr-visible type="checkbox" v-model="asrForm.visible"
+                                           :disabled="asrVisibleLocked" class="h-4 w-4 mt-0.5" />
+                                    <div>
+                                        <label for="asr-visible" class="text-xs font-medium text-[var(--text-secondary)]">${ t('adminDashboard.visible') }</label>
+                                        <p class="text-xs text-[var(--text-muted)]">${ asrVisibleLocked ? t('adminDashboard.defaultVisibleHint') : t('adminDashboard.visibleHelp') }</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="asrTestMessage" data-asr-test-result class="mt-3 text-sm"
+                                 :class="asrTestError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">
+                                <i :class="asrTestError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'" class="mr-1"></i>
+                                ${ asrTestMessage }
+                            </div>
+                            <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-[var(--border-primary)]">
+                                <button type="button" data-asr-test @click="testAsrForm" class="btn btn--ghost btn--sm" :disabled="asrTesting || asrSaving">
+                                    <i :class="asrTesting ? 'fas fa-spinner fa-spin' : 'fas fa-vial'"></i>
+                                    <span>${ asrTesting ? t('adminDashboard.testing') : t('adminDashboard.test') }</span>
+                                </button>
+                                <button type="button" data-asr-cancel @click="closeAsrModal" class="btn btn--ghost btn--sm">${ t('buttons.cancel') }</button>
+                                <button type="button" data-asr-save @click="saveAsrForm" class="btn btn--primary btn--sm" :disabled="asrSaving || asrTesting">
+                                    <i :class="asrSaving ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
+                                    <span>${ asrSaving ? t('adminDashboard.saving') : t('adminDashboard.saveModel') }</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    
                     <!-- User defaults (#584): the settings that new accounts
                          start with, each with the control of the Account
                          page. A changed default is saved at once; when
@@ -916,12 +1145,10 @@
                         </div>
                     </div>
 
-                    <!-- Settings List. We exclude the two settings that
-                         are managed by the Transcription Models panel
-                         above (transcription_models_visible_json,
-                         transcription_default_model) so the admin
-                         can't accidentally edit the raw JSON / model
-                         string here and put them out of sync. -->
+                    <!-- Settings List. The two legacy transcription keys are
+                         still filtered here so an old row cannot be edited by
+                         hand, and asr_config_json never appears because the
+                         settings endpoint skips it. -->
                     <div class="space-y-4">
                         <div v-for="setting in displayedSettings" :key="setting.id" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex justify-between items-start gap-2">
@@ -2587,6 +2814,12 @@ Summarization Instructions:
         </div>
     </div>
 
+    <script type="module">
+        // Pure schema, label and payload helpers for the Transcription models
+        // panel. Loaded as a module so static/js tests can import the same file.
+        import * as AsrModels from "{{ url_for('static', filename='js/modules/admin/asr-models.js', v=app_version) }}";
+        window.AsrModels = AsrModels;
+    </script>
     <script>
         const { createApp, ref, computed, onMounted, watch, nextTick } = Vue
         
@@ -2777,7 +3010,10 @@ Summarization Instructions:
                 const HIDDEN_SETTING_KEYS = new Set([
                     // Configured models and role assignments: managed by the
                     // Language Models section above, never as raw JSON.
+                    // Transcription providers and default: managed by the
+                    // Transcription models section above, never as raw JSON.
                     'llm_config_json',
+                    'asr_config_json',
                     'transcription_models_visible_json',
                     'transcription_default_model',
                     'admin_default_summary_prompt',
@@ -2807,141 +3043,594 @@ Summarization Instructions:
                 const displayedSettings = computed(() =>
                     (settings.value || []).filter(s => !HIDDEN_SETTING_KEYS.has(s.key) && !userDefaultKeys.value.has(s.key)).slice().sort((a, b) => String(a.key).localeCompare(String(b.key)))
                 );
-                // Transcription model curation state
-                const visibleTranscriptionModels = ref([]); // [{value, label}, ...]
-                const transcriptionDefaultModel = ref(null);
-                const transcriptionDefaultModelSaved = ref(null); // For change tracking
-                const modelDiscoveryResult = ref(null);
-                const modelDiscoveryError = ref('');
-                const discoveringModels = ref(false);
-                const savingModels = ref(false);
-                const modelSaveMessage = ref('');
-                const modelSaveError = ref(false);
-                const manualModelRows = ref([]); // for "Add custom model id" entries
-
-                // Combined view: discovered ∪ saved ∪ manual, deduped by id.
-                const transcriptionModelRows = computed(() => {
-                    const map = new Map();
-                    // Saved selections come first so order is stable.
-                    for (const opt of visibleTranscriptionModels.value) {
-                        if (opt && opt.value && !map.has(opt.value)) {
-                            map.set(opt.value, {
-                                value: opt.value,
-                                label: opt.label || opt.value,
-                                visible: true,
-                                source: 'saved',
-                            });
-                        }
-                    }
-                    // Discovery additions
-                    const discovered = (modelDiscoveryResult.value && modelDiscoveryResult.value.models) || [];
-                    for (const m of discovered) {
-                        if (!m.id) continue;
-                        if (map.has(m.id)) {
-                            const row = map.get(m.id);
-                            if (row.source === 'saved') row.source = 'saved + discovered';
-                        } else {
-                            map.set(m.id, {
-                                value: m.id,
-                                label: m.label || m.id,
-                                visible: false,
-                                source: 'discovered (' + (m.owned_by || 'unknown') + ')',
-                            });
-                        }
-                    }
-                    // Manual additions
-                    for (const m of manualModelRows.value) {
-                        if (!m.value) continue;
-                        if (!map.has(m.value)) {
-                            map.set(m.value, {
-                                value: m.value,
-                                label: m.label || m.value,
-                                visible: true,
-                                source: 'manual',
-                            });
-                        }
-                    }
-                    return Array.from(map.values());
+                // Transcription models: one list of profiles, the environment
+                // fallback and the default. The schema mapping and payload
+                // rules live in static/js/modules/admin/asr-models.js so they
+                // can be unit tested.
+                const asrModels = ref([]);
+                const asrDefault = ref(null);
+                const asrConnectors = ref([]);
+                const asrEnvironment = ref(null);
+                const asrModelLimit = ref(12);
+                const asrLoading = ref(true);
+                const asrStatus = ref('');
+                const asrStatusError = ref(false);
+                const asrModalOpen = ref(false);
+                const asrEditingId = ref(null);
+                const asrTesting = ref(false);
+                const asrSaving = ref(false);
+                const asrDiscovering = ref(false);
+                const asrTestMessage = ref('');
+                const asrTestError = ref(false);
+                const asrTestWarning = ref(false);
+                const asrDiscoveryMessage = ref('');
+                const asrDiscoveryError = ref(false);
+                const asrDiscoveryWarning = ref(false);
+                const asrForm = ref({
+                    label: '', labelTouched: false, connector: '', originalConnector: '',
+                    values: {}, visible: true, clearSecrets: false, secretVisible: {},
+                    storedSecrets: false,
+                    showAdvanced: false, modelChoice: '__other__', discovered: null,
+                    storedConfig: {},
                 });
 
-                const loadVisibleTranscriptionModels = async () => {
-                    try {
-                        const r = await fetch('/admin/transcription/visible-models');
-                        if (!r.ok) return;
-                        const data = await r.json();
-                        visibleTranscriptionModels.value = (data.options || []).map(o => ({
-                            value: o.value,
-                            label: o.label || o.value,
-                        }));
-                        transcriptionDefaultModel.value = data.default_model || null;
-                        transcriptionDefaultModelSaved.value = data.default_model || null;
-                    } catch (e) {
-                        console.error('Failed to load visible transcription models:', e);
+                const asrLib = () => window.AsrModels || {};
+                const asrSchema = (connectorName) => {
+                    const connector = (asrConnectors.value || []).find(c => c.name === connectorName);
+                    return (connector && connector.config_schema) || { properties: {} };
+                };
+                const asrConnector = (name) => (asrConnectors.value || []).find(c => c.name === name) || null;
+                const asrConnectorDisplay = (model) => {
+                    const connector = asrConnector(model && model.connector);
+                    return (connector && connector.display_name) || (model && model.connector) || '';
+                };
+                const asrConnectorDescription = () => {
+                    const connector = asrConnector(asrForm.value.connector);
+                    return (connector && connector.description) || t('adminDashboard.connectorHelp');
+                };
+                const asrRequiredFields = computed(() => {
+                    const lib = asrLib();
+                    return lib.requiredFields ? lib.requiredFields(asrSchema(asrForm.value.connector)) : [];
+                });
+                const asrFieldEntries = computed(() => {
+                    const lib = asrLib();
+                    if (!lib.classifyFields) return [];
+                    const schema = asrSchema(asrForm.value.connector);
+                    const groups = lib.classifyFields(schema);
+                    const entries = groups.common.map(([key, property]) => ({ key, property }));
+                    if (groups.model) entries.push({ key: 'model', property: groups.model[1] });
+                    groups.advanced.forEach(([key, property], index) => {
+                        entries.push({ key, property, advanced: true, firstAdvanced: index === 0 });
+                    });
+                    return entries;
+                });
+                const asrControl = (entry) => {
+                    const lib = asrLib();
+                    return lib.schemaControl ? lib.schemaControl(entry.property) : 'text';
+                };
+                const asrFieldLabel = (key) => (asrLib().fieldLabel ? asrLib().fieldLabel(key) : key);
+                const asrFieldExamples = (entry) => {
+                    const examples = entry && entry.property && entry.property.examples;
+                    return Array.isArray(examples) && examples.length ? examples.join(', ') : null;
+                };
+                const asrVisibleLocked = computed(() =>
+                    Boolean(asrEditingId.value) && asrEditingId.value === asrDefault.value);
+                const asrAddDisabled = computed(() => asrLoading.value
+                    || asrConnectors.value.length === 0
+                    || asrModels.value.length >= asrModelLimit.value);
+                const asrUrlChangeWarning = computed(() => {
+                    if (!asrEditingId.value || !asrForm.value.storedSecrets) return false;
+                    const lib = asrLib();
+                    return Boolean(lib.urlChangeDropsSecret
+                        && lib.urlChangeDropsSecret(asrSchema(asrForm.value.connector),
+                            asrForm.value.storedConfig || {}, asrForm.value.values));
+                });
+                const asrRowIsDefault = (model) => asrDefault.value === (model && model.id);
+                const asrRowModel = (model) => {
+                    const value = model && model.config && model.config.model;
+                    return value ? String(value) : '—';
+                };
+                const asrRowBaseUrl = (model) => {
+                    const config = (model && model.config) || {};
+                    return config.base_url || config.endpoint || '—';
+                };
+                const asrRowHasSecret = (model) => {
+                    const lib = asrLib();
+                    if (!lib.hasStoredSecret) return false;
+                    return lib.hasStoredSecret(asrSchema(model && model.connector), (model && model.config) || {});
+                };
+                const asrCsrfHeaders = (json) => {
+                    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                    const headers = {};
+                    if (json) headers['Content-Type'] = 'application/json';
+                    if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+                    return headers;
+                };
+                const asrErrorDetail = (body) => (body && (body.detail || body.error)) || '';
+
+                const asrSetStatus = (message, error = false) => {
+                    asrStatus.value = message || '';
+                    asrStatusError.value = Boolean(error);
+                };
+                const asrResetTest = () => {
+                    asrTestMessage.value = '';
+                    asrTestError.value = false;
+                    asrTestWarning.value = false;
+                };
+                const asrResetDiscovery = () => {
+                    asrDiscoveryMessage.value = '';
+                    asrDiscoveryError.value = false;
+                    asrDiscoveryWarning.value = false;
+                };
+                const asrAutoLabel = () => {
+                    if (asrForm.value.labelTouched) return;
+                    asrForm.value.label = asrLib().defaultLabel
+                        ? asrLib().defaultLabel(asrForm.value.connector, asrForm.value.values.model)
+                        : `${asrForm.value.connector}:${String(asrForm.value.values.model || '').toLowerCase()}`;
+                };
+                const asrDefaultLabelFor = (profileId) => {
+                    if (profileId === null || profileId === undefined) {
+                        return (asrEnvironment.value && asrEnvironment.value.label) || t('adminDashboard.environment');
                     }
+                    const model = asrModels.value.find(item => item.id === profileId);
+                    return (model && model.label) || profileId;
                 };
-
-                const discoverTranscriptionModels = async () => {
-                    discoveringModels.value = true;
-                    modelDiscoveryError.value = '';
-                    try {
-                        const r = await fetch('/admin/transcription/discover-models');
-                        const data = await r.json();
-                        if (!r.ok) {
-                            modelDiscoveryError.value = data.error || t('adminDashboard.discoveryFailed');
-                            modelDiscoveryResult.value = null;
-                        } else {
-                            modelDiscoveryResult.value = data;
-                            if (data.supported && (!data.models || data.models.length === 0)) {
-                                modelDiscoveryError.value = t('adminDashboard.discoveryNoModels');
-                            }
-                        }
-                    } catch (e) {
-                        modelDiscoveryError.value = t('adminDashboard.networkErrorWithMessage', { error: e.message });
-                    } finally {
-                        discoveringModels.value = false;
-                    }
-                };
-
-                const addManualTranscriptionModel = async () => {
-                    const id = ((await promptDialog({ message: t('adminDashboard.enterModelIdPrompt'), confirmLabel: t('common.add') })) || '').trim();
-                    if (!id) return;
-                    manualModelRows.value.push({ value: id, label: id });
-                };
-
-                const saveVisibleTranscriptionModels = async () => {
-                    savingModels.value = true;
-                    modelSaveMessage.value = '';
-                    modelSaveError.value = false;
-                    try {
-                        const visible = transcriptionModelRows.value
-                            .filter(r => r.visible)
-                            .map(r => ({ value: r.value, label: r.label || r.value }));
-                        // Drop default if it's not in the visible list anymore
-                        const defaultModel = visible.some(o => o.value === transcriptionDefaultModel.value)
-                            ? transcriptionDefaultModel.value
-                            : null;
-                        const r = await fetch('/admin/transcription/visible-models', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                            },
-                            body: JSON.stringify({ options: visible, default_model: defaultModel }),
+                const asrFormConfig = () => {
+                    const lib = asrLib();
+                    if (!lib.buildConfigPayload) throw new Error(t('adminDashboard.saveFailed'));
+                    return lib.buildConfigPayload(asrSchema(asrForm.value.connector),
+                        asrForm.value.values, {
+                            clearSecrets: Boolean(asrForm.value.clearSecrets),
                         });
-                        const data = await r.json();
-                        if (!r.ok) throw new Error(data.error || t('adminDashboard.saveFailed'));
-                        visibleTranscriptionModels.value = data.options || [];
-                        transcriptionDefaultModel.value = data.default_model || null;
-                        transcriptionDefaultModelSaved.value = data.default_model || null;
-                        manualModelRows.value = [];
-                        modelSaveMessage.value = data.options.length === 1
-                            ? t('adminDashboard.modelsSavedOne')
-                            : t('adminDashboard.modelsSavedMany', { count: data.options.length });
-                    } catch (e) {
-                        modelSaveMessage.value = t('messages.saveParticipantsFailed', { error: e.message });
-                        modelSaveError.value = true;
+                };
+                const asrLookupDiscovered = (model) => {
+                    const choices = asrForm.value.discovered || [];
+                    return choices.some(item => item.id === model);
+                };
+                const asrPrepareDiscovered = () => {
+                    const current = asrForm.value.values.model;
+                    asrForm.value.modelChoice = asrLookupDiscovered(current) ? current : '__other__';
+                };
+                const asrSortSecretVisibility = () => {
+                    const lib = asrLib();
+                    const fields = lib.secretFields ? lib.secretFields(asrSchema(asrForm.value.connector)) : [];
+                    const visible = {};
+                    fields.forEach(field => { visible[field] = false; });
+                    asrForm.value.secretVisible = visible;
+                };
+
+                const openAsrAdd = () => {
+                    if (asrAddDisabled.value) return;
+                    const connector = asrConnectors.value[0];
+                    if (!connector) return;
+                    const lib = asrLib();
+                    const schema = connector.config_schema || { properties: {} };
+                    const values = lib.formValuesFromConfig
+                        ? lib.formValuesFromConfig(schema, lib.schemaDefaults ? lib.schemaDefaults(schema) : {})
+                        : {};
+                    asrForm.value = {
+                        label: lib.defaultLabel
+                            ? lib.defaultLabel(connector.name, values.model)
+                            : `${connector.name}:${String(values.model || '').toLowerCase()}`,
+                        labelTouched: false,
+                        connector: connector.name,
+                        originalConnector: connector.name,
+                        values,
+                        visible: true,
+                        clearSecrets: false,
+                        secretVisible: {},
+                        storedSecrets: false,
+                        showAdvanced: false,
+                        modelChoice: '__other__',
+                        discovered: null,
+                        storedConfig: {},
+                    };
+                    asrResetTest();
+                    asrResetDiscovery();
+                    asrSortSecretVisibility();
+                    asrEditingId.value = null;
+                    asrModalOpen.value = true;
+                };
+
+                const openAsrEdit = (model) => {
+                    const lib = asrLib();
+                    const connector = model.connector;
+                    const schema = asrSchema(connector);
+                    asrForm.value = {
+                        label: model.label || '',
+                        labelTouched: true,
+                        connector,
+                        originalConnector: connector,
+                        values: lib.formValuesForEdit
+                            ? lib.formValuesForEdit(schema, model.config || {})
+                            : {},
+                        visible: model.visible !== false,
+                        clearSecrets: false,
+                        secretVisible: {},
+                        storedSecrets: asrRowHasSecret(model),
+                        showAdvanced: false,
+                        modelChoice: '__other__',
+                        discovered: null,
+                        storedConfig: JSON.parse(JSON.stringify(model.config || {})),
+                    };
+                    asrResetTest();
+                    asrResetDiscovery();
+                    asrSortSecretVisibility();
+                    asrEditingId.value = model.id;
+                    asrModalOpen.value = true;
+                };
+
+                const editAsrEnvironment = () => {
+                    const environment = asrEnvironment.value;
+                    if (!environment) return;
+                    const lib = asrLib();
+                    const schema = asrSchema(environment.connector);
+                    asrForm.value = {
+                        label: environment.label || '',
+                        labelTouched: false,
+                        connector: environment.connector,
+                        originalConnector: environment.connector,
+                        values: lib.formValuesForEdit
+                            ? lib.formValuesForEdit(schema, environment.config || {})
+                            : {},
+                        visible: true,
+                        clearSecrets: false,
+                        secretVisible: {},
+                        storedSecrets: asrRowHasSecret(environment),
+                        showAdvanced: false,
+                        modelChoice: '__other__',
+                        discovered: null,
+                        storedConfig: JSON.parse(JSON.stringify(environment.config || {})),
+                    };
+                    asrResetTest();
+                    asrResetDiscovery();
+                    asrSortSecretVisibility();
+                    asrEditingId.value = null;
+                    asrModalOpen.value = true;
+                };
+
+                const closeAsrModal = () => {
+                    if (asrSaving.value || asrTesting.value) return;
+                    asrModalOpen.value = false;
+                    asrEditingId.value = null;
+                };
+
+                const asrFormIsDirty = () => {
+                    const lib = asrLib();
+                    const schema = asrSchema(asrForm.value.originalConnector);
+                    const defaults = lib.formValuesFromConfig
+                        ? lib.formValuesFromConfig(schema, lib.schemaDefaults ? lib.schemaDefaults(schema) : {})
+                        : {};
+                    const secrets = lib.secretFields ? lib.secretFields(schema) : [];
+                    return Object.keys(asrForm.value.values).some(key => {
+                        if (secrets.includes(key)) {
+                            return Boolean(String(asrForm.value.values[key] || '').trim());
+                        }
+                        return String(asrForm.value.values[key] ?? '') !== String(defaults[key] ?? '');
+                    });
+                };
+
+                const changeAsrConnector = async (value) => {
+                    const previous = asrForm.value.originalConnector;
+                    if (!value || value === previous) return;
+                    if (asrFormIsDirty()) {
+                        const confirmed = await confirmDialog({
+                            message: t('adminDashboard.connectorChangeConfirm'),
+                            confirmLabel: t('common.continue'),
+                        }).catch(() => false);
+                        if (!confirmed) {
+                            asrForm.value.connector = previous;
+                            return;
+                        }
+                    }
+                    const lib = asrLib();
+                    const schema = asrSchema(value);
+                    asrForm.value.connector = value;
+                    asrForm.value.originalConnector = value;
+                    asrForm.value.values = lib.formValuesFromConfig
+                        ? lib.formValuesFromConfig(schema, lib.schemaDefaults ? lib.schemaDefaults(schema) : {})
+                        : {};
+                    asrForm.value.storedConfig = {};
+                    asrForm.value.discovered = null;
+                    asrForm.value.modelChoice = '__other__';
+                    asrForm.value.clearSecrets = false;
+                    asrForm.value.storedSecrets = false;
+                    asrSortSecretVisibility();
+                    asrResetTest();
+                    asrResetDiscovery();
+                    asrAutoLabel();
+                };
+
+                const chooseAsrModel = () => {
+                    const choice = asrForm.value.modelChoice;
+                    if (choice === '__other__') return;
+                    asrForm.value.values.model = choice;
+                    asrAutoLabel();
+                };
+
+                const asrProbePayload = () => {
+                    const payload = {
+                        connector: asrForm.value.connector,
+                        config: asrFormConfig().config,
+                    };
+                    if (asrEditingId.value) payload.profile_id = asrEditingId.value;
+                    return payload;
+                };
+
+                const asrHandleTestProbe = (response, body) => {
+                    if (!response.ok) {
+                        asrTestError.value = true;
+                        asrTestWarning.value = false;
+                        asrTestMessage.value = `${t('adminDashboard.testFailed')} ${asrErrorDetail(body)}`.trim();
+                        return;
+                    }
+                    if (body.unsupported || body.ok === false) {
+                        asrTestError.value = false;
+                        asrTestWarning.value = true;
+                        asrTestMessage.value = body.message || t('adminDashboard.testUnsupported');
+                        return;
+                    }
+                    asrTestError.value = false;
+                    asrTestWarning.value = false;
+                    const models = Array.isArray(body.models) ? body.models : [];
+                    asrTestMessage.value = models.length
+                        ? t('adminDashboard.testSuccess', { count: models.length })
+                        : t('adminDashboard.testNoModels');
+                };
+
+                const discoverAsrModels = async () => {
+                    asrDiscovering.value = true;
+                    asrResetTest();
+                    asrResetDiscovery();
+                    try {
+                        const response = await fetch('/admin/asr-config/discover', {
+                            method: 'POST',
+                            headers: asrCsrfHeaders(true),
+                            body: JSON.stringify(asrProbePayload()),
+                        });
+                        const body = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            asrDiscoveryError.value = true;
+                            asrDiscoveryWarning.value = false;
+                            asrDiscoveryMessage.value = `${t('adminDashboard.testFailed')} ${asrErrorDetail(body)}`.trim();
+                            return;
+                        }
+                        if (body.unsupported || body.ok === false) {
+                            asrDiscoveryError.value = false;
+                            asrDiscoveryWarning.value = true;
+                            asrDiscoveryMessage.value = body.message || t('adminDashboard.testUnsupported');
+                            return;
+                        }
+                        const models = Array.isArray(body.models) ? body.models : [];
+                        if (!models.length) {
+                            asrForm.value.discovered = null;
+                            asrForm.value.modelChoice = '__other__';
+                            asrDiscoveryError.value = false;
+                            asrDiscoveryWarning.value = true;
+                            asrDiscoveryMessage.value = t('adminDashboard.discoveryEmpty');
+                            return;
+                        }
+                        asrForm.value.discovered = models.map(item => {
+                            if (typeof item === 'string') return { id: item, label: item };
+                            const id = item.id || item.name || '';
+                            return { id, label: item.label || id };
+                        }).filter(item => item.id);
+                        asrPrepareDiscovered();
+                        asrDiscoveryError.value = false;
+                        asrDiscoveryWarning.value = false;
+                        asrDiscoveryMessage.value = t('adminDashboard.pickDiscoveredModel', {
+                            count: asrForm.value.discovered.length,
+                        });
+                    } catch (error) {
+                        asrDiscoveryError.value = true;
+                        asrDiscoveryWarning.value = false;
+                        asrDiscoveryMessage.value = `${t('adminDashboard.testFailed')} ${error.message}`.trim();
                     } finally {
-                        savingModels.value = false;
+                        asrDiscovering.value = false;
+                    }
+                };
+
+                const testAsrForm = async () => {
+                    asrTesting.value = true;
+                    asrResetTest();
+                    try {
+                        asrFormConfig();
+                        const response = await fetch('/admin/asr-config/test', {
+                            method: 'POST',
+                            headers: asrCsrfHeaders(true),
+                            body: JSON.stringify(asrProbePayload()),
+                        });
+                        const body = await response.json().catch(() => ({}));
+                        asrHandleTestProbe(response, body);
+                    } catch (error) {
+                        asrTestError.value = true;
+                        asrTestWarning.value = false;
+                        asrTestMessage.value = error.message;
+                    } finally {
+                        asrTesting.value = false;
+                    }
+                };
+
+                const testAsrStored = async (model) => {
+                    asrResetTest();
+                    try {
+                        const response = await fetch('/admin/asr-config/test', {
+                            method: 'POST',
+                            headers: asrCsrfHeaders(true),
+                            body: JSON.stringify({ profile_id: model.id }),
+                        });
+                        const body = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            asrSetStatus(`${t('adminDashboard.testFailed')} ${asrErrorDetail(body)}`.trim(), true);
+                        } else if (body.unsupported) {
+                            asrSetStatus(body.message || t('adminDashboard.testUnsupported'));
+                        } else if (body.ok) {
+                            const count = Array.isArray(body.models) ? body.models.length : 0;
+                            asrSetStatus(count
+                                ? t('adminDashboard.testSuccess', { count })
+                                : t('adminDashboard.testNoModels'));
+                        } else {
+                            asrSetStatus(body.message || t('adminDashboard.testFailed'), true);
+                        }
+                    } catch (error) {
+                        asrSetStatus(`${t('adminDashboard.testFailed')} ${error.message}`.trim(), true);
+                    }
+                };
+
+                const testAsrEnvironment = async () => {
+                    const environment = asrEnvironment.value;
+                    if (!environment) return;
+                    asrResetTest();
+                    try {
+                        const response = await fetch('/admin/asr-config/test', {
+                            method: 'POST',
+                            headers: asrCsrfHeaders(true),
+                            body: JSON.stringify({ connector: environment.connector, config: environment.config || {} }),
+                        });
+                        const body = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            asrSetStatus(`${t('adminDashboard.testFailed')} ${asrErrorDetail(body)}`.trim(), true);
+                        } else if (body.unsupported) {
+                            asrSetStatus(body.message || t('adminDashboard.testUnsupported'));
+                        } else {
+                            const count = Array.isArray(body.models) ? body.models.length : 0;
+                            asrSetStatus(count
+                                ? t('adminDashboard.testSuccess', { count })
+                                : t('adminDashboard.testNoModels'));
+                        }
+                    } catch (error) {
+                        asrSetStatus(`${t('adminDashboard.testFailed')} ${error.message}`.trim(), true);
+                    }
+                };
+
+                const saveAsrForm = async () => {
+                    asrSaving.value = true;
+                    asrResetTest();
+                    try {
+                        const built = asrFormConfig();
+                        const payload = {
+                            label: asrLib().completeLabel
+                                ? asrLib().completeLabel(asrForm.value.label, asrForm.value.values.model)
+                                : String(asrForm.value.label || '').trim(),
+                            connector: asrForm.value.connector,
+                            config: built.config,
+                            visible: Boolean(asrForm.value.visible),
+                            clear_secrets: built.clearSecrets,
+                        };
+                        const url = asrEditingId.value
+                            ? '/admin/asr-config/models/' + encodeURIComponent(asrEditingId.value)
+                            : '/admin/asr-config/models';
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: asrCsrfHeaders(true),
+                            body: JSON.stringify(payload),
+                        });
+                        const body = await response.json().catch(() => ({}));
+                        if (!response.ok || !body.success) {
+                            asrTestError.value = true;
+                            asrTestWarning.value = false;
+                            asrTestMessage.value = asrErrorDetail(body) || t('adminDashboard.saveFailed');
+                            return;
+                        }
+                        const saved = (body.model && body.model.label) || payload.label;
+                        asrModalOpen.value = false;
+                        asrEditingId.value = null;
+                        asrSetStatus(t('adminDashboard.saved', { label: saved }));
+                        await loadAsrConfig();
+                    } catch (error) {
+                        asrTestError.value = true;
+                        asrTestWarning.value = false;
+                        asrTestMessage.value = error.message;
+                    } finally {
+                        asrSaving.value = false;
+                    }
+                };
+
+                const changeAsrVisible = async (model, checked) => {
+                    try {
+                        const response = await fetch('/admin/asr-config/models/' + encodeURIComponent(model.id), {
+                            method: 'POST',
+                            headers: asrCsrfHeaders(true),
+                            body: JSON.stringify({ visible: checked }),
+                        });
+                        const body = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            await loadAsrConfig();
+                            asrSetStatus(`${t('adminDashboard.visibleFailed')} ${asrErrorDetail(body)}`.trim(), true);
+                            return;
+                        }
+                        model.visible = checked;
+                        asrSetStatus(t('adminDashboard.visibleChanged'));
+                    } catch (error) {
+                        await loadAsrConfig();
+                        asrSetStatus(`${t('adminDashboard.visibleFailed')} ${error.message}`.trim(), true);
+                    }
+                };
+
+                const changeAsrDefault = async (profileId) => {
+                    try {
+                        const response = await fetch('/admin/asr-config/default', {
+                            method: 'POST',
+                            headers: asrCsrfHeaders(true),
+                            body: JSON.stringify({ profile_id: profileId }),
+                        });
+                        const body = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            await loadAsrConfig();
+                            asrSetStatus(`${t('adminDashboard.defaultFailed')} ${asrErrorDetail(body)}`.trim(), true);
+                            return;
+                        }
+                        asrDefault.value = body.default === undefined ? profileId : body.default;
+                        asrSetStatus(t('adminDashboard.defaultChanged', {
+                            label: asrDefaultLabelFor(asrDefault.value),
+                        }));
+                    } catch (error) {
+                        await loadAsrConfig();
+                        asrSetStatus(`${t('adminDashboard.defaultFailed')} ${error.message}`.trim(), true);
+                    }
+                };
+
+                const deleteAsrModel = async (model) => {
+                    const label = model.label || model.id;
+                    const confirmed = await confirmDialog({
+                        message: t('adminDashboard.deleteConfirm', { label }),
+                        confirmLabel: t('common.delete'),
+                    }).catch(() => false);
+                    if (!confirmed) return;
+                    try {
+                        const response = await fetch('/admin/asr-config/models/' + encodeURIComponent(model.id), {
+                            method: 'DELETE',
+                            headers: asrCsrfHeaders(false),
+                        });
+                        const body = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            await loadAsrConfig();
+                            asrSetStatus(`${t('adminDashboard.deleteFailed')} ${asrErrorDetail(body)}`.trim(), true);
+                            return;
+                        }
+                        asrSetStatus(t('adminDashboard.deleted', { label }));
+                        await loadAsrConfig();
+                    } catch (error) {
+                        asrSetStatus(`${t('adminDashboard.deleteFailed')} ${error.message}`.trim(), true);
+                    }
+                };
+
+                const importAsrFromEnvironment = async () => {
+                    try {
+                        const response = await fetch('/admin/asr-config/import', {
+                            method: 'POST',
+                            headers: asrCsrfHeaders(false),
+                        });
+                        const body = await response.json().catch(() => ({}));
+                        if (!response.ok || !body.success) {
+                            asrSetStatus(asrErrorDetail(body) || t('adminDashboard.saveFailed'), true);
+                            return;
+                        }
+                        const label = (body.model && body.model.label) || '';
+                        asrSetStatus(label ? t('adminDashboard.saved', { label }) : t('adminDashboard.visibleChanged'));
+                        await loadAsrConfig();
+                    } catch (error) {
+                        asrSetStatus(`${t('adminDashboard.saveFailed')} ${error.message}`.trim(), true);
                     }
                 };
 
@@ -3331,6 +4020,26 @@ Summarization Instructions:
                     }
                 };
 
+                const loadAsrConfig = async () => {
+                    if (!asrModels.value.length && !asrEnvironment.value) asrLoading.value = true;
+                    try {
+                        const response = await fetch('/admin/asr-config');
+                        const body = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            asrSetStatus(body.error || t('adminDashboard.loadFailed'), true);
+                            return;
+                        }
+                        asrModels.value = body.models || [];
+                        asrDefault.value = body.default === undefined ? null : body.default;
+                        asrConnectors.value = body.connectors || [];
+                        asrEnvironment.value = body.environment || null;
+                        asrModelLimit.value = body.model_limit || 12;
+                    } catch (error) {
+                        asrSetStatus(t('adminDashboard.loadFailed'), true);
+                    } finally {
+                        asrLoading.value = false;
+                    }
+                };
                 const isLoadingUsers = ref(true);
                 const isLoadingSettings = ref(false);
                 const userSearchQuery = ref('');
@@ -5276,7 +5985,7 @@ Summarization Instructions:
                             await loadSettings();
                         }
                         loadDefaultPrompt();
-                        loadVisibleTranscriptionModels();
+                        loadAsrConfig();
 
                         if (inquireModeEnabled.value) {
                             loadInquireStatus();
@@ -5697,21 +6406,6 @@ Summarization Instructions:
                     processBatchRecordings,
                     reembedAllRecordings,
 
-                    // Transcription model curation
-                    visibleTranscriptionModels,
-                    transcriptionDefaultModel,
-                    modelDiscoveryResult,
-                    modelDiscoveryError,
-                    discoveringModels,
-                    savingModels,
-                    modelSaveMessage,
-                    modelSaveError,
-                    transcriptionModelRows,
-                    discoverTranscriptionModels,
-                    addManualTranscriptionModel,
-                    saveVisibleTranscriptionModels,
-                    loadVisibleTranscriptionModels,
-
                     // Language Models
                     llmConfig,
                     llmModels,
@@ -5749,6 +6443,58 @@ Summarization Instructions:
                     testLlmModel,
                     assignLlmModel,
                     revertLlmRole,
+                    // Transcription models
+                    asrModels,
+                    asrDefault,
+                    asrConnectors,
+                    asrEnvironment,
+                    asrModelLimit,
+                    asrLoading,
+                    asrStatus,
+                    asrStatusError,
+                    asrTesting,
+                    asrSaving,
+                    asrDiscovering,
+                    asrTestMessage,
+                    asrTestError,
+                    asrTestWarning,
+                    asrDiscoveryMessage,
+                    asrDiscoveryError,
+                    asrDiscoveryWarning,
+                    asrModalOpen,
+                    asrEditingId,
+                    asrForm,
+                    asrRequiredFields,
+                    asrFieldEntries,
+                    asrControl,
+                    asrFieldLabel,
+                    asrFieldExamples,
+                    asrVisibleLocked,
+                    asrAddDisabled,
+                    asrUrlChangeWarning,
+                    asrConnectorDescription,
+                    asrConnectorDisplay,
+                    asrRowIsDefault,
+                    asrRowModel,
+                    asrRowBaseUrl,
+                    asrRowHasSecret,
+                    loadAsrConfig,
+                    openAsrAdd,
+                    openAsrEdit,
+                    asrAutoLabel,
+                    editAsrEnvironment,
+                    closeAsrModal,
+                    changeAsrConnector,
+                    chooseAsrModel,
+                    discoverAsrModels,
+                    testAsrForm,
+                    testAsrStored,
+                    testAsrEnvironment,
+                    saveAsrForm,
+                    changeAsrVisible,
+                    changeAsrDefault,
+                    deleteAsrModel,
+                    importAsrFromEnvironment,
 
                     // Default Prompts methods
                     loadDefaultPrompt,
