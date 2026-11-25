@@ -161,8 +161,15 @@ class Controlled:
 
         signal.signal(signal.SIGTERM, shutdown)
         signal.signal(signal.SIGINT, shutdown)
+        # Start the control HTTP server before gunicorn, so that the control
+        # port answers /state from the very beginning (running=false) instead
+        # of appearing only after gunicorn is ready. Otherwise the workflow's
+        # readiness probe on the control port races the server startup.
+        httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
         self.start()
-        ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+        # Keep the main thread alive for the lifetime of the process.
+        threading.Event().wait()
 
 
 if __name__ == "__main__":
