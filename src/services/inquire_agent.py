@@ -36,6 +36,10 @@ from src.models import Folder, Recording, RecordingTag, Tag, User
 from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.services.embeddings import get_accessible_recording_ids
 from src.services.llm import call_chat_completion, TokenBudgetExceeded, get_chat_config
+# The filter lives in a small neutral module so the LLM service and the Inquire
+# route can share it without a circular import. The private alias keeps the
+# name tests and callers already use.
+from src.services.thinking_filter import ThinkingFilter as _ThinkingFilter
 from src.utils.localization import translate
 from src.utils.error_text import log_failure, user_error_text
 from src.services.assistant_present import (step_label, step_result, summary_label, summary_line,
@@ -171,67 +175,6 @@ def resolve_allowed_recording_ids(user_id, filters):
 
 def _sse(payload):
     return f"data: {json.dumps(payload)}\n\n"
-
-
-class _ThinkingFilter:
-    """Splits streamed content into visible/thinking parts (<think> tags)."""
-
-    _OPEN = re.compile(r'<think(?:ing)?>', re.IGNORECASE)
-    _CLOSE = re.compile(r'</think(?:ing)?>', re.IGNORECASE)
-
-    def __init__(self):
-        self.buffer = ''
-        self.in_thinking = False
-        self.thinking = ''
-
-    def feed(self, fragment):
-        """Returns (visible_text, thinking_completed_or_None)."""
-        self.buffer += fragment
-        visible = ''
-        thinking_out = None
-        while True:
-            if not self.in_thinking:
-                m = self._OPEN.search(self.buffer)
-                if m:
-                    visible += self.buffer[:m.start()]
-                    self.buffer = self.buffer[m.end():]
-                    self.in_thinking = True
-                    self.thinking = ''
-                else:
-                    # Hold back a partial "<think" prefix at the tail.
-                    safe_len = len(self.buffer)
-                    tail = self.buffer[-9:]
-                    lt = tail.rfind('<')
-                    if lt != -1 and self._OPEN.match(tail[lt:]) is None and '<think'.startswith(tail[lt:lt + 6].lower()):
-                        safe_len = len(self.buffer) - (len(tail) - lt)
-                    visible += self.buffer[:safe_len]
-                    self.buffer = self.buffer[safe_len:]
-                    break
-            else:
-                m = self._CLOSE.search(self.buffer)
-                if m:
-                    self.thinking += self.buffer[:m.start()]
-                    self.buffer = self.buffer[m.end():]
-                    self.in_thinking = False
-                    if self.thinking.strip():
-                        thinking_out = self.thinking.strip()
-                    self.thinking = ''
-                else:
-                    hold = 10
-                    self.thinking += self.buffer[:-hold] if len(self.buffer) > hold else ''
-                    self.buffer = self.buffer[-hold:] if len(self.buffer) > hold else self.buffer
-                    break
-        return visible, thinking_out
-
-    def flush(self):
-        if self.in_thinking:
-            leftover = (self.thinking + self.buffer).strip()
-            self.buffer = ''
-            self.thinking = ''
-            return '', (leftover or None)
-        visible = self.buffer
-        self.buffer = ''
-        return visible, None
 
 
 def _native_tools_known_unsupported(err_text):
