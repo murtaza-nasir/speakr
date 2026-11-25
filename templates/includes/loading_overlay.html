@@ -81,6 +81,24 @@
             document.body.appendChild(overlay);
         }
         initLoadingOverlay();
+
+        // loading.js and the app hide this overlay. If that script never
+        // runs, nothing else would, and "Loading…" stayed up until a manual
+        // reload. Reveal the page anyway.
+        setTimeout(function () {
+            if (window.__appLoaderHidden) return;
+            window.__appLoaderHidden = true;
+            document.documentElement.classList.remove('app-loading');
+            if (document.body) document.body.classList.remove('app-loading');
+            var overlays = document.querySelectorAll('.app-loading-overlay');
+            for (var i = 0; i < overlays.length; i++) overlays[i].remove();
+            var roots = document.querySelectorAll('#app, #inquire-app, [v-cloak]');
+            for (var j = 0; j < roots.length; j++) {
+                roots[j].removeAttribute('v-cloak');
+                roots[j].style.opacity = '1';
+                roots[j].classList.remove('opacity-0');
+            }
+        }, 8000);
     })();
 </script>
 <script src="{{ url_for('static', filename='js/loading.js', v=app_version) }}"></script>

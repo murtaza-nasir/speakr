@@ -431,6 +431,10 @@ def test_loading_overlay_hides_the_page_from_the_first_paint():
     overlay = _read("includes/loading_overlay.html")
     assert "document.documentElement.classList.add('app-loading')" in overlay
     assert "html.app-loading body > *:not(.app-loading-overlay)" in overlay
+    # A script that never runs, or a startup request that never answers,
+    # must not leave the overlay up until a manual reload.
+    assert "if (window.__appLoaderHidden) return;" in overlay
+    assert "}, 8000);" in overlay
     loader_js = open(os.path.join(ROOT, "static", "js", "loading.js"), encoding="utf-8").read()
     assert "document.documentElement.classList.remove('app-loading')" in loader_js
 
