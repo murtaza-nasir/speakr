@@ -42,17 +42,43 @@ SUMMARY = "The launch moves to the next quarter."
 NOTICES = ('_emit_failure_webhook', '_emit_failure_email', '_emit_completion_webhook',
            '_emit_completion_email', '_emit_started_webhook')
 
+# The rows each test makes, so the test file leaves the shared database as it
+# found it: a queued job left behind is claimed by another file's test.
+_MADE = {'users': [], 'recordings': [], 'jobs': []}
+
+
+def _drop_made_rows():
+    for jid in _MADE['jobs']:
+        row = db.session.get(ProcessingJob, jid)
+        if row is not None:
+            db.session.delete(row)
+    for rid in _MADE['recordings']:
+        ProcessingJob.query.filter_by(recording_id=rid).delete()
+        row = db.session.get(Recording, rid)
+        if row is not None:
+            db.session.delete(row)
+    for uid in _MADE['users']:
+        row = db.session.get(User, uid)
+        if row is not None:
+            db.session.delete(row)
+    db.session.commit()
+
 
 @pytest.fixture(autouse=True)
 def _queue_app():
     job_queue.init_app(app)
+    for ids in _MADE.values():
+        ids.clear()
     with app.app_context():
         # Jobs other test files left waiting would be claimed first.
         ProcessingJob.query.filter(ProcessingJob.status == 'queued').update(
             {'status': 'completed', 'completed_at': datetime(2020, 1, 1)}, synchronize_session=False)
         db.session.commit()
-        yield
-        db.session.rollback()
+        try:
+            yield
+        finally:
+            db.session.rollback()
+            _drop_made_rows()
 
 
 @pytest.fixture
@@ -80,6 +106,7 @@ def _user(admin=False):
     user = User(username=f"jc_{suffix}", email=f"jc_{suffix}@local.test", password='x', is_admin=admin)
     db.session.add(user)
     db.session.commit()
+    _MADE['users'].append(user.id)
     return user
 
 
@@ -90,6 +117,7 @@ def _recording(user=None, status='QUEUED', **fields):
                           audio_path='local://m.wav', status=status, **fields)
     db.session.add(recording)
     db.session.commit()
+    _MADE['recordings'].append(recording.id)
     return recording
 
 
@@ -109,6 +137,7 @@ def _job(recording, job_type='transcribe', status='queued', **fields):
         job.started_at = datetime.utcnow()
     db.session.add(job)
     db.session.commit()
+    _MADE['jobs'].append(job.id)
     return _Ids(job)
 
 
