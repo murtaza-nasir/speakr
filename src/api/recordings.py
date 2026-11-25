@@ -62,6 +62,7 @@ from src.services.recording_filters import (
     needs_summary_condition,
     needs_speakers_condition,
 )
+from src.services.recording_scope import get_accessible_recording_ids
 from src.utils.localization import api_error, format_number, translate
 from src.utils.speaker_labels import MAX_SPEAKER_NAME_LENGTH
 from src.utils.incognito_logging import incognito_route, incognito_log, describe_error, short_code
@@ -1304,38 +1305,6 @@ def index(recording_id=None, label_name=None):
                          recording_chunk_seconds=recording_chunk_seconds,
                          recording_video_kbps=recording_video_kbps,
                          text_model_configured=_text_model_configured())
-
-
-
-def get_accessible_recording_ids(user_id):
-    """
-    Get all recording IDs that a user has access to.
-
-    Includes:
-    - Recordings owned by the user
-    - Recordings shared with the user via InternalShare
-    - Recordings shared via group tags (if team membership exists)
-
-    Args:
-        user_id (int): User ID to check access for
-
-    Returns:
-        list: List of recording IDs the user can access
-    """
-    accessible_ids = set()
-
-    # 1. User's own recordings
-    own_recordings = db.session.query(Recording.id).filter_by(user_id=user_id).all()
-    accessible_ids.update([r.id for r in own_recordings])
-
-    # 2. Internally shared recordings
-    if _self.ENABLE_INTERNAL_SHARING:
-        shared_recordings = db.session.query(InternalShare.recording_id).filter_by(
-            shared_with_user_id=user_id
-        ).all()
-        accessible_ids.update([r.recording_id for r in shared_recordings])
-
-    return list(accessible_ids)
 
 
 @recordings_bp.route('/recordings', methods=['GET'])

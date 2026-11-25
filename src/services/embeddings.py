@@ -30,7 +30,8 @@ if cosine_similarity is None:
         cosine_similarity = None
 
 from src.database import db
-from src.models import Recording, TranscriptChunk, InternalShare, RecordingTag
+from src.models import Recording, TranscriptChunk, RecordingTag
+from src.services.recording_scope import get_accessible_recording_ids
 from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.utils.error_text import describe_error
 
@@ -348,39 +349,6 @@ def deserialize_embedding(binary_data):
     if binary_data is None or not EMBEDDINGS_AVAILABLE:
         return None
     return np.frombuffer(binary_data, dtype=np.float32)
-
-
-
-def get_accessible_recording_ids(user_id):
-    """
-    Get all recording IDs that a user has access to.
-
-    Includes:
-    - Recordings owned by the user
-    - Recordings shared with the user via InternalShare
-    - Recordings shared via group tags (if team membership exists)
-
-    Args:
-        user_id (int): User ID to check access for
-
-    Returns:
-        list: List of recording IDs the user can access
-    """
-    accessible_ids = set()
-
-    # 1. User's own recordings
-    own_recordings = db.session.query(Recording.id).filter_by(user_id=user_id).all()
-    accessible_ids.update([r.id for r in own_recordings])
-
-    # 2. Internally shared recordings
-    if _self.ENABLE_INTERNAL_SHARING:
-        shared_recordings = db.session.query(InternalShare.recording_id).filter_by(
-            shared_with_user_id=user_id
-        ).all()
-        accessible_ids.update([r.recording_id for r in shared_recordings])
-
-    return list(accessible_ids)
-
 
 
 def process_recording_chunks(recording_id):
