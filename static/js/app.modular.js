@@ -4,6 +4,7 @@ const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextT
 import { useRecordings } from './modules/composables/recordings.js';
 import { isValidDateInput } from './modules/utils/date-filter.js';
 import { resolveInitialSort } from './modules/utils/sort-preference.js';
+import { keepSelectionAfterReconcile } from './modules/utils/reconcile-selection.js';
 import { releasesToShow, releaseVersion } from './modules/utils/whats-new.js';
 import { useUpload } from './modules/composables/upload.js';
 import { useAudio } from './modules/composables/audio.js';
@@ -3535,7 +3536,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (reconcileNeeded) {
                     try {
                         await recordingsComposable.loadRecordings(1, false, searchQuery.value || '');
-                        if (selectedRecording.value && !recordings.value.some(r => r.id === selectedRecording.value.id)) {
+                        // The open recording is often not on page 1 although it
+                        // still exists (#702), so it is cleared only when the
+                        // server no longer has it. The dialogs that show it are
+                        // closed first, so that none of them renders without it.
+                        const open = selectedRecording.value;
+                        const keep = await keepSelectionAfterReconcile(
+                            open, recordings.value, (id) => fetch(`/api/recordings/${id}`));
+                        if (!keep && selectedRecording.value === open) {
+                            showSpeakerModal.value = false;
+                            showAsrEditorModal.value = false;
                             selectedRecording.value = null;
                         }
                     } catch (e) {

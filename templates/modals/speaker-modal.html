@@ -21,7 +21,7 @@
      Template rules: no object literals inside ${ } (use v-text), no window.*
      in expressions. -->
 
-<div v-if="showSpeakerModal" @click.self="closeSpeakerModal" class="modal-overlay" :data-shortcut-dirty="editedTranscriptData !== null ? 'true' : null">
+<div v-if="showSpeakerModal && selectedRecording" @click.self="closeSpeakerModal" class="modal-overlay" :data-shortcut-dirty="editedTranscriptData !== null ? 'true' : null">
     <div class="modal-panel modal-panel--xl spk-modal" style="height: 90vh; max-height: 90vh;">
 
         <div class="modal-header">
@@ -199,11 +199,11 @@
                  :class="{ 'hidden lg:flex': speakerModalTab !== 'transcript', 'flex-1': speakerModalTab === 'transcript' }">
 
                 <div class="flex-shrink-0">
-                    <div v-if="selectedRecording.audio_deleted_at" class="t-meta flex items-center gap-2">
+                    <div v-if="selectedRecording?.audio_deleted_at" class="t-meta flex items-center gap-2">
                         <i class="fas fa-info-circle"></i>
                         <span v-text="t('help.audioDeletedMessage')"></span>
                     </div>
-                    <div v-else-if="selectedRecording.incognito" class="t-meta flex items-center gap-2">
+                    <div v-else-if="selectedRecording?.incognito" class="t-meta flex items-center gap-2">
                         <i class="fas fa-user-secret"></i>
                         <span v-text="t('speakerModal.incognitoAudio')"></span>
                     </div>
