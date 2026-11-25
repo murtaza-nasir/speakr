@@ -277,7 +277,7 @@ jobs:
       - name: Start Speakr (config/env.whisperx.example)
         run: |
           python tests/e2e/run_speakr.py --port 8899 --control-port 8898 --workdir /tmp/speakr-smoke > /tmp/speakr.log 2>&1 &
-          for i in $(seq 1 90); do curl -fs -o /dev/null http://127.0.0.1:8899/login && break; sleep 2; done
+          for i in $(seq 1 90); do if curl -fs -o /dev/null http://127.0.0.1:8899/login; then break; fi; sleep 2; done
           curl -fs -o /dev/null http://127.0.0.1:8899/login
           curl -fs -o /dev/null http://127.0.0.1:8898/state
 
