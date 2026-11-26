@@ -69,11 +69,13 @@ def wav_bytes(rate=RATE, channels=1, seconds=0.5):
 # ------------------------------------------------------------------ config
 
 
-def test_base_url_and_model_are_required():
+def test_base_url_is_required_and_the_model_when_a_recording_is_sent():
     with pytest.raises(ConfigurationError):
         AudioCppTranscriptionConnector({"model": "m"})
-    with pytest.raises(ConfigurationError):
-        AudioCppTranscriptionConnector({"base_url": "http://audiocpp.test:8080"})
+    # Test and Discover models run before a model is chosen.
+    without_model = AudioCppTranscriptionConnector({"base_url": "http://audiocpp.test:8080"})
+    with pytest.raises(ConfigurationError, match="needs a model"):
+        without_model.transcribe(request_for(wav_bytes()))
 
 
 def test_no_key_field_and_a_trailing_v1_is_dropped():

@@ -146,14 +146,12 @@ class AudioCppTranscriptionConnector(BaseTranscriptionConnector):
             )
 
     def _validate_config(self) -> None:
+        # The model is checked when a recording is sent, not here: Test and
+        # Discover models run before a model is chosen.
         if not self.config.get('base_url'):
             raise ConfigurationError(
                 "base_url is required for the audio.cpp connector. "
                 "Set TRANSCRIPTION_BASE_URL to the audiocpp_server address.")
-        if not (self.config.get('model') or '').strip():
-            raise ConfigurationError(
-                "model is required for the audio.cpp connector: the id of a model "
-                "in the server's config (TRANSCRIPTION_MODEL).")
 
     # ------------------------------------------------------------ audio
 
@@ -208,6 +206,10 @@ class AudioCppTranscriptionConnector(BaseTranscriptionConnector):
 
     def transcribe(self, request: TranscriptionRequest) -> TranscriptionResponse:
         model = self._effective_model(request) or self.model
+        if not model:
+            raise ConfigurationError(
+                "The audio.cpp connector needs a model: the id of a transcription model "
+                "in the server's config (TRANSCRIPTION_MODEL, or Model name in the admin settings).")
         url = self.base_url + DETAILS_PATH
         wav = self._wav_bytes(request)
         stem = os.path.splitext(os.path.basename(request.filename or 'audio'))[0] or 'audio'
