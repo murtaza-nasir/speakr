@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.5-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.6-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -238,7 +238,13 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.11.5)
+## Latest Release (v0.11.6)
+
+- Transcription models are managed in one section of System settings, where each model has its own connector, address and key, and can be tested before it is offered to users.
+- A span of each uploaded file can be kept before it is transcribed.
+- audio.cpp servers are supported as a transcription connector, with speakers from models that label them.
+
+### v0.11.5
 
 - API tokens in the `?token=` query parameter are refused by default. `API_QUERY_TOKENS_ENABLED=true` accepts them again.
 - Password reset and verification links are stored as hashes and can be used once, and CSRF checks, markup escaping and webhook delivery are hardened.
@@ -251,15 +257,8 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - The offline recording page can record system audio, or the microphone and system audio together.
 - The summary is generated as a separate job after the transcript, and malformed API requests receive a 400 Bad Request error.
 
-### v0.11.3
 
-- OpenAI shuts down `whisper-1` and the GPT-4o transcribe models on 26 February 2027. Users of these models need to set `TRANSCRIPTION_MODEL=gpt-transcribe` before that date.
-- When Speakr cannot be reached, recordings can be made in the browser. They are uploaded when Speakr is back.
-- `gpt-transcribe` is supported, and `CHUNK_LIMIT` in seconds applies to OpenAI Whisper.
-- The auto-process controls in the admin dashboard work again, and malformed API requests receive a 400 error.
-
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.5) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.6) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 

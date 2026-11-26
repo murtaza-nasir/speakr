@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.11.5: Security fixes, API tokens only in headers by default, push notifications"
-    API tokens in the `?token=` query parameter are refused by default, password reset and verification links are stored as hashes, and push notifications can be enabled again.
+!!! success "Latest Release: v0.11.6: Transcription models in System settings, trimming before upload, audio.cpp"
+    Transcription models are managed and tested in one section of System settings, a span of each uploaded file can be kept before it is transcribed, and audio.cpp servers are supported.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.5) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.6) for details.
 
 ## Quick Navigation
 
