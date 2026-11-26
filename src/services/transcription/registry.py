@@ -52,6 +52,7 @@ class ConnectorRegistry:
         from .connectors.assemblyai import AssemblyAITranscriptionConnector
         from .connectors.tencent_asr import TencentASRConnector
         from .connectors.openasr import OpenASRTranscriptionConnector
+        from .connectors.audiocpp import AudioCppTranscriptionConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
         self.register('openai_transcribe', OpenAITranscribeConnector)
@@ -64,6 +65,7 @@ class ConnectorRegistry:
         self.register('assemblyai', AssemblyAITranscriptionConnector)
         self.register('tencent_asr', TencentASRConnector)
         self.register('openasr', OpenASRTranscriptionConnector)
+        self.register('audiocpp', AudioCppTranscriptionConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
         """
@@ -419,6 +421,29 @@ class ConnectorRegistry:
                 # Same flag as the WhisperX connector: OpenASR >= openasr#379
                 # returns per-speaker embeddings on request (#380).
                 'return_speaker_embeddings': (os.environ.get('ASR_RETURN_SPEAKER_EMBEDDINGS') or 'false').lower() == 'true',
+            }
+
+        elif connector_name == 'audiocpp':
+            base_url = os.environ.get('TRANSCRIPTION_BASE_URL', 'http://127.0.0.1:8080')
+            if base_url:
+                base_url = base_url.split('#')[0].strip()
+            try:
+                timeout = int(os.environ.get('ASR_TIMEOUT') or '1800')
+            except ValueError:
+                timeout = 1800
+            try:
+                max_duration = int(os.environ.get('AUDIOCPP_MAX_DURATION_SECONDS') or '0')
+            except ValueError:
+                max_duration = 0
+            return {
+                'base_url': base_url,
+                # The id of a model in the audiocpp_server config.
+                'model': os.environ.get('TRANSCRIPTION_MODEL', ''),
+                # The model labels speakers (VibeVoice ASR, Nemotron 3
+                # Diarization); audio.cpp takes no diarization option.
+                'model_diarizes': (os.environ.get('ASR_DIARIZE') or 'false').lower() == 'true',
+                'timeout': timeout,
+                'max_duration_seconds': max_duration,
             }
 
         else:  # openai_whisper (default)

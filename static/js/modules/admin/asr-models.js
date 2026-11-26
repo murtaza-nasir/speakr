@@ -21,6 +21,7 @@ export const ENV_CONNECTOR_NAMES = Object.freeze({
   assemblyai: 'assemblyai',
   tencent_asr: 'tencent-asr',
   openasr: 'openasr',
+  audiocpp: 'audiocpp',
 });
 
 // The fields every connector modal shows before the advanced ones.
@@ -53,6 +54,8 @@ export const FIELD_LABELS = Object.freeze({
   boost_param: 'Word boost strength',
   hotword_id: 'Hotword list ID',
   staging_prefix: 'Staging prefix',
+  model_diarizes: 'Model labels speakers',
+  max_duration_seconds: 'Longest audio per request (seconds)',
 });
 
 export function envConnectorName(connector) {

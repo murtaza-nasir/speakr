@@ -20,6 +20,7 @@ CONNECTOR_FILES = {
     "assemblyai": "assemblyai.py",
     "tencent_asr": "tencent_asr.py",
     "openasr": "openasr.py",
+    "audiocpp": "audiocpp.py",
 }
 
 RUNTIME_ONLY = {"http_client"}

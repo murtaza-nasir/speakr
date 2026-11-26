@@ -12,6 +12,7 @@ from .alibaba_funasr import AlibabaFunASRConnector
 from .mossland import MosslandTranscriptionConnector
 from .openasr import OpenASRTranscriptionConnector
 from .tencent_asr import TencentASRConnector
+from .audiocpp import AudioCppTranscriptionConnector
 
 __all__ = [
     'OpenAIWhisperConnector',
@@ -24,4 +25,5 @@ __all__ = [
     'MosslandTranscriptionConnector',
     'OpenASRTranscriptionConnector',
     'TencentASRConnector',
+    'AudioCppTranscriptionConnector',
 ]

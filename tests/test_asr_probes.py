@@ -366,6 +366,7 @@ def test_health_check_unchanged():
 @pytest.mark.parametrize('connector_name', [
     'openai_whisper', 'openai_transcribe', 'asr_endpoint', 'azure_openai_transcribe',
     'mistral', 'vibevoice', 'funasr', 'mossland', 'assemblyai', 'tencent_asr', 'openasr',
+    'audiocpp',
 ])
 def test_secret_fields_are_write_only(connector_name):
     cls = ConnectorRegistry().get_connector_class(connector_name)
@@ -386,6 +387,7 @@ def test_asr_endpoint_schema_has_model_with_whisperx_examples():
 @pytest.mark.parametrize('connector_name', [
     'openai_whisper', 'openai_transcribe', 'asr_endpoint', 'azure_openai_transcribe',
     'mistral', 'vibevoice', 'funasr', 'mossland', 'assemblyai', 'tencent_asr', 'openasr',
+    'audiocpp',
 ])
 def test_enum_fields_declare_their_values(connector_name):
     cls = ConnectorRegistry().get_connector_class(connector_name)
@@ -412,7 +414,7 @@ def test_registry_exposes_display_name_description_schema_capabilities():
     assert set(connectors) == {
         'openai_whisper', 'openai_transcribe', 'asr_endpoint',
         'azure_openai_transcribe', 'mistral', 'vibevoice', 'funasr', 'mossland',
-        'assemblyai', 'tencent_asr', 'openasr',
+        'assemblyai', 'tencent_asr', 'openasr', 'audiocpp',
     }
     whisper = connectors['openai_whisper']
     assert whisper['display_name'] == 'OpenAI Whisper'

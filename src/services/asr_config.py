@@ -82,6 +82,7 @@ ENV_CONNECTOR_NAMES = {
     'assemblyai': 'assemblyai',
     'tencent_asr': 'tencent-asr',
     'openasr': 'openasr',
+    'audiocpp': 'audiocpp',
 }
 
 
