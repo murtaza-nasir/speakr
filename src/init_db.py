@@ -966,6 +966,11 @@ def _run_migrations(app, engine):
 
         # Add file_hash column for duplicate detection
         add_column('recording', 'file_hash', 'VARCHAR(64)')
+        # Kept span of the uploaded file, in whole seconds. NULL keeps the
+        # start or the real end. Existing rows stay NULL, which is the whole
+        # file, so a repeat of an untrimmed upload still matches.
+        add_column('recording', 'upload_trim_start', 'INTEGER')
+        add_column('recording', 'upload_trim_end', 'INTEGER')
         try:
             if create_index_if_not_exists(engine, 'ix_recording_user_file_hash', 'recording', 'user_id, file_hash'):
                 app.logger.info("Created index ix_recording_user_file_hash on recording (user_id, file_hash)")
@@ -996,6 +1001,10 @@ def _run_migrations(app, engine):
         # so the Folder before_delete hook promotes children on every
         # backend.
         add_column('folder', 'parent_id', 'INTEGER REFERENCES "folder" (id) ON DELETE SET NULL')
+        # Whole seconds kept from a file joined at upload. NULL is the
+        # start or the real end, so a part with no range stays whole.
+        add_column('upload_join_part', 'trim_start', 'INTEGER')
+        add_column('upload_join_part', 'trim_end', 'INTEGER')
         if create_index_if_not_exists(engine, 'ix_folder_parent_id', 'folder', 'parent_id'):
             app.logger.info("Created index ix_folder_parent_id on folder.parent_id")
         # Create index for folder_id

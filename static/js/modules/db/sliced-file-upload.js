@@ -219,7 +219,7 @@ function xhrPost(url, body, { token, timeoutMs, onProgress, contentType, onXhr }
     });
 }
 
-async function createFileSession(file, token, fromRecorder = false) {
+async function createFileSession(file, token, fromRecorder = false, trim = {}) {
     const response = await fetch(SESSION_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
@@ -231,6 +231,9 @@ async function createFileSession(file, token, fromRecorder = false) {
             // A recording made in this browser is accepted over the storage
             // quota, as on POST /upload, so it is never lost (#413, #650)
             ...(fromRecorder ? { from_recorder: true } : {}),
+            // The range the finalize sends, so the server can refuse a range
+            // no file accepts before any slice is sent (#699)
+            ...trim,
         }),
     });
     const body = parseJson(await response.text());
@@ -487,8 +490,12 @@ export async function uploadFileInSlices(file, formData, options = {}) {
     let sessionId = resumed?.sessionId;
     let sliceBytes = resumed?.sliceBytes;
     if (!resumed) {
-        const created = await createFileSession(file, tokenRef.token,
-            !!(formData && typeof formData.get === 'function' && formData.get('from_recorder') === 'true'));
+        const field = (name) => (formData && typeof formData.get === 'function' ? formData.get(name) : null);
+        const trim = {};
+        for (const name of ['trim_start', 'trim_end']) {
+            if (field(name) != null) trim[name] = field(name);
+        }
+        const created = await createFileSession(file, tokenRef.token, field('from_recorder') === 'true', trim);
         sessionId = created.session_id;
         sliceBytes = Math.min(SLICE_BYTES, created.max_chunk_bytes || SLICE_BYTES);
         rememberSession(file, sessionId, sliceBytes);

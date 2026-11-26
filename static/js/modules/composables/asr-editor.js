@@ -15,6 +15,7 @@ import { confirmDialog } from '../utils/dialogs.js';
 import { createSummaryFollowUp } from '../utils/summary-follow-up.js';
 import { formatExact } from '../asr-editor/helpers.js';
 import { sendTrim, waitForTrim } from '../utils/recording-trim.js';
+import { reloadPlayers } from '../utils/reload-players.js';
 
 // Scroll position per recording, so reopening the editor in the same page
 // session returns to where it was.
@@ -424,24 +425,6 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
             && !recording.audio_deleted_at && recording.status === 'COMPLETED' && recording.can_edit !== false;
     };
 
-    // The players of the page load the trimmed audio again. The address
-    // gets a version: the browser's media cache keeps the old file under
-    // the plain one. Vue leaves the attribute alone, as its bound value is
-    // unchanged.
-    const reloadPlayers = (recordingId) => {
-        if (typeof document === 'undefined') return;
-        const version = Date.now();
-        for (const media of document.querySelectorAll('audio, video')) {
-            const src = media.getAttribute('src') || '';
-            if (src === `/audio/${recordingId}` || src.startsWith(`/audio/${recordingId}?`)) {
-                try {
-                    media.setAttribute('src', `/audio/${recordingId}?v=${version}`);
-                    media.load();
-                } catch (e) { /* not loaded yet */ }
-            }
-        }
-    };
-
     const refreshRecording = async (recordingId) => {
         try {
             const response = await fetch(`/api/recordings/${recordingId}`);
@@ -455,7 +438,8 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
                 audioDuration.value = full.audio_duration;
             }
             if (nextTick) await nextTick();
-            reloadPlayers(recordingId);
+            // The players of the page load the trimmed audio again.
+            reloadPlayers(recordingId, full.file_size || Date.now());
         } catch (error) {
             console.error('Could not load the trimmed recording:', error);
         }

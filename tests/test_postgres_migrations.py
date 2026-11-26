@@ -138,6 +138,28 @@ class TestDatabaseMigrations(unittest.TestCase):
             for col in expected:
                 self.assertIn(col, columns, f"Missing recording column: {col}")
 
+    def test_upload_range_columns_are_added_to_an_existing_database(self):
+        """A database from before the upload range gets its columns at the next start (#699)."""
+        from sqlalchemy import text
+        added = {'recording': ('upload_trim_start', 'upload_trim_end'),
+                 'upload_join_part': ('trim_start', 'trim_end')}
+        with self.app.app_context():
+            for table, names in added.items():
+                for name in names:
+                    self.assertIn(name, self._get_column_names(table))
+            with db.engine.connect() as conn:
+                for table, names in added.items():
+                    for name in names:
+                        conn.execute(text(f'ALTER TABLE "{table}" DROP COLUMN {name}'))
+                conn.commit()
+            for table, names in added.items():
+                for name in names:
+                    self.assertNotIn(name, self._get_column_names(table))
+            initialize_database(self.app)
+            for table, names in added.items():
+                for name in names:
+                    self.assertIn(name, self._get_column_names(table), f"{table}.{name}")
+
     def test_tag_migration_columns(self):
         """Verify columns added by migrations exist on the tag table."""
         with self.app.app_context():

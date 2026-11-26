@@ -2326,14 +2326,15 @@ def ingest_uploaded_recording(
 
 def _ingest_join_part(owner, join, filepath, storage, now, *, original_filename, file_size,
                       mime_type, duration, meeting_date, title, notes, folder, tags,
-                      prompt_variables, transcribe_params, duplicate_warning, success_status):
+                      prompt_variables, transcribe_params, duplicate_warning, success_status,
+                      trim_start=None, trim_end=None):
     """Store one file of a join; the file that completes the group creates the recording."""
     from src.services.upload_join import (
         store_part, claim_group, create_joined_recording, joined_recording, received_count)
     group, index, count = join
     store_part(owner, join, filepath, original_filename=original_filename, file_size=file_size,
                mime_type=mime_type, duration=duration, meeting_date=meeting_date,
-               storage=storage, now=now)
+               storage=storage, now=now, trim_start=trim_start, trim_end=trim_end)
 
     parts = claim_group(owner.id, group, count)
     if parts is None:
@@ -2420,6 +2421,47 @@ def upload_incognito():
     return response
 
 
+def _incognito_kept_file(filepath, original_filename, form):
+    """The file transcription should hear, and an error response or None.
+
+    The range is the one a normal upload accepts: whole seconds, nothing kept
+    or a start past the file is refused, and a range that still covers the
+    whole file is no range. A real cut is the same encode the upload conversion
+    uses, so the file passed on already starts at the beginning of the kept
+    audio. The original stays in the request folder until that folder is removed.
+    """
+    from src.services.recording_ingestion import UploadTrimError, probe_upload, resolve_upload_trim
+    from src.utils.audio_conversion import convert_if_needed
+    from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError
+
+    probe = probe_upload(filepath=filepath, original_filename=original_filename)
+    try:
+        trim_params = resolve_upload_trim(form, filepath, probe.codec_info)
+    except UploadTrimError as trim_error:
+        return filepath, (jsonify(api_error(trim_error.code)), 400)
+    if not trim_params:
+        return filepath, None
+    try:
+        converted = convert_if_needed(
+            filepath,
+            original_filename=original_filename,
+            codec_info=probe.codec_info,
+            delete_original=False,
+            keep_start=trim_params.get('trim_start'),
+            keep_end=trim_params.get('trim_end'),
+        )
+    except FFmpegNotFoundError:
+        return filepath, (jsonify(api_error('audio_converter_missing')), 500)
+    except FFmpegTimeoutError:
+        return filepath, (jsonify({
+            'error': translate('server.apiError.audio_conversion_timeout'),
+            'code': 'audio_conversion_timeout',
+        }), 500)
+    except FFmpegError:
+        return filepath, (jsonify(api_error('audio_decode_failed')), 400)
+    return converted.output_path, None
+
+
 def _upload_incognito_request():
     """
     Process audio in incognito mode - no database storage.
@@ -2499,6 +2541,14 @@ def _upload_incognito_request():
             temp_filepath = tmp.name
             file.save(temp_filepath)
             incognito_log.info(f"[Incognito] Temp file saved: {temp_filepath}")
+
+        # Cut before transcription. A bad range is the same 400 a normal
+        # upload returns, and the finally block removes the temp files.
+        # No Recording is created on this path.
+        temp_filepath, trim_response = _incognito_kept_file(
+            temp_filepath, original_filename, request.form)
+        if trim_response:
+            return trim_response
 
         # Get optional parameters
         # An empty language falls through to the user's default, as on upload;

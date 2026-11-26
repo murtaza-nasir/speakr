@@ -7,6 +7,7 @@ import { savedColorScheme } from '../utils/theme-defaults.js';
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 import { confirmDialog } from '../utils/dialogs.js';
 import { realSpeakers } from '../utils/speaker-labels.js';
+import { reloadPlayers, storedFileReplaced } from '../utils/reload-players.js';
 
 /**
  * Decide whether the sidebar should start collapsed.
@@ -1954,6 +1955,13 @@ export function useUI(state, utils, processedTranscription) {
                 // Pick up a server-side duration if it only just became available.
                 if (newRecording.audio_duration && !audioDuration.value) {
                     audioDuration.value = newRecording.audio_duration;
+                }
+                // The stored file was replaced, by the convert job that keeps
+                // an upload's span (#699) or by a trim: the players load it
+                // again, and the bar takes the length of the new file.
+                if (storedFileReplaced(oldRecording, newRecording)) {
+                    if (newRecording.audio_duration) audioDuration.value = newRecording.audio_duration;
+                    nextTick(() => reloadPlayers(newRecording.id, newRecording.file_size));
                 }
                 return;
             }

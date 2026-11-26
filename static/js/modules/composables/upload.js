@@ -18,6 +18,7 @@ import {
     newJoinGroupId, MAX_JOIN_FILES,
 } from '../utils/upload-join.js';
 import { UPLOAD_ACCEPT, isAcceptedUploadFile, isVideoFileName } from '../utils/upload-file-type.js';
+import { keptSeconds, previewSpans, trimFields, trimProblem, trimProblemKey, wholeEnd } from '../utils/upload-trim.js';
 import * as ServerSessions from '../db/server-recording-sessions.js';
 import {
     failedUploadRecord, partitionByOwner, belongsTo, resurfaceAction, queueItemFromRecord, coveredByPendingUpload,
@@ -371,6 +372,12 @@ export function useUpload(state, utils) {
                     // it null shows just size until probing finishes
                     // (usually well under a second).
                     duration: null,
+                    // The range control stays off until the person turns it
+                    // on, and it stays hidden until a duration has been read.
+                    trimOn: false,
+                    trimStart: 0,
+                    trimEnd: null,
+                    trimPreviewFailed: false,
                     willAutoSummarize: false // Server will tell us via SUMMARIZING status
                 };
                 uploadQueue.value.push(queueItem);
@@ -483,6 +490,12 @@ export function useUpload(state, utils) {
     const startUpload = () => {
         const pendingFiles = uploadQueue.value.filter(item => item.status === 'queued');
         if (pendingFiles.length === 0) {
+            closeModalAfterUpload = false;
+            return;
+        }
+        // A range the server would refuse stops the whole start, before any
+        // byte is sent: the files stay queued and the range can be corrected.
+        if (refuseQueuedTrim(pendingFiles)) {
             closeModalAfterUpload = false;
             return;
         }
@@ -713,6 +726,7 @@ export function useUpload(state, utils) {
 
             // Names this upload for POST /upload/cancel (cancelUpload below).
             formData.append('client_upload_id', fileItem.clientId);
+            appendQueueTrim(formData, fileItem);
 
             // Use XMLHttpRequest for per-file upload progress. XHR bypasses
             // the fetch interceptor in csrf-refresh.js, so this path must
@@ -1217,6 +1231,7 @@ export function useUpload(state, utils) {
 
         // Only process the first file for incognito mode
         const fileItem = pendingFiles[0];
+        if (refuseQueuedTrim([fileItem])) return;
 
         // Check if incognito mode state is available
         if (!incognitoMode || !incognitoProcessing || !incognitoRecording) {
@@ -1233,6 +1248,7 @@ export function useUpload(state, utils) {
         try {
             const formData = new FormData();
             formData.append('file', fileItem.file);
+            appendQueueTrim(formData, fileItem);
 
             // Add ASR options
             const asrOpts = fileItem.asrOptions || {};
@@ -1584,8 +1600,84 @@ export function useUpload(state, utils) {
         }
     };
 
+    const enableQueueTrim = (item) => {
+        if (!item || !item.duration) return;
+        item.trimOn = true;
+        item.trimStart = 0;
+        item.trimEnd = wholeEnd(item.duration);
+        item.trimPreviewFailed = false;
+    };
+
+    const queueTrimProblem = (item) => (item?.trimOn ? trimProblem(item.trimStart, item.trimEnd, item.duration) : null);
+
+    const queueTrimMessage = (item) => {
+        const key = trimProblemKey(queueTrimProblem(item));
+        return key ? t(key) : '';
+    };
+
+    // True, with the reason shown, when a queued file's range cannot be sent.
+    const refuseQueuedTrim = (items) => {
+        const refused = items.find((item) => queueTrimProblem(item));
+        if (!refused) return false;
+        setGlobalError(`${refused.file?.name || ''}: ${queueTrimMessage(refused)}`);
+        return true;
+    };
+
+    const appendQueueTrim = (formData, item) => {
+        if (!item?.trimOn) return;
+        const fields = trimFields(item.trimStart, item.trimEnd, item.duration);
+        for (const [key, value] of Object.entries(fields)) formData.append(key, value);
+    };
+
+    // Preview plays the local file. It makes no request, and a file the
+    // browser cannot play is not uploaded in its place.
+    const previewQueueTrim = async (item) => {
+        if (!item?.trimOn || !item.file) return;
+        item.trimPreviewFailed = false;
+        const spans = previewSpans(item.trimStart, item.trimEnd, item.duration);
+        if (!spans.length) return;
+        const url = URL.createObjectURL(item.file);
+        const audio = new Audio();
+        audio.preload = 'auto';
+        try {
+            await new Promise((resolve, reject) => {
+                audio.onloadedmetadata = () => resolve();
+                audio.onerror = () => reject(new Error('unplayable'));
+                audio.src = url;
+            });
+            for (const span of spans) {
+                audio.currentTime = span.start;
+                await audio.play();
+                await new Promise((resolve) => {
+                    const stop = () => {
+                        audio.pause();
+                        audio.removeEventListener('timeupdate', onTime);
+                        resolve();
+                    };
+                    const onTime = () => {
+                        if (audio.currentTime >= span.end - 0.05) stop();
+                    };
+                    audio.addEventListener('timeupdate', onTime);
+                    audio.addEventListener('ended', stop, { once: true });
+                });
+            }
+        } catch {
+            item.trimPreviewFailed = true;
+        } finally {
+            audio.pause();
+            audio.removeAttribute('src');
+            URL.revokeObjectURL(url);
+        }
+    };
+
+    const queueKeptSeconds = (item) => keptSeconds(item?.trimStart, item?.trimEnd, item?.duration);
+
     return {
         uploadAccept: UPLOAD_ACCEPT,
+        enableQueueTrim,
+        previewQueueTrim,
+        queueKeptSeconds,
+        queueTrimMessage,
         // Join several files into one recording
         joinMode,
         joinTitle,

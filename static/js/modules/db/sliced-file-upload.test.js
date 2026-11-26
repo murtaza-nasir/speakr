@@ -164,8 +164,26 @@ describe('uploadFileInSlices', () => {
         const finalizeCall = sent[sent.length - 1];
         expect(finalizeCall.url).toBe('/upload/session/sess-1/finalize-upload');
         expect(finalizeCall.body).toBe(form);
+        expect(slicePosts().every((call) => call.body !== form)).toBe(true);
         expect(result).toEqual({ id: 42, title: 'talk' });
         expect(progress[progress.length - 1]).toBe(1);
+    });
+
+    it('names the range at session start, so a range no file accepts is refused before any slice (#699)', async () => {
+        const form = new Map([['trim_start', '5'], ['trim_end', '3']]);
+        global.fetch.mockImplementationOnce(async (url, options) => {
+            fetchCalls.push({ url, options });
+            return {
+                status: 400,
+                text: async () => JSON.stringify({ error: 'Choose a start before the end, within the audio.', code: 'invalid_trim_range' }),
+            };
+        });
+        await expect(uploadFileInSlices(fakeFile(40 * MB), form, {})).rejects.toThrow('Choose a start before the end');
+        const body = JSON.parse(createCalls()[0].options.body);
+        expect(body.trim_start).toBe('5');
+        expect(body.trim_end).toBe('3');
+        expect(slicePosts()).toEqual([]);
+        expect(finalizePosts()).toEqual([]);
     });
 
     it('says when the file is a recording made in this browser (#650)', async () => {

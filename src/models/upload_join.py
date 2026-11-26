@@ -32,6 +32,8 @@ class UploadJoinPart(db.Model):
     file_size = db.Column(db.BigInteger, nullable=True)
     mime_type = db.Column(db.String(100), nullable=True)
     audio_duration_seconds = db.Column(db.Float, nullable=True)
+    trim_start = db.Column(db.Integer, nullable=True)  # whole seconds; None keeps the start
+    trim_end = db.Column(db.Integer, nullable=True)  # whole seconds; None keeps the real end
     meeting_date = db.Column(db.DateTime, nullable=True)
     claimed_at = db.Column(db.DateTime, nullable=True)  # set once, when the group is joined
     recording_id = db.Column(db.Integer, db.ForeignKey('recording.id', ondelete='SET NULL'), nullable=True)

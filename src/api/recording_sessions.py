@@ -365,6 +365,9 @@ def create_session():
     recorder session. ``{"filename": "talk.mp4", "total_bytes": 1234}``
     makes it a sliced upload of a file the user already has on disk;
     ``total_bytes`` is what the reassembled file must weigh at finalize.
+    A sliced upload may also name the ``trim_start`` and ``trim_end`` it
+    will send at finalize: a range no file could accept is refused here
+    with 400 invalid_trim_range or trim_too_short.
 
     Returns ``{session_id, expires_at, max_chunk_bytes}`` on success.
     """
@@ -395,6 +398,13 @@ def create_session():
             return jsonify(api_error('invalid_total_bytes')), 400
         total_bytes = raw_total
         mime_type = declared_mime or 'application/octet-stream'
+        # The range sent again at finalize can be refused here already when
+        # no file could accept it, before any slice is uploaded (#699).
+        from src.services.recording_ingestion import UploadTrimError, check_upload_trim_fields
+        try:
+            check_upload_trim_fields(data)
+        except UploadTrimError as trim_error:
+            return jsonify(api_error(trim_error.code)), 400
     else:
         mime_type = declared_mime or 'audio/webm'
         if mime_type not in _allowed_mime_types():

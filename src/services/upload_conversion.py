@@ -35,15 +35,53 @@ def _stored_mime(path, codec_info=None):
     return mime_type
 
 
+def _mark_cut_applied():
+    """Replace the range in the running job's params with 'trim_applied'.
+
+    Called in the transaction that stores the kept span, so the job row and
+    the recording change together. Outside a job (a direct call) there is no
+    row to change.
+    """
+    import json
+    from src.models import ProcessingJob
+    from src.services import job_control
+
+    job_id = getattr(job_control.current(), 'job_id', None)
+    if job_id is None:
+        return
+    job = db.session.get(ProcessingJob, job_id)
+    if job is None:
+        return
+    try:
+        stored = json.loads(job.params) if job.params else {}
+    except (TypeError, ValueError):
+        stored = {}
+    for key in ('trim_start', 'trim_end', 'retain_video'):
+        stored.pop(key, None)
+    stored['trim_applied'] = True
+    job.params = json.dumps(stored)
+
+
 def convert_uploaded_recording(recording_id, params):
     """Convert a recording's stored upload, then queue its transcription.
 
     params holds the transcription parameters resolved at upload time
     ('transcribe') and, when only the extracted audio of a video has to fit
-    the upload limit, that limit in MB ('extracted_audio_limit_mb').
+    the upload limit, that limit in MB ('extracted_audio_limit_mb'). A real
+    cut also carries 'trim_start' and/or 'trim_end', whole seconds. The
+    encode keeps that span; a range that is the whole file carries neither.
+    'retain_video' stores that span as a video, so playback and the
+    transcription share the shorter file.
+
+    The cut is applied once. The commit that stores the kept span also
+    replaces the range in the job's own params with 'trim_applied', so a job
+    that runs again after that commit (recovered after a crash, or retried
+    because the transcription could not be queued) converts nothing and only
+    queues the transcription.
     """
     from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE, chunking_service
     from src.services.job_queue import job_queue
+    from src.services.recording_trim import TrimError
     from src.services.storage import get_storage_service
     from src.utils.audio_conversion import convert_if_needed
     from src.utils.ffprobe import get_duration
@@ -58,6 +96,12 @@ def convert_uploaded_recording(recording_id, params):
     new_locator = None
     language = getattr(recording.owner, 'ui_language', None)
     stored_mime = recording.mime_type
+    trim_start = params.get('trim_start')
+    trim_end = params.get('trim_end')
+    already_cut = bool(params.get('trim_applied'))
+    real_cut = not already_cut and (bool(trim_start) or trim_end is not None)
+    if already_cut:
+        current_app.logger.info(f"Recording {recording_id} already has its kept span; the conversion is not run again")
 
     with storage.materialize(old_locator) as materialized:
         local_path = materialized.local_path
@@ -76,14 +120,25 @@ def convert_uploaded_recording(recording_id, params):
             chunking_service and chunking_service.needs_chunking(local_path, use_asr_endpoint, connector_specs)
         )
         try:
-            result = convert_if_needed(
-                local_path,
-                original_filename=original_filename,
-                needs_chunking=needs_chunking,
-                is_asr_endpoint=use_asr_endpoint,
-                delete_original=False,
-                connector_specs=connector_specs,
-            )
+            if already_cut:
+                output_path = local_path
+                result = None
+            elif params.get('retain_video'):
+                from src.services.recording_trim import cut_upload_span
+                output_path = cut_upload_span(local_path, trim_start, trim_end)
+                result = None
+            else:
+                result = convert_if_needed(
+                    local_path,
+                    original_filename=original_filename,
+                    needs_chunking=needs_chunking,
+                    is_asr_endpoint=use_asr_endpoint,
+                    delete_original=False,
+                    connector_specs=connector_specs,
+                    keep_start=trim_start,
+                    keep_end=trim_end,
+                )
+                output_path = result.output_path
         except FFmpegNotFoundError as e:
             current_app.logger.error(f"FFmpeg not found while converting recording {recording_id}: {loggable_error(e, local_path, recording_id=recording_id)}")
             raise ConversionFailed(translate('server.apiError.audio_converter_missing', language)) from None
@@ -94,8 +149,11 @@ def convert_uploaded_recording(recording_id, params):
             # FFmpeg's output names its build and the file's path: it stays in the log.
             current_app.logger.error(f"Conversion of recording {recording_id} failed: {loggable_error(e, local_path, recording_id=recording_id)}")
             raise ConversionFailed(AUDIO_DECODE_FAILED_MESSAGE) from None
+        except TrimError:
+            # The cut of a kept video wrote nothing.
+            current_app.logger.error(f"The kept span of recording {recording_id} could not be written")
+            raise ConversionFailed(AUDIO_DECODE_FAILED_MESSAGE) from None
 
-        output_path = result.output_path
         converted = output_path != local_path
         try:
             final_size = os.path.getsize(output_path)
@@ -147,17 +205,21 @@ def convert_uploaded_recording(recording_id, params):
     recording.mime_type = mime_type
     if duration:
         recording.audio_duration_seconds = float(duration)
+    if real_cut:
+        _mark_cut_applied()
     db.session.commit()
     if new_locator and old_locator != new_locator:
         try:
             storage.delete(old_locator)
         except Exception as e:
             current_app.logger.warning(f"Could not delete the original upload of recording {recording_id}: {loggable_error(e, old_locator, recording_id=recording_id)}")
-    if result.was_converted or result.was_compressed:
+    if result is not None and (result.was_converted or result.was_compressed):
         current_app.logger.info(
             f"Converted recording {recording_id}: {result.original_codec} -> {result.final_codec}, "
             f"{result.size_change_label}"
         )
+    elif params.get('retain_video') and converted:
+        current_app.logger.info(f"Stored the kept span of the video of recording {recording_id}")
 
     # A safe point: the converted audio is stored, and a canceled conversion
     # queues no transcription.

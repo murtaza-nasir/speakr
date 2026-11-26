@@ -559,13 +559,15 @@ OPENAPI_SPEC = {
                                     "tag_id": {"type": "integer"},
                                     "tag_ids[0]": {"type": "integer"},
                                     "tag_ids[1]": {"type": "integer"},
-                                    "keep_audio_only": {"type": "boolean", "description": "If true, the server discards the video stream and stores only the extracted audio. Allows uploads up to max_audio_only_video_size_mb (vs max_file_size_mb) for video files, as long as the extracted audio still fits the regular limit."}
+                                    "keep_audio_only": {"type": "boolean", "description": "If true, the server discards the video stream and stores only the extracted audio. Allows uploads up to max_audio_only_video_size_mb (vs max_file_size_mb) for video files, as long as the extracted audio still fits the regular limit."},
+                                    "trim_start": {"type": "integer", "description": "Optional whole second to keep from. Absent, blank, or 0 with no earlier end keeps the start of the file. The cut runs in the conversion after this response."},
+                                    "trim_end": {"type": "integer", "description": "Optional whole second to keep through. Absent, blank, or at or beyond the file duration keeps through the real end."}
                                 }
                             }
                         }
                     }
                 },
-                "responses": {"202": {"description": "Upload accepted and queued"}, "400": {"description": "Invalid parameters, or a file that cannot be ingested (code empty_file or audio_decode_failed)"}, "507": {"description": "The upload would exceed the user's storage quota (code storage_quota_exceeded, with used_bytes, quota_bytes and file_bytes)"}}
+                "responses": {"202": {"description": "Upload accepted and queued"}, "400": {"description": "Invalid parameters (code invalid_trim_range, or trim_too_short for a kept span under one second), or a file that cannot be ingested (code empty_file or audio_decode_failed). A trim sent with a duration that cannot be read is audio_decode_failed."}, "507": {"description": "The upload would exceed the user's storage quota (code storage_quota_exceeded, with used_bytes, quota_bytes and file_bytes). The quota judges the uploaded file, not the kept span."}}
             }
         },
         "/integrations/asr-voice-recorder/upload": {
@@ -594,6 +596,8 @@ OPENAPI_SPEC = {
                                     "date": {"type": "integer", "format": "int64", "description": "Recording time as Unix epoch seconds or milliseconds"},
                                     "duration": {"type": "number", "description": "Accepted for ASR compatibility but ignored; Speakr measures the media duration"},
                                     "note": {"type": "string", "description": "Stored as the recording notes"},
+                                    "trim_start": {"type": "integer", "description": "Optional whole second to keep from. A repeat is the same recording only when the bytes and this kept span match."},
+                                    "trim_end": {"type": "integer", "description": "Optional whole second to keep through. A repeat is the same recording only when the bytes and this kept span match."},
                                 },
                             }
                         }
@@ -4402,6 +4406,11 @@ def upload_from_asr_voice_recorder():
         meeting_date = _asr_meeting_date(request.form.get('date'))
         if meeting_date:
             form['meeting_date'] = meeting_date
+        # The same bytes are a new recording when the kept span differs.
+        # Absent fields stay absent so an empty string still means no cut.
+        for name in ('trim_start', 'trim_end'):
+            if request.form.get(name) is not None:
+                form[name] = request.form.get(name)
 
         return ingest_uploaded_recording(
             owner=owner,
@@ -4448,6 +4457,11 @@ def upload_recording():
       - external_refs (optional, JSON array of references)
       - idempotency_key (optional, 1 to 100 characters)
       - strict (optional, true: a tag or folder you cannot use is an error)
+      - trim_start (optional, whole seconds): keep from this second through
+        the real end. An empty string is the same as omitting it.
+      - trim_end (optional, whole seconds): keep from the start through this
+        second. An empty string is the same as omitting it. A value at or
+        beyond the probed duration keeps through the real end.
     """
     from src.api.recordings import ingest_uploaded_recording
     from src.models import Folder, GroupMembership, Tag

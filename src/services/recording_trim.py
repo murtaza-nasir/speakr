@@ -231,9 +231,12 @@ def request_trim(recording, user, start, end, regenerate_summary=False):
 def _cut_command(source, output, start, end, codec_info):
     """ffmpeg arguments that keep [start, end] of the source, re-encoded with
     the source's codec (the cut is exact to the sample, which copying the
-    stream is not)."""
+    stream is not). An end of None keeps through the real end."""
     cmd = ['ffmpeg', '-y', '-hide_banner', '-loglevel', 'error', '-i', source,
-           '-ss', f'{start:.3f}', '-to', f'{end:.3f}', '-map', '0:a:0']
+           '-ss', f'{start:.3f}']
+    if end is not None:
+        cmd += ['-to', f'{end:.3f}']
+    cmd += ['-map', '0:a:0']
     if codec_info.get('has_video'):
         cmd += ['-map', '0:v:0?']
     cmd += ['-map_metadata', '0']
@@ -286,7 +289,28 @@ def _cut_audio(local_path, staging_path, start, end):
         duration = get_duration(staging_path)
     except Exception:
         duration = None
-    return duration or (end - start)
+    return duration or (end - start if end is not None else None)
+
+
+def cut_upload_span(local_path, start=None, end=None):
+    """Write the kept span of an uploaded file beside it and return its path (#699).
+
+    The upload range of a file whose video is kept (VIDEO_RETENTION, or
+    VIDEO_PASSTHROUGH_ASR) is cut here, with the codec rules of a trim: the
+    audio keeps its codec and the picture is encoded again by the default
+    encoder of the file's container, so any container that holds the
+    upload holds the kept span. ``start`` None or 0 keeps the start; ``end``
+    None keeps through the real end. The input is left in place. Raises
+    FFmpegError, or TrimError('trim_failed') when ffmpeg wrote nothing.
+    """
+    root, ext = os.path.splitext(local_path)
+    output = f"{root}.kept{ext or '.m4a'}"
+    try:
+        _cut_audio(local_path, output, float(start or 0), None if end is None else float(end))
+    except Exception:
+        _safe_unlink(output)
+        raise
+    return output
 
 
 def _safe_unlink(path):

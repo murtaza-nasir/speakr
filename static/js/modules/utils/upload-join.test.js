@@ -57,6 +57,21 @@ describe('totalJoinDuration', () => {
         expect(totalJoinDuration([item('a', 'a', 1, 'queued', 60), item('b', 'b', 2)])).toBeNull();
         expect(totalJoinDuration([])).toBeNull();
     });
+    it('sums the kept span of a part that has its own range', () => {
+        const cut = item('a', 'a', 1, 'queued', 60);
+        cut.trimOn = true;
+        cut.trimStart = 10;
+        cut.trimEnd = 40;
+        const whole = item('b', 'b', 2, 'queued', 30);
+        expect(totalJoinDuration([cut, whole])).toBe(60);
+    });
+    it('does not count a kept span past the file', () => {
+        const cut = item('a', 'a', 1, 'queued', 300);
+        cut.trimOn = true;
+        cut.trimStart = 60;
+        cut.trimEnd = 301220;
+        expect(totalJoinDuration([cut])).toBe(240);
+    });
 });
 
 describe('newJoinGroupId and isVideoFileName', () => {

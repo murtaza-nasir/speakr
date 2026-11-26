@@ -1,7 +1,8 @@
 """Steps of upload ingestion (src/services/recording_ingestion.py).
 
 lookup_duplicate hashes the staged upload and finds an earlier recording of
-it; handle_duplicate_replay answers a retried upload with that recording.
+the same bytes and kept span; handle_duplicate_replay answers a retried
+upload with that recording.
 resolve_size_policy, enforce_size_policy and recheck_size_after_probe set
 and apply the upload size limits; probe_upload and has_video_after_failed_probe
 read the upload's codecs. decide_conversion, convert_upload_in_request and
@@ -128,6 +129,39 @@ def test_lookup_matches_on_hash_and_warns(owner, staged):
             "existing_title": "Earlier upload",
             "existing_created_at": "2026-01-02T03:04:05",
         }
+
+
+def test_lookup_matches_only_the_same_kept_span(owner, staged):
+    with app.app_context():
+        other = _recording(owner, upload_trim_start=1, upload_trim_end=4)
+        same = _recording(owner, upload_trim_start=3, upload_trim_end=None)
+        whole = _recording(owner, upload_trim_start=None, upload_trim_end=None)
+
+        found = _lookup(owner, staged, trim_start=3)
+        assert found.existing.id == same.id
+        assert found.duplicate_warning["existing_recording_id"] == same.id
+
+        found = _lookup(owner, staged, trim_start=1, trim_end=4)
+        assert found.existing.id == other.id
+
+        found = _lookup(owner, staged)
+        assert found.existing.id == whole.id
+
+        # A span this user has not uploaded is not a duplicate of the others.
+        assert _lookup(owner, staged, trim_start=2).existing is None
+        assert _lookup(owner, staged, trim_start=2).duplicate_warning is None
+
+
+def test_reuse_matches_only_the_same_kept_span(owner, staged):
+    with app.app_context():
+        other = _recording(owner, upload_trim_start=1, upload_trim_end=4)
+        same = _recording(owner, upload_trim_start=3)
+        found = _lookup(owner, staged, reuse_duplicate=True, trim_start=3)
+        assert found.existing.id == same.id
+        assert found.duplicate_warning is None
+        found = _lookup(owner, staged, reuse_duplicate=True, trim_start=1, trim_end=4)
+        assert found.existing.id == other.id
+        assert _lookup(owner, staged, reuse_duplicate=True, trim_start=2) == (PAYLOAD_HASH, None, None)
 
 
 def test_lookup_ignores_another_users_recording(owner, staged):
@@ -583,16 +617,19 @@ def test_extracted_audio_limit_applies_to_an_audio_only_video_without_chunking()
     assert (chunked.chunking_will_handle_large_audio, chunked.extracted_audio_limit_mb) == (True, None)
 
 
-def _convert(staged, outcome):
+def _convert(staged, outcome, keep_start=None, keep_end=None):
     convert = MagicMock(side_effect=outcome) if isinstance(outcome, Exception) else MagicMock(return_value=outcome)
     specs = object()
     with patch("src.services.recording_ingestion.convert_if_needed", convert), \
             patch("src.api.recordings.USE_ASR_ENDPOINT", True):
-        converted = convert_upload_in_request(staged, original_filename="talk.m4a", codec_info=AUDIO,
-                                              needs_chunking_for_processing=False, connector_specs=specs)
-    convert.assert_called_once_with(staged, original_filename="talk.m4a", codec_info=AUDIO,
-                                    needs_chunking=False, is_asr_endpoint=True, delete_original=True,
-                                    connector_specs=specs)
+        converted = convert_upload_in_request(
+            staged, original_filename="talk.m4a", codec_info=AUDIO,
+            needs_chunking_for_processing=False, connector_specs=specs,
+            keep_start=keep_start, keep_end=keep_end)
+    convert.assert_called_once_with(
+        staged, original_filename="talk.m4a", codec_info=AUDIO,
+        needs_chunking=False, is_asr_endpoint=True, delete_original=True,
+        connector_specs=specs, keep_start=keep_start, keep_end=keep_end)
     return converted
 
 
@@ -603,6 +640,14 @@ def test_convert_upload_in_request_returns_the_converted_path(staged):
         converted = _convert(staged, result)
     assert converted == ConvertedUpload("/staging/talk.mp3", None)
     info.assert_called_once_with("File converted: alac -> mp3")
+
+
+def test_convert_upload_in_request_forwards_the_kept_span(staged):
+    result = SimpleNamespace(output_path="/staging/talk.mp3", was_converted=True, was_compressed=False,
+                             original_codec="alac", final_codec="mp3")
+    with app.app_context():
+        converted = _convert(staged, result, keep_start=2, keep_end=5)
+    assert converted == ConvertedUpload("/staging/talk.mp3", None)
 
 
 @pytest.mark.parametrize("error,status,code", [
@@ -813,6 +858,7 @@ def test_store_recording_commits_and_returns_response(owner, staged):
             (datetime(2026, 1, 2, 3, 4, 5), "audio/wav", 12.5, "the notes")
         assert (rec.processing_source, rec.file_hash, rec.prompt_variables, rec.keep_audio_only) == \
             ("api_v1", PAYLOAD_HASH, {"client": "Acme"}, True)
+        assert rec.upload_trim_start is None and rec.upload_trim_end is None
         from src.utils.titles import placeholder_title
         assert rec.folder_id is None and rec.title == placeholder_title("talk.wav")
         assert rec.title_source is None
@@ -820,6 +866,13 @@ def test_store_recording_commits_and_returns_response(owner, staged):
                                                 duplicate_warning=None, reuse_duplicate=False,
                                                 success_status=202)
         assert status == 202 and body.get_json()["id"] == rec_id
+
+
+def test_store_recording_keeps_the_upload_span(owner, staged):
+    with app.app_context():
+        stored = _store(owner, staged, _Storage(), upload_trim_start=2, upload_trim_end=5)
+        rec = db.session.get(Recording, stored.recording.id)
+        assert (rec.upload_trim_start, rec.upload_trim_end) == (2, 5)
 
 
 def test_store_recording_runs_prepare_after_the_flush_and_before_storage(owner, staged):

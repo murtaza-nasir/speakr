@@ -84,6 +84,11 @@ class Recording(db.Model):
     processing_source = db.Column(db.String(50), default='upload')  # upload, auto_process, recording
     error_message = db.Column(db.Text, nullable=True)  # Store detailed error messages
     file_hash = db.Column(db.String(64), nullable=True)  # SHA-256 hash for duplicate detection
+    # Whole seconds kept from the uploaded file. NULL keeps the start or the
+    # real end. Duplicate detection and voice-recorder reuse match these with
+    # the file hash. A later trim in the transcript editor does not change them.
+    upload_trim_start = db.Column(db.Integer, nullable=True)
+    upload_trim_end = db.Column(db.Integer, nullable=True)
 
     # Per-upload override for VIDEO_RETENTION. When True, the processing
     # pipeline extracts audio and discards the video stream even if the

@@ -9,7 +9,7 @@ handling and the staging cleanup (discussion #556).
 Duplicate detection:
 
 * :func:`lookup_duplicate` hashes the staged upload and finds an earlier
-  recording of the same file.
+  recording of the same bytes and the same kept span.
 * :func:`handle_duplicate_replay` answers a retried upload
   (``reuse_duplicate``) with the recording it already created.
 
@@ -60,6 +60,7 @@ Assembly:
 
 import json
 import os
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, NamedTuple, Optional
@@ -118,25 +119,32 @@ class DuplicateLookup(NamedTuple):
 
 
 def lookup_duplicate(*, owner, filepath, form, processing_source, original_filename,
-                     reuse_duplicate):
+                     reuse_duplicate, trim_start=None, trim_end=None, file_hash=None):
     """Hash the staged upload and look for an earlier recording of it.
 
-    With reuse_duplicate the match must also have the same source, filename,
-    notes and meeting date (or, without a meeting date, be under a day old).
-    duplicate_warning is set only when reuse_duplicate is off. A failure to
-    hash or query is logged and leaves the remaining fields None.
+    The match is the same bytes and the same kept span. ``trim_start`` and
+    ``trim_end`` are the resolved span: None keeps the start or the real end,
+    so a range that still covers the whole file matches an upload with no
+    range. A different span is a different recording. With reuse_duplicate the
+    match must also have the same source, filename, notes and meeting date
+    (or, without a meeting date, be under a day old). duplicate_warning is set
+    only when reuse_duplicate is off. ``file_hash`` is the hash of the file as
+    received, when the caller took it before the probe could repair the file
+    (#340); without it the staged file is hashed here. A failure to hash or
+    query is logged and leaves the remaining fields None.
     """
     # Imported at call time so a patch of src.utils.file_hash reaches it.
     from src.utils.file_hash import compute_file_sha256
 
-    file_hash = None
     duplicate_warning = None
     existing = None
     try:
-        file_hash = compute_file_sha256(filepath)
+        file_hash = file_hash or compute_file_sha256(filepath)
         duplicate_query = Recording.query.filter_by(
             user_id=owner.id,
             file_hash=file_hash,
+            upload_trim_start=trim_start,
+            upload_trim_end=trim_end,
         )
         if reuse_duplicate:
             duplicate_query = duplicate_query.filter_by(
@@ -176,6 +184,16 @@ def lookup_duplicate(*, owner, filepath, form, processing_source, original_filen
         )
 
     return DuplicateLookup(file_hash, existing, duplicate_warning)
+
+
+def hash_received_file(filepath):
+    """SHA-256 of the staged upload as received, or None when it cannot be read."""
+    from src.utils.file_hash import compute_file_sha256
+    try:
+        return compute_file_sha256(filepath)
+    except Exception as e:
+        current_app.logger.warning(f"Could not compute file hash: {loggable_error(e)}")
+        return None
 
 
 def handle_duplicate_replay(existing, *, owner, filepath, file_hash, success_status):
@@ -445,6 +463,127 @@ def probe_upload(*, filepath, original_filename):
     return UploadProbe(codec_info, probe_error, has_video)
 
 
+class UploadTrimError(Exception):
+    """A trim range the upload cannot apply. ``code`` is the API error code."""
+
+    def __init__(self, code):
+        self.code = code
+
+
+_WHOLE_SECONDS = re.compile(r"-?\d+\Z")
+# int() refuses a digit string longer than this (sys.get_int_max_str_digits,
+# 4300 by default) with ValueError. A trim field that long is not a duration.
+# Refusing it here keeps the upload on invalid_trim_range instead of a 500.
+_MAX_TRIM_DIGITS = 4300
+
+
+def _whole_seconds_field(form, name):
+    """The form field as a whole number of seconds, or None when it is absent.
+
+    An empty string is absent. Anything else that is not a whole number
+    raises UploadTrimError. A digit string longer than ``_MAX_TRIM_DIGITS``
+    is the same refusal: converting it would raise ValueError.
+    """
+    raw = form.get(name) if form is not None else None
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if text == "":
+        return None
+    if _WHOLE_SECONDS.fullmatch(text) is None:
+        raise UploadTrimError("invalid_trim_range")
+    digits = text[1:] if text.startswith("-") else text
+    if len(digits) > _MAX_TRIM_DIGITS:
+        raise UploadTrimError("invalid_trim_range")
+    try:
+        return int(text)
+    except ValueError:
+        raise UploadTrimError("invalid_trim_range") from None
+
+
+def check_upload_trim_fields(form):
+    """Refuse what can be told of a range before the file has arrived.
+
+    A sliced upload names its range when its session is created, so a range
+    that no file could accept (not whole seconds, a negative start, an end
+    not after the start, or less than MIN_KEPT_SECONDS) is refused before a
+    slice is sent. What depends on the file's length is checked by
+    resolve_upload_trim at finalize. Raises UploadTrimError.
+    """
+    from src.services.recording_trim import MIN_KEPT_SECONDS
+
+    start = _whole_seconds_field(form, "trim_start")
+    end = _whole_seconds_field(form, "trim_end")
+    if start is not None and start < 0:
+        raise UploadTrimError("invalid_trim_range")
+    if end is not None and end <= (start or 0):
+        raise UploadTrimError("invalid_trim_range")
+    if end is not None and end - (start or 0) < MIN_KEPT_SECONDS:
+        raise UploadTrimError("trim_too_short")
+
+
+def resolve_upload_trim(form, filepath, codec_info):
+    """The convert-job trim for this upload, or None when the whole file is kept.
+
+    ``trim_start`` alone keeps from that second through the real end.
+    ``trim_end`` alone keeps from the start through that second. An end at or
+    beyond the probed duration keeps through the real end. A range that still
+    covers the whole file returns None, so nothing is cut and no extra encode
+    is added. Raises UploadTrimError when a present field is not a whole
+    number of seconds, the start is negative or past the end, the span is
+    empty (invalid_trim_range), the span is shorter than a trim in the
+    transcript editor may keep (trim_too_short, MIN_KEPT_SECONDS), or the
+    fields are present and the duration cannot be read.
+    """
+    from src.services.recording_trim import MIN_KEPT_SECONDS
+
+    start = _whole_seconds_field(form, "trim_start")
+    end = _whole_seconds_field(form, "trim_end")
+    if start is None and end is None:
+        return None
+    duration = None
+    if codec_info is not None:
+        try:
+            duration = get_duration(filepath, timeout=30, codec_info=codec_info)
+        except Exception:
+            duration = None
+    if not duration or duration <= 0:
+        raise UploadTrimError("audio_decode_failed")
+    if start is not None and start < 0:
+        raise UploadTrimError("invalid_trim_range")
+    if start is not None and start >= duration:
+        raise UploadTrimError("invalid_trim_range")
+    if end is not None and end >= duration:
+        end = None
+    if end is not None and end <= (0 if start is None else start):
+        raise UploadTrimError("invalid_trim_range")
+    if (duration if end is None else end) - (start or 0) < MIN_KEPT_SECONDS:
+        raise UploadTrimError("trim_too_short")
+    params = {}
+    if start:
+        params["trim_start"] = start
+    if end is not None:
+        params["trim_end"] = end
+    return params or None
+
+
+def kept_duration(full_seconds, start, end):
+    """Length of a span that has not been cut yet.
+
+    The upload is answered while a deferred cut still has the whole file.
+    Reporting that whole length makes the player show it, then jump to the
+    span once the convert job finishes.
+    """
+    if not full_seconds or full_seconds <= 0:
+        return full_seconds
+    begin = float(start or 0)
+    stop = float(full_seconds) if end is None else min(float(end), float(full_seconds))
+    span = stop - begin
+    if span <= 0:
+        return float(full_seconds)
+    return span
+
+
 def has_video_after_failed_probe(*, codec_info, probe_error, has_video, original_filename):
     """Take a video extension as video when the probe did not finish.
 
@@ -568,7 +707,8 @@ class ConvertedUpload(NamedTuple):
 
 
 def convert_upload_in_request(filepath, *, original_filename, codec_info,
-                              needs_chunking_for_processing, connector_specs):
+                              needs_chunking_for_processing, connector_specs,
+                              keep_start=None, keep_end=None):
     """Convert the staged upload before the request is answered.
 
     Returns the path of the file left (the same path when nothing needed
@@ -588,7 +728,9 @@ def convert_upload_in_request(filepath, *, original_filename, codec_info,
             needs_chunking=needs_chunking_for_processing,
             is_asr_endpoint=USE_ASR_ENDPOINT,
             delete_original=True,
-            connector_specs=connector_specs  # Pass connector specs for codec restrictions
+            connector_specs=connector_specs,  # Pass connector specs for codec restrictions
+            keep_start=keep_start,
+            keep_end=keep_end,
         )
         filepath = result.output_path
 
@@ -739,7 +881,8 @@ class StoredRecording(NamedTuple):
 def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_filename,
                     user_title, final_file_size, meeting_date, mime_type, audio_duration_seconds,
                     notes, selected_folder, selected_tags, processing_source, file_hash,
-                    prompt_variables, effective_audio_only, prepare):
+                    prompt_variables, effective_audio_only, prepare,
+                    upload_trim_start=None, upload_trim_end=None):
     """Create the recording, store the staged file and commit both.
 
     Unless the upload was recorded in this browser, the owner's quota is
@@ -780,6 +923,8 @@ def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_
         folder_id=selected_folder.id if selected_folder else None,
         processing_source=processing_source,
         file_hash=file_hash,
+        upload_trim_start=upload_trim_start,
+        upload_trim_end=upload_trim_end,
         prompt_variables=prompt_variables,
         # Per-upload override: record the effective audio-only flag so
         # the processing task knows whether to drop the video stream
@@ -877,13 +1022,15 @@ def build_ingestion_response(recording, *, owner, duplicate_warning, reuse_dupli
 
 
 def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_deferred,
-                           extracted_audio_limit_mb):
+                           extracted_audio_limit_mb, trim_params=None, retain_video=False):
     """Queue the committed recording's first job and emit its recording.created event.
 
     A deferred conversion queues the convert job, which carries the
     transcribe params and extracted_audio_limit_mb and queues the
-    transcription itself; otherwise the transcribe job is queued. Returns
-    nothing.
+    transcription itself; otherwise the transcribe job is queued. A real cut
+    adds trim_start and/or trim_end; a kept video with a real cut sets
+    retain_video, and that job cuts the stored video to the kept span instead
+    of extracting audio. Returns nothing.
     """
     # Read from src.api.recordings at call time: its routes use it too, and
     # tests replace it there.
@@ -912,11 +1059,18 @@ def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_defe
 
     if conversion_deferred:
         # The convert job queues the transcription with these params.
+        # trim_params is set only for a real cut. The job encodes that
+        # span; the whole file carries no trim.
+        convert_params = {'transcribe': job_params, 'extracted_audio_limit_mb': extracted_audio_limit_mb}
+        if trim_params:
+            convert_params.update(trim_params)
+        if retain_video:
+            convert_params['retain_video'] = True
         job_queue.enqueue(
             user_id=owner_id,
             recording_id=recording_id,
             job_type='convert',
-            params={'transcribe': job_params, 'extracted_audio_limit_mb': extracted_audio_limit_mb},
+            params=convert_params,
             is_new_upload=True
         )
         current_app.logger.info(f"Conversion job queued for recording ID: {recording_id}")
@@ -1076,26 +1230,10 @@ def ingest(
 
         # Compute file hash on the ORIGINAL upload before any conversion/compression.
         # Lossy re-encoding (e.g. FLAC→MP3) produces different bytes each run,
-        # so hashing after conversion would miss duplicates.
-        duplicate = lookup_duplicate(
-            owner=owner,
-            filepath=filepath,
-            form=form,
-            processing_source=processing_source,
-            original_filename=original_filename,
-            reuse_duplicate=reuse_duplicate,
-        )
-        file_hash = duplicate.file_hash
-        duplicate_warning = duplicate.duplicate_warning
-
-        if duplicate.existing and reuse_duplicate:
-            return handle_duplicate_replay(
-                duplicate.existing,
-                owner=owner,
-                filepath=filepath,
-                file_hash=file_hash,
-                success_status=success_status,
-            )
+        # so hashing after conversion would miss duplicates. The probe below
+        # can also repair a malformed WebM in place (#340). The duplicate
+        # lookup itself waits for the kept span, which needs the probe.
+        received_hash = hash_received_file(filepath)
 
         # --- Convert files only when chunking is needed ---
 
@@ -1131,6 +1269,39 @@ def ingest(
             has_video=has_video,
             original_filename=original_filename,
         )
+        # Resolve the range for every upload, including a join part. The part
+        # is still cut only in the merge encode, not by this request's convert.
+        try:
+            trim_params = resolve_upload_trim(form, filepath, codec_info)
+        except UploadTrimError as trim_error:
+            _discard_staging(filepath)
+            filepath = None
+            return jsonify(api_error(trim_error.code)), 400
+        # The kept span is the resolved one: a different span is a different
+        # recording, and a range that still covers the whole file matches an
+        # upload that named no range.
+        duplicate = lookup_duplicate(
+            owner=owner,
+            filepath=filepath,
+            form=form,
+            processing_source=processing_source,
+            original_filename=original_filename,
+            reuse_duplicate=reuse_duplicate,
+            trim_start=(trim_params or {}).get('trim_start'),
+            trim_end=(trim_params or {}).get('trim_end'),
+            file_hash=received_hash,
+        )
+        file_hash = duplicate.file_hash
+        duplicate_warning = duplicate.duplicate_warning
+
+        if duplicate.existing and reuse_duplicate:
+            return handle_duplicate_replay(
+                duplicate.existing,
+                owner=owner,
+                filepath=filepath,
+                file_hash=file_hash,
+                success_status=success_status,
+            )
         conversion = decide_conversion(
             codec_info=codec_info,
             has_video=has_video,
@@ -1148,6 +1319,48 @@ def ingest(
         keep_video_for_this_upload = conversion.keep_video_for_this_upload
         extracted_audio_limit_mb = conversion.extracted_audio_limit_mb
         conversion_deferred = conversion.conversion_deferred
+        # A retained video stays a video. A real cut keeps that shorter file
+        # for playback and for transcription. With convert workers the cut
+        # runs after this response, the same way an audio cut does. With
+        # none, it runs here so the file is not left whole.
+        # The same holds for a video passed through to the ASR service
+        # (VIDEO_PASSTHROUGH_ASR): it is cut as a video, so the service hears
+        # only the kept span.
+        retain_video = bool(keep_video_for_this_upload and trim_params and not join)
+        if retain_video and CONVERT_WORKERS <= 0:
+            from src.services.recording_trim import TrimError, cut_upload_span
+            try:
+                cut_path = cut_upload_span(
+                    filepath,
+                    trim_params.get('trim_start'),
+                    trim_params.get('trim_end'),
+                )
+            except FFmpegNotFoundError as e:
+                current_app.logger.error(f"FFmpeg not found: {e}")
+                _discard_staging(filepath)
+                filepath = None
+                return jsonify(api_error('audio_converter_missing')), 500
+            except FFmpegTimeoutError as e:
+                current_app.logger.error(
+                    f"FFmpeg conversion timed out for {loggable_path(filepath)}: {loggable_error(e, filepath)}")
+                _discard_staging(filepath)
+                filepath = None
+                return jsonify({'error': translate('server.apiError.audio_conversion_timeout'),
+                                'code': 'audio_conversion_timeout'}), 500
+            except (FFmpegError, TrimError) as e:
+                current_app.logger.error(
+                    f"FFmpeg conversion failed for {loggable_path(filepath)}: {loggable_error(e, filepath)}")
+                _discard_staging(filepath)
+                filepath = None
+                return jsonify(api_error('audio_decode_failed')), 400
+            if cut_path != filepath:
+                try:
+                    os.remove(filepath)
+                except OSError:
+                    pass
+                filepath = cut_path
+        elif retain_video:
+            conversion_deferred = True
         if conversion.convert_in_request:
             converted = convert_upload_in_request(
                 filepath,
@@ -1155,6 +1368,9 @@ def ingest(
                 codec_info=codec_info,
                 needs_chunking_for_processing=needs_chunking_for_processing,
                 connector_specs=connector_specs,
+                # A join part is cut in the merge encode, not before it.
+                keep_start=None if join else (trim_params or {}).get('trim_start'),
+                keep_end=None if join else (trim_params or {}).get('trim_end'),
             )
             if converted.error_response is not None:
                 return converted.error_response
@@ -1209,6 +1425,16 @@ def ingest(
                 audio_duration_seconds = float(detected_duration)
         except Exception as e:
             current_app.logger.warning(f"Could not determine duration for upload {loggable_path(filepath)}: {loggable_error(e, filepath)}")
+        # A deferred cut still has the whole file here. Store the span the
+        # player will have, so a video does not show its full length and
+        # then jump when the convert job replaces the file. A cut that
+        # already ran in this request is probed above and left as it is.
+        if conversion_deferred and trim_params and audio_duration_seconds:
+            audio_duration_seconds = kept_duration(
+                audio_duration_seconds,
+                trim_params.get('trim_start'),
+                trim_params.get('trim_end'),
+            )
 
         # Get notes from the form
         notes = form.get('notes')
@@ -1364,6 +1590,8 @@ def ingest(
                 title=user_title, notes=notes, folder=selected_folder, tags=selected_tags,
                 prompt_variables=prompt_variables, transcribe_params=resolved_params,
                 duplicate_warning=duplicate_warning, success_status=success_status,
+                trim_start=(trim_params or {}).get('trim_start'),
+                trim_end=(trim_params or {}).get('trim_end'),
             )
 
         stored = store_recording(
@@ -1386,6 +1614,8 @@ def ingest(
             prompt_variables=prompt_variables,
             effective_audio_only=effective_audio_only,
             prepare=prepare,
+            upload_trim_start=(trim_params or {}).get('trim_start'),
+            upload_trim_end=(trim_params or {}).get('trim_end'),
         )
         if stored.error_response is not None:
             return stored.error_response
@@ -1404,6 +1634,8 @@ def ingest(
             resolved_params=resolved_params,
             conversion_deferred=conversion_deferred,
             extracted_audio_limit_mb=extracted_audio_limit_mb,
+            trim_params=trim_params,
+            retain_video=retain_video and conversion_deferred,
         )
 
         return build_ingestion_response(

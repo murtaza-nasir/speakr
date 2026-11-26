@@ -219,7 +219,7 @@ def _worker_mocks():
     """Mock the worker-phase (run_merge_job): storage + ffmpeg concat + enqueue."""
     fake_storage = _FakeStorage()
 
-    def _fake_concat(input_paths, output_path):
+    def _fake_concat(input_paths, output_path, spans=None):
         with open(output_path, "wb") as f:
             f.write(b"\x00" * 2048)
 
@@ -423,7 +423,7 @@ def test_run_merge_job_empty_output_raises():
         with _endpoint_mocks():
             merged = create_merge_recording(user, [r1.id, r2.id])
 
-        def _empty_concat(input_paths, output_path):
+        def _empty_concat(input_paths, output_path, spans=None):
             open(output_path, "wb").close()  # zero-byte
 
         with patch("src.services.recording_merge.get_storage_service", return_value=_FakeStorage()), \

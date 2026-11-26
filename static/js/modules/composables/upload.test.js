@@ -45,7 +45,9 @@ vi.mock('../db/server-recording-sessions.js', () => ({
     getRememberedSession: vi.fn(() => local.remembered),
     forgetActiveSession: vi.fn(() => { local.remembered = null; }),
 }));
-vi.mock('../db/incognito-storage.js', () => ({}));
+vi.mock('../db/incognito-storage.js', () => ({
+    saveIncognitoRecording: vi.fn(),
+}));
 vi.mock('../csrf.js', () => ({
     getUploadCsrfToken: vi.fn(async () => 'token'),
     isCsrfRejection: () => false,
@@ -151,7 +153,10 @@ beforeEach(() => {
     nextId = 1;
     Object.assign(server, { mode: 'ok', stored: [], sends: [], nextRecordingId: 100 });
     globalThis.XMLHttpRequest = FakeXHR;
-    globalThis.navigator = { onLine: true };
+    Object.defineProperty(globalThis, 'navigator', {
+        value: { onLine: true },
+        configurable: true,
+    });
     vi.clearAllMocks();
     confirmDialog.mockImplementation(async () => false);
     local.session = null;
@@ -160,6 +165,110 @@ beforeEach(() => {
 
 afterEach(() => {
     delete globalThis.XMLHttpRequest;
+});
+
+describe('an incognito upload from the queue', () => {
+    it('sends trim_start and trim_end when the range control drops part of the file', async () => {
+        const { state, upload } = makeComposable();
+        const sent = [];
+        globalThis.fetch = vi.fn(async (url, opts) => {
+            sent.push({ url, form: opts.body });
+            return {
+                ok: true,
+                headers: { get: () => 'application/json' },
+                json: async () => ({ transcription: 'kept', title: 'Incognito' }),
+            };
+        });
+        state.uploadQueue.value.push({
+            file: new File([new Uint8Array([1, 2, 3])], 'clip.wav', { type: 'audio/wav' }),
+            status: 'queued',
+            clientId: 'inc-1',
+            duration: 6.2,
+            trimOn: true,
+            trimStart: 2,
+            trimEnd: 5,
+            asrOptions: {},
+        });
+
+        await upload.startIncognitoUpload();
+
+        expect(sent).toHaveLength(1);
+        expect(sent[0].url).toBe('/api/recordings/incognito');
+        expect(sent[0].form.get('trim_start')).toBe('2');
+        expect(sent[0].form.get('trim_end')).toBe('5');
+        delete globalThis.fetch;
+    });
+
+    it('sends no range when the control still covers the whole file', async () => {
+        const { state, upload } = makeComposable();
+        const sent = [];
+        globalThis.fetch = vi.fn(async (url, opts) => {
+            sent.push(opts.body);
+            return {
+                ok: true,
+                headers: { get: () => 'application/json' },
+                json: async () => ({ transcription: 'whole' }),
+            };
+        });
+        state.uploadQueue.value.push({
+            file: new File([new Uint8Array([1])], 'clip.wav', { type: 'audio/wav' }),
+            status: 'queued',
+            clientId: 'inc-2',
+            duration: 6.2,
+            trimOn: true,
+            trimStart: 0,
+            trimEnd: 7,
+            asrOptions: {},
+        });
+
+        await upload.startIncognitoUpload();
+
+        expect(sent[0].get('trim_start')).toBeNull();
+        expect(sent[0].get('trim_end')).toBeNull();
+        delete globalThis.fetch;
+    });
+});
+
+describe('a queued range the server would refuse (#699)', () => {
+    it('starts no upload, keeps the files queued and names the file', async () => {
+        const { state, utils, upload } = makeComposable();
+        const sent = [];
+        globalThis.fetch = vi.fn(async (url, opts) => { sent.push(url); return { ok: true, json: async () => ({}) }; });
+        const queued = (name, trimStart, trimEnd) => ({
+            file: new File([new Uint8Array([1, 2, 3])], name, { type: 'audio/wav' }),
+            status: 'queued', clientId: `id-${name}`, duration: 6.2, asrOptions: {},
+            trimOn: true, trimStart, trimEnd,
+        });
+        state.uploadQueue.value.push(queued('fine.wav', 1, 5), queued('bad.wav', 4, 2));
+
+        upload.startUpload();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(state.uploadQueue.value.map((item) => item.status)).toEqual(['queued', 'queued']);
+        expect(server.sends).toHaveLength(0);
+        expect(sent).toHaveLength(0);
+        expect(utils.setGlobalError).toHaveBeenCalledWith('bad.wav: server.apiError.trim_invalid_range');
+        expect(upload.queueTrimMessage(state.uploadQueue.value[1])).toBe('server.apiError.trim_invalid_range');
+        expect(upload.queueTrimMessage(state.uploadQueue.value[0])).toBe('');
+        delete globalThis.fetch;
+    });
+
+    it('sends nothing from incognito either', async () => {
+        const { state, utils, upload } = makeComposable();
+        state.incognitoMode.value = true;
+        const sent = [];
+        globalThis.fetch = vi.fn(async (url) => { sent.push(url); return { ok: true, json: async () => ({}) }; });
+        state.uploadQueue.value.push({
+            file: new File([new Uint8Array([1])], 'clip.wav', { type: 'audio/wav' }),
+            status: 'queued', clientId: 'inc-3', duration: 6.5, asrOptions: {},
+            trimOn: true, trimStart: 6, trimEnd: 7,
+        });
+        await upload.startIncognitoUpload();
+        expect(sent).toHaveLength(0);
+        expect(state.incognitoProcessing.value).toBe(false);
+        expect(utils.setGlobalError).toHaveBeenCalledWith('clip.wav: server.apiError.trim_too_short');
+        delete globalThis.fetch;
+    });
 });
 
 describe('a recording whose upload failed (#650)', () => {
