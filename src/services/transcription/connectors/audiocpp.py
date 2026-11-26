@@ -168,16 +168,20 @@ class AudioCppTranscriptionConnector(BaseTranscriptionConnector):
             raise AudioFormatError('The recording is empty.')
         if _is_target_wav(data):
             return data
-        return self._convert_to_wav(data, request.filename)
+        # The copies of an incognito file go into the folder of its request
+        # and are removed with it, as for the VibeVoice and Tencent connectors.
+        from src.services.incognito_temp import dir_for_stream
+        return self._convert_to_wav(data, request.filename,
+                                    temp_dir=dir_for_stream(request.audio_file))
 
-    def _convert_to_wav(self, data: bytes, filename: Optional[str]) -> bytes:
+    def _convert_to_wav(self, data: bytes, filename: Optional[str], temp_dir: Optional[str] = None) -> bytes:
         suffix = os.path.splitext(filename or '')[1] or '.bin'
         source = target = None
         try:
-            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as handle:
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False, dir=temp_dir) as handle:
                 handle.write(data)
                 source = handle.name
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as handle:
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False, dir=temp_dir) as handle:
                 target = handle.name
             command = ['ffmpeg', '-y', '-nostdin', '-loglevel', 'error', '-i', source,
                        '-vn', '-ac', '1', '-ar', str(TARGET_SAMPLE_RATE),

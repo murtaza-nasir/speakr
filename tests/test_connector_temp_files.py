@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.services import incognito_temp
 from src.services.transcription.base import TranscriptionRequest
-from src.services.transcription.connectors import tencent_asr, vibevoice
+from src.services.transcription.connectors import audiocpp, tencent_asr, vibevoice
 
 ROOT = Path(__file__).resolve().parent.parent
 CONNECTORS = ROOT / "src" / "services" / "transcription"
@@ -157,6 +157,56 @@ def test_tencent_copy_of_an_ordinary_file_is_removed_from_the_temporary_folder(f
     assert _files(folders.system) == []
 
 
+def _audiocpp(monkeypatch, seen):
+    connector = audiocpp.AudioCppTranscriptionConnector(
+        {"base_url": "http://audiocpp.test:8080", "model": "vibevoice-asr"})
+
+    def ffmpeg(cmd, **kwargs):
+        source, target = cmd[cmd.index("-i") + 1], cmd[-1]
+        seen.extend([source, target])
+        assert os.path.exists(source)
+        Path(target).write_bytes(b"RIFF converted")
+        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
+
+    class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def post(self, url, **kwargs):
+            return httpx.Response(200, json={"text": SENTINEL, "timing": {}},
+                                  request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(audiocpp.subprocess, "run", ffmpeg)
+    monkeypatch.setattr(audiocpp.httpx, "Client", Client)
+    return connector
+
+
+def test_audiocpp_copies_of_an_incognito_file_are_in_its_request_folder(folders, monkeypatch):
+    seen = []
+    connector = _audiocpp(monkeypatch, seen)
+    upload = _audio(folders.request_dir, "tmpabc123.m4a")
+    with open(upload, "rb") as audio:
+        result = connector.transcribe(TranscriptionRequest(audio_file=audio, filename="visit.m4a"))
+    assert result.text == SENTINEL
+    assert len(seen) == 2 and {Path(p).parent for p in seen} == {folders.request_dir}
+    assert _files(folders.request_dir) == [upload.name]       # both copies are removed again
+    assert _files(folders.system) == []
+
+
+def test_audiocpp_copies_of_an_ordinary_file_are_removed(folders, monkeypatch):
+    seen = []
+    connector = _audiocpp(monkeypatch, seen)
+    connector.transcribe(TranscriptionRequest(audio_file=io.BytesIO(b"not a wav"), filename="visit.mp3"))
+    assert len(seen) == 2 and {Path(p).parent for p in seen} == {folders.system}
+    assert _files(folders.system) == []
+
+
 def test_dir_for_stream(folders):
     upload = _audio(folders.request_dir)
     with open(upload, "rb") as audio:
@@ -179,7 +229,7 @@ def test_no_connector_writes_a_file_outside_these_two():
                  if writes.search(line) and not line.strip().startswith("#")]
         if lines:
             found[path.name] = lines
-    assert set(found) == {"tencent_asr.py", "vibevoice.py"}, found
+    assert set(found) == {"audiocpp.py", "tencent_asr.py", "vibevoice.py"}, found
     for name, lines in found.items():
         source = (CONNECTORS / "connectors" / name).read_text(encoding="utf-8")
         assert "dir_for_stream(request.audio_file)" in source, name
