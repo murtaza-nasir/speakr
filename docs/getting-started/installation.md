@@ -170,7 +170,7 @@ For the best transcription and diarization quality, self-hosting an ASR service 
 
 4. **audio.cpp** - Local server (`audiocpp_server`) for VibeVoice ASR, Parakeet, Nemotron and Qwen3-ASR models
     - Repository: [0xShug0/audio.cpp](https://github.com/0xShug0/audio.cpp)
-    - **Supports:** Timestamps, and speaker labels for models that diarize (VibeVoice ASR, Nemotron 3 Diarization)
+    - **Supports:** Timestamps, and speaker labels when the model assigns them (VibeVoice ASR, Nemotron 3 Diarization)
     - **Does not support:** Speaker count hints, voice profiles, speaker embeddings
     - **Environment file:** `config/env.transcription.example` (audio.cpp section)
 

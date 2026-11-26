@@ -104,7 +104,7 @@ class AudioCppTranscriptionConnector(BaseTranscriptionConnector):
     PROVIDER_NAME = "audiocpp"
     DISPLAY_NAME = "audio.cpp server"
     DESCRIPTION = ("A self-hosted audio.cpp server (VibeVoice ASR, Parakeet, Nemotron, Qwen3-ASR) "
-                   "with timestamps and, for models that diarize, speaker labels.")
+                   "with timestamps, and speaker labels when the model assigns them.")
 
     # The server takes a request of up to 2 GiB (max_request_body_bytes), far
     # beyond a recording as 16 kHz WAV, so the app does not chunk unless
@@ -402,8 +402,8 @@ class AudioCppTranscriptionConnector(BaseTranscriptionConnector):
                 "max_duration_seconds": {
                     "type": "integer",
                     "default": 0,
-                    "description": ("Longest audio the model takes in one request; longer recordings "
-                                    "are split. 0 sends every recording whole."),
+                    "description": ("Longest audio per request for this model; longer recordings "
+                                    "are split. At 0, every recording is sent whole."),
                 },
             },
         }

@@ -417,7 +417,7 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
                     "type": "string",
                     "enum": list(cls.MODELS.keys()),
                     "default": next(iter(cls.MODELS)),
-                    "description": "Model type (for capability detection, defaults to deployment_name)"
+                    "description": "Model type, used for capability detection; the deployment name when empty"
                 }
             }
         }

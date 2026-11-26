@@ -54,7 +54,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
     }
     PROVIDER_NAME = "asr_endpoint"
     DISPLAY_NAME = "WhisperX / ASR endpoint"
-    DESCRIPTION = "A self-hosted WhisperX or whisper-asr webservice that Speakr sends audio to over HTTP."
+    DESCRIPTION = "A self-hosted WhisperX or whisper-asr webservice, reached over HTTP."
     # A job of the WhisperX jobs API is saved on the processing job, so a
     # retry or a restart polls it instead of submitting the audio again.
     SUPPORTS_TASK_RESUME = True
@@ -810,7 +810,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 "model": {
                     "type": "string",
                     "examples": ["large-v3", "distil-large-v3", "medium", "small", "base", "tiny"],
-                    "description": "WhisperX model to request (the service must have it installed)"
+                    "description": "WhisperX model to request. The model must be installed in the ASR service."
                 },
                 "timeout": {
                     "type": "integer",
