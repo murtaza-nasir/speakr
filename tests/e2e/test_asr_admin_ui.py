@@ -62,12 +62,12 @@ SAVE = "[data-asr-save]"
 # The copy the section needs, plus the extras the merged panel added. Every
 # locale carries all of it.
 PANEL_KEYS = (
-    "transcriptionModels", "transcriptionModelsDesc", "addModel", "addFirstModel",
+    "transcriptionModels", "transcriptionModelsDesc", "addModel", "copyAsModel", "serverDefault",
     "label", "labelHelp", "connector", "connectorHelp", "modelName", "modelNameHelp",
     "baseUrl", "apiKey", "apiKeyPlaceholder", "apiKeyHelp", "apiKeyKept", "clearApiKey",
     "apiKeyClearedOnUrlChange", "visible", "visibleHelp", "default", "actions",
     "environment", "defaultNote",
-    "importEnvironment", "noModels", "noModelsHelp", "modelLimitReached", "noKey",
+    "noModels", "noModelsHelp", "modelLimitReached", "noKey",
     "always", "defaultVisibleHint", "discover", "discovering", "discoveryEmpty",
     "pickDiscoveredModel", "otherModel", "test", "testing", "testSuccess",
     "testNoModels", "testFailed", "testUnsupported", "advanced", "advancedHelp",
@@ -263,7 +263,7 @@ def test_env_row_edit_snapshots_into_profile_with_default_label(admin):
     assert profile["label"] == expected.rstrip(":") + ":small"
     assert profile["config"].get("model") == "small"
     assert page.locator(ENV_ROW).count() == 1
-    assert page.locator(f"{ENV_ROW} [data-asr-import]").count() == 1
+    assert page.locator(f"{ENV_ROW} [data-asr-copy]").count() == 1
     admin.delete(profile["id"])
     admin.open_panel()
     assert page.locator(ENV_ROW).count() == 1

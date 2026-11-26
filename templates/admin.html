@@ -723,14 +723,12 @@
                             <i class="fas fa-spinner fa-spin mr-2"></i>${ t('common.loading') }
                         </div>
 
-                        <div v-else-if="!llmConfigError" class="empty py-6">
-                            <div class="empty__icon"><i class="fas fa-robot"></i></div>
-                            <div class="empty__title">${ t('adminDashboard.llmModels.noModels') }</div>
-                            <div class="empty__body">${ t('adminDashboard.llmModels.noModelsHelp') }</div>
-                            <button type="button" @click="openLlmModelModal()" class="btn btn--primary btn--sm mt-3">
-                                <i class="fas fa-plus"></i>
-                                <span>${ t('adminDashboard.llmModels.addFirstModel') }</span>
-                            </button>
+                        <div v-else-if="!llmConfigError" data-llm-empty class="flex items-start gap-3 px-4 pt-2 pb-3">
+                            <i class="fas fa-robot text-[var(--text-muted)] mt-0.5"></i>
+                            <div class="min-w-0">
+                                <div class="text-sm font-medium text-[var(--text-primary)]">${ t('adminDashboard.llmModels.noModels') }</div>
+                                <div class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.llmModels.noModelsHelp') }</div>
+                            </div>
                         </div>
 
                         <!-- Result of "Test" and the last save/delete -->
@@ -834,7 +832,7 @@
                         <template v-else>
                             <div v-if="asrModels.length > 0 || asrEnvironment" class="px-1 py-2 overflow-x-auto">
                                 <table class="w-full text-sm">
-                                    <thead>
+                                    <thead class="hidden sm:table-header-group">
                                         <tr class="text-left t-label">
                                             <th class="py-2 px-3">${ t('adminDashboard.label') }</th>
                                             <th class="py-2 px-3">${ t('adminDashboard.modelName') }</th>
@@ -847,73 +845,68 @@
                                     </thead>
                                     <tbody>
                                         <tr v-for="m in asrModels" :key="m.id" data-asr-row
-                                            class="border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
-                                            <td class="py-2 px-3">
+                                            class="block sm:table-row border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                                            <td class="block sm:table-cell px-3 pt-3 pb-1 sm:py-2">
                                                 <div class="font-medium text-[var(--text-primary)]">${ m.label }</div>
                                                 <div class="text-xs text-[var(--text-muted)]">${ asrConnectorDisplay(m) }</div>
                                             </td>
-                                            <td class="py-2 px-3 font-mono text-xs text-[var(--text-secondary)]">${ asrRowModel(m) }</td>
-                                            <td class="py-2 px-3 hidden lg:table-cell text-xs text-[var(--text-muted)] break-all">${ asrRowBaseUrl(m) }</td>
-                                            <td class="py-2 px-3 text-xs" :class="asrRowHasSecret(m) ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">
-                                                ${ asrRowHasSecret(m) ? '********' : t('adminDashboard.noKey') }
+                                            <td class="flex sm:table-cell items-center gap-3 px-3 py-1 sm:py-2 text-xs"><span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.modelName') }</span><span class="break-all" :class="asrRowModelClass(m)">${ asrRowModel(m) }</span></td>
+                                            <td class="flex sm:hidden lg:table-cell items-center gap-3 px-3 py-1 lg:py-2 text-xs text-[var(--text-muted)]"><span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.baseUrl') }</span><span class="break-all">${ asrRowBaseUrl(m) }</span></td>
+                                            <td class="flex sm:table-cell items-center gap-3 px-3 py-1 sm:py-2 text-xs" :class="asrRowHasSecret(m) ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">
+                                                <span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.apiKey') }</span><span>${ asrRowHasSecret(m) ? '********' : t('adminDashboard.noKey') }</span>
                                             </td>
-                                            <td class="py-2 px-3 text-center">
-                                                <input type="checkbox" data-asr-visible :checked="m.visible"
+                                            <td class="flex sm:table-cell items-center gap-3 px-3 py-1 sm:py-2 sm:text-center">
+                                                <span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.visible') }</span><input type="checkbox" data-asr-visible :checked="m.visible"
                                                        :disabled="asrRowIsDefault(m)"
                                                        :title="asrRowIsDefault(m) ? t('adminDashboard.defaultVisibleHint') : null"
                                                        @change="changeAsrVisible(m, $event.target.checked)"
                                                        class="h-4 w-4">
                                             </td>
-                                            <td class="py-2 px-3 text-center">
-                                                <input type="radio" name="asr-default" data-asr-default :value="m.id"
+                                            <td class="flex sm:table-cell items-center gap-3 px-3 py-1 sm:py-2 sm:text-center">
+                                                <span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.default') }</span><input type="radio" name="asr-default" data-asr-default :value="m.id"
                                                        :checked="asrDefault === m.id" :disabled="!m.visible"
                                                        @change="changeAsrDefault(m.id)" class="h-4 w-4">
                                             </td>
-                                            <td class="py-2 px-3 text-right whitespace-nowrap">
+                                            <td class="flex sm:table-cell justify-end px-3 pt-1 pb-3 sm:py-2 sm:text-right whitespace-nowrap">
                                                 <button type="button" data-asr-row-test @click="testAsrStored(m)"
-                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.test')">
+                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.test')" :aria-label="t('adminDashboard.test')">
                                                     <i class="fas fa-plug"></i>
                                                 </button>
                                                 <button type="button" data-asr-edit @click="openAsrEdit(m)"
-                                                        class="btn btn--ghost btn--sm" :title="t('common.edit')">
+                                                        class="btn btn--ghost btn--sm" :title="t('common.edit')" :aria-label="t('common.edit')">
                                                     <i class="fas fa-pen"></i>
                                                 </button>
                                                 <button type="button" data-asr-delete @click="deleteAsrModel(m)"
-                                                        class="btn btn--ghost btn--sm" :title="t('common.delete')">
+                                                        class="btn btn--ghost btn--sm" :title="t('common.delete')" :aria-label="t('common.delete')">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </td>
                                         </tr>
                                         <tr v-if="asrEnvironment" data-asr-environment
-                                            class="border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
-                                            <td class="py-2 px-3">
+                                            class="block sm:table-row border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                                            <td class="block sm:table-cell px-3 pt-3 pb-1 sm:py-2">
                                                 <div class="font-medium text-[var(--text-primary)]">${ asrEnvironment.label }</div>
                                                 <div class="text-xs text-[var(--text-muted)]">
                                                     <span class="inline-block mr-1 px-1.5 py-0.5 rounded bg-[var(--bg-accent)] text-[var(--text-accent)]">${ t('adminDashboard.environment') }</span>
                                                     ${ asrConnectorDisplay(asrEnvironment) }
                                                 </div>
                                             </td>
-                                            <td class="py-2 px-3 font-mono text-xs text-[var(--text-secondary)]">${ asrRowModel(asrEnvironment) }</td>
-                                            <td class="py-2 px-3 hidden lg:table-cell text-xs text-[var(--text-muted)] break-all">${ asrRowBaseUrl(asrEnvironment) }</td>
-                                            <td class="py-2 px-3 text-xs text-[var(--text-muted)]">${ asrRowHasSecret(asrEnvironment) ? '********' : t('adminDashboard.noKey') }</td>
-                                            <td class="py-2 px-3 text-center text-xs text-[var(--text-muted)]">${ t('adminDashboard.always') }</td>
-                                            <td class="py-2 px-3 text-center">
-                                                <input type="radio" name="asr-default" data-asr-default :checked="asrDefault === null"
+                                            <td class="flex sm:table-cell items-center gap-3 px-3 py-1 sm:py-2 text-xs"><span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.modelName') }</span><span class="break-all" :class="asrRowModelClass(asrEnvironment)">${ asrRowModel(asrEnvironment) }</span></td>
+                                            <td class="flex sm:hidden lg:table-cell items-center gap-3 px-3 py-1 lg:py-2 text-xs text-[var(--text-muted)]"><span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.baseUrl') }</span><span class="break-all">${ asrRowBaseUrl(asrEnvironment) }</span></td>
+                                            <td class="flex sm:table-cell items-center gap-3 px-3 py-1 sm:py-2 text-xs text-[var(--text-muted)]"><span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.apiKey') }</span><span>${ asrRowHasSecret(asrEnvironment) ? '********' : t('adminDashboard.noKey') }</span></td>
+                                            <td class="flex sm:table-cell items-center gap-3 px-3 py-1 sm:py-2 sm:text-center text-xs text-[var(--text-muted)]"><span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.visible') }</span><span>${ t('adminDashboard.always') }</span></td>
+                                            <td class="flex sm:table-cell items-center gap-3 px-3 py-1 sm:py-2 sm:text-center">
+                                                <span class="sm:hidden t-label w-32 flex-shrink-0 font-sans">${ t('adminDashboard.default') }</span><input type="radio" name="asr-default" data-asr-default :checked="asrDefault === null"
                                                        @change="changeAsrDefault(null)" class="h-4 w-4">
                                             </td>
-                                            <td class="py-2 px-3 text-right whitespace-nowrap">
+                                            <td class="flex sm:table-cell justify-end px-3 pt-1 pb-3 sm:py-2 sm:text-right whitespace-nowrap">
                                                 <button type="button" data-asr-row-test @click="testAsrEnvironment()"
-                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.test')">
+                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.test')" :aria-label="t('adminDashboard.test')">
                                                     <i class="fas fa-plug"></i>
                                                 </button>
-                                                <button type="button" data-asr-edit @click="editAsrEnvironment()"
-                                                        class="btn btn--ghost btn--sm" :title="t('common.edit')">
-                                                    <i class="fas fa-pen"></i>
-                                                </button>
-                                                <button type="button" data-asr-import @click="importAsrFromEnvironment"
-                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.importEnvironment')"
-                                                        :aria-label="t('adminDashboard.importEnvironment')">
-                                                    <i class="fas fa-file-import"></i>
+                                                <button type="button" data-asr-edit data-asr-copy @click="editAsrEnvironment()"
+                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.copyAsModel')" :aria-label="t('adminDashboard.copyAsModel')">
+                                                    <i class="fas fa-copy"></i>
                                                 </button>
                                             </td>
                                         </tr>
@@ -921,23 +914,18 @@
                                 </table>
                             </div>
 
-                            <div v-if="asrModels.length === 0 && !asrEnvironment" class="empty py-6">
-                                <div class="empty__icon"><i class="fas fa-microphone-lines"></i></div>
-                                <div class="empty__title">${ t('adminDashboard.noModels') }</div>
-                                <div class="empty__body">${ t('adminDashboard.noModelsHelp') }</div>
-                                <button type="button" data-asr-add-first @click="openAsrAdd()"
-                                        :disabled="asrAddDisabled"
-                                        class="btn btn--primary btn--sm mt-3">
-                                    <i class="fas fa-plus"></i>
-                                    <span>${ t('adminDashboard.addFirstModel') }</span>
-                                </button>
+                            <div v-if="asrModels.length === 0 && !asrEnvironment" data-asr-empty class="flex items-start gap-3 px-4 py-3">
+                                <i class="fas fa-microphone-lines text-[var(--text-muted)] mt-0.5"></i>
+                                <div class="min-w-0">
+                                    <div class="text-sm font-medium text-[var(--text-primary)]">${ t('adminDashboard.noModels') }</div>
+                                    <div class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.noModelsHelp') }</div>
+                                </div>
                             </div>
 
-                            <div v-if="asrModels.length > 0 || asrEnvironment" data-asr-note>
-                                <div class="flex items-start gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-xs text-[var(--text-muted)]">
+                            <div v-if="asrModels.length > 0 || asrEnvironment" data-asr-note
+                                 class="flex items-start gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-xs text-[var(--text-muted)]">
                                 <i class="fas fa-circle-info flex-shrink-0 mt-0.5"></i>
                                 <span>${ t('adminDashboard.defaultNote') }</span>
-                            </div>
                             </div>
 
                             <div v-if="asrStatus" data-asr-status role="status"
@@ -1097,7 +1085,7 @@
                             </div>
                             <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-[var(--border-primary)]">
                                 <button type="button" data-asr-test @click="testAsrForm" class="btn btn--ghost btn--sm" :disabled="asrTesting || asrSaving">
-                                    <i :class="asrTesting ? 'fas fa-spinner fa-spin' : 'fas fa-vial'"></i>
+                                    <i :class="asrTesting ? 'fas fa-spinner fa-spin' : 'fas fa-plug'"></i>
                                     <span>${ asrTesting ? t('adminDashboard.testing') : t('adminDashboard.test') }</span>
                                 </button>
                                 <button type="button" data-asr-cancel @click="closeAsrModal" class="btn btn--ghost btn--sm">${ t('buttons.cancel') }</button>
@@ -3115,7 +3103,12 @@ Summarization Instructions:
                     const lib = asrLib();
                     return lib.schemaControl ? lib.schemaControl(entry.property) : 'text';
                 };
-                const asrFieldLabel = (key) => (asrLib().fieldLabel ? asrLib().fieldLabel(key) : key);
+                const asrFieldLabel = (key) => {
+                    const id = `adminDashboard.asrFields.${key}`;
+                    const text = t(id);
+                    if (text && text !== id) return text;
+                    return asrLib().fieldLabel ? asrLib().fieldLabel(key) : key;
+                };
                 const asrFieldExamples = (entry) => {
                     const examples = entry && entry.property && entry.property.examples;
                     return Array.isArray(examples) && examples.length ? examples.join(', ') : null;
@@ -3135,8 +3128,10 @@ Summarization Instructions:
                 const asrRowIsDefault = (model) => asrDefault.value === (model && model.id);
                 const asrRowModel = (model) => {
                     const value = model && model.config && model.config.model;
-                    return value ? String(value) : '—';
+                    return value ? String(value) : t('adminDashboard.serverDefault');
                 };
+                const asrRowModelClass = (model) => (model && model.config && model.config.model
+                    ? 'font-mono text-[var(--text-secondary)]' : 'text-[var(--text-muted)]');
                 const asrRowBaseUrl = (model) => {
                     const config = (model && model.config) || {};
                     return config.base_url || config.endpoint || '—';
@@ -3624,25 +3619,6 @@ Summarization Instructions:
                         await loadAsrConfig();
                     } catch (error) {
                         asrSetStatus(`${t('adminDashboard.deleteFailed')} ${error.message}`.trim(), true);
-                    }
-                };
-
-                const importAsrFromEnvironment = async () => {
-                    try {
-                        const response = await fetch('/admin/asr-config/import', {
-                            method: 'POST',
-                            headers: asrCsrfHeaders(false),
-                        });
-                        const body = await response.json().catch(() => ({}));
-                        if (!response.ok || !body.success) {
-                            asrSetStatus(asrErrorDetail(body) || t('adminDashboard.saveFailed'), true);
-                            return;
-                        }
-                        const label = (body.model && body.model.label) || '';
-                        asrSetStatus(label ? t('adminDashboard.saved', { label }) : t('adminDashboard.visibleChanged'));
-                        await loadAsrConfig();
-                    } catch (error) {
-                        asrSetStatus(`${t('adminDashboard.saveFailed')} ${error.message}`.trim(), true);
                     }
                 };
 
@@ -6492,6 +6468,7 @@ Summarization Instructions:
                     asrConnectorDisplay,
                     asrRowIsDefault,
                     asrRowModel,
+                    asrRowModelClass,
                     asrRowBaseUrl,
                     asrRowHasSecret,
                     loadAsrConfig,
@@ -6510,7 +6487,6 @@ Summarization Instructions:
                     changeAsrVisible,
                     changeAsrDefault,
                     deleteAsrModel,
-                    importAsrFromEnvironment,
 
                     // Default Prompts methods
                     loadDefaultPrompt,

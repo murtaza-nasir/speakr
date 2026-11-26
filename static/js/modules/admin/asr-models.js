@@ -54,7 +54,7 @@ export const FIELD_LABELS = Object.freeze({
   boost_param: 'Word boost strength',
   hotword_id: 'Hotword list ID',
   staging_prefix: 'Staging prefix',
-  model_diarizes: 'Speaker labels in the output',
+  model_diarizes: 'Model assigns speaker labels',
   max_duration_seconds: 'Longest audio per request (seconds)',
 });
 

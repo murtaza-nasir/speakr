@@ -391,7 +391,7 @@ class AudioCppTranscriptionConnector(BaseTranscriptionConnector):
                 "model_diarizes": {
                     "type": "boolean",
                     "default": False,
-                    "description": ("Turn on for models with speaker labels in their output (VibeVoice ASR, "
+                    "description": ("Turn on when the model assigns speaker labels (VibeVoice ASR, "
                                     "Nemotron 3 Diarization). Speaker labels in a response are stored either way."),
                 },
                 "timeout": {
