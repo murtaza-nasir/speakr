@@ -5,7 +5,6 @@ LLM API integration services (OpenAI/OpenRouter).
 import json
 import logging
 import os
-import re
 import sys
 import time
 
@@ -27,6 +26,7 @@ class TokenBudgetExceeded(Exception):
         super().__init__(message)
 
 from src.services import llm_config
+from src.services.thinking_filter import ThinkingFilter
 from src.utils.error_text import log_failure
 
 
@@ -783,9 +783,7 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
         model_name: Optional model name for token tracking
         app: Optional Flask app instance for database context in generators
     """
-    content_buffer = ""
-    in_thinking = False
-    thinking_buffer = ""
+    thinking_filter = ThinkingFilter()
     finish_reason = None
 
     for chunk in stream:
@@ -831,60 +829,15 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
             except Exception as e:
                 logger.warning(f"Failed to record streaming token usage: {e}")
 
-        # Process content delta
+        # Process content delta, keeping partial think tags buffered across
+        # chunks and preserving the order of visible and thinking pieces.
         if chunk.choices and chunk.choices[0].delta.content:
-            content = chunk.choices[0].delta.content
-            content_buffer += content
-
-            # Process the buffer to detect and handle thinking tags
-            while True:
-                if not in_thinking:
-                    # Look for opening thinking tag
-                    think_start = re.search(r'<think(?:ing)?>', content_buffer, re.IGNORECASE)
-                    if think_start:
-                        # Send any content before the thinking tag
-                        before_thinking = content_buffer[:think_start.start()]
-                        if before_thinking:
-                            yield f"data: {json.dumps({'delta': before_thinking})}\n\n"
-
-                        # Start capturing thinking content
-                        in_thinking = True
-                        content_buffer = content_buffer[think_start.end():]
-                        thinking_buffer = ""
-                    else:
-                        # No thinking tag found, send accumulated content
-                        if content_buffer:
-                            yield f"data: {json.dumps({'delta': content_buffer})}\n\n"
-                        content_buffer = ""
-                        break
-                else:
-                    # We're inside a thinking tag, look for closing tag
-                    think_end = re.search(r'</think(?:ing)?>', content_buffer, re.IGNORECASE)
-                    if think_end:
-                        # Capture thinking content up to the closing tag
-                        thinking_buffer += content_buffer[:think_end.start()]
-
-                        # Send the thinking content as a special type
-                        if thinking_buffer.strip():
-                            yield f"data: {json.dumps({'thinking': thinking_buffer.strip()})}\n\n"
-
-                        # Continue processing after the closing tag
-                        in_thinking = False
-                        content_buffer = content_buffer[think_end.end():]
-                        thinking_buffer = ""
-                    else:
-                        # Still inside thinking tag, accumulate content
-                        thinking_buffer += content_buffer
-                        content_buffer = ""
-                        break
+            for kind, text in thinking_filter.feed_events(chunk.choices[0].delta.content):
+                yield f"data: {json.dumps({kind: text})}\n\n"
 
     # Handle any remaining content
-    if in_thinking and thinking_buffer:
-        # Unclosed thinking tag - send as thinking content
-        yield f"data: {json.dumps({'thinking': thinking_buffer.strip()})}\n\n"
-    elif content_buffer:
-        # Regular content
-        yield f"data: {json.dumps({'delta': content_buffer})}\n\n"
+    for kind, text in thinking_filter.flush_events():
+        yield f"data: {json.dumps({kind: text})}\n\n"
 
     # Signal the end of the stream, propagating the provider's finish_reason
     # so the frontend can flag truncated (finish_reason == 'length') responses.

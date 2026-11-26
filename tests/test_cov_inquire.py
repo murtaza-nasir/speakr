@@ -1319,3 +1319,33 @@ def test_create_session_refuses_an_empty_speaker_name(names, client):
     assert response.status_code == 400
     assert response.get_json()['code'] == 'invalid_speaker_names'
 
+
+
+def test_chat_thinking_tags_split_across_chunks(client):
+    """A tag split between two stream events is neither shown nor missed (#708)."""
+    user_id = _make_user()
+    rec_id = _make_recording(user_id)
+    chunk_id = _make_chunk(user_id, rec_id)
+
+    def llm_side_effect(messages, **kwargs):
+        if kwargs.get('operation_type') == 'query_routing':
+            return _llm_msg("RAG")
+        return _llm_msg('["t"]')
+
+    streamed = ["Before <thi", "nk>secret reasoning</thi", "nk>After"]
+
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.services.llm_config.is_configured', return_value=True), \
+         patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
+         patch('src.api.inquire.semantic_search_chunks',
+               side_effect=lambda *a, **k: [_get_chunk_pair(chunk_id, 0.7)]), \
+         patch('src.api.inquire.call_chat_completion',
+               side_effect=_by_operation(MagicMock(side_effect=llm_side_effect), MagicMock(return_value=_stream_chunks(streamed)))):
+        resp = client.post('/api/inquire/chat', json={'message': 'q'})
+        assert resp.status_code == 200
+        events = _sse_events(resp)
+        thinking = [e['thinking'] for e in events if 'thinking' in e]
+        deltas = "".join(e['delta'] for e in events if 'delta' in e)
+        assert thinking == ['secret reasoning']
+        assert deltas == 'Before After'

@@ -23,6 +23,7 @@ from src.services.assistant_events import FilterError, checked_filters, filters_
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
 from src.services import llm_config
 from src.services.llm import call_chat_completion, get_chat_config, process_streaming_with_thinking, TokenBudgetExceeded
+from src.services.thinking_filter import ThinkingFilter
 from src.utils.request_body import json_object_body
 
 # Create blueprint
@@ -718,21 +719,15 @@ Order your response with notes from the most recent meetings first. Always use p
 
             # Buffer content to detect full transcript requests
             response_buffer = ""
+            thinking_filter = ThinkingFilter()
 
-            # Buffer content to detect full transcript requests
-            response_buffer = ""
-            content_buffer = ""
-            in_thinking = False
-            thinking_buffer = ""
-            
             for chunk in stream:
                 if not chunk.choices:
                     continue
                 content = chunk.choices[0].delta.content
                 if content:
                     response_buffer += content
-                    content_buffer += content
-                    
+
                     # Check if this is a full transcript request
                     if response_buffer.strip().startswith("REQUEST_FULL_TRANSCRIPT:"):
                         lines = response_buffer.split('\n')
@@ -799,56 +794,15 @@ Order your response with notes from the most recent meetings first. Always use p
                                 # Continue with normal streaming
                                 pass
                     
-                    # Process the buffer to detect and handle thinking tags
-                    while True:
-                        if not in_thinking:
-                            # Look for opening thinking tag
-                            think_start = re.search(r'<think(?:ing)?>', content_buffer, re.IGNORECASE)
-                            if think_start:
-                                # Send any content before the thinking tag
-                                before_thinking = content_buffer[:think_start.start()]
-                                if before_thinking:
-                                    yield f"data: {json.dumps({'delta': before_thinking})}\n\n"
-                                
-                                # Start capturing thinking content
-                                in_thinking = True
-                                content_buffer = content_buffer[think_start.end():]
-                                thinking_buffer = ""
-                            else:
-                                # No thinking tag found, send accumulated content
-                                if content_buffer:
-                                    yield f"data: {json.dumps({'delta': content_buffer})}\n\n"
-                                content_buffer = ""
-                                break
-                        else:
-                            # We're inside a thinking tag, look for closing tag
-                            think_end = re.search(r'</think(?:ing)?>', content_buffer, re.IGNORECASE)
-                            if think_end:
-                                # Capture thinking content up to the closing tag
-                                thinking_buffer += content_buffer[:think_end.start()]
-                                
-                                # Send the thinking content as a special type
-                                if thinking_buffer.strip():
-                                    yield f"data: {json.dumps({'thinking': thinking_buffer.strip()})}\n\n"
-                                
-                                # Continue processing after the closing tag
-                                in_thinking = False
-                                content_buffer = content_buffer[think_end.end():]
-                                thinking_buffer = ""
-                            else:
-                                # Still inside thinking tag, accumulate content
-                                thinking_buffer += content_buffer
-                                content_buffer = ""
-                                break
-            
+                    # Split visible and thinking text, keeping partial tags
+                    # buffered across chunks and preserving their order.
+                    for kind, text in thinking_filter.feed_events(content):
+                        yield f"data: {json.dumps({kind: text})}\n\n"
+
             # Handle any remaining content
-            if in_thinking and thinking_buffer:
-                # Unclosed thinking tag - send as thinking content
-                yield f"data: {json.dumps({'thinking': thinking_buffer.strip()})}\n\n"
-            elif content_buffer:
-                # Regular content
-                yield f"data: {json.dumps({'delta': content_buffer})}\n\n"
-            
+            for kind, text in thinking_filter.flush_events():
+                yield f"data: {json.dumps({kind: text})}\n\n"
+
             yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
 
         except TokenBudgetExceeded as e:

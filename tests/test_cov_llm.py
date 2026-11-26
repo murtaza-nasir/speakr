@@ -1046,3 +1046,38 @@ def test_chat_client_shared_when_keys_match(monkeypatch):
         "CHAT_MODEL_BASE_URL": None,
     })
     assert mod.chat_client is mod.client
+
+
+# A tag split across two stream events (#708): the inline loop used to send
+# "<thi" and "nk>" as visible text and missed the thinking block.
+
+SPLIT_TAGGED = "before <thinking>secret thought</thinking> after"
+
+
+def _split_result(chunks):
+    events = _collect(process_streaming_with_thinking([make_chunk(c) for c in chunks]))
+    body = [e for e in events if "delta" in e or "thinking" in e]
+    return body, events[-1]
+
+
+def test_streaming_open_and_close_tags_split_across_chunks():
+    body, last = _split_result(["before <thi", "nk>secret thought</th", "ink> after"])
+    deltas = "".join(e["delta"] for e in body if "delta" in e)
+    assert [e["thinking"] for e in body if "thinking" in e] == ["secret thought"]
+    assert deltas == "before  after"
+    # Visible text before the block comes before it, the rest after it.
+    kinds = [next(iter(e)) for e in body]
+    assert kinds.index("thinking") > 0 and kinds[-1] == "delta"
+    assert last == {"end_of_stream": True}
+
+
+@pytest.mark.parametrize("cut", range(1, len(SPLIT_TAGGED)))
+def test_streaming_every_two_way_split_of_a_tagged_answer(cut):
+    body, _ = _split_result([SPLIT_TAGGED[:cut], SPLIT_TAGGED[cut:]])
+    assert [e["thinking"] for e in body if "thinking" in e] == ["secret thought"]
+    assert "".join(e["delta"] for e in body if "delta" in e) == "before  after"
+
+
+def test_streaming_a_trailing_less_than_sign_is_sent_at_the_end():
+    body, _ = _split_result(["a <", " b <"])
+    assert "".join(e["delta"] for e in body if "delta" in e) == "a < b <"
