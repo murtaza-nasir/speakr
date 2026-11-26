@@ -115,4 +115,30 @@ def visible_folder(recording, viewer_id, share=None):
     return {'id': folder.id, 'name': folder.name}
 
 
+def get_accessible_recording_ids(user_id):
+    """Return the recording ids a user may access.
+
+    Own recordings plus, when internal sharing is on, recordings shared with
+    the user via InternalShare. Canonical implementation; embeddings and the
+    API re-export it (embeddings keeps the name as an adapter for callers
+    that have not migrated yet).
+    """
+    from src.models import InternalShare, Recording
+
+    accessible_ids = set()
+
+    # 1. User's own recordings
+    own_recordings = db.session.query(Recording.id).filter_by(user_id=user_id).all()
+    accessible_ids.update([r.id for r in own_recordings])
+
+    # 2. Internally shared recordings
+    if sharing_enabled():
+        shared_recordings = db.session.query(InternalShare.recording_id).filter_by(
+            shared_with_user_id=user_id
+        ).all()
+        accessible_ids.update([r.recording_id for r in shared_recordings])
+
+    return list(accessible_ids)
+
+
 OWN_ITEM = {'is_shared': False, 'owner': None, 'share': None}

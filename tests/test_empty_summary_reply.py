@@ -13,6 +13,7 @@ import os
 import sys
 import uuid
 from contextlib import contextmanager
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -147,8 +148,30 @@ def test_a_summary_logs_its_finish_reason(rec_id, caplog):
     assert [c.kwargs["event_type"] for c in emit.call_args_list] == ["recording.summary.completed"]
 
 
+def _claim(jid):
+    """Claim this job as a worker does, by id.
+
+    Another test file may leave a queued summary job behind, and the turn
+    order of the shared test database then hands that one out first. The job
+    under test is claimed directly, as tests/test_job_id_reuse.py does, so the
+    assertion does not depend on which other rows the database holds.
+    """
+    from sqlalchemy import update
+
+    result = db.session.execute(
+        update(ProcessingJob)
+        .where(ProcessingJob.id == jid, ProcessingJob.status == "queued")
+        .values(status="processing", started_at=datetime.utcnow(),
+                progress_done=None, progress_total=None, progress_kind=None,
+                stage=None, stage_detail=None)
+    )
+    assert result.rowcount == 1
+    db.session.commit()
+    return db.session.get(ProcessingJob, jid)
+
+
 def test_a_summary_job_with_an_empty_reply_is_retried_then_fails(rec_id):
-    from src.services.job_queue import job_queue, MAX_RETRIES, SUMMARY_JOBS
+    from src.services.job_queue import job_queue, MAX_RETRIES
     job_queue.init_app(app)
     with app.app_context():
         uid = db.session.get(Recording, rec_id).user_id
@@ -156,8 +179,7 @@ def test_a_summary_job_with_an_empty_reply_is_retried_then_fails(rec_id):
 
     def run_once():
         with app.app_context():
-            job = job_queue._claim_next_job(SUMMARY_JOBS, "summary")
-            assert job is not None and job.id == jid
+            job = _claim(jid)
             with _llm(_completion(None, "length", 3000, 2990)) as emit, \
                     patch.object(job_queue, "_emit_failure_email"):
                 job_queue._process_job(job)

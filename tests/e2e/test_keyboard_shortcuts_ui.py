@@ -517,7 +517,11 @@ def test_star_inbox_and_delete_keys_call_the_functions_of_their_buttons(desk):
         starred = "() => getComputedStyle(document.querySelector('header .fa-star').closest('button')).color === 'rgb(234, 179, 8)'"
         desk.press("s")
         saved("is_highlighted", opened, not before["is_highlighted"])
-        assert page.evaluate(starred) == (not before["is_highlighted"]), "the header's star does not show the change"
+        # The instance can hold the new value before the app has handled the
+        # response of its own request, so the colour is awaited, not sampled.
+        expected = not before["is_highlighted"]
+        page.wait_for_function(f"({starred})() === {'true' if expected else 'false'}", timeout=WAIT)
+        assert page.evaluate(starred) == expected, "the header's star does not show the change"
         desk.press("s")
         saved("is_highlighted", opened, bool(before["is_highlighted"]))
         desk.press("i")
