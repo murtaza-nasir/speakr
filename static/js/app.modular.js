@@ -4480,6 +4480,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             onMounted(async () => {
                 // Get config from data attributes
                 const appElement = document.getElementById('app');
+                // Show the shell before any startup request. Those requests
+                // have no timeout; waiting to hide the overlay until they
+                // finished left "Loading…" on screen until a manual reload
+                // when one of them never answered. The list has its own
+                // loading state (isLoadingRecordings).
+                const revealApp = () => {
+                    const loader = document.getElementById('loader');
+                    const appEl = document.getElementById('app');
+                    if (loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => {
+                            loader.style.display = 'none';
+                        }, 500);
+                    }
+                    if (appEl) {
+                        appEl.style.opacity = '1';
+                        appEl.classList.remove('opacity-0');
+                    }
+                    if (window.AppLoader) {
+                        window.AppLoader.hide();
+                    } else {
+                        // loading.js did not load: the overlay of
+                        // includes/loading_overlay.html is removed here.
+                        window.__appLoaderHidden = true;
+                        document.documentElement.classList.remove('app-loading');
+                        document.body.classList.remove('app-loading');
+                        document.querySelectorAll('.app-loading-overlay').forEach((el) => el.remove());
+                    }
+                };
+
                 if (appElement) {
                     useAsrEndpoint.value = appElement.dataset.useAsrEndpoint === 'True';
                     connectorSupportsDiarization.value = appElement.dataset.connectorSupportsDiarization === 'True';
@@ -4500,17 +4530,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
+                // Theme, sidebar, saved view settings and the phone layout's
+                // measurements before the first paint of the shell, then
+                // drop the full-page overlay. Startup fetches continue
+                // underneath.
+                uiComposable.initializeDarkMode();
+                uiComposable.initializeColorScheme();
+                uiComposable.initializeSidebar();
+                uiComposable.restoreSavedView();
+                window.addEventListener('resize', () => {
+                    windowWidth.value = window.innerWidth;
+                    updateMobileBottomInset();
+                });
+                // Initial measurement once the layout has painted.
+                nextTick(updateMobileBottomInset);
+                revealApp();
+
                 // Load saved transcription initial-prompt templates (#309) for
                 // the upload-modal picker. Non-fatal if it fails.
                 try {
                     const r = await fetch('/api/initial-prompt-templates');
                     if (r.ok) initialPromptTemplates.value = await r.json();
                 } catch (e) { /* picker simply stays empty */ }
-
-                // Initialize UI
-                uiComposable.initializeDarkMode();
-                uiComposable.initializeColorScheme();
-                uiComposable.initializeSidebar();
                 // Start the notification badge poll. Cheap and slow; see the
                 // composable for why this is polled rather than pushed.
                 notificationsComposable.startNotificationPolling();
@@ -4705,6 +4746,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // the user never sees the unfiltered list flash past.
                 const deepLinkLabelName = parseLabelPath(window.location.pathname);
 
+                // The app is on screen during startup, so the last viewed
+                // recording that loadRecordings opens would show before the
+                // linked one. The one-shot flag skips that selection.
+                if (deepLinkRecordingId && !wantUploadDeepLink) {
+                    labelDeepLinkPending.value = true;
+                }
+
                 let labelDeepLinkResolved = false;
                 if (deepLinkLabelName) {
                     labelDeepLinkPending.value = true;
@@ -4887,33 +4935,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Initialize PWA features
                 pwaComposable.initPWA();
-
-                // Show app - hide loader and show main content
-                const loader = document.getElementById('loader');
-                const appEl = document.getElementById('app');
-                if (loader) {
-                    loader.style.opacity = '0';
-                    setTimeout(() => {
-                        loader.style.display = 'none';
-                    }, 500);
-                }
-                if (appEl) {
-                    appEl.style.opacity = '1';
-                    appEl.classList.remove('opacity-0');
-                }
-
-                // Also hide AppLoader overlay if it exists
-                if (window.AppLoader) {
-                    window.AppLoader.hide();
-                }
-
-                // Window resize handler
-                window.addEventListener('resize', () => {
-                    windowWidth.value = window.innerWidth;
-                    updateMobileBottomInset();
-                });
-                // Initial measurement once the layout has painted.
-                nextTick(updateMobileBottomInset);
 
                 // Visibility change handler for wake lock
                 document.addEventListener('visibilitychange', audioComposable.handleVisibilityChange);

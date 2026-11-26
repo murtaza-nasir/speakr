@@ -1909,8 +1909,11 @@ export function useUI(state, utils, processedTranscription) {
         await downloadTranscript();
     };
 
-    // Initialize UI settings from localStorage
-    const initializeUI = () => {
+    // The view settings saved in localStorage. Read before the app is
+    // shown, so a recording opened during startup has its saved column
+    // widths and transcript view from the first paint; initializeUI reads
+    // them again (the reads are idempotent).
+    const restoreSavedView = () => {
         // Load saved column widths
         const savedLeftWidth = localStorage.getItem('transcriptColumnWidth');
         const savedRightWidth = localStorage.getItem('summaryColumnWidth');
@@ -1939,6 +1942,11 @@ export function useUI(state, utils, processedTranscription) {
 
         // Load saved playback rate
         initializePlaybackRate();
+    };
+
+    // Initialize UI settings from localStorage
+    const initializeUI = () => {
+        restoreSavedView();
 
         // Watch for recording changes to reset active segment and audio player state.
         // IMPORTANT: only reset when the recording IDENTITY changes (different id).
@@ -2263,6 +2271,7 @@ export function useUI(state, utils, processedTranscription) {
     return {
         // Initialization
         initializeUI,
+        restoreSavedView,
         toggleDarkMode,
         initializeDarkMode,
         applyColorScheme,

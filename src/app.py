@@ -1082,6 +1082,18 @@ def inject_ui_themes():
 
 
 @app.context_processor
+def inject_loading_overlay_text():
+    """Text of the full-page loading overlay (includes/loading_overlay.html),
+    which is drawn before the page's scripts and their translations load."""
+    from src.utils.localization import translate
+    return {'loading_overlay_text': {
+        'loading': translate('common.loading'),
+        'stalled': translate('server.loadingOverlay.stalled'),
+        'reload': translate('server.loadingOverlay.reload'),
+    }}
+
+
+@app.context_processor
 def inject_assistant_name():
     """The assistant's name (src/utils/assistant_name.py) for the templates,
     and for scripts through includes/i18n_bootstrap.html

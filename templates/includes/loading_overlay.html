@@ -47,6 +47,19 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         letter-spacing: 0.5px;
     }
+    .app-loading-stalled .app-loading-spinner { display: none; }
+    .app-loading-reload {
+        margin-top: 16px;
+        min-height: 44px;
+        padding: 0 20px;
+        border: 1px solid var(--border-primary, rgba(255, 255, 255, 0.2));
+        border-radius: 8px;
+        background: var(--bg-secondary, transparent);
+        color: var(--text-primary, #e0e0e0);
+        font-size: 14px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        cursor: pointer;
+    }
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
@@ -62,6 +75,7 @@
 <script>
     // Immediate loading overlay initialization
     (function() {
+        var TEXT = {{ loading_overlay_text|tojson }};
         if (!window.__appLoaderHidden) document.documentElement.classList.add('app-loading');
         function initLoadingOverlay() {
             // If the page already finished initialising and hid the loader,
@@ -77,10 +91,46 @@
             document.body.classList.add('app-loading');
             var overlay = document.createElement('div');
             overlay.className = 'app-loading-overlay';
-            overlay.innerHTML = '<div class="app-loading-content"><div class="app-loading-spinner"></div><div class="app-loading-text">Loading…</div></div>';
+            overlay.innerHTML = '<div class="app-loading-content"><div class="app-loading-spinner"></div><div class="app-loading-text"></div></div>';
+            overlay.querySelector('.app-loading-text').textContent = TEXT.loading;
             document.body.appendChild(overlay);
         }
         initLoadingOverlay();
+
+        // loading.js and the page's own script hide this overlay. When
+        // neither has done so after 8 seconds (a script did not load or
+        // stopped with an error), the page is shown if its Vue app has
+        // mounted. An app that has not mounted still has v-cloak on its
+        // root, and showing it would put raw template text on screen; the
+        // overlay then says that the page is slow and offers a reload. A
+        // late mount still hides the overlay as usual.
+        setTimeout(function () {
+            if (window.__appLoaderHidden) return;
+            if (document.querySelector('[v-cloak]')) {
+                var overlay = document.querySelector('.app-loading-overlay');
+                if (!overlay || overlay.classList.contains('app-loading-stalled')) return;
+                overlay.classList.add('app-loading-stalled');
+                overlay.setAttribute('role', 'alert');
+                overlay.querySelector('.app-loading-text').textContent = TEXT.stalled;
+                var reload = document.createElement('button');
+                reload.type = 'button';
+                reload.className = 'app-loading-reload';
+                reload.textContent = TEXT.reload;
+                reload.addEventListener('click', function () { window.location.reload(); });
+                overlay.querySelector('.app-loading-content').appendChild(reload);
+                return;
+            }
+            window.__appLoaderHidden = true;
+            document.documentElement.classList.remove('app-loading');
+            if (document.body) document.body.classList.remove('app-loading');
+            var overlays = document.querySelectorAll('.app-loading-overlay');
+            for (var i = 0; i < overlays.length; i++) overlays[i].remove();
+            var roots = document.querySelectorAll('#app, #inquire-app');
+            for (var j = 0; j < roots.length; j++) {
+                roots[j].style.opacity = '1';
+                roots[j].classList.remove('opacity-0');
+            }
+        }, 8000);
     })();
 </script>
 <script src="{{ url_for('static', filename='js/loading.js', v=app_version) }}"></script>
