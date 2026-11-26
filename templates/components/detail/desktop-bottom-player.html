@@ -30,7 +30,7 @@
                 <component :is="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'video' : 'audio'"
                        ref="audioPlayerElement"
                        id="mainPlayerMedia"
-                       :src="'/audio/' + selectedRecording.id"
+                       :src="selectedAudioSrc"
                        :volume="playerVolume"
                        @play="handleAudioPlayPause"
                        @pause="handleAudioPlayPause"

@@ -17,6 +17,7 @@ import { scrollSegmentIntoView, useTranscriptView } from './modules/composables/
 import { shareTranscript, transcriptText } from './modules/utils/share-transcript.js';
 import { createFollow, createPlaybackIndex, isScrollKey } from './modules/utils/follow-playback.js';
 import { showToast as toast } from './modules/utils/toast.js';
+import { audioAddress, holdPlayback, replacedRevision, resumePlayback } from './modules/utils/reload-players.js';
 
 const { createApp, ref, shallowRef, computed, nextTick, onMounted } = Vue;
 
@@ -198,6 +199,26 @@ const app = createApp({
             audioIsPlaying.value = false;
         }
 
+        // The audio of the link, with the version of the stored file (#707).
+        // The owner can replace the file (a trim) while the page is open: the
+        // server then refuses a range of the old one, and the player loads
+        // the current file at the same position.
+        const shareAudioRoute = () => `/share/audio/${recording.value.public_id}`;
+        const shareAudioSrc = computed(() => audioAddress(shareAudioRoute(), recording.value.audio_revision));
+        async function handleAudioError() {
+            const route = shareAudioRoute();
+            const latest = await replacedRevision(route, recording.value.audio_revision, async () => {
+                const response = await fetch(route, { method: 'HEAD' });
+                const revision = response.headers.get('X-Audio-Revision');
+                return response.ok && revision ? revision : undefined;
+            });
+            if (latest === undefined) return;
+            const held = holdPlayback(route);
+            recording.value.audio_revision = latest;
+            await nextTick();
+            resumePlayback(held);
+        }
+
         function toggleAudioPlayback() {
             const player = audioPlayer.value;
             if (!player) return;
@@ -313,7 +334,7 @@ const app = createApp({
             seekAudioFromEvent, copyTranscript, copySummary, copyNotes,
             audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, playerVolume, audioProgressPercent,
             formatAudioTime, handleAudioPlayPause, handleCustomAudioTimeUpdate, handleAudioLoadedMetadata,
-            handleAudioDurationChange: takeDuration, handleAudioEnded,
+            handleAudioDurationChange: takeDuration, handleAudioEnded, shareAudioSrc, handleAudioError,
             toggleAudioPlayback, toggleAudioMute, setAudioVolume, seekAudioByPercent,
             playbackRate, showSpeedMenu, playbackSpeeds, formatPlaybackRate, setPlaybackRate,
         };

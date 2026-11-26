@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 from flask import Blueprint, request, jsonify, send_file, current_app
 from flask_login import login_required, current_user
+from werkzeug.exceptions import HTTPException
 
 from src.database import db
 from src.models import *
@@ -533,12 +534,18 @@ def get_snippet_audio(recording_id):
                 )
 
             # Send the file
-            response = send_file(
-                output_path,
-                mimetype=snippet_mime,
-                as_attachment=False,
-                download_name=f'snippet_{recording_id}_{start_time:.1f}s{snippet_ext}'
-            )
+            try:
+                response = send_file(
+                    output_path,
+                    mimetype=snippet_mime,
+                    as_attachment=False,
+                    download_name=f'snippet_{recording_id}_{start_time:.1f}s{snippet_ext}'
+                )
+            except HTTPException:
+                # A range past the end of the snippet (416, #703): no response
+                # closes over the temporary file, so it is removed here.
+                os.unlink(output_path)
+                raise
 
             # Clean up temporary file after sending
             @response.call_on_close
@@ -567,6 +574,9 @@ def get_snippet_audio(recording_id):
 
     except ValueError:
         return jsonify(api_error('invalid_snippet_range')), 400
+    except HTTPException:
+        # A range past the end stays a 416 with its Content-Range (#703)
+        raise
     except Exception as e:
         current_app.logger.error(f"Error serving audio snippet: {e}")
         return jsonify(api_error('unexpected_error')), 500

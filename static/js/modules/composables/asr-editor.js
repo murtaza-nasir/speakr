@@ -15,7 +15,6 @@ import { confirmDialog } from '../utils/dialogs.js';
 import { createSummaryFollowUp } from '../utils/summary-follow-up.js';
 import { formatExact } from '../asr-editor/helpers.js';
 import { sendTrim, waitForTrim } from '../utils/recording-trim.js';
-import { reloadPlayers } from '../utils/reload-players.js';
 
 // Scroll position per recording, so reopening the editor in the same page
 // session returns to where it was.
@@ -437,9 +436,8 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
             if (audioDuration && full.audio_duration && selectedRecording.value && selectedRecording.value.id === recordingId) {
                 audioDuration.value = full.audio_duration;
             }
-            if (nextTick) await nextTick();
-            // The players of the page load the trimmed audio again.
-            reloadPlayers(recordingId, full.file_size || Date.now());
+            // The players load the trimmed audio: its audio_revision is new
+            // (the watcher of the open recording in composables/ui.js).
         } catch (error) {
             console.error('Could not load the trimmed recording:', error);
         }

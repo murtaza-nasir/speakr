@@ -413,6 +413,20 @@ class Recording(db.Model):
             return tags, folder, self.folder_id
         return tags, None, None
 
+    @property
+    def audio_revision(self):
+        """A short version of the stored audio file, or None without one.
+
+        The players put it in the audio address (/audio/<id>?v=...): a convert
+        job, a trim, a remux or the legacy video extraction store another file
+        (another locator, size or type) under the same recording id (#707).
+        """
+        if not self.audio_path:
+            return None
+        import hashlib
+        key = f"{self.audio_path}|{self.file_size or ''}|{self.mime_type or ''}"
+        return hashlib.sha1(key.encode('utf-8')).hexdigest()[:12]
+
     def updated_at_z(self):
         """updated_at (created_at before the first change) as ISO 8601 with Z."""
         value = self.updated_at or self.created_at
@@ -481,6 +495,7 @@ class Recording(db.Model):
             # (issue #323) creates the row before its audio is stitched, so the
             # UI uses this to keep the play button disabled until the file lands.
             'audio_ready': bool(self.audio_path) and self.audio_deleted_at is None,
+            'audio_revision': self.audio_revision,
             'deletion_exempt': self.deletion_exempt,
             'folder_id': folder_id_ser,
             'folder': folder_ser,
@@ -592,6 +607,7 @@ class Recording(db.Model):
             'is_highlighted': self.is_highlighted,
             'is_archived': bool(self.is_archived),
             'mime_type': self.mime_type,
+            'audio_revision': self.audio_revision,
             'audio_deleted_at': self.audio_deleted_at.isoformat() if self.audio_deleted_at else None,
             'audio_available': self.audio_deleted_at is None,
             'audio_duration': self.get_audio_duration(allow_probe_fallback=False),

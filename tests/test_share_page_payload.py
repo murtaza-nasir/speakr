@@ -23,7 +23,7 @@ from src.models import Recording, Share, User
 app.config["WTF_CSRF_ENABLED"] = False
 
 DATA_KEYS = {"public_id", "title", "transcript", "summary", "summary_raw", "notes", "notes_raw",
-             "meeting_date", "mime_type", "audio_deleted_at", "audio_duration"}
+             "meeting_date", "mime_type", "audio_revision", "audio_deleted_at", "audio_duration"}
 SEGMENTS = [
     {"speaker": "Ana", "sentence": "Good morning.", "start_time": 0.0, "end_time": 2.5,
      "words": [{"word": "Good", "start": 0.0}], "speaker_id": 41, "embedding": [0.1, 0.2], "confidence": 0.93},

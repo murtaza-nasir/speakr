@@ -33,7 +33,7 @@
             <div v-else class="flex items-center gap-3">
                 <audio ref="asrEditorAudioRef" class="hidden" data-asr-editor-audio
                        :key="'asr-editor-' + selectedRecording.id"
-                       :src="'/audio/' + selectedRecording.id"
+                       :src="selectedAudioSrc"
                        :volume="playerVolume"
                        @play="handleModalAudioPlayPause"
                        @pause="handleModalAudioPlayPause"

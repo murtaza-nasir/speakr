@@ -270,6 +270,9 @@ class World:
             return self._label(kind, value)
         if key in _SIZE_KEYS and isinstance(value, (int, float)):
             return "<size>"
+        if key == "audio_revision" and isinstance(value, str):
+            # A hash of the stored locator, size and type (#707)
+            return "<revision>"
         if isinstance(value, float):
             return round(value, 1)
         if isinstance(value, str):

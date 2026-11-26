@@ -212,7 +212,7 @@
                                    ref="speakerModalPlayer"
                                    :class="(selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && !speakerModalVideoCollapsed) ? 'w-full rounded-lg mb-2 spk-video' : 'hidden'"
                                    :key="'speaker-modal-' + selectedRecording.id"
-                                   :src="'/audio/' + selectedRecording.id"
+                                   :src="selectedAudioSrc"
                                    :volume="playerVolume"
                                    preload="metadata"
                                    @play="handleModalAudioPlayPause"

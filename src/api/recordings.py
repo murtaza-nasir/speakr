@@ -53,7 +53,8 @@ from src.services.document import (
 from src.services.llm import call_chat_completion, get_chat_config, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording
-from src.utils.mime import served_media_mime, sandbox_media_response
+from src.utils.mime import (served_media_mime, sandbox_media_response, stale_media_request,
+                            stale_media_response, versioned_media_response)
 from src.utils.search import LIKE_ESCAPE, contains_pattern, text_contains, transcript_contains
 from src.services.storage import get_storage_service
 from src.services.recording_ingestion import ingest
@@ -3031,9 +3032,11 @@ def get_recording_status_only(recording_id):
 
         # Return the status plus audio_ready so pollers can enable playback the
         # moment a merge/stitch finishes writing the audio file (#323).
+        # audio_revision: the players load the file again when it changes (#707).
         return jsonify({
             'status': recording.status,
             'audio_ready': bool(recording.audio_path) and recording.audio_deleted_at is None,
+            'audio_revision': recording.audio_revision,
         })
     except Exception as e:
         current_app.logger.error(f"Error fetching status for recording {recording_id}: {e}", exc_info=True)
@@ -3445,6 +3448,9 @@ def get_audio_peaks(recording_id):
         response.headers['Cache-Control'] = 'private, no-cache'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         return response
+    except HTTPException:
+        # A range past the end stays a 416 with its Content-Range (#703)
+        raise
     except Exception as e:
         current_app.logger.error(f"Error serving waveform peaks for recording {recording_id}: {e}", exc_info=True)
         return jsonify(api_error('unexpected_error')), 500
@@ -3486,6 +3492,10 @@ def get_audio(recording_id):
         )
 
         if delivery.mode == 'redirect_url':
+            # The object store compares If-Range with its own ETag: a range
+            # under an earlier revision is refused here (#707)
+            if not download and stale_media_request(recording):
+                return stale_media_response(recording)
             return redirect(delivery.url, code=302)
 
         if not delivery.local_path or not os.path.exists(delivery.local_path):
@@ -3501,7 +3511,11 @@ def get_audio(recording_id):
                 conditional=True,
             ))
 
-        return sandbox_media_response(send_file(delivery.local_path, mimetype=serve_mime, conditional=True))
+        return versioned_media_response(send_file(delivery.local_path, mimetype=serve_mime, conditional=True),
+                                        recording)
+    except HTTPException:
+        # A range past the end stays a 416 with its Content-Range (#703)
+        raise
     except Exception as e:
         current_app.logger.error(f"Error serving audio for recording {recording_id}: {loggable_error(e)}", exc_info=True)
         return jsonify(api_error('unexpected_error')), 500

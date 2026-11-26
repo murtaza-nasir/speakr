@@ -7,7 +7,7 @@ import { savedColorScheme } from '../utils/theme-defaults.js';
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 import { confirmDialog } from '../utils/dialogs.js';
 import { realSpeakers } from '../utils/speaker-labels.js';
-import { reloadPlayers, storedFileReplaced } from '../utils/reload-players.js';
+import { audioAddress, holdPlayback, isAddressOf, replacedRevision, resumePlayback, revisionAfter } from '../utils/reload-players.js';
 
 /**
  * Decide whether the sidebar should start collapsed.
@@ -79,6 +79,41 @@ export function useUI(state, utils, processedTranscription) {
 
     // isMobile computed
     const isMobile = computed(() => windowWidth.value < 768);
+
+    // The address of the open recording's audio in its players (#707):
+    // /audio/<id>?v=<audio_revision>. The revision is the one the players
+    // were loaded with; a refreshed copy of the recording that reports
+    // another one loads the new file (the watcher in initializeUI).
+    const playerAudio = ref({ id: null, revision: null });
+    const playerRevision = (recording) => {
+        if (!recording) return null;
+        const held = playerAudio.value;
+        return held.id === recording.id ? held.revision : (recording.audio_revision ?? null);
+    };
+    const selectedAudioSrc = computed(() => {
+        const recording = selectedRecording.value;
+        if (!recording || recording.id == null) return '';
+        return audioAddress(`/audio/${recording.id}`, playerRevision(recording));
+    });
+
+    // A player of the open recording reported an error. When the stored file
+    // was replaced meanwhile (the server refuses a range of the old one with
+    // a 410), the players load the current file at the same position.
+    const handlePlayerError = async (event) => {
+        const media = event.target;
+        const recording = selectedRecording.value;
+        if (!media || !['AUDIO', 'VIDEO'].includes(media.tagName) || !recording || recording.id == null) return;
+        const route = `/audio/${recording.id}`;
+        if (!isAddressOf(media.getAttribute('src'), route)) return;
+        const latest = await replacedRevision(route, playerRevision(recording), async () => {
+            const response = await fetch(`/recording/${recording.id}/status`);
+            if (!response.ok) return undefined;
+            return (await response.json()).audio_revision;
+        });
+        if (latest !== undefined && selectedRecording.value && selectedRecording.value.id === recording.id) {
+            selectedRecording.value = { ...selectedRecording.value, audio_revision: latest };
+        }
+    };
 
     // Toggle dark mode
     const toggleDarkMode = () => {
@@ -1964,15 +1999,22 @@ export function useUI(state, utils, processedTranscription) {
                 if (newRecording.audio_duration && !audioDuration.value) {
                     audioDuration.value = newRecording.audio_duration;
                 }
-                // The stored file was replaced, by the convert job that keeps
-                // an upload's span (#699) or by a trim: the players load it
-                // again, and the bar takes the length of the new file.
-                if (storedFileReplaced(oldRecording, newRecording)) {
+                // The stored file was replaced (#707): by the convert job of an
+                // upload, a trim or a reprocess. The players get the address of
+                // the new file and keep their position; the bar takes the
+                // length of the new file.
+                const before = playerRevision(oldRecording);
+                const after = revisionAfter(before, newRecording);
+                if (after !== before) {
+                    const held = holdPlayback(`/audio/${newRecording.id}`);
+                    playerAudio.value = { id: newRecording.id, revision: after };
                     if (newRecording.audio_duration) audioDuration.value = newRecording.audio_duration;
-                    nextTick(() => reloadPlayers(newRecording.id, newRecording.file_size));
+                    nextTick(() => resumePlayback(held));
                 }
                 return;
             }
+            playerAudio.value = { id: newRecording ? newRecording.id : null,
+                                  revision: newRecording ? (newRecording.audio_revision ?? null) : null };
             if (videoFullscreen.value) exitVideoFullscreen();
             currentPlayingSegmentIndex.value = null;
             resetAudioPlayerState();
@@ -1981,6 +2023,9 @@ export function useUI(state, utils, processedTranscription) {
                 audioDuration.value = newRecording.audio_duration;
             }
         });
+
+        // Media errors do not bubble: listened to on the way down
+        document.addEventListener('error', handlePlayerError, true);
 
         // Set up global click handler to close dropdowns when clicking outside
         setupGlobalClickHandler();
@@ -2364,6 +2409,7 @@ export function useUI(state, utils, processedTranscription) {
         audioIsMuted,
         audioIsLoading,
         resetAudioPlayerState,
+        selectedAudioSrc,
         // Playback speed
         formatPlaybackRate,
         setPlaybackRate,

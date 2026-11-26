@@ -469,7 +469,10 @@ export function useReprocess(state, utils) {
                     recordings.value[index] = {
                         ...recordings.value[index],
                         status: statusData.status,
-                        ...(statusData.audio_ready !== undefined ? { audio_ready: statusData.audio_ready } : {})
+                        ...(statusData.audio_ready !== undefined ? { audio_ready: statusData.audio_ready } : {}),
+                        // A new stored file (the legacy video extraction of a
+                        // reprocess): the players load it (#707)
+                        ...(statusData.audio_revision !== undefined ? { audio_revision: statusData.audio_revision } : {})
                     };
                 }
 
@@ -478,7 +481,10 @@ export function useReprocess(state, utils) {
                     selectedRecording.value = {
                         ...selectedRecording.value,
                         status: statusData.status,
-                        ...(statusData.audio_ready !== undefined ? { audio_ready: statusData.audio_ready } : {})
+                        ...(statusData.audio_ready !== undefined ? { audio_ready: statusData.audio_ready } : {}),
+                        // A new stored file (the legacy video extraction of a
+                        // reprocess): the players load it (#707)
+                        ...(statusData.audio_revision !== undefined ? { audio_revision: statusData.audio_revision } : {})
                     };
                 }
 

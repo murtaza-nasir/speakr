@@ -98,13 +98,14 @@
                         <component :is="recording.mime_type && recording.mime_type.startsWith('video/') ? 'video' : 'audio'"
                                ref="audioPlayer"
                                :class="recording.mime_type && recording.mime_type.startsWith('video/') ? 'w-full rounded-lg mb-3' : 'hidden'"
-                               :src="'/share/audio/' + recording.public_id"
+                               :src="shareAudioSrc"
                                @play="handleAudioPlayPause"
                                @pause="handleAudioPlayPause"
                                @timeupdate="handleCustomAudioTimeUpdate"
                                @loadedmetadata="handleAudioLoadedMetadata"
                                @durationchange="handleAudioDurationChange"
-                               @ended="handleAudioEnded">
+                               @ended="handleAudioEnded"
+                               @error="handleAudioError">
                         </component>
                         <div class="flex items-center gap-3">
                         <!-- Play/Pause -->

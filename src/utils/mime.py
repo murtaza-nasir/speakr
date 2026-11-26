@@ -189,6 +189,46 @@ def served_media_mime(mime, path=None):
     return 'application/octet-stream'
 
 
+def stale_media_request(recording):
+    """Whether a player continues a stored file that was replaced (#707).
+
+    The players address the audio as <route>?v=<audio_revision>. A range
+    request with If-Range under another revision than the current one comes
+    from a player that loaded an earlier file. When its If-Range does not
+    name the current file, HTTP answers with the whole current file (200, no
+    Content-Range), and a media element waiting for bytes of the old file
+    stalls on it.
+    """
+    from flask import request
+    version = request.args.get('v')
+    return (bool(version) and version != recording.audio_revision
+            and request.range is not None and bool(request.headers.get('If-Range')))
+
+
+def stale_media_response(recording):
+    """The 410 for a stale_media_request, with the current revision: the
+    player reports an error, and the page loads it again (static/js/modules/
+    utils/reload-players.js)."""
+    from flask import jsonify
+    response = jsonify({'audio_revision': recording.audio_revision})
+    response.status_code = 410
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Audio-Revision'] = recording.audio_revision or ''
+    return response
+
+
+def versioned_media_response(response, recording):
+    """A served file of a recording's audio, with its revision in
+    X-Audio-Revision. A 200 in answer to a stale_media_request (its If-Range
+    named an earlier file) becomes the 410; a range of the current file, also
+    under an earlier revision, is served."""
+    if response.status_code == 200 and stale_media_request(recording):
+        response.close()
+        return stale_media_response(recording)
+    response.headers['X-Audio-Revision'] = recording.audio_revision or ''
+    return sandbox_media_response(response)
+
+
 def sandbox_media_response(response):
     """Mark a media response so that it can never run script (#438)."""
     response.headers['Content-Security-Policy'] = 'sandbox'
