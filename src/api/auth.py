@@ -485,6 +485,13 @@ def sso_callback():
         flash(translate('server.flash.ssoNotConfigured'), 'danger')
         return redirect(url_for('auth.login'))
 
+    # Taken out of the session first, so a cancelled or failed attempt leaves
+    # no pending link for the next SSO sign-in in this browser
+    # (GHSA-w7wf-8p3w-rmj7).
+    link_user_id = session.pop('sso_link_user_id', None)
+    next_url = session.pop('sso_next', None)
+    remember = bool(session.pop('sso_remember', False))
+
     oauth = get_sso_client() or init_sso_client(current_app)
     if not oauth:
         flash(translate('server.flash.ssoClientFailed'), 'danger')
@@ -505,10 +512,16 @@ def sso_callback():
         flash(translate('server.flash.ssoMissingSubject'), 'danger')
         return redirect(url_for('auth.login'))
 
-    link_user_id = session.pop('sso_link_user_id', None)
-    next_url = session.pop('sso_next', None)
-    remember = bool(session.pop('sso_remember', False))
     cfg = get_sso_config()
+
+    # A link completes only for the signed-in user who asked for it. A stale
+    # value from another user is ignored, and the callback continues as an
+    # ordinary SSO sign-in.
+    if link_user_id and not (current_user.is_authenticated
+                             and str(current_user.id) == str(link_user_id)):
+        current_app.logger.warning("SSO callback: ignored a pending account link that does not belong to the signed-in user")
+        link_user_id = None
+        next_url = None
 
     if link_user_id:
         target_user = db.session.get(User, int(link_user_id))
@@ -612,6 +625,10 @@ def logout():
     if current_user.is_authenticated:
         audit.record('auth.logout')
     logout_user()
+    # A pending SSO link or sign-in must not outlive the session that started
+    # it (GHSA-w7wf-8p3w-rmj7).
+    for key in ('sso_link_user_id', 'sso_next', 'sso_remember'):
+        session.pop(key, None)
     return signed_out_redirect()
 
 
