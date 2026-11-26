@@ -43,6 +43,7 @@ so an admin route commits the change and its audit row together.
 import copy
 import json
 import logging
+import re
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -1310,6 +1311,9 @@ def _environment_connector():
     return connector, str(model).strip()
 
 
+_PROFILE_ID = re.compile(r'm_[0-9a-f]{8}')
+
+
 def _legacy_connector(model_value):
     """The environment connector with a legacy model name as the model."""
     reg = _registry()
@@ -1367,6 +1371,12 @@ def resolve_asr_connector(value=None):
                         logger.warning('Failed to create connector for env profile %s', value)
                         return _environment_connector()
                     return connector, model
+
+        if _PROFILE_ID.fullmatch(value):
+            # A deleted profile still named by a tag, a folder or a queued
+            # job: its id is no model name, so the default applies.
+            logger.warning('ASR profile %r no longer exists; the default model is used', value)
+            return resolve_asr_connector(None)
 
         logger.warning('ASR profile %r not found; falling back to the environment', value)
         return _legacy_connector(value)

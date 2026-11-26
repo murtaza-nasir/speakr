@@ -606,9 +606,12 @@ def test_resolve_legacy_model_name_uses_environment_credentials(ctx, clean_env):
 
 
 def test_resolve_unknown_profile_falls_back_to_environment(ctx, clean_env):
+    # A deleted profile id resolves to the default (here the environment);
+    # the id is never sent as a model name.
     connector, model = ac.resolve_asr_connector("m_deadbeef")
     assert connector.config["api_key"] == "env-key"
-    assert model == "m_deadbeef"
+    assert model != "m_deadbeef"
+    assert connector.config.get("model") != "m_deadbeef"
 
 
 def test_resolve_none_uses_explicit_default(ctx, clean_env):
