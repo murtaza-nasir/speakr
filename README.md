@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.6-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.11.7-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -238,11 +238,17 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.11.6)
+## Latest Release (v0.11.7)
+
+- A security fix for SSO account linking on shared browsers (GHSA-w7wf-8p3w-rmj7).
+- The players are loaded with the new file when an open recording is converted, trimmed or reprocessed.
+- The Loading overlay is removed before the startup requests are completed.
+
+### v0.11.6
 
 - Transcription models are managed in one section of System settings, where each model has its own connector, address and key, and can be tested before it is offered to users.
 - A span of each uploaded file can be kept before it is transcribed.
-- audio.cpp servers are supported as a transcription connector, with speakers from models that label them.
+- audio.cpp servers are supported as a transcription connector, with speaker labels when the model assigns them.
 
 ### v0.11.5
 
@@ -250,15 +256,8 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - Password reset and verification links are stored as hashes and can be used once, and CSRF checks, markup escaping and webhook delivery are hardened.
 - Push notifications can be enabled again, and their keys are kept across updates.
 
-### v0.11.4
 
-- A recording can be trimmed to a start and an end in the segment editor, with the transcript cut to match.
-- Admins can configure text, chat and translation models in System settings without a restart.
-- The offline recording page can record system audio, or the microphone and system audio together.
-- The summary is generated as a separate job after the transcript, and malformed API requests receive a 400 Bad Request error.
-
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.6) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.7) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 

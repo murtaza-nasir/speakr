@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.11.6: Transcription models in System settings, trimming before upload, audio.cpp"
-    Transcription models are managed and tested in one section of System settings, a span of each uploaded file can be kept before it is transcribed, and audio.cpp servers are supported.
+!!! success "Latest Release: v0.11.7: SSO account linking fix, player reload after conversion, faster startup"
+    Pending SSO account links are completed only for the user who requested the link. The players are reloaded with the new file after a conversion or trim. The Loading overlay is removed before the startup requests are completed.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.6) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.11.7) for details.
 
 ## Quick Navigation
 
