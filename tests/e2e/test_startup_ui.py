@@ -109,20 +109,42 @@ def account(browser):
     page.goto(f"{BASE}/")
     page.wait_for_function(SHOWN, timeout=30000)
     saved = page.locator("html").get_attribute("data-ui-theme") or "default"
+    # The account's saved mode and scheme are copied into localStorage on
+    # every page load (includes/theme_account.html), so a test sets them on
+    # the account and puts the originals back here.
+    saved_dark = page.evaluate("() => document.documentElement.classList.contains('dark')")
+    saved_scheme = page.evaluate("() => { try { return localStorage.getItem('colorScheme') || 'blue'; } catch (e) { return 'blue'; } }")
     state = context.storage_state()
     yield {"state": state, "ids": ids, "page": page}
-    set_theme(page, saved)
+    set_theme(page, saved, dark=saved_dark, scheme=saved_scheme)
     context.close()
 
 
+def _retry(call):
+    """One more try when the server closed an idle kept-alive connection of
+    the long-lived account context ("socket hang up")."""
+    try:
+        return call()
+    except Exception as error:  # noqa: BLE001
+        if "socket hang up" not in str(error) and "ECONNRESET" not in str(error):
+            raise
+        return call()
+
+
 def csrf(page):
-    return page.request.get(f"{BASE}/api/csrf-token").json()["csrf_token"]
+    return _retry(lambda: page.request.get(f"{BASE}/api/csrf-token")).json()["csrf_token"]
 
 
-def set_theme(page, theme):
-    response = page.request.post(f"{BASE}/api/user/preferences",
-                                 headers={"X-CSRFToken": csrf(page), "Content-Type": "application/json"},
-                                 data=json.dumps({"ui_theme": theme}))
+def set_theme(page, theme, dark=None, scheme=None):
+    body = {"ui_theme": theme}
+    if dark is not None:
+        body["dark_mode"] = bool(dark)
+    if scheme is not None:
+        body["color_scheme"] = scheme
+    response = _retry(lambda: page.request.post(
+        f"{BASE}/api/user/preferences",
+        headers={"X-CSRFToken": csrf(page), "Content-Type": "application/json"},
+        data=json.dumps(body)))
     assert response.ok, f"could not save the theme {theme}: HTTP {response.status}"
 
 
@@ -154,7 +176,7 @@ CASES = [(t, "desktop", False) for t in THEMES] + [(t, "desktop", True) for t in
 
 @pytest.mark.parametrize("theme,where,dark", CASES, ids=[f"{t}-{w}-{'dark' if d else 'light'}" for t, w, d in CASES])
 def test_the_app_is_shown_while_the_list_never_answers(browser, account, theme, where, dark):
-    set_theme(account["page"], theme)
+    set_theme(account["page"], theme, dark=dark, scheme="blue")
     context, page, problems = session(browser, account, PHONE if where == "phone" else DESKTOP, dark)
     held = []
     try:
