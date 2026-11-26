@@ -801,7 +801,7 @@
       "editModel": "Edit model",
       "saveModel": "Save model",
       "noModels": "No models configured",
-      "noModelsHelp": "Every role uses the environment configuration until a model is added.",
+      "noModelsHelp": "Models added here can be assigned to the roles below.",
       "label": "Label",
       "labelHelp": "A name to recognize this model in the lists.",
       "modelName": "Model name",
@@ -859,7 +859,9 @@
       "assignFailed": "Could not change the role assignment.",
       "loadFailed": "Could not load the language models.",
       "saveFailed": "Could not save the model.",
-      "emptyNote": "With no models in the list every role keeps using its environment configuration, so upgrading changes nothing until a model is assigned."
+      "roleColumn": "Role",
+      "modelColumn": "Model",
+      "envNote": "Roles without an assigned model are run with the environment variables shown under each role. When Chat or Translation has no variables of its own, the text model is used."
     },
     "addModel": "Add model",
     "addFirstModel": "Add the first model",
@@ -868,8 +870,6 @@
     "noModels": "No transcription models configured",
     "noModelsHelp": "Add a model, or import the provider configured by environment variables.",
     "environment": "Environment",
-    "environmentFallback": "Environment fallback",
-    "useEnvironment": "Use as default",
     "importEnvironment": "Import from environment",
     "label": "Label",
     "labelHelp": "A name to recognise this model in the lists.",
@@ -905,14 +905,14 @@
     "defaultFailed": "Could not change the default model.",
     "visibleFailed": "Could not change visibility.",
     "deleteFailed": "Could not delete the model.",
-    "environmentNote": "Transcriptions fall back to the environment configuration when no model is chosen.",
     "baseUrl": "Base URL",
     "noKey": "No key",
     "always": "Always",
     "modelLimitReached": "You can configure up to {{count}} transcription models.",
     "otherModel": "Other (type manually)",
     "defaultVisibleHint": "The default model stays visible. Choose another default before hiding it.",
-    "connectorChangeConfirm": "Changing the connector resets its fields to the schema defaults. Continue?"
+    "connectorChangeConfirm": "Changing the connector resets its fields to the schema defaults. Continue?",
+    "defaultNote": "Recordings without a chosen model are transcribed with the default model."
   },
   "apiTokens": {
     "activeTokens": "Active tokens",

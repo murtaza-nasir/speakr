@@ -801,7 +801,7 @@
       "editModel": "编辑模型",
       "saveModel": "保存模型",
       "noModels": "未配置模型",
-      "noModelsHelp": "在添加模型之前，每个角色都使用环境配置。",
+      "noModelsHelp": "在此添加的模型可以分配给下方的角色。",
       "label": "标签",
       "labelHelp": "用于在列表中识别此模型的名称。",
       "modelName": "模型名称",
@@ -859,7 +859,9 @@
       "assignFailed": "无法更改角色分配。",
       "loadFailed": "无法加载语言模型。",
       "saveFailed": "无法保存该模型。",
-      "emptyNote": "列表中没有模型时，每个角色仍使用其环境配置，因此在分配模型之前，升级不会带来任何变化。"
+      "roleColumn": "角色",
+      "modelColumn": "模型",
+      "envNote": "未分配模型的角色使用各角色下显示的环境变量。聊天或翻译没有自己的变量时，使用文本模型。"
     },
     "addModel": "添加模型",
     "addFirstModel": "添加第一个模型",
@@ -868,8 +870,6 @@
     "noModels": "未配置转写模型",
     "noModelsHelp": "添加一个模型，或导入由环境变量配置的服务商。",
     "environment": "环境",
-    "environmentFallback": "环境回退",
-    "useEnvironment": "设为默认",
     "importEnvironment": "从环境导入",
     "label": "名称",
     "labelHelp": "用于在列表中识别此模型的名称。",
@@ -905,14 +905,14 @@
     "defaultFailed": "无法更改默认模型。",
     "visibleFailed": "无法更改可见性。",
     "deleteFailed": "无法删除模型。",
-    "environmentNote": "未选择模型时，转写将回退到环境配置。",
     "baseUrl": "基础 URL",
     "noKey": "无密钥",
     "always": "始终",
     "modelLimitReached": "最多可以配置 {{count}} 个转写模型。",
     "otherModel": "其他（手动输入）",
     "defaultVisibleHint": "默认模型保持可见。请先选择其他默认模型，再隐藏它。",
-    "connectorChangeConfirm": "更改连接器会将其字段重置为架构默认值。是否继续？"
+    "connectorChangeConfirm": "更改连接器会将其字段重置为架构默认值。是否继续？",
+    "defaultNote": "未选择模型的录音使用默认模型转写。"
   },
   "apiTokens": {
     "activeTokens": "活跃令牌",

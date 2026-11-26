@@ -439,8 +439,8 @@ class ConnectorRegistry:
                 'base_url': base_url,
                 # The id of a model in the audiocpp_server config.
                 'model': os.environ.get('TRANSCRIPTION_MODEL', ''),
-                # The model labels speakers (VibeVoice ASR, Nemotron 3
-                # Diarization); audio.cpp takes no diarization option.
+                # Speaker labels in the model output (VibeVoice ASR, Nemotron 3
+                # Diarization); audio.cpp has no diarization option.
                 'model_diarizes': (os.environ.get('ASR_DIARIZE') or 'false').lower() == 'true',
                 'timeout': timeout,
                 'max_duration_seconds': max_duration,

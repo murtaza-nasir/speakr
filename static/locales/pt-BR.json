@@ -801,7 +801,7 @@
       "editModel": "Editar modelo",
       "saveModel": "Salvar modelo",
       "noModels": "Nenhum modelo configurado",
-      "noModelsHelp": "Todos os perfis usam a configuração do ambiente até que um modelo seja adicionado.",
+      "noModelsHelp": "Os modelos adicionados aqui podem ser atribuídos aos perfis abaixo.",
       "label": "Rótulo",
       "labelHelp": "Um nome para reconhecer este modelo nas listas.",
       "modelName": "Nome do modelo",
@@ -859,7 +859,9 @@
       "assignFailed": "Não foi possível alterar a atribuição do perfil.",
       "loadFailed": "Não foi possível carregar os modelos de linguagem.",
       "saveFailed": "Não foi possível salvar o modelo.",
-      "emptyNote": "Sem modelos na lista, cada perfil continua usando sua configuração do ambiente, então a atualização não muda nada até que um modelo seja atribuído."
+      "roleColumn": "Perfil",
+      "modelColumn": "Modelo",
+      "envNote": "Perfis sem um modelo atribuído são executados com as variáveis de ambiente mostradas em cada perfil. Se Chat ou Tradução não tiver variáveis próprias, o modelo de texto é usado."
     },
     "addModel": "Adicionar modelo",
     "addFirstModel": "Adicionar o primeiro modelo",
@@ -868,8 +870,6 @@
     "noModels": "Nenhum modelo de transcrição configurado",
     "noModelsHelp": "Adicione um modelo ou importe o provedor configurado por variáveis de ambiente.",
     "environment": "Ambiente",
-    "environmentFallback": "Alternativa do ambiente",
-    "useEnvironment": "Usar como padrão",
     "importEnvironment": "Importar do ambiente",
     "label": "Rótulo",
     "labelHelp": "Um nome para reconhecer este modelo nas listas.",
@@ -905,14 +905,14 @@
     "defaultFailed": "Não foi possível alterar o modelo padrão.",
     "visibleFailed": "Não foi possível alterar a visibilidade.",
     "deleteFailed": "Não foi possível excluir o modelo.",
-    "environmentNote": "As transcrições voltam para a configuração do ambiente quando nenhum modelo é escolhido.",
     "baseUrl": "URL base",
     "noKey": "Nenhuma chave",
     "always": "Sempre",
     "modelLimitReached": "Você pode configurar até {{count}} modelos de transcrição.",
     "otherModel": "Outro (digitar manualmente)",
     "defaultVisibleHint": "O modelo padrão permanece visível. Escolha outro padrão antes de ocultá-lo.",
-    "connectorChangeConfirm": "Mudar o conector redefine seus campos para os padrões do esquema. Continuar?"
+    "connectorChangeConfirm": "Mudar o conector redefine seus campos para os padrões do esquema. Continuar?",
+    "defaultNote": "Gravações sem um modelo escolhido são transcritas com o modelo padrão."
   },
   "apiTokens": {
     "activeTokens": "Tokens ativos",

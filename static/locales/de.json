@@ -801,7 +801,7 @@
       "editModel": "Modell bearbeiten",
       "saveModel": "Modell speichern",
       "noModels": "Keine Modelle konfiguriert",
-      "noModelsHelp": "Jede Rolle verwendet die Umgebungskonfiguration, bis ein Modell hinzugefügt wird.",
+      "noModelsHelp": "Hier hinzugefügte Modelle können den Rollen unten zugewiesen werden.",
       "label": "Bezeichnung",
       "labelHelp": "Ein Name, an dem Sie dieses Modell in den Listen erkennen.",
       "modelName": "Modellname",
@@ -859,7 +859,9 @@
       "assignFailed": "Die Rollenzuweisung konnte nicht geändert werden.",
       "loadFailed": "Die Sprachmodelle konnten nicht geladen werden.",
       "saveFailed": "Das Modell konnte nicht gespeichert werden.",
-      "emptyNote": "Ohne Modelle in der Liste verwendet jede Rolle weiterhin ihre Umgebungskonfiguration. Ein Upgrade ändert daher nichts, bis ein Modell zugewiesen wird."
+      "roleColumn": "Rolle",
+      "modelColumn": "Modell",
+      "envNote": "Rollen ohne zugewiesenes Modell werden mit den unter der Rolle angezeigten Umgebungsvariablen ausgeführt. Wenn Chat oder Übersetzung keine eigenen Variablen hat, wird das Textmodell verwendet."
     },
     "addModel": "Modell hinzufügen",
     "addFirstModel": "Erstes Modell hinzufügen",
@@ -868,8 +870,6 @@
     "noModels": "Keine Transkriptionsmodelle konfiguriert",
     "noModelsHelp": "Füge ein Modell hinzu oder importiere den über Umgebungsvariablen konfigurierten Anbieter.",
     "environment": "Umgebung",
-    "environmentFallback": "Umgebungs-Fallback",
-    "useEnvironment": "Als Standard verwenden",
     "importEnvironment": "Aus Umgebung importieren",
     "label": "Bezeichnung",
     "labelHelp": "Ein Name, um dieses Modell in den Listen wiederzuerkennen.",
@@ -905,14 +905,14 @@
     "defaultFailed": "Das Standardmodell konnte nicht geändert werden.",
     "visibleFailed": "Die Sichtbarkeit konnte nicht geändert werden.",
     "deleteFailed": "Das Modell konnte nicht gelöscht werden.",
-    "environmentNote": "Transkriptionen fallen auf die Umgebungskonfiguration zurück, wenn kein Modell gewählt ist.",
     "baseUrl": "Basis-URL",
     "noKey": "Kein Schlüssel",
     "always": "Immer",
     "modelLimitReached": "Du kannst bis zu {{count}} Transkriptionsmodelle konfigurieren.",
     "otherModel": "Anderes (manuell eingeben)",
     "defaultVisibleHint": "Das Standardmodell bleibt sichtbar. Wähle zuerst ein anderes Standardmodell, bevor du es ausblendest.",
-    "connectorChangeConfirm": "Beim Wechsel des Connectors werden seine Felder auf die Schema-Standardwerte zurückgesetzt. Fortfahren?"
+    "connectorChangeConfirm": "Beim Wechsel des Connectors werden seine Felder auf die Schema-Standardwerte zurückgesetzt. Fortfahren?",
+    "defaultNote": "Aufnahmen ohne ausgewähltes Modell werden mit dem Standardmodell transkribiert."
   },
   "apiTokens": {
     "activeTokens": "Aktive Token",

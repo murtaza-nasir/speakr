@@ -651,7 +651,7 @@
                                 </h4>
                                 <p class="text-xs text-[var(--text-muted)] mt-0.5" data-llm-description>${ llmModels.length >= llmModelLimit ? llmModelLimitMessage : t('adminDashboard.llmModels.description') }</p>
                             </div>
-                            <button v-if="llmModels.length < llmModelLimit" type="button" @click="openLlmModelModal()" class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
+                            <button v-if="llmModels.length < llmModelLimit" type="button" @click="openLlmModelModal()" class="btn btn--primary btn--sm flex-shrink-0 whitespace-nowrap">
                                 <i class="fas fa-plus"></i>
                                 <span>${ t('adminDashboard.llmModels.addModel') }</span>
                             </button>
@@ -691,7 +691,7 @@
                                         <td class="py-2 px-3 font-mono text-xs text-[var(--text-muted)] hidden lg:table-cell">${ model.base_url }</td>
                                         <td class="py-2 px-3 font-mono text-xs text-[var(--text-secondary)] hidden sm:table-cell">
                                             <span v-if="model.api_key" aria-label="********">********</span>
-                                            <span v-else class="text-[var(--text-muted)] italic">${ t('adminDashboard.llmModels.noApiKey') }</span>
+                                            <span v-else class="text-[var(--text-muted)]">${ t('adminDashboard.llmModels.noApiKey') }</span>
                                         </td>
                                         <td class="py-2 px-3 hidden sm:table-cell">
                                             <span v-if="model.gpt5_force" class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">${ t('adminDashboard.llmModels.gpt5On') }</span>
@@ -723,7 +723,7 @@
                             <i class="fas fa-spinner fa-spin mr-2"></i>${ t('common.loading') }
                         </div>
 
-                        <div v-else-if="!llmConfigError" class="empty">
+                        <div v-else-if="!llmConfigError" class="empty py-6">
                             <div class="empty__icon"><i class="fas fa-robot"></i></div>
                             <div class="empty__title">${ t('adminDashboard.llmModels.noModels') }</div>
                             <div class="empty__body">${ t('adminDashboard.llmModels.noModelsHelp') }</div>
@@ -752,39 +752,55 @@
                                 <h5 class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">${ t('adminDashboard.llmModels.rolesTitle') }</h5>
                                 <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.llmModels.rolesDescription') }</p>
                             </div>
-                            <div v-for="row in llmRoleRows" :key="row.role" :data-llm-role="row.role"
-                                 class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 px-4 py-3 border-t border-[var(--border-primary)]">
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
-                                        <i :class="row.icon" class="text-[var(--text-muted)]"></i>
-                                        <span>${ row.name }</span>
-                                    </div>
-                                    <p class="text-xs text-[var(--text-muted)] mt-0.5">${ row.hint }</p>
-                                    <p v-if="row.envVars.length" class="font-mono text-xs text-[var(--text-muted)] mt-1 break-all">${ row.envVars.join(' · ') }</p>
-                                </div>
-                                <div class="flex items-center gap-2 flex-wrap sm:justify-end">
-                                    <select :value="llmConfig.assignments[row.role] || ''"
-                                            @change="assignLlmModel(row.role, $event.target.value)"
-                                            :disabled="llmRoleBusy === row.role"
-                                            class="field field--sm field--role"
-                                            :aria-label="t('adminDashboard.llmModels.assignRole', { role: row.name })">
-                                        <option value="">${ t('adminDashboard.llmModels.environmentOption') }</option>
-                                        <option v-for="model in llmModels" :key="model.id" :value="model.id">${ model.label }</option>
-                                    </select>
-                                    <span class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full whitespace-nowrap"
-                                          :class="llmRoleBadgeClass(row)">${ llmRoleBadge(row).text }</span>
-                                    <button type="button" v-if="row.assigned" @click="revertLlmRole(row.role)" :disabled="llmRoleBusy === row.role"
-                                            class="btn btn--ghost btn--sm" :title="t('adminDashboard.llmModels.revert')">
-                                        <i :class="llmRoleBusy === row.role ? 'fas fa-spinner fa-spin' : 'fas fa-rotate-left'"></i>
-                                        <span class="hidden xl:inline">${ t('adminDashboard.llmModels.revert') }</span>
-                                    </button>
-                                </div>
+                            <div class="px-1 pb-1 overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="hidden sm:table-header-group">
+                                        <tr class="text-left t-label">
+                                            <th class="py-2 px-3">${ t('adminDashboard.llmModels.roleColumn') }</th>
+                                            <th class="py-2 px-3 w-64">${ t('adminDashboard.llmModels.modelColumn') }</th>
+                                            <th class="py-2 px-3 w-14"><span class="sr-only">${ t('adminDashboard.actions') }</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="row in llmRoleRows" :key="row.role" :data-llm-role="row.role"
+                                            class="block sm:table-row border-t border-[var(--border-primary)]">
+                                            <td class="block sm:table-cell pt-3 pb-1 sm:py-3 px-3 align-middle">
+                                                <div class="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2 flex-wrap">
+                                                    <i :class="row.icon" class="w-4 text-center text-[var(--text-muted)]"></i>
+                                                    <span>${ row.name }</span>
+                                                    <span v-if="llmRoleBadgeShown(row)" data-llm-role-badge
+                                                          class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full whitespace-nowrap"
+                                                          :class="llmRoleBadgeClass(row)">${ llmRoleBadge(row).text }</span>
+                                                </div>
+                                                <p class="text-xs text-[var(--text-muted)] mt-0.5 pl-6">${ row.hint }</p>
+                                                <p v-if="row.envVars.length" class="font-mono text-xs text-[var(--text-muted)] mt-1 pl-6 break-all">${ row.envVars.join(' · ') }</p>
+                                            </td>
+                                            <td class="inline-block sm:table-cell w-[calc(100%-3.5rem)] sm:w-auto pb-3 pt-1 sm:py-3 px-3 align-middle">
+                                                <select :value="llmConfig.assignments[row.role] || ''"
+                                                        @change="assignLlmModel(row.role, $event.target.value)"
+                                                        :disabled="llmRoleBusy === row.role"
+                                                        class="field field--sm w-full"
+                                                        :aria-label="t('adminDashboard.llmModels.assignRole', { role: row.name })">
+                                                    <option value="">${ t('adminDashboard.llmModels.environmentOption') }</option>
+                                                    <option v-for="model in llmModels" :key="model.id" :value="model.id">${ model.label }</option>
+                                                </select>
+                                            </td>
+                                            <td class="inline-block sm:table-cell w-14 pb-3 pt-1 sm:py-3 px-3 align-middle text-right">
+                                                <button type="button" v-if="row.assigned" @click="revertLlmRole(row.role)" :disabled="llmRoleBusy === row.role"
+                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.llmModels.revert')"
+                                                        :aria-label="t('adminDashboard.llmModels.revert')">
+                                                    <i :class="llmRoleBusy === row.role ? 'fas fa-spinner fa-spin' : 'fas fa-rotate-left'"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
-                        <div class="px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-xs text-[var(--text-muted)]">
-                            <i class="fas fa-circle-info mr-1"></i>
-                            ${ t('adminDashboard.llmModels.emptyNote') }
+                        <div class="flex items-start gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-xs text-[var(--text-muted)]">
+                            <i class="fas fa-circle-info flex-shrink-0 mt-0.5"></i>
+                            <span>${ t('adminDashboard.llmModels.envNote') }</span>
                         </div>
                     </div>
 
@@ -826,7 +842,7 @@
                                             <th class="py-2 px-3">${ t('adminDashboard.apiKey') }</th>
                                             <th class="py-2 px-3 text-center">${ t('adminDashboard.visible') }</th>
                                             <th class="py-2 px-3 text-center">${ t('adminDashboard.default') }</th>
-                                            <th class="py-2 px-3 text-center">${ t('adminDashboard.actions') }</th>
+                                            <th class="py-2 px-3 w-40 text-right">${ t('adminDashboard.actions') }</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -853,10 +869,10 @@
                                                        :checked="asrDefault === m.id" :disabled="!m.visible"
                                                        @change="changeAsrDefault(m.id)" class="h-4 w-4">
                                             </td>
-                                            <td class="py-2 px-3 text-center whitespace-nowrap">
+                                            <td class="py-2 px-3 text-right whitespace-nowrap">
                                                 <button type="button" data-asr-row-test @click="testAsrStored(m)"
                                                         class="btn btn--ghost btn--sm" :title="t('adminDashboard.test')">
-                                                    <i class="fas fa-vial"></i>
+                                                    <i class="fas fa-plug"></i>
                                                 </button>
                                                 <button type="button" data-asr-edit @click="openAsrEdit(m)"
                                                         class="btn btn--ghost btn--sm" :title="t('common.edit')">
@@ -868,7 +884,7 @@
                                                 </button>
                                             </td>
                                         </tr>
-                                        <tr v-if="asrModels.length === 0 && asrEnvironment" data-asr-environment
+                                        <tr v-if="asrEnvironment" data-asr-environment
                                             class="border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
                                             <td class="py-2 px-3">
                                                 <div class="font-medium text-[var(--text-primary)]">${ asrEnvironment.label }</div>
@@ -885,14 +901,19 @@
                                                 <input type="radio" name="asr-default" data-asr-default :checked="asrDefault === null"
                                                        @change="changeAsrDefault(null)" class="h-4 w-4">
                                             </td>
-                                            <td class="py-2 px-3 text-center whitespace-nowrap">
+                                            <td class="py-2 px-3 text-right whitespace-nowrap">
                                                 <button type="button" data-asr-row-test @click="testAsrEnvironment()"
                                                         class="btn btn--ghost btn--sm" :title="t('adminDashboard.test')">
-                                                    <i class="fas fa-vial"></i>
+                                                    <i class="fas fa-plug"></i>
                                                 </button>
                                                 <button type="button" data-asr-edit @click="editAsrEnvironment()"
                                                         class="btn btn--ghost btn--sm" :title="t('common.edit')">
                                                     <i class="fas fa-pen"></i>
+                                                </button>
+                                                <button type="button" data-asr-import @click="importAsrFromEnvironment"
+                                                        class="btn btn--ghost btn--sm" :title="t('adminDashboard.importEnvironment')"
+                                                        :aria-label="t('adminDashboard.importEnvironment')">
+                                                    <i class="fas fa-file-import"></i>
                                                 </button>
                                             </td>
                                         </tr>
@@ -912,27 +933,12 @@
                                 </button>
                             </div>
 
-                            <div v-if="asrModels.length > 0 && asrEnvironment"
-                                 class="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
-                                <div class="min-w-0 mr-auto">
-                                    <div class="text-xs font-semibold text-[var(--text-muted)]">${ t('adminDashboard.environmentFallback') }</div>
-                                    <div class="font-mono text-xs text-[var(--text-primary)] break-all">${ asrEnvironment.label }</div>
-                                </div>
-                                <span v-if="asrDefault === null" class="px-1.5 py-0.5 rounded bg-[var(--bg-accent)] text-[var(--text-accent)] text-xs">${ t('adminDashboard.default') }</span>
-                                <button type="button" data-asr-use-env-default @click="changeAsrDefault(null)"
-                                        :disabled="asrDefault === null" class="btn btn--ghost btn--sm">
-                                    ${ t('adminDashboard.useEnvironment') }
-                                </button>
-                                <button type="button" data-asr-import @click="importAsrFromEnvironment"
-                                        class="btn btn--ghost btn--sm">
-                                    <i class="fas fa-file-import"></i>
-                                    <span>${ t('adminDashboard.importEnvironment') }</span>
-                                </button>
+                            <div v-if="asrModels.length > 0 || asrEnvironment" data-asr-note>
+                                <div class="flex items-start gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-xs text-[var(--text-muted)]">
+                                <i class="fas fa-circle-info flex-shrink-0 mt-0.5"></i>
+                                <span>${ t('adminDashboard.defaultNote') }</span>
                             </div>
-
-                            <p v-if="asrEnvironment" class="px-4 pb-3 text-xs text-[var(--text-muted)]">
-                                ${ t('adminDashboard.environmentNote') }
-                            </p>
+                            </div>
 
                             <div v-if="asrStatus" data-asr-status role="status"
                                  class="px-4 py-2 text-sm border-t border-[var(--border-primary)]"
@@ -3758,6 +3764,9 @@ Summarization Instructions:
                     }
                     return { text: t('adminDashboard.llmModels.notConfigured'), tone: 'none' };
                 };
+                // "Uses the text model" and "Not configured" add to what the
+                // select shows; the model or environment name would repeat it.
+                const llmRoleBadgeShown = (row) => ['inherit', 'none'].includes(llmRoleBadge(row).tone);
                 const llmRoleBadgeClass = (row) => ({
                     model: 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]',
                     environment: 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]',
@@ -6425,6 +6434,7 @@ Summarization Instructions:
                     llmTestStatus,
                     llmRoleRows,
                     llmRoleBadge,
+                    llmRoleBadgeShown,
                     llmRoleBadgeClass,
                     showLlmModelModal,
                     llmEditingModel,

@@ -66,7 +66,7 @@ PANEL_KEYS = (
     "label", "labelHelp", "connector", "connectorHelp", "modelName", "modelNameHelp",
     "baseUrl", "apiKey", "apiKeyPlaceholder", "apiKeyHelp", "apiKeyKept", "clearApiKey",
     "apiKeyClearedOnUrlChange", "visible", "visibleHelp", "default", "actions",
-    "environment", "environmentFallback", "environmentNote", "useEnvironment",
+    "environment", "defaultNote",
     "importEnvironment", "noModels", "noModelsHelp", "modelLimitReached", "noKey",
     "always", "defaultVisibleHint", "discover", "discovering", "discoveryEmpty",
     "pickDiscoveredModel", "otherModel", "test", "testing", "testSuccess",
@@ -262,8 +262,8 @@ def test_env_row_edit_snapshots_into_profile_with_default_label(admin):
     assert profile["id"].startswith("m_")
     assert profile["label"] == expected.rstrip(":") + ":small"
     assert profile["config"].get("model") == "small"
-    assert page.locator(ENV_ROW).count() == 0
-    assert page.locator("[data-asr-import]").count() == 1
+    assert page.locator(ENV_ROW).count() == 1
+    assert page.locator(f"{ENV_ROW} [data-asr-import]").count() == 1
     admin.delete(profile["id"])
     admin.open_panel()
     assert page.locator(ENV_ROW).count() == 1
@@ -602,7 +602,7 @@ def test_default_radio_saves_immediately(admin):
             eventually(lambda: admin.document()["default"] == profile_id,
                        "the default was not saved", timeout=90.0)
             assert en("adminDashboard.defaultChanged").split('"')[0].strip() in page.locator(STATUS).inner_text()
-            page.locator("[data-asr-use-env-default]").click()
+            page.locator(f"{ENV_ROW} [data-asr-default]").check()
             eventually(lambda: admin.document()["default"] is None,
                        "the environment default was not restored", timeout=90.0)
             admin.check()
@@ -640,13 +640,12 @@ def test_delete_confirm_and_environment_fallback(admin):
         admin.confirm(accept=True)
         eventually(lambda: all(model["id"] != keep for model in admin.document()["models"]),
                    "the profile was not deleted")
-        # With every profile gone, the environment row is the table again.
-        # The panel reloads after the delete, so wait for the row, not only
-        # for the API.
-        eventually(lambda: page.locator(ENV_ROW).count() == 1,
-                   "the environment row did not come back")
+        # The panel reloads after the delete, so wait for the row to go, not
+        # only for the API. The environment row stays in the table.
+        eventually(lambda: page.locator(ROW).count() == 0,
+                   "the deleted row is still shown")
+        assert page.locator(ENV_ROW).count() == 1
         assert en("adminDashboard.environment") in page.locator(ENV_ROW).inner_text()
-        assert page.locator(ROW).count() == 0
         admin.check()
 
 

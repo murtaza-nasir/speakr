@@ -801,7 +801,7 @@
       "editModel": "Modifier le modèle",
       "saveModel": "Enregistrer le modèle",
       "noModels": "Aucun modèle configuré",
-      "noModelsHelp": "Chaque rôle utilise la configuration de l'environnement tant qu'aucun modèle n'est ajouté.",
+      "noModelsHelp": "Les modèles ajoutés ici peuvent être attribués aux rôles ci-dessous.",
       "label": "Libellé",
       "labelHelp": "Un nom pour reconnaître ce modèle dans les listes.",
       "modelName": "Nom du modèle",
@@ -859,7 +859,9 @@
       "assignFailed": "Impossible de modifier l'attribution du rôle.",
       "loadFailed": "Impossible de charger les modèles de langage.",
       "saveFailed": "Impossible d'enregistrer le modèle.",
-      "emptyNote": "Sans modèle dans la liste, chaque rôle continue d'utiliser sa configuration de l'environnement : une mise à niveau ne change donc rien tant qu'aucun modèle n'est attribué."
+      "roleColumn": "Rôle",
+      "modelColumn": "Modèle",
+      "envNote": "Les rôles sans modèle attribué sont exécutés avec les variables d'environnement affichées sous chaque rôle. Si Chat ou Traduction n'a pas de variables propres, le modèle de texte est utilisé."
     },
     "addModel": "Ajouter un modèle",
     "addFirstModel": "Ajouter le premier modèle",
@@ -868,8 +870,6 @@
     "noModels": "Aucun modèle de transcription configuré",
     "noModelsHelp": "Ajoutez un modèle ou importez le fournisseur configuré par les variables d'environnement.",
     "environment": "Environnement",
-    "environmentFallback": "Repli sur l'environnement",
-    "useEnvironment": "Utiliser par défaut",
     "importEnvironment": "Importer depuis l'environnement",
     "label": "Libellé",
     "labelHelp": "Un nom pour reconnaître ce modèle dans les listes.",
@@ -905,14 +905,14 @@
     "defaultFailed": "Impossible de changer le modèle par défaut.",
     "visibleFailed": "Impossible de changer la visibilité.",
     "deleteFailed": "Impossible de supprimer le modèle.",
-    "environmentNote": "Les transcriptions reviennent à la configuration de l'environnement lorsqu'aucun modèle n'est choisi.",
     "baseUrl": "URL de base",
     "noKey": "Aucune clé",
     "always": "Toujours",
     "modelLimitReached": "Vous pouvez configurer jusqu'à {{count}} modèles de transcription.",
     "otherModel": "Autre (saisie manuelle)",
     "defaultVisibleHint": "Le modèle par défaut reste visible. Choisissez un autre modèle par défaut avant de le masquer.",
-    "connectorChangeConfirm": "Changer de connecteur réinitialise ses champs aux valeurs par défaut du schéma. Continuer ?"
+    "connectorChangeConfirm": "Changer de connecteur réinitialise ses champs aux valeurs par défaut du schéma. Continuer ?",
+    "defaultNote": "Les enregistrements sans modèle choisi sont transcrits avec le modèle par défaut."
   },
   "apiTokens": {
     "activeTokens": "Jetons actifs",

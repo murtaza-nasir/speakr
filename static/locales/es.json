@@ -801,7 +801,7 @@
       "editModel": "Editar modelo",
       "saveModel": "Guardar modelo",
       "noModels": "No hay modelos configurados",
-      "noModelsHelp": "Todos los roles usan la configuración del entorno hasta que se añade un modelo.",
+      "noModelsHelp": "Los modelos añadidos aquí pueden asignarse a los roles de abajo.",
       "label": "Etiqueta",
       "labelHelp": "Un nombre para reconocer este modelo en las listas.",
       "modelName": "Nombre del modelo",
@@ -859,7 +859,9 @@
       "assignFailed": "No se pudo cambiar la asignación del rol.",
       "loadFailed": "No se pudieron cargar los modelos de lenguaje.",
       "saveFailed": "No se pudo guardar el modelo.",
-      "emptyNote": "Sin modelos en la lista, cada rol sigue usando su configuración del entorno, así que la actualización no cambia nada hasta que se asigne un modelo."
+      "roleColumn": "Rol",
+      "modelColumn": "Modelo",
+      "envNote": "Los roles sin un modelo asignado se ejecutan con las variables de entorno que se muestran en cada rol. Si Chat o Traducción no tiene variables propias, se usa el modelo de texto."
     },
     "addModel": "Añadir modelo",
     "addFirstModel": "Añadir el primer modelo",
@@ -868,8 +870,6 @@
     "noModels": "No hay modelos de transcripción configurados",
     "noModelsHelp": "Añade un modelo o importa el proveedor configurado por variables de entorno.",
     "environment": "Entorno",
-    "environmentFallback": "Alternativa del entorno",
-    "useEnvironment": "Usar como predeterminado",
     "importEnvironment": "Importar del entorno",
     "label": "Etiqueta",
     "labelHelp": "Un nombre para reconocer este modelo en las listas.",
@@ -905,14 +905,14 @@
     "defaultFailed": "No se pudo cambiar el modelo predeterminado.",
     "visibleFailed": "No se pudo cambiar la visibilidad.",
     "deleteFailed": "No se pudo eliminar el modelo.",
-    "environmentNote": "Las transcripciones vuelven a la configuración del entorno cuando no se elige ningún modelo.",
     "baseUrl": "URL base",
     "noKey": "Sin clave",
     "always": "Siempre",
     "modelLimitReached": "Puedes configurar hasta {{count}} modelos de transcripción.",
     "otherModel": "Otro (escribir manualmente)",
     "defaultVisibleHint": "El modelo predeterminado permanece visible. Elige otro modelo predeterminado antes de ocultarlo.",
-    "connectorChangeConfirm": "Cambiar el conector restablece sus campos a los valores predeterminados del esquema. ¿Continuar?"
+    "connectorChangeConfirm": "Cambiar el conector restablece sus campos a los valores predeterminados del esquema. ¿Continuar?",
+    "defaultNote": "Las grabaciones sin un modelo elegido se transcriben con el modelo predeterminado."
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",
