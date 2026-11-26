@@ -16,6 +16,10 @@ from ..base import (
     TranscriptionRequest,
     TranscriptionResponse,
     ConnectorSpecifications,
+    PROBE_TIMEOUT_SECONDS,
+    ProbeResult,
+    probe_failure,
+    probe_result_from_response,
 )
 from ..exceptions import TranscriptionError, ConfigurationError
 
@@ -35,6 +39,9 @@ class OpenAIWhisperConnector(BaseTranscriptionConnector):
         TranscriptionCapability.INITIAL_PROMPT,
     }
     PROVIDER_NAME = "openai_whisper"
+    DISPLAY_NAME = "OpenAI Whisper"
+    DESCRIPTION = "OpenAI's audio transcription API, including OpenAI-compatible Whisper servers."
+    MODEL_FILTERS = ('whisper',)
 
     # OpenAI Whisper has a 25MB file limit and doesn't handle chunking internally
     # Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm, flac, ogg, oga
@@ -154,6 +161,19 @@ class OpenAIWhisperConnector(BaseTranscriptionConnector):
         """Check if the connector is properly configured."""
         return bool(self.config.get('api_key'))
 
+    def probe(self) -> ProbeResult:
+        base_url = (self.config.get('base_url') or 'https://api.openai.com/v1').rstrip('/')
+        headers = {'Authorization': f"Bearer {self.config.get('api_key', '')}"}
+        try:
+            response = httpx.get(
+                f'{base_url}/models',
+                headers=headers,
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        return probe_result_from_response(response)
+
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
         """Return JSON schema for configuration."""
@@ -163,10 +183,12 @@ class OpenAIWhisperConnector(BaseTranscriptionConnector):
             "properties": {
                 "api_key": {
                     "type": "string",
+                    "writeOnly": True,
                     "description": "OpenAI API key"
                 },
                 "base_url": {
                     "type": "string",
+                    "default": None,
                     "description": "API base URL (optional, for OpenAI-compatible endpoints)"
                 },
                 "model": {

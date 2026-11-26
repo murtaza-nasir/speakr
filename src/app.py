@@ -1266,6 +1266,13 @@ with app.app_context():
     from src.models.system import register_system_setting_cache_invalidation
     register_system_setting_cache_invalidation()
     initialize_database(app)
+    # One-time migration of the legacy transcription-model settings into the
+    # asr_config_json document. Best effort: a failure must not stop startup.
+    try:
+        from src.services import asr_config as _asr_config
+        _asr_config.ensure_migrated()
+    except Exception as _asr_migration_error:  # noqa: BLE001
+        app.logger.warning('ASR configuration migration failed: %s', _asr_migration_error)
 
 # Application configuration (extracted to src/config/app_config.py)
 from src.config.app_config import initialize_config

@@ -240,22 +240,67 @@ def test_folder_default_applied_when_no_tag():
         assert params.get("transcription_model") == "whisper-1", f"got {params!r}"
 
 
+def _visible_profiles(*models, hidden=()):
+    """Configured profiles for the given models; returns their ids."""
+    from src.services import asr_config as ac
+    ids = {}
+    for model in models + tuple(hidden):
+        change = ac.create_profile({
+            "label": f"Review {model}",
+            "connector": "asr_endpoint",
+            "config": {"base_url": "http://asr.test:9000", "model": model},
+            "visible": model not in hidden,
+        })
+        ids[model] = change.profile["id"]
+    db.session.commit()
+    return ids
+
+
+def _clear_profiles():
+    from src.models import SystemSetting
+    from src.services import asr_config as ac
+    SystemSetting.query.filter_by(key=ac.SETTING_KEY).delete(synchronize_session=False)
+    db.session.commit()
+
+
 def test_user_supplied_model_outside_allowlist_dropped():
-    """An explicit override that isn't in the allowlist gets stripped."""
+    """An explicit override that is not a visible profile, the environment or
+    the model of one of them gets stripped (#266)."""
     with app.app_context():
-        user, rec = setup_recording(tag_model="vibevoice")
-        client = app.test_client()
-        login_client(client, user)
-        resp, params = call_reprocess(client, rec.id,
-                                       {"transcription_model": "secret-internal-model"},
-                                       available_models=["whisper-1", "vibevoice"])
-        assert resp.status_code in (200, 202)
-        # Falls back to the tag default since user value was rejected.
-        # Note: the endpoint validates AFTER applying the precedence chain. The
-        # precedence chain runs first, so user input wins; then validation drops
-        # the bad value to None. Tag default is not re-applied — so we expect
-        # transcription_model to be None here.
-        assert params.get("transcription_model") is None, f"got {params!r}"
+        _clear_profiles()
+        try:
+            _visible_profiles("whisper-1", "vibevoice")
+            user, rec = setup_recording(tag_model="vibevoice")
+            client = app.test_client()
+            login_client(client, user)
+            resp, params = call_reprocess(client, rec.id,
+                                           {"transcription_model": "secret-internal-model"})
+            assert resp.status_code in (200, 202)
+            assert params.get("transcription_model") is None, f"got {params!r}"
+        finally:
+            _clear_profiles()
+
+
+def test_hidden_profile_id_is_dropped_and_visible_one_kept():
+    from src.services.transcription_defaults import resolve_transcription_model
+    with app.app_context():
+        _clear_profiles()
+        try:
+            ids = _visible_profiles("large-v3", hidden=("internal-model",))
+            assert resolve_transcription_model(ids["large-v3"]) == ids["large-v3"]
+            assert resolve_transcription_model(ids["internal-model"]) is None
+            # A legacy tag value naming a visible model is still accepted.
+            assert resolve_transcription_model("large-v3") == "large-v3"
+            assert resolve_transcription_model("internal-model") is None
+        finally:
+            _clear_profiles()
+
+
+def test_any_model_is_kept_without_configured_profiles():
+    from src.services.transcription_defaults import resolve_transcription_model
+    with app.app_context():
+        _clear_profiles()
+        assert resolve_transcription_model("anything-goes") == "anything-goes"
 
 
 def test_no_defaults_means_no_model_in_job_params():

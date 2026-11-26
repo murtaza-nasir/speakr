@@ -23,6 +23,10 @@ from ..base import (
     TranscriptionResponse,
     TranscriptionSegment,
     ConnectorSpecifications,
+    PROBE_TIMEOUT_SECONDS,
+    ProbeResult,
+    probe_failure,
+    probe_result_from_response,
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.utils.error_body import summarize_error_body
@@ -43,6 +47,8 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.HOTWORDS,
     }
     PROVIDER_NAME = "vibevoice"
+    DISPLAY_NAME = "VibeVoice"
+    DESCRIPTION = "Microsoft VibeVoice ASR served by vLLM through its OpenAI-compatible API."
 
     # VibeVoice handles up to ~60 minutes per request; use app-level chunking beyond that
     SPECIFICATIONS = ConnectorSpecifications(
@@ -356,6 +362,20 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
         except Exception:
             return False
 
+    def probe(self) -> ProbeResult:
+        headers = {}
+        if self.config.get('api_key'):
+            headers['Authorization'] = f"Bearer {self.config['api_key']}"
+        try:
+            response = httpx.get(
+                f'{self.base_url}/v1/models',
+                headers=headers,
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        return probe_result_from_response(response)
+
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
         """Return JSON schema for configuration."""
@@ -374,6 +394,7 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
                 },
                 "api_key": {
                     "type": "string",
+                    "writeOnly": True,
                     "default": "",
                     "description": "API key for vLLM server (if required)"
                 }

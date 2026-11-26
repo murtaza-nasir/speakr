@@ -94,7 +94,7 @@
                     <!-- Per-reprocess transcription model (issue #266).
                          Only show when there are at least 2 visible models; a single
                          visible model means there is no real choice to offer. -->
-                    <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 1">
+                    <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 0">
                         <label for="asr-model-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">${ t('form.transcriptionModel') }</label>
                         <select id="asr-model-reprocess" v-model="asrReprocessOptions.transcription_model" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                             <option value="">${ t('form.useResolvedDefault') }</option>

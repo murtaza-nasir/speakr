@@ -15,7 +15,7 @@ from src.utils.route_errors import internal_error
 from src.config.version import get_version
 from src.utils.localization import format_file_size, api_error, translate
 from src.services import llm_config
-from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE, TRANSCRIPTION_MODEL_OPTIONS
+from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE
 from src.services.token_tracking import token_tracker
 from src.services.transcription import TranscriptionCapability
 from src.utils.request_body import json_object_body
@@ -260,25 +260,37 @@ def get_system_info():
 
 
 def _get_transcription_model_options():
-    """Return the configured per-upload transcription model dropdown options.
+    """The visible configured profiles for the upload dropdown.
 
-    Resolution order:
-      1. SystemSetting `transcription_models_visible_json` (admin UI overrides)
-      2. TRANSCRIPTION_MODELS_AVAILABLE env var
-      3. Empty list (dropdown hidden)
-    Issue #266.
+    One option per visible profile, carrying the connector and the capability
+    map so the upload form adapts without another request. With no configured
+    profiles the list is empty, exactly as before the feature, so the dropdown
+    stays hidden and the environment default is used (issue #266).
     """
     try:
-        from src.models import SystemSetting
-        import json as _json
-        raw = SystemSetting.get_setting('transcription_models_visible_json', None)
-        if raw:
-            parsed = _json.loads(raw)
-            if isinstance(parsed, list):
-                return parsed
+        from src.services import asr_config as _ac
+        return [
+            {
+                'value': model['id'],
+                'label': model['label'],
+                'connector': model['connector'],
+                'model': model['model'],
+                'capabilities': model['capabilities'],
+            }
+            for model in _ac.visible_models()
+        ]
     except Exception:
-        pass
-    return list(TRANSCRIPTION_MODEL_OPTIONS)
+        return []
+
+
+def _get_transcription_environment_option():
+    """The environment (id, label, model) for tag and folder defaults that
+    name its model, or None."""
+    try:
+        from src.services import asr_config as _ac
+        return _ac.environment_option()
+    except Exception:
+        return None
 
 
 @system_bp.route('/api/config', methods=['GET'])
@@ -405,6 +417,7 @@ def get_config():
             'user_summary_prompt': user_summary_prompt,
             'admin_default_summary_prompt': admin_default_summary_prompt,
             'transcription_model_options': _get_transcription_model_options(),
+            'transcription_environment_option': _get_transcription_environment_option(),
             **chunking_info
         }
         # "What's new" after an update (src/config/version.py release_key)

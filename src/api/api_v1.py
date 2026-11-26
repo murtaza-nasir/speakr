@@ -481,7 +481,7 @@ OPENAPI_SPEC = {
             "get": {"tags": ["Recordings"], "summary": "Get processing status", "description": "status, queue_position and stage as before. For the recording's waiting or running job: processing_stage (queued, converting, assembling, joining, transcribing, titling, summarizing), stage_detail (what the transcription service reports: waiting, preparing, transcribing, aligning, diarizing; or null), progress ({done, total} in chunks, or {fraction} from 0 to 1, or null when no measured number exists), progress_kind (chunks, fraction or null), job_started_at (UTC with a Z, null while the job waits) and cancel_requested. No estimate is reported.", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Status with queue position, stage and progress"}}}
         },
         "/recordings/{id}/transcribe": {
-            "post": {"tags": ["Processing"], "summary": "Queue transcription", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"language": {"type": "string"}, "min_speakers": {"type": "integer"}, "max_speakers": {"type": "integer"}, "hotwords": {"type": "string", "description": "Connectors that accept hotword biasing route this to their native parameter (WhisperX hotwords, Mistral context_bias, OpenAI prompt, etc.). Connectors that ignore it drop it silently."}, "initial_prompt": {"type": "string", "description": "Free-text context hint. Same per-connector behaviour as hotwords."}, "transcription_model": {"type": "string", "description": "Per-request model override. Validated against the admin-curated visible-models list. Falls back to the configured default if absent or invalid."}}}}}}, "responses": {"200": {"description": "Job queued"}}}
+            "post": {"tags": ["Processing"], "summary": "Queue transcription", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"language": {"type": "string"}, "min_speakers": {"type": "integer"}, "max_speakers": {"type": "integer"}, "hotwords": {"type": "string", "description": "Connectors that accept hotword biasing route this to their native parameter (WhisperX hotwords, Mistral context_bias, OpenAI prompt, etc.). Connectors that ignore it drop it silently."}, "initial_prompt": {"type": "string", "description": "Free-text context hint. Same per-connector behaviour as hotwords."}, "transcription_model": {"type": "string", "description": "Per-request model override. Validated against the admin-curated visible transcription models. Falls back to the configured default if absent or invalid."}}}}}}, "responses": {"200": {"description": "Job queued"}}}
         },
         "/recordings/{id}/summarize": {
             "post": {"tags": ["Processing"], "summary": "Queue summarization", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"custom_prompt": {"type": "string"}, "prompt_mode": {"type": "string", "enum": ["replace", "append"], "description": "replace (default): custom_prompt replaces the resolved prompt. append: it is added after the resolved prompt."}, "additional_instructions": {"type": "string", "description": "Added for this run after the prompt that runs."}, "prompt_variables": {"type": "object", "description": "Values for the {{variable}} placeholders; replaces the stored values."}}}}}}, "responses": {"200": {"description": "Job queued"}}}
@@ -655,7 +655,7 @@ OPENAPI_SPEC = {
                                         },
                                         "models": {
                                             "type": "array",
-                                            "description": "Models the admin has marked visible to users (or TRANSCRIPTION_MODELS_AVAILABLE entries when no DB list is set)",
+                                            "description": "Transcription models the admin has marked visible to users (the profiles in asr_config_json)",
                                             "items": {
                                                 "type": "object",
                                                 "properties": {
@@ -3152,13 +3152,14 @@ def get_transcription_info():
         "default_model": "gpt-4o-transcribe-diarize"
       }
     """
-    from src.models import SystemSetting
     from src.config.app_config import (
         USE_NEW_TRANSCRIPTION_ARCHITECTURE,
         USE_ASR_ENDPOINT,
     )
 
     connector_name = None
+    connector = None
+    default_profile = None
     capabilities = {
         'diarization': USE_ASR_ENDPOINT,
         'speaker_count_control': USE_ASR_ENDPOINT,
@@ -3168,8 +3169,26 @@ def get_transcription_info():
         'language_detection': True,
         'chunking': False,
     }
-    connector = None
-    if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+
+    # The global capabilities describe what a transcription with no explicit
+    # choice gets: the explicitly marked default profile, else the environment.
+    try:
+        from src.services import asr_config
+        default_profile_id = asr_config.default_profile_id()
+        if default_profile_id:
+            default_profile = asr_config.get_model(default_profile_id)
+    except Exception as e:  # noqa: BLE001
+        current_app.logger.warning(f"Could not read the default ASR profile: {e}")
+
+    if default_profile is not None:
+        connector_name = default_profile['connector']
+        capabilities = default_profile['capabilities']
+        try:
+            from src.services import asr_config
+            connector, _ = asr_config.resolve_asr_connector(default_profile['id'])
+        except Exception as e:  # noqa: BLE001
+            current_app.logger.warning(f"Could not build the default ASR connector: {e}")
+    elif USE_NEW_TRANSCRIPTION_ARCHITECTURE:
         try:
             from src.services.transcription import get_registry
             registry = get_registry()
@@ -3185,34 +3204,27 @@ def get_transcription_info():
                     'language_detection': True,
                     'chunking': connector.supports_chunking,
                 }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             current_app.logger.warning(f"Could not read connector capabilities: {e}")
 
-    # Visible models: admin-curated DB list takes precedence over the
-    # TRANSCRIPTION_MODELS_AVAILABLE env var.
-    models = []
-    raw = SystemSetting.get_setting('transcription_models_visible_json', None)
-    if raw:
-        try:
-            parsed = json.loads(raw)
-            if isinstance(parsed, list):
-                for item in parsed:
-                    if isinstance(item, dict) and item.get('value'):
-                        models.append({
-                            'value': item['value'],
-                            'label': item.get('label') or item['value'],
-                        })
-                    elif isinstance(item, str) and item:
-                        models.append({'value': item, 'label': item})
-        except Exception:
-            models = []
-    if not models:
-        # TRANSCRIPTION_MODELS_AVAILABLE paired with TRANSCRIPTION_MODEL_LABELS.
-        from src.config.app_config import TRANSCRIPTION_MODEL_OPTIONS
-        models = [dict(option) for option in TRANSCRIPTION_MODEL_OPTIONS]
+    # Visible configured profiles, with their connector and capabilities. Empty
+    # when nothing is configured, so the environment default is used.
+    try:
+        from src.services import asr_config
+        models = [
+            {
+                'value': model['id'],
+                'label': model['label'],
+                'connector': model['connector'],
+                'capabilities': model['capabilities'],
+            }
+            for model in asr_config.visible_models()
+        ]
+    except Exception:  # noqa: BLE001
+        models = []
 
     # The model a transcription with no tag, folder or request choice uses:
-    # the admin default, else the connector's own configured model.
+    # the default profile, else the connector's own configured model.
     from src.services.transcription_defaults import resolve_transcription_model
     default_model = (resolve_transcription_model(None)
                      or (getattr(connector, 'model', None) if connector else None)

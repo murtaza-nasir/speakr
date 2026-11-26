@@ -323,9 +323,9 @@ These values follow a precedence hierarchy: upload form values take highest prio
 
 ### Default Transcription Model
 
-When your administrator has configured a transcription model list (via `TRANSCRIPTION_MODELS_AVAILABLE` or the admin dashboard), tag and folder edit forms gain a **Default transcription model** dropdown. Recordings with that tag will use the chosen model unless the upload form, folder default, or admin default overrides it. The precedence chain mirrors hotwords and initial prompt: per-upload selection beats tag default beats folder default beats admin default.
+When your administrator has marked at least one model in the **Transcription models** section of the admin settings as visible to users, tag and folder edit forms gain a **Default transcription model** dropdown with the same models as the upload form. Recordings with that tag use the chosen model unless the upload form overrides it. The precedence chain mirrors hotwords and initial prompt: per-upload selection beats tag default beats folder default beats the administrator default.
 
-If a tag has a default model set and the model is later removed from the configured list, the edit form shows a compact warning so you know to pick a replacement. The default itself is preserved in the database in case the model is added back, and the precedence chain falls through to the next available layer in the meantime.
+A tag or folder saved before this section existed may hold a plain model name, such as `large-v3`. When a visible model uses that name, the edit form shows that model; when the name is the model of the server's own configuration, the form shows that configuration. If the model is later hidden or deleted, the edit form shows a compact warning so you know to pick a replacement. The default itself is preserved in the database in case the model returns, and the precedence chain falls through to the next available layer in the meantime.
 
 ### Managing Tags
 

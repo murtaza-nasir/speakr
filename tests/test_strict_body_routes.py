@@ -65,7 +65,10 @@ def _routes(world, template_id):
         ("admin", "PUT", f"/admin/users/{owner}"),
         ("admin", "POST", "/admin/settings"),
         ("admin", "POST", "/admin/auto-process/config"),
-        ("admin", "POST", "/admin/transcription/visible-models"),
+        # The branch replaced the visible-models route with the merged
+        # Transcription models section; both canonical writes parse strictly.
+        ("admin", "POST", "/admin/asr-config/models"),
+        ("admin", "POST", "/admin/asr-config/default"),
         ("admin", "POST", "/admin/inquire/process-recordings"),
     ]
 

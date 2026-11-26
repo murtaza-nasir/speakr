@@ -46,15 +46,39 @@ class _Client(FlaskClient):
 
 @pytest.fixture
 def ctx():
+    from src.services import asr_config as ac
     with app.app_context():
-        saved = SystemSetting.get_setting(DEFAULT_KEY, None)
+        SystemSetting.query.filter(
+            SystemSetting.key.in_((ac.SETTING_KEY, DEFAULT_KEY,
+                                   'transcription_models_visible_json'))).delete(
+            synchronize_session=False)
+        db.session.commit()
         yield
         db.session.rollback()
-        SystemSetting.set_setting(DEFAULT_KEY, saved or '', setting_type='string')
+        SystemSetting.query.filter(
+            SystemSetting.key.in_((ac.SETTING_KEY, DEFAULT_KEY,
+                                   'transcription_models_visible_json'))).delete(
+            synchronize_session=False)
+        db.session.commit()
 
 
 def _set_default(value):
-    SystemSetting.set_setting(DEFAULT_KEY, value, setting_type='string')
+    """Mark an asr_endpoint profile with this model as the default, or clear."""
+    from src.services import asr_config as ac
+    ac.clear_default()
+    if not value:
+        return
+    for model in ac.load_document()['models']:
+        if model['config'].get('model') == value:
+            ac.set_default(model['id'])
+            return
+    change = ac.create_profile({
+        'label': f'default {value}',
+        'connector': 'asr_endpoint',
+        'config': {'base_url': 'http://asr.test:9000', 'model': value},
+        'visible': True,
+    })
+    ac.set_default(change.model['id'])
 
 
 @contextmanager
@@ -83,12 +107,12 @@ def _client(user):
 
 # ------------------------------------------------------------ the resolver
 
-def test_the_stored_admin_default_is_stripped(ctx):
+def test_the_legacy_default_setting_is_no_longer_read(ctx):
     from src.services.transcription_defaults import resolve_transcription_model
-    _set_default('  large-v3 \t')
-    assert resolve_transcription_model(None) == 'large-v3'
-    _set_default('   ')
+    SystemSetting.set_setting(DEFAULT_KEY, '  large-v3 \t', setting_type='string')
     assert resolve_transcription_model(None) is None
+    _set_default('large-v3')
+    assert resolve_transcription_model(None) == ac_default_id()
 
 
 # ------------------------------------------------------------ asr_endpoint
@@ -162,9 +186,23 @@ def _probe_capturing():
     return seen
 
 
+def ac_default_id():
+    from src.services import asr_config as ac
+    return ac.default_profile_id()
+
+
 def test_the_canary_sends_the_admin_default_model(ctx):
     _set_default('large-v3')
-    assert _probe_capturing()['model'] == 'large-v3'
+    seen = {}
+
+    def fake_transcribe(self, request):
+        seen['model'] = request.model
+        return _EmbeddingResponse()
+
+    with patch('src.services.transcription.connectors.asr_endpoint.'
+               'ASREndpointConnector.transcribe', fake_transcribe):
+        vec.probe_backend()
+    assert seen['model'] == 'large-v3'
 
 
 def test_the_canary_sends_no_model_when_none_is_configured(ctx):
@@ -192,9 +230,9 @@ def test_the_fingerprint_is_unchanged_without_an_admin_default(ctx):
 
 def test_choosing_an_admin_default_changes_the_fingerprint(ctx):
     _set_default('')
-    without = _fingerprint_with('')
+    without = vec.backend_fingerprint()
     _set_default('large-v3')
-    assert _fingerprint_with('') != without
+    assert vec.backend_fingerprint() != without
 
 
 def test_a_failed_canary_says_where_it_came_from_and_what_to_do(ctx, caplog):
@@ -264,6 +302,8 @@ def test_incognito_uses_the_admin_default_model(ctx, tmp_path, chunked):
     chunker.needs_chunking.return_value = chunked
     chunker.get_audio_duration.return_value = 1
     with patch('src.services.transcription.get_registry') as reg, \
+         patch('src.services.asr_config.resolve_asr_connector',
+               return_value=(_Conn(), 'large-v3')), \
          patch.object(processing, 'convert_if_needed', side_effect=_passthrough), \
          patch.object(processing, 'is_video_file', return_value=False), \
          patch.object(processing, 'chunking_service', chunker), \
@@ -316,27 +356,29 @@ def test_api_capabilities_report_the_default_the_resolver_uses(ctx):
     from src.services.transcription_defaults import resolve_transcription_model
     user = _user()
     try:
-        _set_default('  large-v3 ')
+        _set_default('large-v3')
         body = _client(user).get('/api/v1/transcription').get_json()
-        assert body['default_model'] == resolve_transcription_model(None) == 'large-v3'
+        default_id = resolve_transcription_model(None)
+        assert default_id == ac_default_id()
+        assert body['default_model'] == default_id
     finally:
         db.session.delete(db.session.get(User, user.id))
         db.session.commit()
 
 
-def test_api_capabilities_list_env_models_without_an_admin_list(ctx):
-    """The endpoint imported a name that does not exist and returned 500
-    whenever the admin had not saved a model list."""
+def test_api_capabilities_list_visible_profiles_only(ctx):
+    """The endpoint no longer reads the retired env/DB model lists: only a
+    configured, visible profile is selectable."""
     user = _user()
-    saved = SystemSetting.get_setting('transcription_models_visible_json', None)
     try:
-        SystemSetting.set_setting('transcription_models_visible_json', '', setting_type='string')
-        options = [{'value': 'large-v3', 'label': 'Large v3'}, {'value': 'medium', 'label': 'medium'}]
-        with patch('src.config.app_config.TRANSCRIPTION_MODEL_OPTIONS', options):
+        created = _set_default('large-v3')
+        with patch('src.config.app_config.TRANSCRIPTION_MODEL_OPTIONS',
+                   [{'value': 'env-model', 'label': 'Env'}]):
             r = _client(user).get('/api/v1/transcription')
         assert r.status_code == 200, r.get_data(as_text=True)
-        assert r.get_json()['models'] == options
+        models = r.get_json()['models']
+        assert [model['value'] for model in models] == [ac_default_id()]
+        assert models[0]['connector'] == 'asr_endpoint'
     finally:
-        SystemSetting.set_setting('transcription_models_visible_json', saved or '', setting_type='string')
         db.session.delete(db.session.get(User, user.id))
         db.session.commit()

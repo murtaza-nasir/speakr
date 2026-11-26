@@ -20,7 +20,7 @@
 #}
 {% set _part = asr_part|default('all') %}
 {% if _part != 'hints' %}
-<section v-if="connectorSupportsLanguage || connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount || (transcriptionModelOptions && transcriptionModelOptions.length > 1)" class="option-section">
+<section v-if="connectorSupportsLanguage || connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount || (transcriptionModelOptions && transcriptionModelOptions.length > 0)" class="option-section">
     <h4 class="option-section__title" v-text="t('upload.sectionTranscription')"></h4>
     <div class="option-grid">
         <div v-if="connectorSupportsLanguage" class="option-field">
@@ -67,7 +67,7 @@
 
         <!-- The model select (issue #266) renders only when the admin
              exposes at least 2 models. -->
-        <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 1" class="option-field">
+        <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 0" class="option-field">
             <label class="option-label">${ t('form.transcriptionModel') }</label>
             <select v-model="{{ model_ref }}" class="field field--sm">
                 <option value="">${ t('form.useResolvedDefault') }</option>

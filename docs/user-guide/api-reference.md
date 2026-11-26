@@ -1532,7 +1532,7 @@ All parameters are optional.
 | `max_speakers` | integer | Maximum speaker count for diarization. |
 | `hotwords` | string | Word-biasing hint. Connectors that accept biasing route this to their native parameter (WhisperX hotwords, Mistral context bias, OpenAI prompt). Connectors that ignore it drop it silently. |
 | `initial_prompt` | string | Free-text context hint. Same per-connector behavior as `hotwords`. |
-| `transcription_model` | string | Per-request model override. Validated against the admin-curated visible-models list; falls back to the configured default if absent or invalid. Use [`GET /api/v1/transcription`](#transcription-connector) to discover valid values. |
+| `transcription_model` | string | Per-request model override. Validated against the admin-curated visible transcription models; falls back to the configured default if absent or invalid. Use [`GET /api/v1/transcription`](#transcription-connector) to discover valid values. |
 
 **Response:**
 

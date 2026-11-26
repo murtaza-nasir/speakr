@@ -101,6 +101,8 @@ Rows with `imported` in the details were copied from the table `share_audit_log`
 | `admin.llm_model.deleted` | An administrator deleted an unassigned language model | `model` |
 | `admin.llm_role.assigned` | A language model was assigned to the text, chat or translation role | `role`, `model`, and `old`, the previous model id when there was one |
 | `admin.llm_role.reverted` | A role was returned to its environment configuration | `role` and `old`, the model id it used before |
+| `admin.asr_model.created`, `admin.asr_model.changed`, `admin.asr_model.deleted`, `admin.asr_model.imported` | An entry of the "Transcription models" section was added, changed, deleted or imported from the environment | `model`: the id of the entry. For created and changed: `fields`, the names of the changed fields. The label, the credentials and the connector configuration are never stored. |
+| `admin.asr_default.changed` | The default transcription model was changed | `old`, `new`: the id of the previous and the new default. An empty value means the environment. |
 | `admin.retention.run` | Automatic deletion was started by hand | Counts |
 | `admin.inquire.processed` | An administrator started the processing of recordings for Ask Ambrose on the admin page. The recordings of all accounts are processed. | `processed`, `failed`, `total`, `force` |
 | `group.created`, `group.changed`, `group.deleted` | A group was created, changed or deleted | `fields` |

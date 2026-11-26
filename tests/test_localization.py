@@ -35,6 +35,9 @@ TEMPLATE_PATTERN = re.compile(r'data-i18n(?:-[a-z-]+)?="([^"]+)"')
 # single-argument calls are not mistaken for keys. A prefix completed at run
 # time, t('colorScheme.themes.' + name), is not a key.
 JS_PATTERN = re.compile(r"""(?:\$t|\b(?:t|tf|tr|sharedT)|i18n\.t)\(\s*['"]([a-zA-Z][\w.]*\.[\w.]+)['"](?!\s*\+)""")
+# api_error('code') in src/api: the message comes from server.apiError.<code>,
+# and a missing entry renders the literal key in the response body.
+API_ERROR_PATTERN = re.compile(r"""api_error\(\s*['"]([a-zA-Z0-9_]+)['"]""")
 
 
 def _flatten(d, prefix=''):
@@ -108,6 +111,28 @@ def test_every_referenced_key_exists_in_english():
     missing = {k: v for k, v in referenced.items() if k not in english}
     assert not missing, 'referenced but absent from en.json:\n' + '\n'.join(
         f'  {k}  <- {", ".join(sorted(paths))}' for k, paths in sorted(missing.items()))
+
+
+def _api_error_codes():
+    """Every error code src/api passes to api_error()."""
+    codes = set()
+    for path in _walk('src/api', '.py'):
+        with open(path, encoding='utf-8') as f:
+            codes |= set(API_ERROR_PATTERN.findall(f.read()))
+    return codes
+
+
+def test_the_api_error_scanner_actually_finds_codes():
+    assert len(_api_error_codes()) > 50
+
+
+def test_every_api_error_code_has_a_message():
+    """api_error() renders server.apiError.<code>; a missing entry leaves the
+    raw key in the body, which is what a failing connection test showed."""
+    english = _load('en')['server']['apiError']
+    missing = sorted(c for c in _api_error_codes()
+                     if not str(english.get(c) or '').strip())
+    assert not missing, f'server.apiError is missing {len(missing)} code(s): {missing}'
 
 
 @pytest.mark.parametrize('lang', [l for l in _languages() if l != 'en'])
@@ -439,7 +464,14 @@ def test_every_locale_has_every_file_size_unit():
 # API responses (#477): an 'error' or 'message' in a response comes from the
 # catalogs, through api_error('code') or translate('server.apiMessage.key'),
 # so a new handler cannot return a fixed English string.
+#
+# The transcription probe result keeps a machine code in 'error' on purpose:
+# the UI reads ok, unsupported and detail, and the provider's own text travels
+# in 'detail'. These codes are listed here so the check still rejects every
+# human-readable literal.
 API_LITERAL = re.compile(r"""['"](?:error|message)['"]\s*:\s*[fFrR]?['"]""")
+API_LITERAL_CODES = {'asr_provider_http_error', 'asr_provider_unreachable'}
+API_LITERAL_CODE = re.compile(r"""['"]error['"]\s*:\s*['"]([a-z0-9_]+)['"]""")
 
 
 def _api_literals():
@@ -448,6 +480,9 @@ def _api_literals():
     for path in paths:
         for number, line in enumerate(open(path, encoding='utf-8'), 1):
             if API_LITERAL.search(line) and not line.lstrip().startswith('#'):
+                code = API_LITERAL_CODE.search(line)
+                if code and code.group(1) in API_LITERAL_CODES:
+                    continue
                 found.append(f'{os.path.relpath(path, REPO)}:{number}: {line.strip()}')
     return found
 

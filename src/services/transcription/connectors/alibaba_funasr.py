@@ -47,6 +47,8 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
         TranscriptionCapability.SPEAKER_COUNT_CONTROL,
     }
     PROVIDER_NAME = "funasr"
+    DISPLAY_NAME = "Alibaba FunASR"
+    DESCRIPTION = "Alibaba DashScope FunASR, a submit-and-poll service for long recordings."
 
     SPECIFICATIONS = ConnectorSpecifications(
         max_file_size_bytes=None,
@@ -65,7 +67,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                 - model: Model name (default: "fun-asr")
                 - timeout: Transcription timeout in seconds (default: 1800)
                 - poll_interval: Seconds between status polls (default: 10)
-                - diarize: Enable speaker diarization (default: False)
+                - diarize: Enable speaker diarization (default: True)
                 - disfluency_removal_enabled: Filter filler words (default: False)
                 - timestamp_alignment_enabled: Timestamp alignment (default: False)
                 - speaker_count: Speaker count hint (2-100)
@@ -82,7 +84,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
         self.model = model
         self._config_timeout = config.get('timeout', 1800)
         self.poll_interval = max(1, int(config.get('poll_interval', 10) or 10))
-        self.default_diarize = config.get('diarize', False)
+        self.default_diarize = config.get('diarize', True)
         self.disfluency_removal_enabled = config.get('disfluency_removal_enabled', False)
         self.timestamp_alignment_enabled = config.get('timestamp_alignment_enabled', False)
         self.speaker_count = config.get('speaker_count', None)
@@ -521,6 +523,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                 },
                 "api_key": {
                     "type": "string",
+                    "writeOnly": True,
                     "description": "FunASR API key"
                 },
                 "model": {
@@ -535,7 +538,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                 },
                 "diarize": {
                     "type": "boolean",
-                    "default": False,
+                    "default": True,
                     "description": "Enable speaker diarization"
                 },
                 "disfluency_removal_enabled": {
@@ -553,6 +556,27 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                     "items": {"type": "string"},
                     "default": [],
                     "description": "Language hint array"
+                },
+                "poll_interval": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Seconds between status polls"
+                },
+                "speaker_count": {
+                    "type": "integer",
+                    "default": None,
+                    "description": "Speaker count hint (2-100)"
+                },
+                "vocabulary_id": {
+                    "type": "string",
+                    "default": None,
+                    "description": "Hot-word vocabulary id"
+                },
+                "channel_id": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "default": None,
+                    "description": "Channel indices"
                 }
             }
         }

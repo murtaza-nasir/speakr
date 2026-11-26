@@ -37,7 +37,7 @@ Each folder can have custom settings that apply to recordings placed in it:
 | **Custom prompt** | AI summarization instructions specific to this folder. May include `{{name}}` placeholders that are filled at upload time — see [Prompt Variables](settings.md#prompt-variables) |
 | **Title prompt** | Instructions for the AI-generated titles of recordings in this folder. A tag's title prompt takes priority; see [Title Prompt](settings.md#title-prompt) |
 | **Default language** | Transcription language for new recordings |
-| **Default transcription model** | Model the transcription connector should use when an admin has configured `TRANSCRIPTION_MODELS_AVAILABLE` (or curated a list from the admin dashboard) |
+| **Default transcription model** | Transcription model for recordings in this folder, chosen from the models an administrator has made visible in the Transcription models section of the admin settings |
 | **Min/Max Speakers** | Speaker count hints for ASR diarization |
 | **Hotwords** | Comma-separated vocabulary hints for transcription accuracy |
 | **Initial prompt** | Context description to guide transcription |

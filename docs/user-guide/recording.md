@@ -310,7 +310,7 @@ The same fields, along with the saved-template picker, are also available in the
 
 #### Transcription Model
 
-When your administrator has configured `TRANSCRIPTION_MODELS_AVAILABLE` (or curated a model list from the admin dashboard), the upload form gains a **Transcription model** dropdown that lets you pick the specific model used for this recording. The default option uses whichever model the resolved tag, folder, or admin default specifies. The dropdown is hidden if only one option would be available, since there is no real choice to offer.
+When your administrator has marked at least one model in the **Transcription models** section of the admin settings as visible to users, the upload form gains a **Transcription model** dropdown that lets you pick the model used for this recording. Each entry names a provider and a model, so the choice can switch between, for example, a hosted OpenAI model and a self-hosted WhisperX service. The first option, the default, uses whichever model the resolved tag, folder, or administrator default specifies. With no visible model, the dropdown is hidden and every recording uses the default.
 
 Like hotwords and initial prompt, the resolved model follows the precedence chain: per-upload selection beats tag default beats folder default beats the admin default. This is useful when you want to use a higher-quality model for an important recording without changing your defaults, or to fall back to a faster model for a quick transcript.
 

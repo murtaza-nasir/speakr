@@ -22,6 +22,7 @@
     <script src="{{ url_for('static', filename='js/asr-languages.js', v=app_version) }}"></script>
     <script src="{{ url_for('static', filename='js/folder-tree.js', v=app_version) }}"></script>
     <script src="{{ url_for('static', filename='js/token-dates.js', v=app_version) }}"></script>
+    <script src="{{ url_for('static', filename='js/transcription-model-match.js', v=app_version) }}"></script>
     <script src="{{ url_for('static', filename='js/safe-html.js', v=app_version) }}"></script>
     <script src="{{ url_for('static', filename='js/organizer-modals.js', v=app_version) }}"></script>
 
@@ -5774,6 +5775,7 @@ curl -H "API-Token: YOUR_TOKEN_HERE" ...</code></pre>
                     const modelOptions = Array.isArray(config.transcription_model_options)
                         ? config.transcription_model_options : [];
                     window._transcriptionModelOptions = modelOptions;
+                    window._transcriptionEnvironmentOption = config.transcription_environment_option || null;
                     if (modelOptions.length > 0) {
                         const populate = (selectId, sectionId) => {
                             const select = document.getElementById(selectId);
@@ -5816,22 +5818,37 @@ curl -H "API-Token: YOUR_TOKEN_HERE" ...</code></pre>
         window.validateTranscriptionModelSelect = function (selectId, expectedValue) {
             const select = document.getElementById(selectId);
             if (!select) return;
-            const validValues = new Set();
             const visibleOptions = window._transcriptionModelOptions || [];
-            for (const opt of visibleOptions) validValues.add(opt.value);
-            validValues.add('');  // blank means "use admin/global default"
 
             const warningId = selectId + 'StaleWarning';
             let warning = document.getElementById(warningId);
             const errorClasses = ['ring-1', 'ring-[var(--text-danger)]'];
             const errorBorder = 'border-[var(--text-danger)]';
 
-            // Drop any previous synthetic option before recomputing.
-            const previousStale = select.querySelector('option[data-stale="1"]');
-            if (previousStale) previousStale.remove();
-
+            // Read the value before the previous synthetic option goes, so a
+            // value picked from that option is kept.
             const target = (expectedValue !== undefined ? expectedValue : (select.value || '')).trim();
-            const isStale = target !== '' && !validValues.has(target);
+            for (const previous of select.querySelectorAll('option[data-stale="1"], option[data-synthetic="1"]')) {
+                previous.remove();
+            }
+
+            // A legacy model name that names a visible profile is that
+            // profile; one that names the environment model is the
+            // environment; the same rule the server applies (is_selectable).
+            const match = window.SpeakrTranscriptionModelMatch
+                ? window.SpeakrTranscriptionModelMatch.matchSavedModel(
+                    target, visibleOptions, window._transcriptionEnvironmentOption)
+                : { value: target, label: target, stale: target !== '' && !visibleOptions.some((o) => o.value === target), synthetic: false };
+            const isStale = match.stale;
+
+            if (!isStale && match.synthetic) {
+                const option = document.createElement('option');
+                option.value = match.value;
+                option.textContent = match.label || match.value;
+                option.dataset.synthetic = '1';
+                select.appendChild(option);
+            }
+            if (!isStale) select.value = match.value;
 
             if (isStale) {
                 const staleOption = document.createElement('option');

@@ -17,6 +17,10 @@ from ..base import (
     TranscriptionResponse,
     TranscriptionSegment,
     ConnectorSpecifications,
+    PROBE_TIMEOUT_SECONDS,
+    ProbeResult,
+    probe_failure,
+    probe_result_from_response,
 )
 from ..exceptions import TranscriptionError, ConfigurationError
 from src.utils.error_body import summarize_error_body
@@ -41,6 +45,8 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.EXACT_SPEAKER_COUNT,
     }
     PROVIDER_NAME = "openasr"
+    DISPLAY_NAME = "OpenASR"
+    DESCRIPTION = "OpenASR's OpenAI-compatible transcription server, with an exact speaker count."
 
     SPECIFICATIONS = ConnectorSpecifications(
         max_file_size_bytes=None,
@@ -55,7 +61,7 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
         self.base_url = base_url
         self.api_key = config.get('api_key', '')
         self.model = config.get('model', '')
-        self.default_diarize = config.get('diarize', False)
+        self.default_diarize = config.get('diarize', True)
         # Per-speaker voice embeddings (#380). OpenASR mirrors the WhisperX
         # contract: `return_speaker_embeddings=true` on the request, a
         # `speaker_embeddings` map keyed by speaker label in the verbose_json
@@ -195,6 +201,29 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
             raw_response=data,
         )
 
+    def probe(self) -> ProbeResult:
+        headers = {}
+        if self.api_key:
+            headers['Authorization'] = f'Bearer {self.api_key}'
+        try:
+            response = httpx.get(
+                f'{self.base_url}/models',
+                headers=headers,
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        if response.status_code == 200:
+            return probe_result_from_response(response)
+        health_root = self.base_url[:-3] if self.base_url.endswith('/v1') else self.base_url
+        try:
+            health = httpx.get(f'{health_root}/health', headers=headers, timeout=PROBE_TIMEOUT_SECONDS)
+        except httpx.HTTPError as error:
+            return probe_failure(error)
+        if health.status_code < 400:
+            return ProbeResult(ok=True, models=[], status=health.status_code, message='Connected.')
+        return ProbeResult(ok=False, status=health.status_code, message=f'HTTP {health.status_code}')
+
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
         return {
@@ -207,21 +236,29 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
                 },
                 "api_key": {
                     "type": "string",
+                    "writeOnly": True,
+                    "default": "",
                     "description": "API key (optional for loopback)"
                 },
                 "model": {
                     "type": "string",
+                    "default": "",
                     "description": "Model name (e.g. qwen3-asr-0.6b)"
                 },
                 "diarize": {
                     "type": "boolean",
-                    "default": False,
+                    "default": True,
                     "description": "Enable speaker diarization"
                 },
                 "timeout": {
                     "type": "integer",
                     "default": 1800,
                     "description": "Timeout in seconds"
+                },
+                "return_speaker_embeddings": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Request speaker embeddings (OpenASR >= #379)"
                 },
             },
         }
