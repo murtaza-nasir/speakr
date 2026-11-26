@@ -168,6 +168,12 @@ For the best transcription and diarization quality, self-hosting an ASR service 
     - **Environment file:** `config/env.transcription.example` (OpenASR section)
     - **Setting:** `ASR_RETURN_SPEAKER_EMBEDDINGS=true` to enable voice profile features on a server that supports it
 
+4. **audio.cpp** - Local server (`audiocpp_server`) for VibeVoice ASR, Parakeet, Nemotron and Qwen3-ASR models
+    - Repository: [0xShug0/audio.cpp](https://github.com/0xShug0/audio.cpp)
+    - **Supports:** Timestamps, and speaker labels for models that diarize (VibeVoice ASR, Nemotron 3 Diarization)
+    - **Does not support:** Speaker count hints, voice profiles, speaker embeddings
+    - **Environment file:** `config/env.transcription.example` (audio.cpp section)
+
 > **Important:** Before proceeding with this configuration, you'll need to set up one of the ASR service containers. See [Running ASR Service for Speaker Diarization](#running-asr-service-for-speaker-diarization) for complete instructions on deploying both containers together or separately.
 
 Download the appropriate ASR configuration template:
