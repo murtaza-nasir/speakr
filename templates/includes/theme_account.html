@@ -42,3 +42,42 @@
   })();
 </script>
 {% endif %}
+<script>
+  {#- The saved light/dark mode and color scheme: the same rules as
+      initializeDarkMode / applyColorScheme in static/js/modules/composables/ui.js
+      and includes/theme_bootstrap.html. Runs once here, before the first paint,
+      and pages that toggle the mode re-run it. Kept global: the share page's
+      script calls window.applyTheme after a toggle. -#}
+  function applyTheme() {
+    // Guard against early execution
+    if (!document.documentElement) return;
+
+    // Apply dark mode
+    const savedMode = localStorage.getItem('darkMode');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedMode === 'true' || (savedMode === null && prefersDark)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Apply color scheme
+    const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
+    const isDark = document.documentElement.classList.contains('dark');
+    const themePrefix = isDark ? 'theme-dark-' : 'theme-light-';
+
+    // Remove all other theme classes
+    const themeClasses = ['blue', 'emerald', 'purple', 'rose', 'amber', 'teal'];
+    themeClasses.forEach(theme => {
+      document.documentElement.classList.remove(`theme-light-${theme}`);
+      document.documentElement.classList.remove(`theme-dark-${theme}`);
+    });
+
+    // Add the correct theme class
+    if (savedScheme !== 'blue') {
+      document.documentElement.classList.add(themePrefix + savedScheme);
+    }
+  }
+  // At once, before the first paint and before any page script reads the mode.
+  applyTheme();
+</script>
