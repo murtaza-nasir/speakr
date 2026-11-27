@@ -850,10 +850,14 @@ def update_transcript(recording_id):
 
 @recordings_bp.route('/recording/<int:recording_id>/auto_identify_speakers', methods=['POST'])
 @login_required
-def auto_identify_speakers(recording_id):
+def auto_identify_speakers(recording_id, *, include_error_detail=True):
     """
     Automatically identifies speakers in a transcription using an LLM.
     Strips existing names and re-identifies all speakers from scratch.
+
+    The v1 API route delegates here with ``include_error_detail=False`` so its
+    error contract keeps the generic ``unexpected_error`` body and does not
+    quote the transcript back.
     """
     from src.services.speaker_identification import identify_speakers_from_transcript
     from src.services.llm import LLMNotConfiguredError
@@ -890,8 +894,10 @@ def auto_identify_speakers(recording_id):
         # and the traceback at DEBUG; the answer has the provider's short message.
         log_failure(current_app.logger, 'error',
                     f"Error during auto speaker identification for recording {recording_id}", e, traceback=True)
-        return jsonify(api_error('unexpected_error_detail',
-                                 detail=user_error_text(e, db.session.get(Recording, recording_id)))), 500
+        if include_error_detail:
+            return jsonify(api_error('unexpected_error_detail',
+                                     detail=user_error_text(e, db.session.get(Recording, recording_id)))), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 # --- Chat with Transcription ---
 
