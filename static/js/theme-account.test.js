@@ -33,12 +33,21 @@ function uiThemeScripts(themes) {
     return scripts(html.replace('{{ ui_theme_assets|tojson }}', JSON.stringify(themes)));
 }
 
-function browser(stored = {}) {
+function browser(stored = {}, options = {}) {
     const values = { ...stored };
     const attrs = {};
+    const classes = new Set();
     const listeners = {};
+    const prefersDark = Boolean(options.prefersDark);
     const doc = {
-        documentElement: { setAttribute: (k, v) => { attrs[k] = v; } },
+        documentElement: {
+            setAttribute: (k, v) => { attrs[k] = v; },
+            classList: {
+                add: (...names) => names.forEach((name) => classes.add(name)),
+                remove: (...names) => names.forEach((name) => classes.delete(name)),
+                contains: (name) => classes.has(name),
+            },
+        },
         head: { appendChild: () => {} },
         getElementById: () => null,
         createElement: () => ({ setAttribute() {}, getAttribute() { return null; } }),
@@ -50,6 +59,7 @@ function browser(stored = {}) {
             getItem: (k) => (k in values ? values[k] : null),
             setItem: (k, v) => { values[k] = String(v); },
         },
+        matchMedia: (query) => ({ matches: prefersDark && query === '(prefers-color-scheme: dark)' }),
         addEventListener: (name, fn) => { listeners[name] = fn; },
         dispatchEvent: () => {},
         CustomEvent: function CustomEvent() {},
@@ -57,7 +67,7 @@ function browser(stored = {}) {
     };
     win.window = win;
     win.document = doc;
-    return { win, values, attrs };
+    return { win, values, attrs, classes };
 }
 
 function run(b, sources) {
@@ -112,5 +122,28 @@ describe('signed-in pages', () => {
         expect(b.attrs['data-ui-theme']).toBe('cards');
         expect(b.values).toEqual({ colorScheme: 'emerald', uiTheme: 'cards', darkMode: 'false' });
         expect(typeof b.win.speakrSaveTheme).toBe('function');
+    });
+});
+
+describe('the pre-paint mode and color scheme', () => {
+    it('follow the browser preference until something is saved', () => {
+        const b = browser({}, { prefersDark: true });
+        run(b, accountScripts(VISITOR, null));
+        expect([...b.classes].sort()).toEqual(['dark', 'theme-dark-emerald']);
+        expect(b.values).toEqual({});
+    });
+
+    it('take the stored mode and scheme over the browser preference', () => {
+        const b = browser({ darkMode: 'false', colorScheme: 'rose' }, { prefersDark: true });
+        run(b, accountScripts(VISITOR, null));
+        expect([...b.classes].sort()).toEqual(['theme-light-rose']);
+        expect(b.values).toEqual({ darkMode: 'false', colorScheme: 'rose' });
+    });
+
+    it('apply the account\'s saved mode and scheme once the account block has stored them', () => {
+        const b = browser({ darkMode: 'false', colorScheme: 'blue' });
+        run(b, accountScripts(SIGNED_IN, { dark: true, scheme: 'teal', ui_theme: null }));
+        expect([...b.classes].sort()).toEqual(['dark', 'theme-dark-teal']);
+        expect(b.values).toEqual({ darkMode: 'true', colorScheme: 'teal' });
     });
 });
