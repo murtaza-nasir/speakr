@@ -2049,27 +2049,40 @@ def translate_transcription(recording_id):
         current_app.logger.error(f"Error starting translation for recording {recording_id}: {e}", exc_info=True)
         return jsonify(api_error('unexpected_error_updating_transcription')), 500
 
+
+def _toggle_personal_flag(recording_id, getter, setter, response_key, label):
+    """Flip one personal flag for the viewer and answer its new value.
+
+    Inbox, highlight and archive differ only in which value they read, which
+    setter they call and the key they answer, so the load, view-access check,
+    commit, rollback and error log stay in one place. A personal flag needs
+    view access, not edit.
+    """
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording or not has_recording_access(recording, current_user):
+            return jsonify(api_error('recording_not_found')), 404
+
+        value = setter(recording, current_user, not getter(recording, current_user))
+        return jsonify({'success': True, response_key: value})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error toggling {label} for recording {recording_id}: {e}", exc_info=True)
+        return jsonify(api_error('unexpected_error')), 500
+
+
 # Toggle inbox status endpoint
 
 
 @recordings_bp.route('/recording/<int:recording_id>/toggle_inbox', methods=['POST'])
 @login_required
 def toggle_inbox(recording_id):
-    try:
-        recording = db.session.get(Recording, recording_id)
-        # Only require view access (not edit) - users can manage their own inbox status
-        if not recording or not has_recording_access(recording, current_user):
-            return jsonify(api_error('recording_not_found')), 404
+    return _toggle_personal_flag(
+        recording_id,
+        lambda recording, user: get_user_recording_status(recording, user)[0],
+        lambda recording, user, value: set_user_recording_status(recording, user, is_inbox=value)[0],
+        'is_inbox', 'inbox status')
 
-        # Get current status and toggle it
-        current_inbox, current_highlighted = get_user_recording_status(recording, current_user)
-        new_inbox, new_highlighted = set_user_recording_status(recording, current_user, is_inbox=not current_inbox)
-
-        return jsonify({'success': True, 'is_inbox': new_inbox})
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Error toggling inbox status for recording {recording_id}: {e}", exc_info=True)
-        return jsonify(api_error('unexpected_error')), 500
 
 # Toggle highlighted status endpoint
 
@@ -2077,41 +2090,19 @@ def toggle_inbox(recording_id):
 @recordings_bp.route('/recording/<int:recording_id>/toggle_highlight', methods=['POST'])
 @login_required
 def toggle_highlight(recording_id):
-    try:
-        recording = db.session.get(Recording, recording_id)
-        # Only require view access (not edit) - users can manage their own highlight status
-        if not recording or not has_recording_access(recording, current_user):
-            return jsonify(api_error('recording_not_found')), 404
-
-        # Get current status and toggle it
-        current_inbox, current_highlighted = get_user_recording_status(recording, current_user)
-        new_inbox, new_highlighted = set_user_recording_status(recording, current_user, is_highlighted=not current_highlighted)
-
-        return jsonify({'success': True, 'is_highlighted': new_highlighted})
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Error toggling highlighted status for recording {recording_id}: {e}", exc_info=True)
-        return jsonify(api_error('unexpected_error')), 500
-
-
+    return _toggle_personal_flag(
+        recording_id,
+        lambda recording, user: get_user_recording_status(recording, user)[1],
+        lambda recording, user, value: set_user_recording_status(recording, user, is_highlighted=value)[1],
+        'is_highlighted', 'highlighted status')
 
 
 @recordings_bp.route('/recording/<int:recording_id>/toggle_archive', methods=['POST'])
 @login_required
 def toggle_archive(recording_id):
     """Archive or unarchive a recording for the current user (#394)."""
-    try:
-        recording = db.session.get(Recording, recording_id)
-        # Like inbox and star, archiving is personal and needs only view access.
-        if not recording or not has_recording_access(recording, current_user):
-            return jsonify(api_error('recording_not_found')), 404
-        from src.services.recording_state import get_user_archived, set_user_archived
-        new_value = set_user_archived(recording, current_user, not get_user_archived(recording, current_user))
-        return jsonify({'success': True, 'is_archived': new_value})
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Error toggling archive for recording {recording_id}: {e}", exc_info=True)
-        return jsonify(api_error('unexpected_error')), 500
+    from src.services.recording_state import get_user_archived, set_user_archived
+    return _toggle_personal_flag(recording_id, get_user_archived, set_user_archived, 'is_archived', 'archive')
 
 
 @recordings_bp.route('/recording/<int:recording_id>/delete_audio', methods=['POST'])
