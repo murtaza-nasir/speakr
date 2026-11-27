@@ -15,40 +15,6 @@
     <!-- Loading overlay to prevent FOUC -->
     {% include 'includes/loading_overlay.html' %}
 
-    <script>
-        // Function to apply the theme based on localStorage
-        function applyTheme() {
-            // Guard against early execution
-            if (!document.documentElement) return;
-
-            // Apply dark mode
-            const savedMode = localStorage.getItem('darkMode');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (savedMode === 'true' || (savedMode === null && prefersDark)) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-
-            // Apply color scheme
-            const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
-            const isDark = document.documentElement.classList.contains('dark');
-            const themePrefix = isDark ? 'theme-dark-' : 'theme-light-';
-            
-            // Remove all other theme classes
-            const themeClasses = ['blue', 'emerald', 'purple', 'rose', 'amber', 'teal'];
-            themeClasses.forEach(theme => {
-                document.documentElement.classList.remove(`theme-light-${theme}`);
-                document.documentElement.classList.remove(`theme-dark-${theme}`);
-            });
-
-            // Add the correct theme class
-            if (savedScheme !== 'blue') {
-                 document.documentElement.classList.add(themePrefix + savedScheme);
-            }
-        }
-        applyTheme();
-    </script>
     <!-- Tailwind utilities, compiled at build time (scripts/build_css.sh). Last in
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->

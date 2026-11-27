@@ -381,6 +381,7 @@ def test_only_the_client_script_registers_a_worker():
 
 
 THEME_INCLUDE = "{% include 'includes/theme_bootstrap.html' %}"
+THEME_ACCOUNT_INCLUDE = "{% include 'includes/theme_account.html' %}"
 
 
 @pytest.mark.parametrize("page", PAGES)
@@ -392,11 +393,33 @@ def test_theme_is_applied_before_first_paint(page):
     """
     html = _read(page)
     head = html.split("</head>")[0]
-    applies = THEME_INCLUDE in head or re.search(r"classList\.(add|toggle)\('dark'", head)
+    applies = (THEME_INCLUDE in head or THEME_ACCOUNT_INCLUDE in head
+               or re.search(r"classList\.(add|toggle)\('dark'", head))
     assert applies, f"{page}: no theme script in <head>"
-    if THEME_INCLUDE in head:
-        first_css = head.find('rel="stylesheet"')
-        assert first_css == -1 or head.find(THEME_INCLUDE) < first_css, f"{page}: theme include after a stylesheet"
+    for include in (THEME_INCLUDE, THEME_ACCOUNT_INCLUDE):
+        if include in head:
+            first_css = head.find('rel="stylesheet"')
+            assert first_css == -1 or head.find(include) < first_css, f"{page}: {include} after a stylesheet"
+
+
+def test_one_apply_theme_definition_is_shared_by_every_page():
+    """The page-level light/dark and colour-scheme switch is defined once.
+
+    Every page used to carry an inline copy and call it there, so the copies
+    drifted apart in comments alone. The definition lives in
+    includes/theme_account.html, which every page includes first in <head>.
+    """
+    defining = []
+    for dirpath, _, files in os.walk(TEMPLATES):
+        for name in files:
+            if not name.endswith(".html"):
+                continue
+            path = os.path.join(dirpath, name)
+            if "function applyTheme(" in open(path, encoding="utf-8").read():
+                defining.append(os.path.relpath(path, TEMPLATES))
+    assert sorted(defining) == ["includes/theme_account.html"]
+    for page in PAGES:
+        assert THEME_ACCOUNT_INCLUDE in _read(page), page
 
 
 @pytest.mark.parametrize("page", ["index.html", "inquire.html"])
