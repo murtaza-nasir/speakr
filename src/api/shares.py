@@ -22,7 +22,7 @@ from src.utils.route_errors import internal_error
 from src.services.storage import get_storage_service
 from src.services.public_shares import (active_share_or_404, link_is_https, public_sharing_enabled, public_url,
                                         user_can_share_publicly)
-from src.utils.mime import (served_media_mime, sandbox_media_response, stale_media_request,
+from src.utils.mime import (served_media_mime, stale_media_request,
                             stale_media_response, versioned_media_response)
 from src.utils.log_filters import loggable_error, loggable_locator
 from src.utils.localization import api_error, translate, request_language
