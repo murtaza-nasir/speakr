@@ -11,7 +11,7 @@ When you select a recording from the sidebar, the center panel displays the full
 
 ## Speaker Identification
 
-If your recording was processed with [speaker diarization](../features.md#speaker-diarization) enabled, each speaker's contributions are labeled with colored tags like SPEAKER_01, SPEAKER_02, and so on. This requires the [ASR endpoint](../getting-started.md#option-b-custom-asr-endpoint-configuration). These labels are automatically generated during transcription and help you follow multi-person conversations.
+If your recording was processed with [speaker diarization](../features.md#speaker-diarization) enabled, each speaker's contributions are labeled with colored tags like SPEAKER_01, SPEAKER_02, and so on. This requires the [ASR endpoint](../getting-started.md#required-transcription-service). These labels are automatically generated during transcription and help you follow multi-person conversations.
 
 A label such as `SPEAKER_01` is a placeholder for a voice that has not been named. It belongs to one recording: `SPEAKER_01` of one recording and `SPEAKER_01` of another are unrelated voices. A placeholder is therefore never saved as a speaker. No voice profile, voice sample or quote is kept for it, and it is not listed under the participants, in the **Speakers** filters or in the saved speakers of a name field. In the transcript, in the speaker statistics and in downloads, it is shown as before. The same applies to the other forms of a placeholder, such as `Speaker 1`, `Speaker A`, `spk_0`, `Unknown` and `Unknown Speaker`.
 

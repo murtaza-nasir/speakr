@@ -89,7 +89,7 @@ Transcription accuracy depends on several factors - audio quality, speaker clari
 
 ### What's the difference between Whisper API and ASR endpoints?
 
-Whisper API provides basic transcription - converting speech to text without speaker identification. The [recommended ASR container](getting-started.md#option-b-custom-asr-endpoint-configuration) (`onerahmet/openai-whisper-asr-webservice`) offers advanced features like [speaker diarization](features.md#speaker-diarization), which identifies and labels different speakers in the conversation. Learn to [manage speakers](user-guide/transcripts.md#speaker-identification) after transcription. Diarization is essential for meetings with multiple participants, while Whisper API works fine for single-speaker recordings like dictations or podcasts.
+Whisper API provides basic transcription - converting speech to text without speaker identification. The [recommended ASR container](getting-started.md#required-transcription-service) (`onerahmet/openai-whisper-asr-webservice`) offers advanced features like [speaker diarization](features.md#speaker-diarization), which identifies and labels different speakers in the conversation. Learn to [manage speakers](user-guide/transcripts.md#speaker-identification) after transcription. Diarization is essential for meetings with multiple participants, while Whisper API works fine for single-speaker recordings like dictations or podcasts.
 
 OpenAI's `gpt-4o-transcribe-diarize` model also offers cloud-based diarization. For longer files (over ~23 minutes), speaker tracking supports up to 4 speakers - recordings with more speakers may have inconsistent labels across sections.
 
@@ -109,7 +109,7 @@ There's no hard limit on recording length, but practical considerations apply. V
 
 ### What AI model generates the summaries?
 
-Summary generation uses the language model configured in your [environment file](getting-started.md#step-3-configure-your-transcription-service). Customize summaries with [AI prompts](admin-guide/prompts.md) - through a local LLM endpoint or a Cloud provider like OpenAI or OpenRouter. The model choice affects [summary quality](features.md#automatic-summarization), cost, and processing speed. Monitor performance in [system statistics](admin-guide/statistics.md).
+Summary generation uses the language model configured in your [environment file](getting-started.md#step-3-configure-your-api-keys). Customize summaries with [AI prompts](admin-guide/prompts.md) - through a local LLM endpoint or a Cloud provider like OpenAI or OpenRouter. The model choice affects [summary quality](features.md#automatic-summarization), cost, and processing speed. Monitor performance in [system statistics](admin-guide/statistics.md).
 
 ### Can I use different models for chat and summaries?
 
@@ -221,7 +221,7 @@ You can set these at multiple levels, from most to least priority:
 
 ### How can I maximize transcription accuracy?
 
-Speak clearly and avoid talking over others. Minimize background noise and echo. For technical content, use [hotwords and initial prompts](#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) to help the transcription engine with domain-specific vocabulary. You can set these through [tags](user-guide/settings.md#transcription-hints-hotwords--initial-prompt), [folders](user-guide/folders.md), or your [personal defaults](user-guide/settings.md#transcription-hints). Users can also set [custom summary prompts](user-guide/settings.md#custom-prompts-tab) for their recordings. Use the appropriate [language setting](user-guide/settings.md#language-preferences) rather than relying on auto-detection. Review [language support](features.md#language-support) for best results. For multi-speaker recordings, use the [ASR endpoint](getting-started.md#option-b-custom-asr-endpoint-configuration) with appropriate speaker count settings. [Identify speakers](user-guide/transcripts.md#speaker-identification) after transcription for best results.
+Speak clearly and avoid talking over others. Minimize background noise and echo. For technical content, use [hotwords and initial prompts](#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) to help the transcription engine with domain-specific vocabulary. You can set these through [tags](user-guide/settings.md#transcription-hints-hotwords-initial-prompt), [folders](user-guide/folders.md), or your [personal defaults](user-guide/settings.md#transcription-hints). Users can also set [custom summary prompts](user-guide/settings.md#custom-prompts-tab) for their recordings. Use the appropriate [language setting](user-guide/settings.md#language-preferences) rather than relying on auto-detection. Review [language support](features.md#language-support) for best results. For multi-speaker recordings, use the [ASR endpoint](getting-started.md#required-transcription-service) with appropriate speaker count settings. [Identify speakers](user-guide/transcripts.md#speaker-identification) after transcription for best results.
 
 For Chinese transcription specifically, use the large-v3 model as smaller models may not output Chinese characters correctly. For other languages, test different models to find the best accuracy for your specific language and accent.
 

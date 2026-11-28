@@ -1,44 +1,41 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Test script to validate documentation build locally
-# This mimics what the GitHub Actions workflow does
+# Build the documentation the same way the GitHub Actions workflow does.
 
-set -e
+set -euo pipefail
 
 echo "Testing documentation build..."
 
-# Check if we're in the right directory
-if [ ! -f "docs/mkdocs.yml" ]; then
-    echo "Error: docs/mkdocs.yml not found. Run this script from the project root."
+if [[ ! -f "mkdocs.yml" || ! -f "docs/requirements-docs.txt" ]]; then
+    echo "Error: mkdocs.yml or docs/requirements-docs.txt not found. Run this script from the project root."
     exit 1
 fi
 
-# Create a virtual environment for testing
+VENV_DIR=".venv-docs-test"
+SITE_DIR="site"
+
+cleanup() {
+    rm -rf "$VENV_DIR"
+}
+trap cleanup EXIT
+
+rm -rf "$SITE_DIR"
+
 echo "Creating virtual environment..."
-python3 -m venv .venv-docs-test
-source .venv-docs-test/bin/activate
+python3 -m venv "$VENV_DIR"
 
-# Install dependencies
 echo "Installing dependencies..."
-pip install --upgrade pip
-pip install -r docs/requirements-docs.txt
+"$VENV_DIR/bin/python" -m pip install --upgrade pip
+"$VENV_DIR/bin/python" -m pip install -r docs/requirements-docs.txt
 
-# Build the documentation
 echo "Building documentation..."
-cd docs
-export CI=true  # Enable git plugin in CI mode
-mkdocs build --strict --site-dir _test_site
+CI=true "$VENV_DIR/bin/python" -m mkdocs build --strict --site-dir "$SITE_DIR"
 
 echo ""
-echo "✅ Documentation build successful!"
-echo "Built site is in: docs/_test_site"
+echo "Documentation build successful."
+echo "Built site is in: $SITE_DIR"
 echo ""
-echo "To serve locally for testing:"
-echo "  cd docs && mkdocs serve"
-
-# Cleanup
-cd ..
-deactivate
-rm -rf .venv-docs-test
-
-echo "Cleanup complete."
+echo "To serve locally:"
+echo "  python3 -m venv .venv-docs-test"
+echo "  .venv-docs-test/bin/pip install -r docs/requirements-docs.txt"
+echo "  .venv-docs-test/bin/mkdocs serve"

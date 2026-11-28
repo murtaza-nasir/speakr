@@ -6,7 +6,7 @@ When something goes wrong with Speakr, this guide helps you identify and resolve
 
 ### Container Won't Start
 
-When your Docker container refuses to start or immediately exits, the problem usually lies in your configuration. Check your [environment file](getting-started.md#step-3-configure-your-transcription-service) first - a single typo in API keys or mismatched quotes can prevent startup. Review the [installation guide](getting-started/installation.md) for proper setup. Run `docker compose logs app` to see the actual error messages. Common culprits include port conflicts (another service using 8899), missing volume mounts, or incorrect file permissions on your data directory.
+When your Docker container refuses to start or immediately exits, the problem usually lies in your configuration. Check your [environment file](getting-started.md#step-3-configure-your-api-keys) first - a single typo in API keys or mismatched quotes can prevent startup. Review the [installation guide](getting-started/installation.md) for proper setup. Run `docker compose logs app` to see the actual error messages. Common culprits include port conflicts (another service using 8899), missing volume mounts, or incorrect file permissions on your data directory.
 
 If you see database connection errors, ensure your database file has proper permissions. The container runs as a specific user and needs read/write access to the data directories. On Linux systems, you might need to adjust ownership with `chown -R 1000:1000 ./uploads ./instance`.
 
@@ -99,7 +99,7 @@ Transcription accuracy depends heavily on audio quality. Background noise, multi
 
 Language mismatches cause poor results too. If you've set a specific transcription language in settings but upload audio in a different language, accuracy suffers. Either set the correct language or leave it blank for auto-detection.
 
-For domain-specific terminology, brand names, or acronyms that keep getting misspelled, use the [custom vocabulary (hotwords) and initial prompt](features.md#custom-vocabulary--transcription-hints) features. Set these per-upload in Advanced ASR Options, or configure them on your tags, folders, or user defaults for automatic application. See the [FAQ entry](faq.md#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) for practical guidance.
+For domain-specific terminology, brand names, or acronyms that keep getting misspelled, use the [custom vocabulary (hotwords) and initial prompt](features.md#custom-vocabulary-transcription-hints) features. Set these per-upload in Advanced ASR Options, or configure them on your tags, folders, or user defaults for automatic application. See the [FAQ entry](faq.md#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) for practical guidance.
 
 For recordings with multiple speakers, using the [ASR endpoint with speaker diarization](features.md#speaker-diarization) dramatically improves usability. Learn how to [identify speakers](user-guide/transcripts.md#speaker-identification) after transcription, even if the raw transcription accuracy is similar.
 
@@ -210,7 +210,7 @@ If a chat or Inquire response stops abruptly with a note that the output token l
 
 ### Speaker Identification Not Working
 
-[Speaker diarization](features.md#speaker-diarization) requires the [ASR endpoint](getting-started.md#option-b-custom-asr-endpoint-configuration), not standard Whisper API. Configure speaker settings in [system settings](admin-guide/system-settings.md). Verify you've configured ASR settings correctly in your environment file. The ASR_BASE_URL should point to a valid ASR service that supports diarization.
+[Speaker diarization](features.md#speaker-diarization) requires the [ASR endpoint](getting-started.md#required-transcription-service), not standard Whisper API. Configure speaker settings in [system settings](admin-guide/system-settings.md). Verify you've configured ASR settings correctly in your environment file. The ASR_BASE_URL should point to a valid ASR service that supports diarization.
 
 Even with ASR enabled, you must explicitly request diarization when uploading or reprocessing recordings. Speakr should do this by default, but user settings may override this behavior. Check the speaker count settings - if you set min and max speakers to 1, diarization effectively disables. Use reasonable ranges like 2-6 speakers for most recordings.
 
