@@ -5,6 +5,8 @@ on:
     branches: [ master, main ]
     paths:
       - 'docs/**'
+      - 'mkdocs.yml'
+      - 'scripts/test-docs-build.sh'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
