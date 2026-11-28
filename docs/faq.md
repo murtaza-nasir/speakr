@@ -63,7 +63,7 @@ Yes, Speakr can run completely offline once set up. The Docker image contains al
 
 - Use a local ASR endpoint (like the WhisperX container) for transcription
 - Use Ollama or another local LLM for summaries
-- **Inquire Mode**: The embedding model downloads automatically on first use and caches to `instance/huggingface/`. After the initial download, it loads from cache without needing internet access.
+- **Ask Ambrose**: The embedding model downloads automatically on first use and caches to `instance/huggingface/`. After the initial download, it loads from cache without needing internet access.
 
 Run Speakr once with internet access to cache the embedding model, then disconnect - everything works offline.
 
@@ -89,7 +89,7 @@ Transcription accuracy depends on several factors - audio quality, speaker clari
 
 ### What's the difference between Whisper API and ASR endpoints?
 
-Whisper API provides basic transcription - converting speech to text without speaker identification. The [recommended ASR container](getting-started.md#option-b-custom-asr-endpoint-configuration) (`onerahmet/openai-whisper-asr-webservice`) offers advanced features like [speaker diarization](features.md#speaker-diarization), which identifies and labels different speakers in the conversation. Learn to [manage speakers](user-guide/transcripts.md#speaker-identification) after transcription. Diarization is essential for meetings with multiple participants, while Whisper API works fine for single-speaker recordings like dictations or podcasts.
+Whisper API provides basic transcription - converting speech to text without speaker identification. The [recommended ASR container](getting-started.md#step-3-configure-your-api-keys) (`onerahmet/openai-whisper-asr-webservice`) offers advanced features like [speaker diarization](features.md#speaker-diarization), which identifies and labels different speakers in the conversation. Learn to [manage speakers](user-guide/transcripts.md#speaker-identification) after transcription. Diarization is essential for meetings with multiple participants, while Whisper API works fine for single-speaker recordings like dictations or podcasts.
 
 OpenAI's `gpt-4o-transcribe-diarize` model also offers cloud-based diarization. For longer files (over ~23 minutes), speaker tracking supports up to 4 speakers - recordings with more speakers may have inconsistent labels across sections.
 
@@ -105,11 +105,11 @@ Yes, Speakr supports multiple languages through its transcription services. Whis
 
 ### How long can my recordings be?
 
-There's no hard limit on recording length, but practical considerations apply. Very long recordings (over 2-3 hours) take longer to process, use more API credits, and can make the interface sluggish. The file upload limit defaults to 300MB, which accommodates several hours of compressed audio. For very long content like all-day workshops, consider splitting into logical segments.
+There's no hard limit on recording length, but practical considerations apply. Very long recordings (over 2-3 hours) take longer to process, use more API credits, and can make the interface sluggish. The file upload limit defaults to 250MB, which accommodates several hours of compressed audio. For very long content like all-day workshops, consider splitting into logical segments.
 
 ### What AI model generates the summaries?
 
-Summary generation uses the language model configured in your [environment file](getting-started.md#step-3-configure-your-transcription-service). Customize summaries with [AI prompts](admin-guide/prompts.md) - through a local LLM endpoint or a Cloud provider like OpenAI or OpenRouter. The model choice affects [summary quality](features.md#automatic-summarization), cost, and processing speed. Monitor performance in [system statistics](admin-guide/statistics.md).
+Summary generation uses the language model configured in your [environment file](getting-started.md#step-3-configure-your-api-keys). Customize summaries with [AI prompts](admin-guide/prompts.md) - through a local LLM endpoint or a Cloud provider like OpenAI or OpenRouter. The model choice affects [summary quality](features.md#automatic-summarization), cost, and processing speed. Monitor performance in [system statistics](admin-guide/statistics.md).
 
 ### Can I use different models for chat and summaries?
 
@@ -141,13 +141,13 @@ Only you can see your recordings by default. [Admin users](admin-guide/user-mana
 
 ## Features and Functionality
 
-### What is Inquire Mode?
+### What is Ask Ambrose?
 
-[Inquire Mode](user-guide/inquire-mode.md) is Speakr's semantic search feature that lets you find information across all your recordings using natural language questions. The [vector store](admin-guide/vector-store.md) must be configured for this to work. Instead of searching for exact keywords, you can ask questions like "What did we decide about the marketing budget?" and get relevant excerpts from any recording that discussed that topic. It uses AI embeddings to understand meaning and context.
+[Ask Ambrose](user-guide/inquire-mode.md) is Speakr's semantic search feature that lets you find information across all your recordings using natural language questions. The [vector store](admin-guide/vector-store.md) must be configured for this to work. Instead of searching for exact keywords, you can ask questions like "What did we decide about the marketing budget?" and get relevant excerpts from any recording that discussed that topic. It uses AI embeddings to understand meaning and context.
 
 ### How do speaker profiles work?
 
-When you [identify speakers](user-guide/transcripts.md#speaker-identification) in a transcription by clicking on generic labels (SPEAKER_01, etc.) and assigning names, Speakr saves these as speaker profiles. Manage them in [account settings](user-guide/settings.md#speakers-management-tab). In future updates, we intend to add functionality to allow recordings can then use these profiles to automatically suggest speaker identities based on voice characteristics. Over time, you build a library of recognized speakers that makes multi-person transcriptions much more useful.
+When you [identify speakers](user-guide/transcripts.md#speaker-identification) in a transcription by clicking on generic labels (SPEAKER_01, etc.) and assigning names, Speakr saves these as speaker profiles. Manage them in [account settings](user-guide/settings.md#speakers-management-tab). With **Auto Speaker Labeling** enabled in your [processing preferences](user-guide/settings.md#processing-preferences), a new recording is compared against your profiles and matching speakers are labeled automatically, subject to the confidence threshold you choose. This requires a backend that returns speaker embeddings: WhisperX, or OpenASR from openasr#379 onward with `ASR_RETURN_SPEAKER_EMBEDDINGS=true`. Over time, you build a library of recognized speakers that makes multi-person transcriptions much more useful.
 
 ### Can I edit transcriptions after they're generated?
 
@@ -172,7 +172,7 @@ This usually means the background processor has stopped or encountered an error.
 This is a common issue when speaker diarization isn't configured correctly. Here's how to fix it:
 
 1. **Check ASR_ENGINE**: Ensure you're using `ASR_ENGINE=whisperx` in your ASR container, not `faster_whisper`
-2. **Verify ASR_DIARIZE**: While this is set to `true` by default when `USE_ASR_ENDPOINT=true`, explicitly set `ASR_DIARIZE=true` in your .env file
+2. **Verify ASR_DIARIZE**: `ASR_BASE_URL` enables ASR mode automatically, and diarization is on by default for ASR endpoints; set `ASR_DIARIZE=true` explicitly in your .env file if speakers aren't being detected
 3. **HuggingFace Token**: The ASR container needs a valid `HF_TOKEN` environment variable for downloading diarization models
 4. **Docker networking**: If containers are in the same docker-compose, use the container name (e.g., `http://whisper-asr:9000`), not localhost or external IPs
 5. **Check logs**: Look for pyannote/VAD messages in your ASR container logs to confirm diarization is active
@@ -221,7 +221,7 @@ You can set these at multiple levels, from most to least priority:
 
 ### How can I maximize transcription accuracy?
 
-Speak clearly and avoid talking over others. Minimize background noise and echo. For technical content, use [hotwords and initial prompts](#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) to help the transcription engine with domain-specific vocabulary. You can set these through [tags](user-guide/settings.md#transcription-hints-hotwords--initial-prompt), [folders](user-guide/folders.md), or your [personal defaults](user-guide/settings.md#transcription-hints). Users can also set [custom summary prompts](user-guide/settings.md#custom-prompts-tab) for their recordings. Use the appropriate [language setting](user-guide/settings.md#language-preferences) rather than relying on auto-detection. Review [language support](features.md#language-support) for best results. For multi-speaker recordings, use the [ASR endpoint](getting-started.md#option-b-custom-asr-endpoint-configuration) with appropriate speaker count settings. [Identify speakers](user-guide/transcripts.md#speaker-identification) after transcription for best results.
+Speak clearly and avoid talking over others. Minimize background noise and echo. For technical content, use [hotwords and initial prompts](#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) to help the transcription engine with domain-specific vocabulary. You can set these through [tags](user-guide/settings.md#transcription-hints-hotwords-initial-prompt), [folders](user-guide/folders.md), or your [personal defaults](user-guide/settings.md#transcription-hints). Users can also set [custom summary prompts](user-guide/settings.md#custom-prompts-tab) for their recordings. Use the appropriate [language setting](user-guide/settings.md#language-preferences) rather than relying on auto-detection. Review [language support](features.md#language-support) for best results. For multi-speaker recordings, use the [ASR endpoint](getting-started.md#step-3-configure-your-api-keys) with appropriate speaker count settings. [Identify speakers](user-guide/transcripts.md#speaker-identification) after transcription for best results.
 
 For Chinese transcription specifically, use the large-v3 model as smaller models may not output Chinese characters correctly. For other languages, test different models to find the best accuracy for your specific language and accent.
 

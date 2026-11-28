@@ -32,7 +32,7 @@ The **Auto-Summarization** toggle controls whether summaries are automatically g
 
 #### Auto Speaker Labeling
 
-When you have speaker voice profiles with embeddings (from WhisperX ASR), the **Auto Speaker Labeling** feature can automatically identify and label speakers in new recordings.
+When you have speaker voice profiles with embeddings (from a backend that returns them, such as WhisperX), the **Auto Speaker Labeling** feature can automatically identify and label speakers in new recordings.
 
 - **Enable/Disable** - Toggle automatic speaker identification
 - **Confidence Threshold** - Choose how strict the matching should be:
@@ -43,7 +43,7 @@ When you have speaker voice profiles with embeddings (from WhisperX ASR), the **
 Auto speaker labeling works by comparing voice embeddings from the new recording against your saved speaker profiles. When a match exceeds your confidence threshold, the speaker is automatically labeled with the known name.
 
 !!! tip "Building Voice Profiles"
-    Auto speaker labeling requires voice profiles with embeddings. These are created when you identify speakers in recordings processed with WhisperX ASR (with `ASR_RETURN_SPEAKER_EMBEDDINGS=true`). The more recordings you identify a speaker in, the better the matching becomes.
+    Auto speaker labeling requires voice profiles with embeddings. These are created when you identify speakers in recordings processed with a backend that returns speaker embeddings: WhisperX, or OpenASR from openasr#379 onward with `ASR_RETURN_SPEAKER_EMBEDDINGS=true`. The more recordings you identify a speaker in, the better the matching becomes.
 
 ### Account Actions
 

@@ -363,7 +363,7 @@ The system enforces policy without requiring anyone to remember the rules. Tag c
 
 Audio files are large - a one-hour meeting might be 50-100MB. Transcriptions are text - the same meeting might be 10-20KB. Audio-only deletion mode keeps the valuable searchable text while reclaiming storage.
 
-Run audio-only deletion with a 90-day retention. Recordings older than 90 days lose their audio but remain fully searchable. You can still use Inquire Mode to find information, read transcripts, review summaries, and see notes. You just can't play the original audio. For most use cases, that's fine - once you've extracted the information into text, the audio serves no purpose.
+Run audio-only deletion with a 90-day retention. Recordings older than 90 days lose their audio but remain fully searchable. You can still use Ask Ambrose to find information, read transcripts, review summaries, and see notes. You just can't play the original audio. For most use cases, that's fine - once you've extracted the information into text, the audio serves no purpose.
 
 This approach lets you keep years of searchable conversation history without accumulating terabytes of audio files.
 

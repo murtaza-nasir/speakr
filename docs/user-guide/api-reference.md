@@ -1184,7 +1184,7 @@ GET /api/v1/search
 
 **Scope:** `read`
 
-Finds words in the titles, participants, notes, summaries and transcripts of your recordings, with the time and speaker of each transcript hit. Keyword search works on every installation; semantic search needs Inquire mode.
+Finds words in the titles, participants, notes, summaries and transcripts of your recordings, with the time and speaker of each transcript hit. Keyword search works on every installation; semantic search needs Ask Ambrose (`ENABLE_INQUIRE_MODE`).
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -1230,7 +1230,7 @@ Finds words in the titles, participants, notes, summaries and transcripts of you
 - `score` is the share of the query words in the hit times a weight per field (title 1.0, summary 0.9, notes and participants 0.8, transcript 0.7). Ties go to the newer recording.
 - Keyword mode reads at most the 200 newest matching recordings per request.
 - Semantic hits come from the Inquire index: `field` is `transcript`, `segment_index` is `null`, `score` is the similarity. The query text is sent to the embedding model of the instance; `GET /api/v1/capabilities` reports `features.search.semantic` and `models_local`.
-- `mode=semantic` on an instance without Inquire mode: `409` with `"code": "semantic_unavailable"`.
+- `mode=semantic` on an instance without Ask Ambrose (`ENABLE_INQUIRE_MODE` off): `409` with `"code": "semantic_unavailable"`.
 - Limit: 30 requests per minute per token (`API_SEARCH_RATE_LIMIT`).
 
 ## Tags
@@ -1646,7 +1646,7 @@ POST /api/v1/inquire
 
 **Scope:** `process`
 
-Answers a question from the recordings you can read, with Inquire's search (and the Inquire agent when the administrator turned it on). Needs Inquire mode on the instance (`403 feature_disabled` otherwise).
+Answers a question from the recordings you can read, with the search behind Ask Ambrose (and its agent when the administrator turned it on). Needs `ENABLE_INQUIRE_MODE` on the instance (`403 feature_disabled` otherwise).
 
 ```json
 {

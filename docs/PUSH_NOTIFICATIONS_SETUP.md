@@ -3,11 +3,11 @@
 !!! warning "Not active"
     Push notifications are not part of the current release. No push message is sent by the server, and the functions of the web interface described below (`static/js/config/push-config.js`, `subscribeToPushNotifications` and the push handlers of the service worker) were removed when the service worker received the scope `/`. This page is kept as a record of the earlier design.
 
-This guide explains how to complete the push notification setup for Speakr.
+This page is an archive of the earlier push notification design, not a setup procedure. Nothing here sends a notification in the current release.
 
 ## Overview
 
-The client-side push notification infrastructure is now complete. To enable push notifications, you need to:
+The design assumed that the client-side push infrastructure existed, and that enabling push notifications meant generating VAPID keys, configuring the client with the public key, and adding backend endpoints to store subscriptions and send notifications. The server still keeps the VAPID key pair and the routes that store a subscription, but the client code that subscribed is gone and no message is ever sent, so the steps below record the plan rather than a working setup.
 
 1. Generate VAPID keys
 2. Configure the client with the public key

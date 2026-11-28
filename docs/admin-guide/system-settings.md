@@ -22,8 +22,8 @@ The sweet spot depends on your use case. For typical meetings under an hour, 50,
 
 Two separate caps apply depending on file type:
 
-- **`max_file_size_mb`** (default 300 MB) — applies to audio uploads. Protects storage from runaway audio.
-- **`max_audio_only_video_size_mb`** (default 4 × `max_file_size_mb`, ≈ 1200 MB) — applies to **any** video file regardless of whether the video stream will be kept. Video files are typically much larger than the audio they contain, so they get their own (larger) ceiling.
+- **`max_file_size_mb`** (default 250 MB) — applies to audio uploads. Protects storage from runaway audio.
+- **`max_audio_only_video_size_mb`** (default 4 × `max_file_size_mb`, ≈ 1000 MB) — applies to **any** video file regardless of whether the video stream will be kept. Video files are typically much larger than the audio they contain, so they get their own (larger) ceiling.
 
 When chunking is enabled (`ENABLE_CHUNKING=true`, the default), the upload route lets files through above these caps and chunks them on the server for the ASR call. An upload larger than the higher of the two caps is refused in either case. When chunking is off, the caps are enforced strictly. Files whose **extracted audio** still exceeds `max_file_size_mb` are rejected with a clear error when chunking is off; with chunking on, the chunking pipeline handles them.
 
@@ -398,9 +398,9 @@ Beyond the UI-configurable settings above, several environment variables in your
 
 **ENABLE_AUTO_DELETION**: Enables the automated retention system. When `true`, recordings older than the retention period are automatically processed for deletion. Default: `false`.
 
-**DEFAULT_RETENTION_DAYS**: Global retention period in days for recordings without tag-specific retention. Set to `0` to disable auto-deletion. Tag-level retention policies can override this default. Default: `0` (disabled).
+**GLOBAL_RETENTION_DAYS**: Global retention period in days for recordings without tag-specific retention. Set to `0` to disable auto-deletion. Tag-level retention policies can override this default. Default: `0` (disabled).
 
-**DELETION_MODE**: Controls what gets deleted: `audio_only` removes audio files but preserves transcriptions and metadata, while `full_recording` removes everything. Audio-only mode maintains searchable records while saving storage space. Default: `audio_only`.
+**DELETION_MODE**: Controls what gets deleted. The default, `full_recording`, removes everything. `audio_only` removes audio files but preserves transcriptions and metadata, so a searchable record remains while storage space is saved.
 
 For detailed retention configuration, see the [Retention & Auto-Deletion](retention.md) guide.
 
@@ -502,7 +502,7 @@ USERS_CAN_DELETE=false  # Only admins can delete
 
 # Retention policy
 ENABLE_AUTO_DELETION=true
-DEFAULT_RETENTION_DAYS=90
+GLOBAL_RETENTION_DAYS=90
 DELETION_MODE=audio_only
 
 # Audio compression (enabled by default)

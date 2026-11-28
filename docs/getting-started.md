@@ -31,7 +31,7 @@ wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.tr
 
 The unified configuration auto-detects your transcription provider based on your settings:
 
-- **OpenAI with diarization**: Set `TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize`
+- **OpenAI**: Set `TRANSCRIPTION_MODEL=gpt-transcribe`. Use `gpt-4o-transcribe-diarize` instead if you need OpenAI to identify speakers, keeping in mind that OpenAI shuts it down on 26 February 2027.
 - **Self-hosted ASR/WhisperX**: Set `ASR_BASE_URL=http://your-asr:9000`
 - **Legacy Whisper**: Set `TRANSCRIPTION_MODEL=whisper-1`
 
@@ -67,18 +67,20 @@ For OpenAI's latest GPT-5 models (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`), you must
 
 Choose ONE of the following options:
 
-**Option A: OpenAI with Speaker Diarization (Recommended)**
+**Option A: OpenAI Transcribe (Recommended for a quick start)**
 ```bash
 TRANSCRIPTION_API_KEY=sk-your_openai_api_key
-TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize
+TRANSCRIPTION_MODEL=gpt-transcribe
 ```
-This provides high-quality transcription with automatic speaker identification - no GPU or self-hosted service required. Note: For longer files (over ~23 minutes), speaker tracking across chunks supports up to 4 speakers.
+This needs no GPU and no self-hosted service. Whether speakers are identified depends on the connector: OpenAI's `gpt-4o-transcribe-diarize` labels them, while `gpt-transcribe` does not, and self-hosted ASR endpoints and the other diarizing connectors return speaker labels of their own. For longer files (over ~23 minutes) with `gpt-4o-transcribe-diarize`, speaker tracking across chunks supports up to 4 speakers.
+
+> **Note:** OpenAI shuts down `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` and `gpt-4o-transcribe-diarize` on 26 February 2027. `gpt-transcribe` replaces them but does not identify speakers. For speaker labels, use a [self-hosted ASR endpoint](getting-started/installation.md#for-self-hosted-asr-endpoint-recommended-for-best-quality) or another connector that diarizes.
 
 **Option B: Self-hosted ASR/WhisperX (Best for privacy)**
 ```bash
 ASR_BASE_URL=http://whisper-asr:9000
 ASR_DIARIZE=true
-# Optional: Enable voice profiles (WhisperX only)
+# Optional: Enable voice profiles (WhisperX, or OpenASR from openasr#379 onward)
 ASR_RETURN_SPEAKER_EMBEDDINGS=true
 ```
 Requires running an additional ASR container. See [Running ASR Service for Speaker Diarization](getting-started/installation.md#running-asr-service-for-speaker-diarization) for setup instructions.
@@ -89,7 +91,7 @@ TRANSCRIPTION_API_KEY=sk-your_openai_api_key
 TRANSCRIPTION_MODEL=whisper-1
 ```
 
-When using ASR or OpenAI diarization models, [speaker diarization](features.md#speaker-diarization) is automatically enabled, allowing Speakr to identify different speakers in your recordings. After transcription, you'll need to [identify speakers](user-guide/transcripts.md#speaker-identification) to build your speaker library.
+Speaker [diarization](features.md#speaker-diarization) is enabled automatically by the connectors that support it, such as a self-hosted ASR endpoint or OpenAI's `gpt-4o-transcribe-diarize`, and lets Speakr label different speakers in your recordings. After transcription, you'll need to [identify speakers](user-guide/transcripts.md#speaker-identification) to build your speaker library.
 
 ## Step 4: Configure Admin Account
 
@@ -131,7 +133,7 @@ Sign in with the admin credentials you configured in Step 4. You should now see 
 
 ## Your First Recording
 
-After signing in, you can immediately start using Speakr. Click the "New recording" button in the top navigation to either upload an existing audio file or start a [live recording](user-guide/recording.md). For detailed instructions, see the [recording guide](user-guide/recording.md). For uploads, Speakr supports [common audio formats](faq.md#what-audio-formats-does-speakr-support) like MP3, M4A, WAV, and more, with files up to 500MB by default. You can adjust this limit in [system settings](admin-guide/system-settings.md). For live recording, you can capture from your microphone, system audio, or both simultaneously.
+After signing in, you can immediately start using Speakr. Click the "New recording" button in the top navigation to either upload an existing audio file or start a [live recording](user-guide/recording.md). For detailed instructions, see the [recording guide](user-guide/recording.md). For uploads, Speakr supports [common audio formats](faq.md#what-audio-formats-does-speakr-support) like MP3, M4A, WAV, and more, with files up to 250MB by default. You can adjust this limit in [system settings](admin-guide/system-settings.md). For live recording, you can capture from your microphone, system audio, or both simultaneously.
 
 ## Setting Up Collaboration (Optional)
 
@@ -184,9 +186,9 @@ For more details on collaboration features, see the [Sharing & Collaboration gui
 
 ## Optional Features
 
-### Enable Inquire Mode
+### Enable Ask Ambrose
 
-[Inquire Mode](user-guide/inquire-mode.md) allows you to search across all your recordings using natural language questions. Learn more about [semantic search capabilities](features.md#semantic-search-inquire-mode) in the features guide. To enable it, set this in your `.env` file:
+[Ask Ambrose](user-guide/inquire-mode.md) allows you to search across all your recordings using natural language questions. Learn more about [semantic search capabilities](features.md#semantic-search-ask-ambrose) in the features guide. To enable it, set this in your `.env` file:
 
 ```bash
 ENABLE_INQUIRE_MODE=true
@@ -194,7 +196,7 @@ ENABLE_INQUIRE_MODE=true
 
 Then restart the container with `docker compose restart` for the change to take effect.
 
-Once Inquire Mode works, you can additionally try the [agentic mode beta](user-guide/inquire-mode.md#agent-mode-beta) (`ENABLE_INQUIRE_AGENT=true`), which answers by iteratively searching and reading your recordings, with live activity display and timestamped, click-to-play citations. The agent also gives the recording chat access to your library. See [Ambrose settings](admin-guide/ambrose.md).
+Once Ask Ambrose works, you can additionally try the [agentic mode beta](user-guide/inquire-mode.md#agent-mode-beta) (`ENABLE_INQUIRE_AGENT=true`), which answers by iteratively searching and reading your recordings, with live activity display and timestamped, click-to-play citations. The agent also gives the recording chat access to your library. See [Ambrose settings](admin-guide/ambrose.md).
 
 ### Enable User Registration
 

@@ -8,11 +8,18 @@ Before diving into installation, it's helpful to understand how Speakr works. Th
 
 Speakr uses a **connector-based architecture** for transcription services, providing a unified interface regardless of which provider you choose. The following connectors are currently available:
 
-1. **ASR Endpoint** (Recommended for best quality) - For self-hosted solutions like WhisperX that offer GPU-accelerated transcription with superior accuracy, voice profiles, and speaker diarization
-2. **OpenAI Transcribe** - Uses `gpt-4o-transcribe-diarize` for cloud-based speaker diarization without requiring additional containers
-3. **Mistral Voxtral** - Cloud-based transcription with built-in diarization and language detection via the Mistral API
-4. **VibeVoice ASR** - Microsoft's self-hosted multimodal ASR model with diarization, timestamps, and 50+ language support, served via vLLM
-5. **OpenAI Whisper** - Legacy whisper-1 model for basic transcription using any legacy OpenAI compatible whisper API
+1. **ASR Endpoint / WhisperX** (Recommended for best quality) - Self-hosted solutions such as WhisperX that offer GPU-accelerated transcription with superior accuracy, voice profiles, and speaker diarization. See [For Self-Hosted ASR Endpoint](#for-self-hosted-asr-endpoint-recommended-for-best-quality).
+2. **OpenAI Transcribe** - `gpt-transcribe`, or `gpt-4o-transcribe-diarize` for cloud-based speaker diarization without additional containers. See [For OpenAI with Speaker Diarization](#for-openai-with-speaker-diarization-cloud-based).
+3. **OpenAI Whisper** - Legacy `whisper-1` model for basic transcription using any legacy OpenAI compatible whisper API. See [For Legacy OpenAI Whisper API](#for-legacy-openai-whisper-api).
+4. **Azure OpenAI Transcribe** - The OpenAI transcription models through an Azure OpenAI deployment. Configured in the Transcription models section of System settings.
+5. **Mistral Voxtral** - Cloud-based transcription with built-in diarization and language detection via the Mistral API. See [For Mistral Voxtral](#for-mistral-voxtral-cloud-based-diarization).
+6. **VibeVoice ASR** - Microsoft's self-hosted multimodal ASR model with diarization, timestamps, and 50+ language support, served via vLLM. See [For VibeVoice ASR](#for-vibevoice-asr-self-hosted-via-vllm).
+7. **Alibaba FunASR** - Alibaba Cloud recording-file recognition with timestamps, speaker labels and speaker count control. Configured in the Transcription models section of System settings.
+8. **Mossland** - Hosted MOSS transcription with diarization and timestamps. Configured in the Transcription models section of System settings.
+9. **AssemblyAI** - Cloud-based diarization for long, multi-speaker recordings. See [For AssemblyAI](#for-assemblyai-cloud-based-diarization).
+10. **Tencent ASR** - Tencent Cloud recording-file recognition for Chinese and English meetings. See [For Tencent Cloud ASR](#for-tencent-cloud-asr-chinese-and-english-meetings).
+11. **OpenASR** - Local server with diarization and, from openasr#379 onward, speaker embeddings. See the OpenASR option under [For Self-Hosted ASR Endpoint](#for-self-hosted-asr-endpoint-recommended-for-best-quality).
+12. **audio.cpp** - Local server for VibeVoice ASR, Parakeet, Nemotron and Qwen3-ASR models, with speaker labels when the model assigns them. See the audio.cpp option under [For Self-Hosted ASR Endpoint](#for-self-hosted-asr-endpoint-recommended-for-best-quality).
 
 The connector can be specified or inferred based on your configuration. For text generation, Speakr uses the OpenAI Chat Completions API format with the `/chat/completions` endpoint, which is widely supported across different AI providers.
 
@@ -61,9 +68,9 @@ services:
 | Tag | Size | Description |
 |-----|------|-------------|
 | `latest` | ~4.4GB | Full image with semantic search via PyTorch embeddings |
-| `lite` | ~725MB | Lightweight image without PyTorch — all features work, Inquire Mode falls back to text search |
+| `lite` | ~725MB | Lightweight image without PyTorch — all features work, Ask Ambrose falls back to text search |
 
-If you don't plan to use Inquire Mode's semantic search (or are fine with basic text search), the `lite` tag is recommended for faster pulls and less disk usage. Replace `latest` with `lite` in the configuration above.
+If you don't plan to use Ask Ambrose's semantic search (or are fine with basic text search), the `lite` tag is recommended for faster pulls and less disk usage. Replace `latest` with `lite` in the configuration above.
 
 Or download the example configuration:
 
@@ -213,7 +220,7 @@ If you're using WhisperX ASR Service and want to enable voice profile features (
 ASR_RETURN_SPEAKER_EMBEDDINGS=true
 ```
 
-This setting is disabled by default because it's only supported by WhisperX. If you're using the basic OpenAI Whisper ASR Webservice, leave this setting disabled or omit it entirely to avoid errors.
+This setting is disabled by default because only some backends return speaker embeddings. Enable it with WhisperX, or with OpenASR from openasr#379 onward. If you're using the basic OpenAI Whisper ASR Webservice, leave this setting disabled or omit it entirely to avoid errors.
 
 #### For Mistral Voxtral (Cloud-Based Diarization)
 
@@ -397,15 +404,15 @@ RECORDING_MAX_HOURS=8  # default
 
 When enabled, recordings are no longer constrained by browser RAM, so you can capture hours-long sessions, and an interrupted recording can resume if the tab is reloaded or closed. `RECORDING_MAX_HOURS` sets an absolute ceiling on a single recording (default 8 hours). For tuning the per-user storage cap and other details, see the [Server-Side Recording Sessions](../admin-guide/recording-sessions.md) guide.
 
-#### Inquire Mode for Semantic Search
+#### Ask Ambrose for Semantic Search
 
-Inquire Mode transforms Speakr from a simple transcription tool into a knowledge base of all your recordings. When enabled, you can search across all your transcriptions using natural language questions:
+Ask Ambrose transforms Speakr from a simple transcription tool into a knowledge base of all your recordings. When enabled, you can search across all your transcriptions using natural language questions:
 
 ```bash
 ENABLE_INQUIRE_MODE=true
 ```
 
-With Inquire Mode active, Speakr creates embeddings of your transcriptions that enable semantic search. This means you can ask questions like "When did we discuss the marketing budget?" and find relevant recordings even if those exact words weren't used. The feature requires additional processing during transcription but provides powerful search capabilities that become more valuable as your recording library grows.
+With Ask Ambrose active, Speakr creates embeddings of your transcriptions that enable semantic search. This means you can ask questions like "When did we discuss the marketing budget?" and find relevant recordings even if those exact words weren't used. The feature requires additional processing during transcription but provides powerful search capabilities that become more valuable as your recording library grows.
 
 #### Automated File Processing
 

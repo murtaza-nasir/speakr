@@ -410,9 +410,9 @@ Document each group's admins in the group description or external documentation.
 
 ## Integration with Other Features
 
-### Inquire Mode
+### Ask Ambrose
 
-Group tags automatically appear in Inquire Mode's available filters, enabling group-scoped semantic search. Users can search for "budget discussions" and filter to just their project group, finding relevant conversations without noise from other groups.
+Group tags automatically appear in Ask Ambrose's available filters, enabling group-scoped semantic search. Users can search for "budget discussions" and filter to just their project group, finding relevant conversations without noise from other groups.
 
 Recordings shared via group tags are included in semantic search results. The vector store indexes all accessible recordings, meaning group content becomes part of users' searchable knowledge base automatically.
 

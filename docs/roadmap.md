@@ -8,7 +8,21 @@ If a feature you care about is not on this list, the right place to ask
 is a GitHub discussion or issue. Roadmap order reflects design readiness
 and community demand, not strict priority.
 
-## Shipped in v0.9.0
+## Shipped releases
+
+Speakr v0.11 is the current release. The notes of v0.11 and of every earlier
+release are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+
+### v0.10 and v0.11 in brief
+
+- **v0.10** added the segment editor with a timeline and drafts, fast display
+  of long transcripts, and settings for who can create groups and who users
+  can find when sharing.
+- **v0.11** added the phone layout, the processing queue, the audit log,
+  keyboard shortcuts, one Transcription models settings section, the
+  audio.cpp connector, and the offline recorder page.
+
+### Shipped in v0.9.0
 
 The first non-patch release in the v0.8 line. Everything in this
 section is released and available. Full detail in the
@@ -60,9 +74,10 @@ section is released and available. Full detail in the
   turns, and word count as headline cards, plus a per-speaker
   time / % / turns / words / WPM breakdown and a silence row. Available
   on desktop and mobile.
-- **Inquire `?upload=1` deep-link.** The "+ New Recording" button in
-  inquire mode now opens the main app's upload modal directly via a
-  query param instead of dropping you on the empty list.
+- **Inquire `?upload=1` deep-link.** The "+ New Recording" button on the
+  [Ask Ambrose](user-guide/inquire-mode.md) page now opens the main app's
+  upload modal directly via a query param instead of dropping you on the
+  empty list.
 - **Audio-player position preference.** A new Display tab in account
   settings lets you choose whether the desktop audio player sits at the
   bottom (default) or top of the recording detail surface.
