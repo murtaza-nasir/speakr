@@ -6,7 +6,7 @@ When something goes wrong with Speakr, this guide helps you identify and resolve
 
 ### Container Won't Start
 
-When your Docker container refuses to start or immediately exits, the problem usually lies in your configuration. Check your [environment file](getting-started.md#step-3-configure-your-transcription-service) first - a single typo in API keys or mismatched quotes can prevent startup. Review the [installation guide](getting-started/installation.md) for proper setup. Run `docker compose logs app` to see the actual error messages. Common culprits include port conflicts (another service using 8899), missing volume mounts, or incorrect file permissions on your data directory.
+When your Docker container refuses to start or immediately exits, the problem usually lies in your configuration. Check your [environment file](getting-started.md#step-3-configure-your-api-keys) first - a single typo in API keys or mismatched quotes can prevent startup. Review the [installation guide](getting-started/installation.md) for proper setup. Run `docker compose logs app` to see the actual error messages. Common culprits include port conflicts (another service using 8899), missing volume mounts, or incorrect file permissions on your data directory.
 
 If you see database connection errors, ensure your database file has proper permissions. The container runs as a specific user and needs read/write access to the data directories. On Linux systems, you might need to adjust ownership with `chown -R 1000:1000 ./uploads ./instance`.
 
@@ -99,7 +99,7 @@ Transcription accuracy depends heavily on audio quality. Background noise, multi
 
 Language mismatches cause poor results too. If you've set a specific transcription language in settings but upload audio in a different language, accuracy suffers. Either set the correct language or leave it blank for auto-detection.
 
-For domain-specific terminology, brand names, or acronyms that keep getting misspelled, use the [custom vocabulary (hotwords) and initial prompt](features.md#custom-vocabulary--transcription-hints) features. Set these per-upload in Advanced ASR Options, or configure them on your tags, folders, or user defaults for automatic application. See the [FAQ entry](faq.md#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) for practical guidance.
+For domain-specific terminology, brand names, or acronyms that keep getting misspelled, use the [custom vocabulary (hotwords) and initial prompt](features.md#custom-vocabulary-transcription-hints) features. Set these per-upload in Advanced ASR Options, or configure them on your tags, folders, or user defaults for automatic application. See the [FAQ entry](faq.md#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) for practical guidance.
 
 For recordings with multiple speakers, using the [ASR endpoint with speaker diarization](features.md#speaker-diarization) dramatically improves usability. Learn how to [identify speakers](user-guide/transcripts.md#speaker-identification) after transcription, even if the raw transcription accuracy is similar.
 
@@ -210,7 +210,7 @@ If a chat or Inquire response stops abruptly with a note that the output token l
 
 ### Speaker Identification Not Working
 
-[Speaker diarization](features.md#speaker-diarization) requires the [ASR endpoint](getting-started.md#option-b-custom-asr-endpoint-configuration), not standard Whisper API. Configure speaker settings in [system settings](admin-guide/system-settings.md). Verify you've configured ASR settings correctly in your environment file. The ASR_BASE_URL should point to a valid ASR service that supports diarization.
+[Speaker diarization](features.md#speaker-diarization) requires the [ASR endpoint](getting-started.md#step-3-configure-your-api-keys), not standard Whisper API. Configure speaker settings in [system settings](admin-guide/system-settings.md). Verify you've configured ASR settings correctly in your environment file. The ASR_BASE_URL should point to a valid ASR service that supports diarization.
 
 Even with ASR enabled, you must explicitly request diarization when uploading or reprocessing recordings. Speakr should do this by default, but user settings may override this behavior. Check the speaker count settings - if you set min and max speakers to 1, diarization effectively disables. Use reasonable ranges like 2-6 speakers for most recordings.
 
@@ -272,7 +272,7 @@ If WhisperX only shows "UNKNOWN_SPEAKER" instead of numbered speakers (SPEAKER_0
 
 2. **Missing or invalid HF_TOKEN**: The ASR container needs a valid HuggingFace token to download the diarization models. Ensure your `HF_TOKEN` environment variable is set in the ASR container configuration.
 
-3. **ASR_DIARIZE not enabled**: While this should be automatic when `USE_ASR_ENDPOINT=true`, explicitly set `ASR_DIARIZE=true` in your Speakr .env file if speakers aren't being detected.
+3. **ASR_DIARIZE not enabled**: `ASR_BASE_URL` enables ASR mode automatically, and diarization is on by default for ASR endpoints, but you can set `ASR_DIARIZE=true` explicitly in your Speakr .env file if speakers aren't being detected.
 
 4. **Docker networking issues**: If using the Speakr and ASR webservice containers in the same docker-compose, containers must communicate via service names (e.g., `http://whisper-asr:9000`), not localhost or external IPs.
 
@@ -294,13 +294,13 @@ This is a Docker limitation on macOS - GPU passthrough isn't supported because D
 
 If your instance meets the requirements but shares still fail, check that your configured URL in the environment matches reality. Mismatched URLs cause share links to point to the wrong location. The URL must be exactly what external users will use to access your instance.
 
-### Inquire Mode Returns No Results
+### Ask Ambrose Returns No Results
 
 [Semantic search](user-guide/inquire-mode.md) requires the embedding model to be properly installed and initialized. Check the [Vector Store tab](admin-guide/vector-store.md) in admin settings and review [vector store troubleshooting](admin-guide/vector-store.md#troubleshooting-common-issues) - it should show "Available" status. If not, the sentence-transformers library might be missing or failed to load.
 
 All recordings need processing before they're searchable. The Vector Store tab shows how many recordings are processed versus pending. Use the process button to manually trigger embedding generation if automatic processing has stalled.
 
-Query formulation matters enormously. [Inquire Mode](user-guide/inquire-mode.md) understands context and meaning, not just keywords. Learn [effective search strategies](user-guide/inquire-mode.md#asking-effective-questions) in the user guide. Ask complete questions rather than typing isolated words. "What did we decide about the budget?" works better than just "budget decision".
+Query formulation matters enormously. [Ask Ambrose](user-guide/inquire-mode.md) understands context and meaning, not just keywords. Learn [effective search strategies](user-guide/inquire-mode.md#asking-effective-questions) in the user guide. Ask complete questions rather than typing isolated words. "What did we decide about the budget?" works better than just "budget decision".
 
 ## Additional Considerations
 
@@ -314,7 +314,7 @@ A separate [upload disclaimer](admin-guide/system-settings.md#upload-disclaimer)
 
 Speakr can run completely offline as all dependencies are built into the Docker image. For offline deployments, use local models via Ollama for [text generation](features.md#automatic-summarization) and ensure your ASR endpoint is hosted locally. The system will work without internet access once properly configured.
 
-**Inquire Mode (Semantic Search)**: If you use Inquire Mode with the default local embedding model (all-MiniLM-L6-v2, or any value configured via `EMBEDDING_MODEL`), the model is automatically cached in the persistent `instance/huggingface/` directory on first use. Run Speakr once with internet access to download the model, then it will load from cache on subsequent restarts and no further network access is required. Configurations that use `EMBEDDING_BASE_URL` to offload embeddings to an API provider naturally require network access to that provider on every request.
+**Ask Ambrose (Semantic Search)**: If you use Ask Ambrose with the default local embedding model (all-MiniLM-L6-v2, or any value configured via `EMBEDDING_MODEL`), the model is automatically cached in the persistent `instance/huggingface/` directory on first use. Run Speakr once with internet access to download the model, then it will load from cache on subsequent restarts and no further network access is required. Configurations that use `EMBEDDING_BASE_URL` to offload embeddings to an API provider naturally require network access to that provider on every request.
 
 ### Non-Docker Installation
 

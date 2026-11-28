@@ -57,7 +57,7 @@ Welcome to the Speakr Admin Guide! As an administrator, you control the heart of
   <div class="guide-card">
     <div class="card-icon">🔍</div>
     <h3>Vector Store</h3>
-    <p>Manage semantic search capabilities, monitor embedding status, and control Inquire Mode.</p>
+    <p>Manage semantic search capabilities, monitor embedding status, and control Ask Ambrose.</p>
     <a href="vector-store" class="card-link">Manage Search →</a>
   </div>
 

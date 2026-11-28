@@ -886,7 +886,7 @@ The Docker/`.env` list from earlier releases, `TRANSCRIPTION_MODELS_AVAILABLE` w
 
 ## Configurable Embedding Model
 
-Speakr's Inquire mode (semantic search) uses [sentence-transformers](https://www.sbert.net/) to embed transcript chunks locally by default. The default model is `all-MiniLM-L6-v2` (384-dim vectors), which is fast, small, and sufficient for most use cases.
+Ask Ambrose (semantic search) uses [sentence-transformers](https://www.sbert.net/) to embed transcript chunks locally by default. The default model is `all-MiniLM-L6-v2` (384-dim vectors), which is fast, small, and sufficient for most use cases.
 
 To use a different local model, set:
 
@@ -951,7 +951,7 @@ API mode does not require sentence-transformers to be installed, so the lightwei
 
 ### Compatibility Note
 
-The active embedding identifier (provider plus model) is recorded in `system_setting` on first startup. If you later change `EMBEDDING_MODEL` or `EMBEDDING_BASE_URL`, Speakr logs a warning at startup and Inquire mode will return wrong results until you reprocess affected recordings, because chunks embedded with the previous configuration occupy a different vector space. To rebuild embeddings after a change, reprocess each recording.
+The active embedding identifier (provider plus model) is recorded in `system_setting` on first startup. If you later change `EMBEDDING_MODEL` or `EMBEDDING_BASE_URL`, Speakr logs a warning at startup and Ask Ambrose will return wrong results until you reprocess affected recordings, because chunks embedded with the previous configuration occupy a different vector space. To rebuild embeddings after a change, reprocess each recording.
 
 ## Mistral Voxtral Chunking
 

@@ -151,10 +151,7 @@ If WhisperX is running on the same machine as Speakr:
 Update Speakr's `.env` file:
 
 ```bash
-# Enable ASR endpoint
-USE_ASR_ENDPOINT=true
-
-# Point to WhisperX service
+# Point to WhisperX service; ASR mode is enabled automatically
 ASR_BASE_URL=http://whisperx-asr-api:9000
 
 # Enable voice profile features (speaker embeddings)
@@ -191,7 +188,7 @@ If WhisperX is on a dedicated GPU server:
 Update Speakr's `.env`:
 
 ```bash
-USE_ASR_ENDPOINT=true
+# Point to the GPU machine; ASR mode is enabled automatically
 ASR_BASE_URL=http://GPU_MACHINE_IP:9000
 ASR_RETURN_SPEAKER_EMBEDDINGS=true
 ```
@@ -254,7 +251,7 @@ WhisperX supports both **hotwords** and **initial_prompt** parameters to improve
 - **Hotwords** - Comma-separated terms the model should prioritize (brand names, acronyms, jargon). Passed as the `hotwords` query parameter to the ASR endpoint.
 - **Initial Prompt** - Context text that guides the model's word choices. Passed as the `initial_prompt` query parameter.
 
-Set these at any level in Speakr: per-user defaults, per-tag, per-folder, or per-upload in the Advanced ASR options. See the [Custom Vocabulary feature docs](../features.md#custom-vocabulary--transcription-hints) for details on the precedence hierarchy.
+Set these at any level in Speakr: per-user defaults, per-tag, per-folder, or per-upload in the Advanced ASR options. See the [Custom Vocabulary feature docs](../features.md#custom-vocabulary-transcription-hints) for details on the precedence hierarchy.
 
 !!! note "ASR Service Compatibility"
     The WhisperX ASR service (`learnedmachine/whisperx-asr-service`) fully supports both `hotwords` and `initial_prompt` parameters. The community `whisper-asr-webservice` by ahmetoner supports `initial_prompt` but does not currently expose a `hotwords` parameter through its API.

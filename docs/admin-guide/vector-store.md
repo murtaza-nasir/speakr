@@ -1,21 +1,21 @@
 # Vector Store Management
 
-The Vector Store tab controls the intelligence behind Inquire Mode, Speakr's semantic search capability that lets users find information across all their recordings using natural language questions. This is where you monitor and manage the embedding system that transforms transcripts into searchable knowledge.
+The Vector Store tab controls the intelligence behind Ask Ambrose, Speakr's semantic search capability that lets users find information across all their recordings using natural language questions. This is where you monitor and manage the embedding system that transforms transcripts into searchable knowledge.
 
 ![Vector Store Management](../assets/images/screenshots/admin-vector-store.png)
 
-## Understanding Inquire Mode
+## Understanding Ask Ambrose
 
-Inquire Mode is the search behind the [Ask Ambrose](../user-guide/inquire-mode.md) page (see also [Ambrose settings](ambrose.md)). It breaks each transcript into overlapping chunks of text, converts these chunks into mathematical representations called embeddings, and stores them in a searchable format. When users ask questions, their query gets converted to the same mathematical format and compared against all stored chunks to find the most relevant information.
+Ask Ambrose runs on this vector store and is available from its [page](../user-guide/inquire-mode.md) (see also [Ambrose settings](ambrose.md)). It breaks each transcript into overlapping chunks of text, converts these chunks into mathematical representations called embeddings, and stores them in a searchable format. When users ask questions, their query gets converted to the same mathematical format and compared against all stored chunks to find the most relevant information.
 
-This approach goes beyond simple keyword matching. The system understands that "budget concerns" relates to "financial constraints" and "cost overruns" even though the exact words differ. This semantic understanding makes Inquire Mode powerful for discovering information that users might not remember precisely.
+This approach goes beyond simple keyword matching. The system understands that "budget concerns" relates to "financial constraints" and "cost overruns" even though the exact words differ. This semantic understanding makes Ask Ambrose powerful for discovering information that users might not remember precisely.
 
 !!! note "Lightweight Image"
     The `lite` Docker image (`learnedmachine/speakr:lite`) ships without the local sentence-transformers model. Two options to enable semantic search on lite:
-    - Set `EMBEDDING_BASE_URL` to an OpenAI-compatible embeddings endpoint (vLLM, OpenRouter, OpenAI, etc.). Inquire Mode then runs in full semantic-search mode using API-generated vectors. See [Model Configuration](model-configuration.md#configurable-embedding-model) for setup.
+    - Set `EMBEDDING_BASE_URL` to an OpenAI-compatible embeddings endpoint (vLLM, OpenRouter, OpenAI, etc.). Ask Ambrose then runs in full semantic-search mode using API-generated vectors. See [Model Configuration](model-configuration.md#configurable-embedding-model) for setup.
     - Switch to the `latest` image tag, which includes the local sentence-transformers model.
 
-    Without either, Inquire Mode falls back to keyword-based text search.
+    Without either, Ask Ambrose falls back to keyword-based text search.
 
 ## The Embedding Model
 
@@ -27,17 +27,17 @@ Changing the model or provider on an existing instance produces vectors that do 
 
 ## Processing Status Overview
 
-The status cards give you immediate insight into your vector store's health. Total Recordings shows how many audio files exist in your system, while Processed for Inquire indicates how many have been converted to searchable embeddings. These numbers should eventually match, though there's often a lag as background processing catches up.
+The status cards give you immediate insight into your vector store's health. **Total recordings** counts completed recordings, and **Ready for library search** indicates how many have been converted to searchable embeddings. These numbers should eventually match, though there's often a lag as background processing catches up.
 
-Need Processing reveals recordings waiting for embedding generation. This number grows when users upload new content and shrinks as the background processor works through the queue. A consistently high number might indicate processing has stalled or your system is overwhelmed.
+**Need processing** reveals recordings waiting for embedding generation. This number grows when users upload new content and shrinks as the background processor works through the queue. A consistently high number might indicate processing has stalled or your system is overwhelmed.
 
-Total Chunks shows the granular pieces your recordings have been divided into. A typical one-hour recording might generate 50-60 chunks, depending on transcript density. This chunking ensures relevant segments can be found even in very long recordings.
+**Total chunks** shows the granular pieces your recordings have been divided into. A typical one-hour recording might generate 50-60 chunks, depending on transcript density. This chunking ensures relevant segments can be found even in very long recordings.
 
-The Embeddings Status indicator provides a quick health check. "Available" in green means everything is working correctly. Other states might indicate the model is loading, processing is running, or attention is needed.
+The **Embeddings status** indicator provides a quick health check. "Available" in green means everything is working correctly. Other states might indicate the model is loading, processing is running, or attention is needed.
 
 ## Processing Progress
 
-The processing progress bar shows real-time advancement through the embedding queue. When at 100%, all recordings are processed and searchable. Lower percentages indicate work in progress, with the bar filling as recordings are completed.
+The processing progress bar shows how many recordings were processed at the last refresh. It is not updated in real time. When it is at 100%, all recordings are processed and searchable; lower percentages indicate work in progress at the time of that refresh.
 
 This visual feedback helps you understand system status at a glance. A stuck progress bar suggests processing has stopped. Slow progress might indicate system resource constraints. Rapid progress shows everything is working efficiently.
 
@@ -71,9 +71,9 @@ Network latency shouldn't affect processing since everything happens locally, bu
 
 ## Troubleshooting Common Issues
 
-When Inquire Mode returns poor results despite processed recordings, the issue might be query formulation rather than the vector store. Encourage users to ask complete questions rather than typing keywords. "What did John say about the budget?" works better than just "John budget."
+When Ask Ambrose returns poor results despite processed recordings, the issue might be query formulation rather than the vector store. Encourage users to ask complete questions rather than typing keywords. "What did John say about the budget?" works better than just "John budget."
 
-If processing seems frozen, check whether the sentence-transformers library is properly installed. The system gracefully degrades without it, disabling Inquire Mode rather than crashing, but processing won't advance. Your logs will show whether the embedding model loaded successfully.
+If processing seems frozen, check whether the sentence-transformers library is properly installed. Without it, Ask Ambrose falls back to keyword search rather than failing, but embedding processing won't advance. Your logs will show whether the embedding model loaded successfully.
 
 Memory errors during processing usually indicate your system is trying to process too much simultaneously. The chunking system prevents individual recordings from overwhelming memory, but processing multiple large recordings in parallel might exceed available RAM.
 

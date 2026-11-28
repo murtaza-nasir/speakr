@@ -68,8 +68,8 @@ Speakr takes a recording from raw audio to organized, searchable, shareable know
   <div class="feature-card">
     <h4>Transcribe</h4>
     <ul>
-      <li><a href="features#multi-engine-support">Bring your own engine: WhisperX, OpenAI, Mistral, custom ASR</a></li>
-      <li><a href="features#speaker-diarization">Speaker diarization</a> and <a href="features#speaker-management">voice profiles</a> (WhisperX backend)</li>
+      <li><a href="features#multi-engine-support">Bring your own engine: WhisperX, OpenAI, Mistral, AssemblyAI, Tencent, audio.cpp and custom ASR</a></li>
+      <li><a href="features#speaker-diarization">Speaker diarization</a> and <a href="features#speaker-management">voice profiles</a> (every backend that returns speaker embeddings, such as WhisperX or OpenASR from openasr#379 onward)</li>
       <li><a href="features#language-support">Auto-detect plus the full Whisper language list</a></li>
       <li>Custom vocabulary and hotwords (most effective with WhisperX)</li>
     </ul>
@@ -80,7 +80,7 @@ Speakr takes a recording from raw audio to organized, searchable, shareable know
     <ul>
       <li><a href="features#automatic-summarization">Customizable AI summaries</a></li>
       <li>Event extraction and per-recording chat</li>
-      <li><a href="user-guide/inquire-mode">Inquire Mode: semantic search across everything</a></li>
+      <li><a href="user-guide/inquire-mode">Ask Ambrose: semantic search across everything</a></li>
     </ul>
   </div>
 
@@ -128,29 +128,40 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.11.1 - User table sorting, audit log refresh, file labels in the log"
-    - **Administration** - Sorting for every column of the user management table, a Refresh button in the audit log, and audit log exports as snapshots.
-    - **Logs** - An identifier for every file, and the recording id where it is known.
-    - **Fixes** - Stored paths with the original file name in error text and tracebacks, and three lines with tag or speaker names.
+!!! info "Version 0.11.7 - SSO account linking fix, player reload after conversion, faster startup"
+    - **Security** - A pending SSO account link is completed only for the user who requested it (GHSA-w7wf-8p3w-rmj7).
+    - **Playback** - The players reload the new file when a recording is converted, trimmed or reprocessed.
+    - **Startup** - The Loading overlay is removed before the startup requests finish.
 
-!!! info "Version 0.11.0 - Phone layout, processing queue, audit log, keyboard shortcuts"
-    The audit log is on after the upgrade. Read the Upgrading section of the release notes for the audit log settings, incognito, webhook delivery records and the admin routes.
+!!! info "Version 0.11.6 - One Transcription models section, audio.cpp, kept upload span"
+    - **Administration** - One Transcription models section in System settings, with a connector, address and key per model, a test before it is offered to users, and the default model.
+    - **Transcription** - An audio.cpp connector, with speaker labels when the model assigns them.
+    - **Uploads** - A chosen span of an uploaded file is kept before it is transcribed.
+    - **Fixes** - The open recording is kept when a job of another recording finishes.
 
-    - **Interface** - A rebuilt phone layout, a new processing queue with cancel, notifications in one color per type, and keyboard shortcuts.
-    - **Administration** - An audit log with filters and export, a Last active column, and four optional settings.
-    - **Privacy** - Metadata-only logging for incognito, ids in place of names in the log, and a documentation page on stored and logged data.
-    - **Fixes** - User deletion on PostgreSQL, and titles of other users' failed recordings in admin answers.
+!!! info "Version 0.11.5 - Query tokens refused, single-use links, hardened delivery"
+    - **Security** - API tokens in the `?token=` query parameter are refused by default. `API_QUERY_TOKENS_ENABLED=true` accepts them again.
+    - **Accounts** - Password reset and verification links are stored as hashes and can be used once.
+    - **Hardening** - CSRF checks on every request, markup escaped through one helper, and webhook deliveries limited to the addresses validated for their host.
+    - **Push** - The VAPID key pair is kept on the data volume, so subscriptions outlive an update.
 
-!!! info "Version 0.10.23-alpha - Segment editor with a timeline, long transcripts, group creation"
-    No action is required. A security fix for public share pages is included. Read the Upgrading section of the release notes for the changes to WhisperX jobs, user search, sharing through the API and API v1.
+!!! info "Version 0.11.4 - Offline recorder sources, models from the admin panel, route validation"
+    - **Offline recorder** - The page records the microphone, the system audio or both, as the in-app recorder does.
+    - **Models** - Text, chat and translation models are configured from the admin panel without a restart.
+    - **Validation** - Request bodies and fields are checked at the route boundary on the web and API v1 alike.
 
-    - **Editing** - A timeline with the waveform, drag editing, undo and redo, and drafts in the segment editor.
-    - **Long transcripts** - Fast display on the recording page, on public share links and in Identify speakers, with a find bar on Ctrl+F.
-    - **Administration** - Settings for who can create groups and who users can find when sharing, and asynchronous WhisperX jobs.
-    - **Fixes** - Shared summaries and notes on public links, voice-match suggestions, and the recording shown after quick selection.
+!!! info "Version 0.11.3 - Offline recording, upload once, gpt-transcribe"
+    - **Offline recorder** - A page to record on while offline, and the upload happens once when the connection returns.
+    - **Uploads** - A recording whose upload failed is uploaded once.
+    - **OpenAI** - `gpt-transcribe` support, and a note that OpenAI shuts down `whisper-1` and the `gpt-4o` transcription models on 26 February 2027.
+
+!!! info "Version 0.11.2 - Chat limits, error references, Unicode search"
+    - **Chat** - Question and history limits, and a documented contract for the unescaped Markdown answer that clients must sanitize.
+    - **Errors** - An unexpected route error answers with a fixed message and a reference, and the exception text goes only to the log.
+    - **Search** - Unicode search on SQLite, and date filters that are validated instead of applied when malformed.
 
 !!! note "Earlier releases"
-    Release notes for v0.10.22 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.11.1 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 
