@@ -4,10 +4,9 @@ name: Docker Build and Publish
 # multi-arch images to Docker Hub when a GitHub Release is published, on public
 # runners with auditable build logs and provenance attestation. Building images
 # on public CI rather than a private runner lets anyone verify exactly how a
-# published image was produced and from which commit. The Forgejo
-# docker-publish workflow is kept as a manual fallback only (workflow_dispatch),
-# so the same tag is never published twice. To hand CD back to Forgejo, restore
-# its `push: tags` trigger and comment out the `release` trigger below.
+# published image was produced and from which commit. Forgejo runs the test
+# suite only; publishing happens here, including manual `workflow_dispatch`
+# runs, so no other workflow publishes the same tag.
 on:
   release:
     types: [published]
