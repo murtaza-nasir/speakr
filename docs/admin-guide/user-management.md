@@ -87,7 +87,7 @@ Users see their storage, and the quota when there is one, under **Account → Us
 
 Each user row includes action buttons that give you complete control over that account. The edit button opens a modal where you can update their username or email address. This is useful when people change names, switch email providers, or when you need to correct initial entry mistakes.
 
-The admin toggle is perhaps the most powerful single click in the interface. Promoting a user to admin grants them access to everything you can see and do. Demoting an admin back to regular user immediately revokes all their administrative capabilities. The system prevents you from removing admin rights from your own account, ensuring you can't accidentally lock yourself out.
+The admin toggle is perhaps the most powerful single click in the interface. Promoting a user to admin grants them the same administrative capabilities you have, including user management, system settings and the admin tools. It does not grant access to the recordings of other users; see [Access control](privacy.md#access-control). Demoting an admin back to regular user immediately revokes all their administrative capabilities. The system prevents you from removing admin rights from your own account, ensuring you can't accidentally lock yourself out.
 
 The delete button requires careful consideration. Removing a user is permanent and cannot be undone through the interface. All their recordings, notes, and settings will be deleted along with their account. The system asks for confirmation, but once confirmed, the removal is immediate and complete.
 

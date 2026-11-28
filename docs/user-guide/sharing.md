@@ -144,9 +144,9 @@ The sharing system gives you granular control over what recipients can see. You 
 
 ## Requirements for Sharing
 
-Before you can share recordings, your Speakr instance must meet two critical requirements. First, it must be accessible via HTTPS with a valid SSL certificate. Second, it must be reachable from the internet with a proper domain name or public IP address.
+Creating a public link requires public sharing to be turned on by your administrator and your account to have the permission to share publicly. The link must also be an HTTPS link: Speakr checks the scheme of `APP_BASE_URL` when it is set, and otherwise requires the request that creates the link to arrive over HTTPS. A link that would not be an HTTPS link is refused, because it would reach recipients over an unprotected connection.
 
-These requirements exist because share links need to be accessible to recipients who don't have accounts and may be accessing from anywhere. A local network installation or non-HTTPS setup cannot generate shareable links - the share button will either be disabled or display an error message explaining that sharing requires a secure, internet-accessible connection. If you're running Speakr internally without SSL or public access, you'll need to work with your IT group to set up proper HTTPS and internet routing before the sharing feature becomes available.
+Speakr does not check that the instance is reachable from the internet when the link is created. Whether a link opens depends on the deployment: the recipient's browser must be able to reach the address in the link. A link from an instance that only a local network can reach works for people on that network and not for anyone outside it. If the instance is not served over HTTPS, the share option is hidden or displays an error explaining that requirement; the API answers `403` with `https_required`.
 
 ## Creating a Share Link
 
@@ -156,11 +156,11 @@ The "Share summary" option determines whether recipients can see the AI-generate
 
 The "Share notes" option controls whether your personal notes are visible. These are the markdown notes you've added to provide context, follow-ups, or additional thoughts about the recording. Consider carefully whether these notes are appropriate for your audience - they might contain internal observations or personal reminders that aren't meant for external viewing.
 
-Once you've selected your options, click "Create Share Link" to generate the secure URL. The link appears immediately in the modal, ready to copy to your clipboard. This link is permanent until you explicitly revoke it, so recipients can bookmark it for future reference.
+Once you've selected your options, click "Create Share Link" to generate the secure URL. The link appears immediately in the modal, ready to copy to your clipboard. A link created in the web app is not given an expiration of its own: it stays valid until you explicitly revoke it, so recipients can bookmark it for future reference. Integrations can create a link that expires, and a link the web dialog reuses keeps whatever expiration it already had; see below.
 
 ### Share Links from Other Tools
 
-Integrations can create, list and revoke share links through the API (see [Share Links](api-reference.md#share-links)) with a token that has the `share` scope. A link created there shares the summary only unless notes are asked for, can expire after a number of days, and an existing link keeps its settings unless the request asks to change them.
+Integrations can create, list and revoke share links through the API (see [Share Links](api-reference.md#share-links)) with a token that has the `share` scope. A link created there shares the summary only unless notes are asked for. It can expire after a number of days, but the expiration is applied only when a new link is created: a reused link keeps the expiration it already has, and a request that passes `expires_in_days` without `force_new` changes nothing. An existing link also keeps its settings unless the request asks to change them.
 
 ## What Recipients Experience
 
@@ -184,7 +184,7 @@ At the bottom of the page, recipients see a small footer that reads "Built with 
 
 All your shared recordings are centrally managed through the Shared recordings section in your account settings. This gives you a complete overview of everything you've shared and with whom.
 
-The list has three sections: your public links, the recordings you have shared with other users and groups, and the recordings shared with you. See [Shared Transcripts Tab](settings.md#shared-transcripts-tab). For public links, it shows each recording you've shared, when you created the share link, and what options you selected (summary and/or notes). A public link is answered with "not found" while public sharing is turned off by the administrator, or after your permission to share publicly was withdrawn. The link is kept, and it is served again when sharing is turned on again or the permission is returned. Each entry includes the full share URL that you can copy again if needed - perhaps you've lost the original link or need to reshare with additional people.
+The list has three sections: your public links, the recordings you have shared with other users and groups, and the recordings shared with you. See [Shared Transcripts Tab](settings.md#shared-transcripts-tab). For public links, it shows each recording you've shared, when you created the share link, and what options you selected (summary and/or notes). A public link is answered with "not found" while public sharing is turned off by the administrator, after your permission to share publicly was withdrawn, or after the link expired when it was created with an expiration. The link is kept, and it is served again when sharing is turned on again or the permission is returned; an expired link stays expired. Each entry includes the full share URL that you can copy again if needed - perhaps you've lost the original link or need to reshare with additional people.
 
 You can modify what's included in a share by toggling the summary and notes checkboxes directly in this interface. These changes take effect immediately for anyone accessing the link. This is useful when you initially share just the transcription but later decide to include the summary, or when you want to remove notes that are no longer relevant.
 
@@ -192,13 +192,13 @@ The delete button next to each share instantly revokes access. Once deleted, the
 
 ## Security and Privacy Considerations
 
-Speakr requires HTTPS for all sharing operations, ensuring that share links can only be created and accessed over secure connections. This protects the content during transmission and prevents interception of sensitive recordings.
+Speakr requires HTTPS when a public link is created, so the link is not handed out over an unprotected connection and the address in it starts with `https://`. Opening the link then follows the deployment: the recipient reaches the instance over whatever scheme that address uses, and you should keep the instance on HTTPS so their access is encrypted too.
 
 Each share link contains a cryptographically secure random token that's unique to that specific share. These tokens are generated using security best practices and are long enough to make guessing or brute-force attacks infeasible. Even if someone knows you've shared other recordings, they cannot derive or guess the links to those shares.
 
 It's important to understand that share links don't require authentication - anyone with the link can access the recording. This makes sharing convenient but means you should treat these links with the same care you'd treat sensitive documents. Share them only through secure channels like encrypted email or private messages, never post them publicly, and revoke access when it's no longer needed.
 
-The system doesn't track who accesses shared links or how often they're viewed. This respects recipient privacy but means you won't know if a link has been forwarded to others. If you need tighter access control, consider asking recipients to create Speakr accounts instead of using public sharing.
+Public opens and audio plays are recorded in the audit log when audit logging is enabled (the default): one row per 30 minutes and event type for each link and visitor, with the share id, the client address (subject to `audit_log_store_ip`) and the user agent. A visitor has no account, so the log does not tell you who they are, and a link forwarded to someone else looks like any other visitor. If you need to know who can read a recording, share it internally with accounts instead of using public links.
 
 ## Best Practices for Sharing
 
@@ -224,8 +224,8 @@ Legal and compliance groups may require unedited transcriptions of important con
 
 Share links are designed for occasional sharing with individuals or small groups, not for mass distribution or public posting. The system isn't optimized for hundreds of concurrent viewers, and publicly posted links could expose sensitive information to unintended audiences.
 
-Currently, shares don't expire automatically, though this feature may be added in future updates. Once created, a share link remains valid until you manually revoke it. This means you should periodically review your shared recordings and remove access to those no longer needed.
+Share links created in the web app don't expire automatically. A link created through API v1 can be given an expiration (`expires_in_days`); the expiration is set only when a new link is created. The web dialog reuses the existing link for a recording, so a link first created through the API keeps the expiration it was given. A request without `force_new` reuses the existing link and leaves its expiration unchanged, so a link with a different expiration requires a new link; the earlier link keeps its own expiry and continues to work until it expires or is revoked. A public link remains valid until it is revoked or expires, so you should periodically review your shared recordings and remove access to those no longer needed.
 
-The sharing feature is only available over HTTPS connections for security reasons. If you're running Speakr on a local network without SSL certificates, you won't be able to create share links. This is a deliberate security measure to prevent sensitive recordings from being shared over unencrypted connections.
+The sharing feature creates links only over HTTPS connections for security reasons. If you're running Speakr on a local network without SSL certificates, you won't be able to create share links. This is a deliberate security measure to prevent sensitive recordings from being shared over unencrypted connections. Whether a recipient can open a created link still depends on their network access to the deployment.
 
 Recipients need a modern web browser to view shared recordings. The audio player and transcription display require JavaScript and HTML5 support. While this covers the vast majority of users, recipients using very old browsers or restrictive corporate environments might experience issues.

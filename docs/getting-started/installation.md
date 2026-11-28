@@ -272,7 +272,7 @@ ADMIN_EMAIL=admin@your-domain.com
 ADMIN_PASSWORD=your-secure-password-here
 ```
 
-Choose a strong password for this account as it has full system access, including the ability to manage users and view all recordings. The admin account is special and cannot be created through the regular registration process, only through these environment variables.
+Choose a strong password for this account as it has full administrative access, including the ability to manage users, change system settings and delete recordings of other users through the API v1 batch endpoint. The admin account is special and cannot be created through the regular registration process, only through these environment variables. Administrative rights in the application do not include reading the recordings of other users; see [Access control](../admin-guide/privacy.md#access-control) for what an administrator can and cannot reach. Anyone with access to the host, the Docker daemon, the database or its backups can read everything, so protect those separately.
 
 Next, configure how the application behaves. These settings control user access and system operation:
 
@@ -1025,28 +1025,45 @@ Apache requires these modules: `sudo a2enmod ssl proxy proxy_http proxy_wstunnel
 
 ### Backup Strategy
 
-Regular backups are essential for production deployments. Your Speakr data consists of three critical components that need backing up: the SQLite database in the `instance` directory, the audio files in the `uploads` directory (when using local storage), and your configuration in the `.env` file. If you use S3 storage, audio files are managed by your S3 provider's durability guarantees and do not need to be included in local backups.
+Regular backups are essential for production deployments. Your Speakr data consists of three critical components that need backing up: the SQLite database in the `instance` directory, the audio files in the `uploads` directory (when using local storage), and your configuration in the `.env` file. Keep `instance/secret_key` with the backup as well, because it signs sessions and password-reset links; `instance/huggingface` holds only a downloaded embedding model and can be left out.
 
-Create a backup script that captures all three components:
+Do not copy `instance/transcriptions.db` on its own while Speakr is running. The database runs in WAL mode, and a live copy of the main file can miss the changes still held in `transcriptions.db-wal`, which restores an inconsistent or older state. Use SQLite's online backup API, which writes a consistent copy while Speakr keeps accepting writes, or stop the container before copying and include the `-wal` and `-shm` files too. The script below uses the online backup.
 
 ```bash
 #!/bin/bash
+set -euo pipefail
+
 BACKUP_DIR="/backup/speakr"
 DATE=$(date +%Y%m%d_%H%M%S)
+STAGE="$BACKUP_DIR/speakr_$DATE"
+SPEAKR_DIR="/opt/speakr"
 
-# Create backup directory if it doesn't exist
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$STAGE"
+cd "$SPEAKR_DIR"
 
-# Create the backup
-tar czf "$BACKUP_DIR/speakr_backup_$DATE.tar.gz" \
-    /opt/speakr/instance \
-    /opt/speakr/uploads \
-    /opt/speakr/.env
+# A consistent copy of the database through SQLite's backup API.
+# The copy lands in the mounted data volume, then moves to the backup folder.
+docker compose exec -T app python - <<'PY'
+import sqlite3
+source = sqlite3.connect('/data/instance/transcriptions.db')
+target = sqlite3.connect('/data/instance/speakr_backup.sqlite')
+source.backup(target)
+target.close()
+source.close()
+PY
+mv instance/speakr_backup.sqlite "$STAGE/transcriptions.db"
 
-# Optional: Keep only last 30 days of backups
-find "$BACKUP_DIR" -name "speakr_backup_*.tar.gz" -mtime +30 -delete
+# Local audio, the configuration and the session signing key
+tar czf "$STAGE/uploads.tar.gz" uploads
+cp .env "$STAGE/.env"
+if [ -f instance/secret_key ]; then
+    cp instance/secret_key "$STAGE/secret_key"
+fi
 
-echo "Backup completed: speakr_backup_$DATE.tar.gz"
+# Optional: keep only the last 30 days of backups
+find "$BACKUP_DIR" -maxdepth 1 -type d -name "speakr_*" -mtime +30 -exec rm -rf {} +
+
+echo "Backup completed: $STAGE"
 ```
 
 Make the script executable and schedule it with cron for automated daily backups:
@@ -1058,7 +1075,29 @@ crontab -e
 0 2 * * * /opt/speakr/backup.sh
 ```
 
-For critical deployments, consider copying backups to remote storage or cloud services for additional redundancy. The compressed backup size is typically much smaller than the original data, as audio files compress well.
+If the container is stopped, copy `instance/transcriptions.db` together with `instance/transcriptions.db-wal` and `instance/transcriptions.db-shm` when those files exist, or reopen the database and run `PRAGMA wal_checkpoint(TRUNCATE)` before copying. A copy of the main file alone is not a backup.
+
+With S3 storage, the audio lives in the bucket instead of `uploads`, so the local archive does not contain it. Provider durability is not a backup: it protects against the loss of a disk, not against deletion of an object or a bucket, a mistaken lifecycle rule, ransomware, or a defect in the application that deletes objects. Turn on bucket versioning and object retention (Object Lock) where the provider offers them, or copy the bucket to independent storage on a schedule, and keep the database and `.env` backups in a separate account or failure domain from the bucket.
+
+#### Test the restore
+
+An untested backup is not known to be usable. Restore the files into a scratch directory, never over the live data, and check the database before relying on it:
+
+```bash
+RESTORE="/tmp/speakr-restore-$(date +%Y%m%d)"
+mkdir -p "$RESTORE/instance"
+cp /backup/speakr/speakr_20261128_020000/transcriptions.db "$RESTORE/instance/transcriptions.db"
+cp /backup/speakr/speakr_20261128_020000/.env "$RESTORE/.env"
+if [ -f /backup/speakr/speakr_20261128_020000/secret_key ]; then
+    cp /backup/speakr/speakr_20261128_020000/secret_key "$RESTORE/instance/secret_key"
+fi
+tar xzf /backup/speakr/speakr_20261128_020000/uploads.tar.gz -C "$RESTORE"
+python3 -c "import sqlite3; print(sqlite3.connect('$RESTORE/instance/transcriptions.db').execute('PRAGMA integrity_check').fetchone()[0])"
+```
+
+The last command must print `ok`. Restoring `secret_key` as well means the test copy can be signed in with an existing session and keeps password-reset links valid. Without that file the restored instance generates a new key, and a `SECRET_KEY` set in `.env` is used instead of the file. Either way, a key that differs from the original invalidates old sessions and outstanding reset links. Then start a disposable instance against the restored copy on a spare port, sign in with a known account, open a recording and play its audio. If the copy is incomplete, this is the moment to find out.
+
+The database and the configuration compress well. Audio is compressed by default, so on most deployments the archive ends up close to the size of `uploads`; WAV and AIFF files that were never compressed, for example with `AUDIO_COMPRESS_UPLOADS=false`, still shrink a lot in the archive. Keep at least one copy outside the host that runs Speakr.
 
 ### Monitoring and Maintenance
 
@@ -1099,24 +1138,22 @@ Keep the Docker image updated with the latest security patches. Check for update
 
 Keeping Speakr updated ensures you have the latest features and security patches. The update process is straightforward but should be done carefully to avoid data loss.
 
-First, always create a backup before updating:
+First, always create a backup before updating. Stop Speakr before copying so the database is consistent:
 
 ```bash
-# Create a backup
+# Create a backup; the container is stopped so no write is in flight
+docker compose down
 tar czf speakr_backup_before_update.tar.gz uploads/ instance/ .env
 
-# Pull the latest image
+# Pull the latest image and start it
 docker compose pull
-
-# Stop the current container
-docker compose down
-
-# Start with the new image
 docker compose up -d
 
 # Check the logs to ensure successful startup
 docker compose logs -f app
 ```
+
+For a backup of a running instance, use the online database backup in [Backup Strategy](#backup-strategy) instead of the `tar` command above.
 
 The update process preserves all your data since it's stored in mounted volumes outside the container. However, checking the release notes is important as some updates might require configuration changes or have breaking changes that need attention.
 
