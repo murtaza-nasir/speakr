@@ -69,7 +69,7 @@ Run Speakr once with internet access to cache the embedding model, then disconne
 
 ### How do I backup my Speakr data?
 
-Your Speakr data consists of three essential components: the SQLite database in the `instance/` directory, audio files in the `uploads/` directory (when using local storage), and your configuration in the `.env` file. To create a complete backup, stop the container first to ensure database consistency, then backup all three directories:
+Your Speakr data consists of three essential components: the SQLite database in the `instance/` directory, audio files in the `uploads/` directory (when using local storage), and your configuration in the `.env` file. To create a complete backup, stop the container first so the database is consistent, then back up all three:
 
 ```bash
 docker compose down
@@ -77,9 +77,9 @@ tar czf speakr_backup_$(date +%Y%m%d).tar.gz uploads/ instance/ .env
 docker compose up -d
 ```
 
-If you use S3 storage for audio files (`FILE_STORAGE_BACKEND=s3`), audio data is stored externally and managed by your S3 provider's durability guarantees. In that case you only need to back up `instance/` and `.env`.
+Do not copy `instance/transcriptions.db` on its own while Speakr is running. The database runs in WAL mode, so a single-file copy of a live database can miss the changes in `transcriptions.db-wal` and restore an inconsistent or older state. For a backup without downtime, use SQLite's online backup API as shown in [Backup Strategy](getting-started/installation.md#backup-strategy), and test a restore into a scratch directory before relying on it.
 
-Regular automated backups are highly recommended for production use.
+If you use S3 storage for audio files (`FILE_STORAGE_BACKEND=s3`), the audio lives in the bucket. Provider durability is not a backup: it does not protect against deletion, a mistaken lifecycle rule, ransomware or an application-level mistake. Enable versioning and object retention, or copy the bucket to independent storage, and still back up `instance/` and `.env`. Regular automated backups are highly recommended for production use.
 
 ## Transcription and AI Features
 
@@ -181,7 +181,7 @@ The ASR service should return speaker labels like "SPEAKER_00", "SPEAKER_01" in 
 
 ### Why can't I share recordings?
 
-[Sharing](user-guide/sharing.md) requires your Speakr instance to be accessible from the internet with HTTPS/SSL encryption. Check [sharing requirements](user-guide/sharing.md#requirements-for-sharing) and [troubleshooting](troubleshooting.md#sharing-links-dont-work). Local installations or non-HTTPS setups cannot generate working share links. The system disables sharing features when these requirements aren't met. To enable sharing, deploy Speakr on a public server with a domain name and SSL certificate.
+[Sharing](user-guide/sharing.md) needs public sharing enabled by your administrator, permission on your account to share publicly, and an HTTPS address for the instance. The link is refused when it would not be an HTTPS link. Check [sharing requirements](user-guide/sharing.md#requirements-for-sharing) and [troubleshooting](troubleshooting.md#sharing-links-dont-work). Speakr does not check whether the instance is reachable from the internet, so a link from a LAN-only instance works for people on that network and not outside it. If creation succeeds but recipients cannot open the link, check that `APP_BASE_URL` matches the address people actually use and that the deployment is reachable from where they are.
 
 ### The interface is slow with large transcriptions
 

@@ -34,7 +34,16 @@ Two proxy settings produce this. The proxy may strip the Referer header, either 
 
 If you can't sign in with your [admin credentials](getting-started.md#step-4-configure-admin-account), first verify you're using the exact username and password from your environment file. For user management issues, see the [admin guide](admin-guide/user-management.md). These are case-sensitive and must match exactly. Check the Docker logs for admin user creation messages - you should see "Admin user created successfully" during first startup.
 
-Sometimes the admin user creation fails silently if the password doesn't meet requirements. Ensure your admin password is at least 8 characters long. If the admin user wasn't created, you might need to remove the database file and restart the container to trigger initialization again.
+Admin creation reports why it failed when the variables are present: `scripts/docker_create_admin.py` checks `ADMIN_USERNAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD`, prints the reason when one is invalid, and exits nonzero, at which point the entrypoint stops startup. When one of the three is empty, however, the entrypoint skips admin creation entirely, so the log has no admin line and the app can start without an admin account. `docker compose logs app` is the first place to look in either case.
+
+Check the following before changing anything:
+
+1. If the log shows `Creating admin user using environment variables...`, the script prints its two header lines next and the reason after them: a username shorter than 3 or longer than 20 characters (the admin dashboard accepts 2, but the container bootstrap script requires at least 3), an invalid email address, or a password shorter than 8 characters.
+2. Confirm what the container receives, quoting included. This works while the container is stopped because it runs a one-off container with the same environment and volumes: `docker compose run --rm --no-deps --entrypoint python app -c "import os; print('username:', repr(os.environ.get('ADMIN_USERNAME'))); print('email:', repr(os.environ.get('ADMIN_EMAIL'))); print('password length:', len(os.environ.get('ADMIN_PASSWORD') or ''))"`. A missing value, a leading space or an unexpected quote shows up here.
+3. Fix the value in `.env`, then start the container again: `docker compose up -d`. The entrypoint reruns the script on every start, so a corrected value is picked up without touching the database. To run only the script, use `docker compose run --rm --no-deps --entrypoint python app scripts/docker_create_admin.py`. A username or email that already exists is reported and left unchanged.
+4. Confirm the log says `Admin user created successfully!`.
+
+Do not delete the database to retry initialization. It also holds every recording, transcript and account, and deleting it cannot fix a missing or malformed credential. If data was already lost some other way, restore the database and uploads from a [backup](getting-started/installation.md#backup-strategy) instead of starting over.
 
 ### "Something Went Wrong (Reference ...)"
 
@@ -290,9 +299,9 @@ This is a Docker limitation on macOS - GPU passthrough isn't supported because D
 
 ### Sharing Links Don't Work
 
-[Sharing](user-guide/sharing.md) requires your Speakr instance to be accessible from the internet with HTTPS. See [sharing requirements](user-guide/sharing.md#requirements-for-sharing) and [security considerations](user-guide/sharing.md#security-and-privacy-considerations). Local installations or non-SSL setups cannot generate working share links. The share button will be disabled or show an error explaining the requirements.
+Creating a [share link](user-guide/sharing.md) needs three things: public sharing enabled by the administrator, permission on your account to share publicly, and an HTTPS address for the instance. Speakr checks the scheme of `APP_BASE_URL` when it is set, and otherwise requires the request that creates the link to arrive over HTTPS. See [sharing requirements](user-guide/sharing.md#requirements-for-sharing) and [security considerations](user-guide/sharing.md#security-and-privacy-considerations). Without HTTPS the share dialog is unavailable or the API answers `403` with `https_required`.
 
-If your instance meets the requirements but shares still fail, check that your configured URL in the environment matches reality. Mismatched URLs cause share links to point to the wrong location. The URL must be exactly what external users will use to access your instance.
+Speakr does not check that the instance is reachable from the internet. A link that is created successfully still only opens for a recipient whose browser can reach the address in it, so a link from a LAN-only instance works on that network and nowhere else. If creation succeeds but recipients cannot open the link, check that the configured URL in `APP_BASE_URL` matches the address people actually use, including the scheme, and that the deployment itself is reachable from where they are. An expired link, and a link whose owner lost the permission to share publicly or whose instance has public sharing turned off, answers "not found" by design.
 
 ### Inquire Mode Returns No Results
 

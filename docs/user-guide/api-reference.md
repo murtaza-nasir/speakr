@@ -1136,7 +1136,7 @@ Only the recording's owner can create a link. Without `force_new`, the newest li
 | `share_notes` | `false` | Show the owner's notes. Off unless asked (the web dialog defaults to on). |
 | `force_new` | `false` | Create a new link even when one exists |
 | `update_existing` | `false` | Give a reused link the flags of this request. Without it a reused link keeps its flags, and `flags_differ` says when they differ from the request. |
-| `expires_in_days` | none | 1 to 3650; after that the link answers `404` |
+| `expires_in_days` | none | 1 to 3650; after that the link answers `404`. Applied only when a new link is created: a reused link keeps its existing expiration. |
 
 `201` for a new link, `200` for a reused one:
 
@@ -1150,9 +1150,11 @@ Only the recording's owner can create a link. Without `force_new`, the newest li
 }
 ```
 
-`active` is `false` while the link is answered with `404`: public sharing is turned off, your account no longer has the permission to share publicly, or the link has expired. The link is kept, and it is served again when the administrator turns public sharing on again or returns the permission.
+`active` is `false` while the link is answered with `404`: public sharing is turned off, your account no longer has the permission to share publicly, or the link has expired. The link is kept, and it is served again when the administrator turns public sharing on again or returns the permission. An expired link stays expired.
 
-`403` with `code` `feature_disabled` (public sharing is off), `not_permitted` (your account may not create public links) or `https_required` (the link would not be an HTTPS link: when `APP_BASE_URL` is set, its scheme decides and links use that address; otherwise the request must arrive over HTTPS, and behind a reverse proxy Speakr reads `X-Forwarded-Proto`, see `TRUSTED_PROXY_HOPS` and `TRUSTED_PROXIES`).
+`expires_in_days` is read only on the path that creates a link. Without `force_new`, the answer is an existing link and its `expires_at` is unchanged, even when the request sent a different number of days. To get a link with a new expiration, send `force_new: true`; the earlier link keeps its own expiry and continues to work until it expires or is revoked.
+
+`403` with `code` `feature_disabled` (public sharing is off), `not_permitted` (your account may not create public links) or `https_required` (the link would not be an HTTPS link: when `APP_BASE_URL` is set, its scheme decides and links use that address; otherwise the request must arrive over HTTPS, and behind a reverse proxy Speakr reads `X-Forwarded-Proto`, see `TRUSTED_PROXY_HOPS` and `TRUSTED_PROXIES`). Creation does not check that the instance is reachable from the internet; the link only opens from a network that can reach its address.
 
 ### List Share Links
 
