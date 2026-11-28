@@ -3603,43 +3603,11 @@ def identify_speakers(recording_id):
     Trigger LLM-based auto-identification of speakers from transcript context.
     Returns suggestions only - does not modify the recording.
 
-    Uses the shared identification service with JSON schema support,
-    name sanitization, and fallback logic.
+    Delegates to the web handler so both routes share one implementation.
+    ``include_error_detail=False`` keeps this API's generic error body.
     """
-    from src.services.speaker_identification import identify_speakers_from_transcript
-    from src.services.llm import LLMNotConfiguredError
-
-    try:
-        recording = db.session.get(Recording, recording_id)
-        if not recording or not has_recording_access(recording, current_user):
-            return jsonify(api_error('recording_not_found')), 404
-
-        if not recording.transcription:
-            return jsonify(api_error('no_transcription_for_identification')), 400
-
-        try:
-            transcription_data = json.loads(recording.transcription)
-        except (json.JSONDecodeError, TypeError):
-            return jsonify(api_error('transcription_format_unsupported_for_identification')), 400
-
-        if not isinstance(transcription_data, list):
-            return jsonify(api_error('transcription_format_unsupported_for_identification')), 400
-
-        speaker_map = identify_speakers_from_transcript(transcription_data, current_user.id)
-
-        if not speaker_map:
-            return jsonify(api_error('no_speakers_in_transcription')), 400
-
-        return jsonify({'success': True, 'speaker_map': speaker_map})
-
-    except LLMNotConfiguredError:
-        return jsonify(api_error('text_model_not_configured')), 503
-    except ValueError as ve:
-        return jsonify({'error': str(ve)}), 503
-    except Exception as e:
-        log_failure(current_app.logger, 'error',
-                    f"Error during auto speaker identification for recording {recording_id}", e, traceback=True)
-        return jsonify(api_error('unexpected_error')), 500
+    from src.api.recordings import auto_identify_speakers as _web_auto_identify_speakers
+    return _web_auto_identify_speakers(recording_id, include_error_detail=False)
 
 
 # =============================================================================
