@@ -150,7 +150,7 @@ docker compose up -d
 # Access at http://localhost:8899
 ```
 
-> **Lightweight image:** Use `learnedmachine/speakr:lite` for a smaller image (~725MB vs ~4.4GB) that skips PyTorch. All features work normally — only Inquire Mode's semantic search falls back to basic text search.
+> **Lightweight image:** Use `learnedmachine/speakr:lite` for a smaller image (~725MB vs ~4.4GB) that skips PyTorch. All features work normally. Inquire Mode uses basic text search unless you set `EMBEDDING_BASE_URL` to an OpenAI-compatible embedding provider.
 
 **Required API Keys:**
 - `TRANSCRIPTION_API_KEY` - For speech-to-text (OpenAI) or `ASR_BASE_URL` for self-hosted

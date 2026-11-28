@@ -61,9 +61,9 @@ services:
 | Tag | Size | Description |
 |-----|------|-------------|
 | `latest` | ~4.4GB | Full image with semantic search via PyTorch embeddings |
-| `lite` | ~725MB | Lightweight image without PyTorch — all features work, Inquire Mode falls back to text search |
+| `lite` | ~725MB | Lightweight image without PyTorch. All features work; Inquire Mode uses text search unless `EMBEDDING_BASE_URL` is set |
 
-If you don't plan to use Inquire Mode's semantic search (or are fine with basic text search), the `lite` tag is recommended for faster pulls and less disk usage. Replace `latest` with `lite` in the configuration above.
+If you don't plan to use Inquire Mode's semantic search (or are fine with basic text search), the `lite` tag is recommended for faster pulls and less disk usage. Semantic search still works there when `EMBEDDING_BASE_URL` points at an OpenAI-compatible embedding provider. Replace `latest` with `lite` in the configuration above.
 
 Or download the example configuration:
 
@@ -1005,6 +1005,11 @@ If you prefer Apache, here's an equivalent configuration:
     <Location />
         ProxyPass http://localhost:8899/
         ProxyPassReverse http://localhost:8899/
+
+        # Pass the client address, not the proxy's, so Speakr sees the real
+        # client for rate limiting and the login lock. `set` replaces any
+        # X-Forwarded-For the client sent.
+        RequestHeader set "X-Forwarded-For" expr=%{REMOTE_ADDR}
         RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}
     </Location>
 
@@ -1021,7 +1026,9 @@ If you prefer Apache, here's an equivalent configuration:
 </VirtualHost>
 ```
 
-Apache requires these modules: `sudo a2enmod ssl proxy proxy_http proxy_wstunnel rewrite headers`
+Apache requires these modules: `sudo a2enmod ssl proxy proxy_http proxy_wstunnel rewrite headers remoteip`
+
+Each example above puts exactly one proxy between the client and Speakr, so the `TRUSTED_PROXY_HOPS=1` default is correct. The nginx example appends the address it received the request from to `X-Forwarded-For`, so if you add another trusted proxy that also appends an entry, raise `TRUSTED_PROXY_HOPS` to the number of proxies in that chain. The same count applies to `X-Forwarded-Proto`, `X-Forwarded-Host` and `X-Forwarded-Prefix`: Speakr takes the value that many entries from the end of each header and leaves the header alone when it holds fewer. A two-proxy chain must therefore send two entries in each, for example `X-Forwarded-Proto: https, http`. With a single `X-Forwarded-Proto` value Speakr stops treating the request as HTTPS, so it does not send HSTS. The Apache example replaces the header with `%{REMOTE_ADDR}`, so a front proxy needs `mod_remoteip` (`RemoteIPHeader X-Forwarded-For` with the front proxy listed in `RemoteIPInternalProxy`) to make `%{REMOTE_ADDR}` the client address; leave the hop count at 1.
 
 ### Backup Strategy
 
@@ -1123,8 +1130,12 @@ The update process preserves all your data since it's stored in mounted volumes 
 If an update causes issues, you can rollback by specifying the previous version in your docker-compose.yml file:
 
 ```yaml
-image: learnedmachine/speakr:v1.2.3  # Replace with your previous version
+# The publish workflow tags a release with its version minus the leading `v`,
+# so release v0.11.7 produces learnedmachine/speakr:0.11.7.
+image: learnedmachine/speakr:0.11.7  # Replace with your previous version
 ```
+
+The tag has to exist in the registry. The release workflow publishes `<version>`, `sha-<short SHA>` and `latest` for the full image (and `lite`, `<version>-lite` and `sha-<short SHA>-lite` for the lite image); it does not publish `v<version>`, so `learnedmachine/speakr:v0.11.7` is not published by it. Check Docker Hub or the Actions run before pinning a tag you are unsure about.
 
 ## Troubleshooting Common Issues
 

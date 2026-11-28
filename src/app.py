@@ -1179,7 +1179,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Ensure upload and instance directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-# Assuming the instance folder is handled correctly by Flask or created by setup.sh
+# Assuming the instance folder is handled correctly by Flask or created by the container entrypoint
 # os.makedirs(os.path.dirname(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '/')), exist_ok=True)
 
 

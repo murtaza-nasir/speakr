@@ -36,13 +36,8 @@ services:
     #    docker compose up -d
     env_file:
       - .env
-    
-    environment:
-      # Set log level for troubleshooting
-      # Use ERROR for production (minimal logs)
-      # Use INFO for debugging issues (recommended when troubleshooting)
-      # Use DEBUG for detailed development logging
-      - LOG_LEVEL=ERROR
+    # LOG_LEVEL comes from .env (default INFO). Set it there so the same
+    # compose file works for every environment.
 
     # --- Volume Configuration ---
     # Choose ONE of the following volume configurations.
@@ -52,10 +47,14 @@ services:
       - ./instance:/data/instance
       # Optional: Uncomment if using auto-export feature (ENABLE_AUTO_EXPORT=true)
       # - ./exports:/data/exports
-      # Optional: Uncomment if using auto-processing feature (ENABLE_AUTO_PROCESSING=true)
+      # Optional: Uncomment when ENABLE_AUTO_PROCESSING=true. Drop files into
+      # ./auto-process on the host; AUTO_PROCESS_WATCH_DIR must stay at its
+      # default of /data/auto-process.
       # - ./auto-process:/data/auto-process
 
-    # Option 2: Docker-managed volumes.
+    # Option 2: Docker-managed volumes. Comment out the bind mounts above
+    # before uncommenting this block; a service cannot have two `volumes:`
+    # keys. The volumes are declared at the end of this file.
     # volumes:
     #   - speakr-uploads:/data/uploads
     #   - speakr-instance:/data/instance
@@ -63,3 +62,12 @@ services:
     #   # - speakr-exports:/data/exports
     #   # Optional: Uncomment if using auto-processing feature
     #   # - speakr-auto-process:/data/auto-process
+
+# Named volumes used by option 2 above. Compose creates a declared volume the
+# first time a service mounts it, so the unused declarations cost nothing
+# while option 1 is active.
+volumes:
+  speakr-uploads:
+  speakr-instance:
+  speakr-exports:
+  speakr-auto-process:
