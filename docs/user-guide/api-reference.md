@@ -209,6 +209,8 @@ Both addresses are available without signing in, by design. They describe the en
 
 Every operation in the specification has an `operationId`, which is required to add Speakr to Open WebUI as an OpenAPI tool server. When the specification is fetched with a scoped token, it lists only the operations that token may call, so a tool server built from it offers only those tools. A full token or a signed-in browser session receives every operation.
 
+`POST /api/v1/tokens/exchange` is intentionally absent from the published specification. It is documented above for SSO clients that need to create an API token, and it should not be offered as a generic tool.
+
 <div style="max-width: 90%; margin: 1.5em auto;">
   <img src="../../assets/images/screenshots/api-swagger-ui.png" alt="Swagger UI Documentation" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
   <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">Interactive API documentation with Swagger UI at /api/v1/docs</p>
@@ -1076,6 +1078,33 @@ PUT /api/v1/recordings/{id}/summary
 }
 ```
 
+### Regenerate Title
+
+```http
+POST /api/v1/recordings/{id}/regenerate_title
+```
+
+**Scope:** `process`
+
+Regenerates the automatic title from the stored transcript, using the same
+naming template and title step as processing. Requires edit access. When the
+title needs an LLM call, the recording must have a usable transcript and a
+text model must be configured.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "title": "Weekly project review",
+  "recording": {}
+}
+```
+
+`400` means there is no usable transcript for a title, `403` means the caller
+cannot edit the recording, `404` means the recording does not exist, `503`
+means no text model is configured, and `500` means title generation failed.
+
 ### Delete Audio, Keep Transcript
 
 ```http
@@ -1505,6 +1534,63 @@ Returns the people in the recording with voice-based identification suggestions.
 ```
 
 ---
+
+### Assign Speaker Names
+
+```http
+PUT /api/v1/recordings/{id}/speakers/assign
+```
+
+**Scope:** `write`
+
+Assigns names to the diarization labels in a recording. Requires edit access.
+Each value in `speaker_map` is either a name or an object with `name` and
+`isMe`. A diarization label given as the name is accepted as text and does not
+create a saved speaker or voice sample. Set `regenerate_summary` to queue a new
+summary after the names change.
+
+**Request Body:**
+
+```json
+{
+  "speaker_map": {
+    "SPEAKER_00": "Jane Doe",
+    "SPEAKER_01": {"name": "Bob", "isMe": false}
+  },
+  "regenerate_summary": false
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Speakers updated.",
+  "recording": {"id": 123, "title": "Weekly sync", "participants": "Jane Doe, Bob", "status": "COMPLETED"},
+  "summary_queued": false,
+  "embeddings_updated": 2,
+  "snippets_created": 2
+}
+```
+
+`400` means `speaker_map` is missing or invalid, `403` means edit access is
+required, and `404` means the recording does not exist.
+
+### Identify Speakers
+
+```http
+POST /api/v1/recordings/{id}/speakers/identify
+```
+
+**Scope:** `process`
+
+Uses the chat model to suggest names from the transcript context. It returns
+suggestions only and does not change the recording. The response contains a
+`speaker_map` in the same shape accepted by [Assign Speaker Names](#assign-speaker-names).
+
+A recording without a transcript or with an unsupported transcript format
+answers `400`. `503` means no text model is configured.
 
 ## Processing Operations
 
@@ -1941,9 +2027,9 @@ Only `name` is required. Set `group_id` to create a group folder (you must be an
 ```http
 PATCH /api/v1/folders/{id}
 PUT   /api/v1/folders/{id}
+```
 
 **Scope:** `write`
-```
 
 Accepts the same fields as create, plus `auto_share_on_apply` and `share_with_group_lead` for a group folder; all are optional. A folder cannot be moved beneath itself or a descendant, and a folder with child folders cannot change its group. Only the folder owner (personal) or a group admin (group folder) may update. `group_id` moves the folder to a group, or makes it personal again with `null`; only an admin of the new group can set it, with edit access to every recording in the folder that belongs to another user. After a change of `group_id`, `auto_share_on_apply` or `share_with_group_lead`, the recordings in the folder are shared as the new values say, and access the folder no longer gives ends; manual shares and access through a group tag stay. A change that creates shares requires the `share` scope. Returns the updated folder.
 
@@ -2004,6 +2090,33 @@ Returns the active transcription connector, the optional fields it accepts, the 
 `connector` may be `null` when the legacy transcription architecture is in use. The `capabilities` flags indicate which optional request fields (`hotwords`, `initial_prompt`, speaker-count controls) the active connector honors; connectors that do not support a field drop it silently.
 
 ---
+
+## User Settings
+
+### Toggle Auto-Summarization
+
+```http
+PUT /api/v1/settings/auto-summarization
+```
+
+**Scope:** `account`
+
+Enables or disables automatic summarization for the current user. The body
+requires a boolean `enabled` value.
+
+**Request Body:**
+
+```json
+{"enabled": false}
+```
+
+**Response:**
+
+```json
+{"success": true, "auto_summarization": false}
+```
+
+A missing `enabled`, or a value that is not a boolean flag, answers `400`.
 
 ## Webhooks
 
@@ -2073,6 +2186,8 @@ GET /api/v1/webhooks
     "recording.events.extracted",
     "recording.updated",
     "recording.deleted",
+    "recording.share.created",
+    "recording.share.revoked",
     "webhook.test"
   ],
   "max_per_user": 10

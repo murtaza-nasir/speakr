@@ -278,6 +278,80 @@ OPENAPI_SPEC = {
                                  "description": "Feature flags; a missing key means false"},
                     "models_local": {"type": "boolean"}
                 }
+            },
+            "ExternalRef": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "system": {"type": "string"},
+                    "kind": {"type": "string"},
+                    "ref": {"type": "string"},
+                    "url": {"type": "string", "nullable": True},
+                    "label": {"type": "string", "nullable": True},
+                    "created_at": {"type": "string", "format": "date-time"}
+                }
+            },
+            "ExternalRefInput": {
+                "type": "object",
+                "required": ["system", "kind", "ref"],
+                "properties": {
+                    "system": {"type": "string", "pattern": "^[a-z0-9_.-]{1,40}$"},
+                    "kind": {"type": "string", "pattern": "^[a-z0-9_.-]{1,40}$"},
+                    "ref": {"type": "string", "minLength": 1, "maxLength": 500},
+                    "url": {"type": "string", "maxLength": 1000, "pattern": "^[hH][tT][tT][pP][sS]?://\\S+$", "nullable": True},
+                    "label": {"type": "string", "maxLength": 200, "nullable": True}
+                }
+            },
+            "Share": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "share_summary": {"type": "boolean"},
+                    "share_notes": {"type": "boolean"},
+                    "created_at": {"type": "string", "format": "date-time"},
+                    "expires_at": {"type": "string", "format": "date-time", "nullable": True},
+                    "active": {"type": "boolean"},
+                    "share_url": {"type": "string", "description": "Present in list responses"}
+                }
+            },
+            "Webhook": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "user_id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "url": {"type": "string"},
+                    "allow_http": {"type": "boolean"},
+                    "include_shared": {"type": "boolean"},
+                    "events": {"type": "array", "items": {"type": "string"}},
+                    "enabled": {"type": "boolean"},
+                    "auto_paused": {"type": "boolean"},
+                    "consecutive_failures": {"type": "integer"},
+                    "created_at": {"type": "string", "format": "date-time"},
+                    "updated_at": {"type": "string", "format": "date-time"},
+                    "last_delivery_at": {"type": "string", "format": "date-time", "nullable": True},
+                    "previous_secret_valid_until": {"type": "string", "format": "date-time", "nullable": True},
+                    "secret": {"type": "string",
+                               "description": "Returned only on creation and secret rotation"}
+                }
+            },
+            "WebhookDelivery": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "webhook_id": {"type": "integer"},
+                    "event_id": {"type": "string"},
+                    "event_type": {"type": "string"},
+                    "attempt_count": {"type": "integer"},
+                    "status": {"type": "string"},
+                    "response_status": {"type": "integer", "nullable": True},
+                    "response_body_preview": {"type": "string", "nullable": True},
+                    "error_message": {"type": "string", "nullable": True},
+                    "next_retry_at": {"type": "string", "format": "date-time", "nullable": True},
+                    "created_at": {"type": "string", "format": "date-time"},
+                    "delivered_at": {"type": "string", "format": "date-time", "nullable": True},
+                    "payload": {"type": "string", "description": "Present on the single-delivery endpoint"}
+                }
             }
         }
     },
@@ -499,7 +573,8 @@ OPENAPI_SPEC = {
             "get": {"tags": ["Audio"], "summary": "Download audio", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}, {"name": "download", "in": "query", "schema": {"type": "boolean"}}], "responses": {"200": {"description": "Audio file"}}}
         },
         "/recordings/{id}/tags": {
-            "post": {"tags": ["Tags"], "summary": "Add tags to recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"tag_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Tags added"}}}
+            "post": {"tags": ["Tags"], "summary": "Add tags to recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"tag_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Tags added"}}},
+            "put": {"tags": ["Tags"], "summary": "Set recording tags", "description": "Set the recording's visible tags to exactly tag_ids, in that order. Tags the caller cannot see stay on the recording. An unknown or forbidden tag id refuses the whole request.", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["tag_ids"], "properties": {"tag_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Tags replaced"}, "400": {"description": "Invalid or forbidden tag ids"}, "403": {"description": "Permission denied"}, "404": {"description": "Recording not found"}}}
         },
         "/recordings/{id}/tags/{tag_id}": {
             "delete": {"tags": ["Tags"], "summary": "Remove tag from recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}, {"name": "tag_id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Tag removed"}}}
@@ -628,6 +703,7 @@ OPENAPI_SPEC = {
         "/folders/{id}": {
             "get": {"tags": ["Folders"], "summary": "Get folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Folder"}}}}}},
             "patch": {"tags": ["Folders"], "summary": "Update folder", "description": "Also accepted as PUT. After a change of group_id, auto_share_on_apply or share_with_group_lead, the recordings in the folder are shared as the new values say, as in the web app. A change that creates shares requires the share scope.", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "parent_id": {"type": "integer", "nullable": True}, "group_id": {"type": "integer", "nullable": True, "description": "Group of the folder; null for a personal folder. Only an admin of the new group can set it; a folder with subfolders keeps its group."}, "auto_share_on_apply": {"type": "boolean", "description": "Group folders only: share the recordings in the folder with every group member"}, "share_with_group_lead": {"type": "boolean", "description": "Group folders only: share the recordings in the folder with the group admins"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Folder updated"}}},
+            "put": {"tags": ["Folders"], "summary": "Update folder (PUT alias)", "description": "Same as PATCH /folders/{id}.", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "parent_id": {"type": "integer", "nullable": True}, "group_id": {"type": "integer", "nullable": True}, "auto_share_on_apply": {"type": "boolean"}, "share_with_group_lead": {"type": "boolean"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Folder updated"}}},
             "delete": {"tags": ["Folders"], "summary": "Delete folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder deleted"}}}
         },
         "/transcription": {
@@ -693,6 +769,308 @@ OPENAPI_SPEC = {
                 "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["enabled"], "properties": {"enabled": {"type": "boolean"}}}}}},
                 "responses": {"200": {"description": "Setting updated"}}
             }
+        },
+        "/recordings/{id}/external-refs": {
+            "get": {
+                "tags": ["Recordings"],
+                "summary": "List your external references on a recording",
+                "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {
+                    "200": {"description": "External references", "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {"external_refs": {"type": "array", "items": {"$ref": "#/components/schemas/ExternalRef"}}}}}}},
+                    "404": {"description": "Recording not found"}
+                }
+            },
+            "post": {
+                "tags": ["Recordings"],
+                "summary": "Add an external reference",
+                "description": "Adds one reference. An existing reference with the same system, kind and ref is returned with 200.",
+                "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ExternalRefInput"}}}},
+                "responses": {
+                    "200": {"description": "Existing reference returned", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ExternalRef"}}}},
+                    "201": {"description": "Reference created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ExternalRef"}}}},
+                    "400": {"description": "Invalid reference"},
+                    "403": {"description": "Permission denied"},
+                    "404": {"description": "Recording not found"},
+                    "409": {"description": "Reference limit reached"}
+                }
+            },
+            "put": {
+                "tags": ["Recordings"],
+                "summary": "Replace your external references for one system",
+                "parameters": [
+                    {"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}},
+                    {"name": "system", "in": "query", "required": True, "schema": {"type": "string"}}
+                ],
+                "requestBody": {"required": True, "content": {"application/json": {"schema": {
+                    "type": "object", "required": ["external_refs"],
+                    "properties": {"external_refs": {"type": "array", "items": {"$ref": "#/components/schemas/ExternalRefInput"}}}}}}},
+                "responses": {
+                    "200": {"description": "References replaced", "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {"external_refs": {"type": "array", "items": {"$ref": "#/components/schemas/ExternalRef"}}}}}}},
+                    "400": {"description": "Invalid reference or system"},
+                    "403": {"description": "Permission denied"},
+                    "404": {"description": "Recording not found"},
+                    "409": {"description": "Reference limit reached"}
+                }
+            }
+        },
+        "/recordings/{id}/external-refs/{ref_id}": {
+            "delete": {
+                "tags": ["Recordings"],
+                "summary": "Delete an external reference",
+                "parameters": [
+                    {"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}},
+                    {"name": "ref_id", "in": "path", "required": True, "schema": {"type": "integer"}}
+                ],
+                "responses": {
+                    "204": {"description": "Reference deleted"},
+                    "403": {"description": "Permission denied"},
+                    "404": {"description": "Recording or reference not found"}
+                }
+            }
+        },
+        "/recordings/{id}/share": {
+            "post": {
+                "tags": ["Shares"],
+                "summary": "Create or reuse a public share link",
+                "description": "Only the recording's owner can create a link. Without force_new, the newest link is reused. expires_in_days applies only when a new link is created.",
+                "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "requestBody": {"content": {"application/json": {"schema": {
+                    "type": "object",
+                    "properties": {
+                        "share_summary": {"type": "boolean", "default": True},
+                        "share_notes": {"type": "boolean", "default": False},
+                        "force_new": {"type": "boolean", "default": False},
+                        "update_existing": {"type": "boolean", "default": False},
+                        "expires_in_days": {"type": "integer", "minimum": 1, "maximum": 3650, "nullable": True}
+                    }}}}},
+                "responses": {
+                    "200": {"description": "Existing link returned"},
+                    "201": {"description": "Link created"},
+                    "400": {"description": "Invalid flag or expiration"},
+                    "403": {"description": "Public sharing disabled, not permitted, or HTTPS required"},
+                    "404": {"description": "Recording not found"}
+                }
+            }
+        },
+        "/recordings/{id}/shares": {
+            "get": {
+                "tags": ["Shares"],
+                "summary": "List your public share links of a recording",
+                "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {
+                    "200": {"description": "Share links", "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {"shares": {"type": "array", "items": {"$ref": "#/components/schemas/Share"}}}}}}},
+                    "404": {"description": "Recording not found"}
+                }
+            }
+        },
+        "/shares/{share_id}": {
+            "delete": {
+                "tags": ["Shares"],
+                "summary": "Revoke a public share link",
+                "parameters": [{"name": "share_id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {
+                    "204": {"description": "Share link revoked"},
+                    "404": {"description": "Share link not found"}
+                }
+            }
+        },
+        "/recordings/{id}/regenerate_title": {
+            "post": {
+                "tags": ["Processing"],
+                "summary": "Regenerate the automatic title",
+                "description": "Uses the stored transcript and the same title step as processing. Requires edit access.",
+                "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {
+                    "200": {"description": "Title regenerated", "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "success": {"type": "boolean"},
+                            "title": {"type": "string"},
+                            "recording": {"$ref": "#/components/schemas/Recording"}
+                        }}}}},
+                    "400": {"description": "No usable transcript for a title"},
+                    "403": {"description": "Permission denied"},
+                    "404": {"description": "Recording not found"},
+                    "500": {"description": "Title generation failed"},
+                    "503": {"description": "Text model not configured"}
+                }
+            }
+        },
+        "/inquire": {
+            "post": {
+                "tags": ["Inquire"],
+                "summary": "Ask a question across recordings",
+                "description": "Uses semantic search and, when enabled, the Inquire agent.",
+                "requestBody": {"required": True, "content": {"application/json": {"schema": {
+                    "type": "object", "required": ["question"],
+                    "properties": {
+                        "question": {"type": "string", "maxLength": 10000},
+                        "filters": {"type": "object"},
+                        "scope": {"type": "string", "enum": ["own", "shared", "all"], "default": "own"},
+                        "mode": {"type": "string", "enum": ["rag", "agent", "auto"], "default": "auto"},
+                        "stream": {"type": "boolean", "default": False},
+                        "history": {"type": "array", "items": {"type": "object"}}
+                    }}}}},
+                "responses": {
+                    "200": {"description": "Answer or server-sent event stream", "content": {
+                        "application/json": {"schema": {"type": "object"}},
+                        "text/event-stream": {"schema": {"type": "string"}}}},
+                    "400": {"description": "Invalid question, filters or mode"},
+                    "403": {"description": "Inquire or the agent is disabled"},
+                    "502": {"description": "Inquire failed, for example when no chat model is configured"}
+                }
+            }
+        },
+        "/webhooks": {
+            "get": {
+                "tags": ["Webhooks"],
+                "summary": "List webhooks",
+                "responses": {"200": {"description": "Webhooks and subscription metadata", "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "properties": {
+                        "webhooks": {"type": "array", "items": {"$ref": "#/components/schemas/Webhook"}},
+                        "event_types": {"type": "array", "items": {"type": "string"}},
+                        "max_per_user": {"type": "integer"}
+                    }}}}}}
+            },
+            "post": {
+                "tags": ["Webhooks"],
+                "summary": "Create a webhook",
+                "description": "The signing secret is returned once in this response.",
+                "requestBody": {"required": True, "content": {"application/json": {"schema": {
+                    "type": "object", "required": ["name", "url", "events"],
+                    "properties": {
+                        "name": {"type": "string", "maxLength": 100},
+                        "url": {"type": "string", "maxLength": 500},
+                        "events": {"type": "array", "items": {"type": "string"}},
+                        "allow_http": {"type": "boolean", "default": False},
+                        "enabled": {"type": "boolean", "default": True},
+                        "include_shared": {"type": "boolean", "default": False}
+                    }}}}},
+                "responses": {
+                    "201": {"description": "Webhook created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Webhook"}}}},
+                    "400": {"description": "Invalid name, URL or event list"},
+                    "409": {"description": "Webhook limit reached"}
+                }
+            }
+        },
+        "/webhooks/{webhook_id}": {
+            "get": {
+                "tags": ["Webhooks"],
+                "summary": "Get a webhook",
+                "parameters": [{"name": "webhook_id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {
+                    "200": {"description": "Webhook", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Webhook"}}}},
+                    "404": {"description": "Webhook not found"}
+                }
+            },
+            "patch": {
+                "tags": ["Webhooks"],
+                "summary": "Update a webhook",
+                "parameters": [{"name": "webhook_id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "requestBody": {"content": {"application/json": {"schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "maxLength": 100},
+                        "url": {"type": "string", "maxLength": 500},
+                        "events": {"type": "array", "items": {"type": "string"}},
+                        "allow_http": {"type": "boolean"},
+                        "enabled": {"type": "boolean"},
+                        "include_shared": {"type": "boolean"}
+                    }}}}},
+                "responses": {
+                    "200": {"description": "Webhook updated", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Webhook"}}}},
+                    "400": {"description": "Invalid field"},
+                    "404": {"description": "Webhook not found"}
+                }
+            },
+            "delete": {
+                "tags": ["Webhooks"],
+                "summary": "Delete a webhook",
+                "parameters": [{"name": "webhook_id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {
+                    "204": {"description": "Webhook deleted"},
+                    "404": {"description": "Webhook not found"}
+                }
+            }
+        },
+        "/webhooks/{webhook_id}/rotate-secret": {
+            "post": {
+                "tags": ["Webhooks"],
+                "summary": "Rotate a webhook signing secret",
+                "description": "The new secret is returned once. The previous secret stays valid for the configured grace period.",
+                "parameters": [{"name": "webhook_id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {
+                    "200": {"description": "Secret rotated", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Webhook"}}}},
+                    "404": {"description": "Webhook not found"}
+                }
+            }
+        },
+        "/webhooks/{webhook_id}/test": {
+            "post": {
+                "tags": ["Webhooks"],
+                "summary": "Queue a test delivery",
+                "parameters": [{"name": "webhook_id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {
+                    "202": {"description": "Test delivery queued", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WebhookDelivery"}}}},
+                    "404": {"description": "Webhook not found"},
+                    "409": {"description": "Webhook disabled"}
+                }
+            }
+        },
+        "/webhooks/{webhook_id}/deliveries": {
+            "get": {
+                "tags": ["Webhooks"],
+                "summary": "List recent deliveries",
+                "parameters": [
+                    {"name": "webhook_id", "in": "path", "required": True, "schema": {"type": "integer"}},
+                    {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 50, "minimum": 1, "maximum": 200}}
+                ],
+                "responses": {
+                    "200": {"description": "Recent deliveries", "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "deliveries": {"type": "array", "items": {"$ref": "#/components/schemas/WebhookDelivery"}},
+                            "limit": {"type": "integer"}
+                        }}}}},
+                    "404": {"description": "Webhook not found"}
+                }
+            }
+        },
+        "/webhooks/{webhook_id}/deliveries/{delivery_id}": {
+            "get": {
+                "tags": ["Webhooks"],
+                "summary": "Get a delivery with its payload",
+                "parameters": [
+                    {"name": "webhook_id", "in": "path", "required": True, "schema": {"type": "integer"}},
+                    {"name": "delivery_id", "in": "path", "required": True, "schema": {"type": "integer"}}
+                ],
+                "responses": {
+                    "200": {"description": "Delivery", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WebhookDelivery"}}}},
+                    "404": {"description": "Webhook or delivery not found"}
+                }
+            }
+        },
+        "/webhooks/{webhook_id}/deliveries/{delivery_id}/replay": {
+            "post": {
+                "tags": ["Webhooks"],
+                "summary": "Replay a delivery",
+                "parameters": [
+                    {"name": "webhook_id", "in": "path", "required": True, "schema": {"type": "integer"}},
+                    {"name": "delivery_id", "in": "path", "required": True, "schema": {"type": "integer"}}
+                ],
+                "responses": {
+                    "202": {"description": "Replay queued", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WebhookDelivery"}}}},
+                    "404": {"description": "Webhook or delivery not found"}
+                }
+            }
         }
     },
     "tags": [
@@ -708,6 +1086,9 @@ OPENAPI_SPEC = {
         {"name": "Speakers", "description": "Speaker management"},
         {"name": "Batch", "description": "Batch operations"},
         {"name": "Settings", "description": "User settings"},
+        {"name": "Shares", "description": "Public share links"},
+        {"name": "Webhooks", "description": "Webhook endpoints and deliveries"},
+        {"name": "Inquire", "description": "Semantic search across recordings"},
         {"name": "Tokens", "description": "Token introspection and instance capabilities"}
     ]
 }

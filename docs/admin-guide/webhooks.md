@@ -31,12 +31,12 @@ file's existence on disk is confirmed, so subscribers don't see
 misleading started→failed sequences for jobs that abort immediately
 (e.g. the audio file was deleted between upload and worker pickup).
 
-`recording.transcription.completed` fires only when the recording did not
-end `FAILED`. When the automatic summary that runs after a transcription
-fails, the transcript is kept and the recording is `FAILED`: subscribers
-receive `recording.summary.failed` and no `recording.transcription.completed`
-for that run. A later summary reprocess that succeeds sends
-`recording.summary.completed`.
+`recording.transcription.completed` fires when the transcript is stored and
+the recording reaches `COMPLETED`, including when the automatic summary that
+follows fails. In that case the transcript is kept, the recording stays
+`COMPLETED`, and subscribers receive `recording.summary.failed` followed by
+`recording.transcription.completed`. A later summary reprocess that succeeds
+sends `recording.summary.completed`.
 
 A transcription that returned no text also ends `FAILED`, without a
 transcript and without a retry, since silent audio would come back empty
@@ -331,9 +331,9 @@ or an API token. The OpenAPI schema documents every field.
 ## Operational notes
 
 - The dispatcher runs in a daemon thread inside the Speakr web process.
-  In multi-worker Gunicorn setups, every worker runs its own dispatcher;
-  the dispatcher polls the database with a small batch limit so the
-  total outbound throughput is naturally bounded.
+  In multi-worker Gunicorn setups, one process is elected to run it, so
+  each delivery is posted once. The dispatcher polls the database with a
+  small batch limit, which bounds outbound throughput.
 - `webhook_delivery` rows are removed after
   `webhook_delivery_retention_days` (default 30). See
   [Retention of delivery records](#retention-of-delivery-records).
