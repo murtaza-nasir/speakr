@@ -244,7 +244,7 @@ All tokens are hashed using SHA-256 before storage - the plaintext token is show
 
 Speakr can push outbound, HMAC-signed webhooks to your own endpoints when recordings move through their lifecycle. Subscriptions are managed from the account UI or the `/api/v1/webhooks` API, and delivery is resilient: failed sends are retried with exponential backoff, a subscription is auto-paused after repeated failures, and outbound requests are guarded by SSRF protection.
 
-The events that can be subscribed to are `recording.created`, `recording.transcription.started`, `recording.transcription.completed`, `recording.transcription.failed`, `recording.summary.completed`, `recording.summary.failed`, `recording.events.extracted`, `recording.updated`, and `recording.deleted`. See the [Webhooks admin guide](admin-guide/webhooks.md) for payload formats and setup.
+The events that can be subscribed to are `recording.created`, `recording.transcription.started`, `recording.transcription.completed`, `recording.transcription.failed`, `recording.summary.completed`, `recording.summary.failed`, `recording.events.extracted`, `recording.updated`, `recording.deleted`, `recording.share.created`, `recording.share.revoked`, and `webhook.test`. See the [Webhooks admin guide](admin-guide/webhooks.md) for payload formats and setup.
 
 ## Advanced Capabilities
 
